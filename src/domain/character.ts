@@ -299,3 +299,64 @@ export const validateCreationRules = Effect.fn("Character.validateCreationRules"
     })
   }
 })
+
+// --- Order rote skills reference ---
+
+const ORDER_ROTE_SKILLS: Record<string, readonly string[]> = {
+  "Adamantine Arrow": ["Athletics", "Intimidation", "Medicine"],
+  "Free Council": ["Crafts", "Persuasion", "Science"],
+  "Guardians of the Veil": ["Investigation", "Stealth", "Subterfuge"],
+  "Mysterium": ["Investigation", "Occult", "Survival"],
+  "Silver Ladder": ["Expression", "Persuasion", "Subterfuge"],
+}
+
+export const validateRoteSpecialties = Effect.fn("Character.validateRoteSpecialties")(function* (
+  order: string,
+  specialties: ReadonlyArray<{ skill: string; specialty: string }>,
+) {
+  const allowedSkills = ORDER_ROTE_SKILLS[order]
+  if (!allowedSkills) {
+    yield* new CreationRuleViolation({ message: `Unknown order: ${order}` })
+    return
+  }
+
+  if (specialties.length !== 3) {
+    yield* new CreationRuleViolation({
+      message: `Must choose exactly 3 rote specialties, got ${specialties.length}`,
+    })
+  }
+
+  for (const spec of specialties) {
+    if (!allowedSkills.includes(spec.skill)) {
+      yield* new CreationRuleViolation({
+        message: `"${spec.skill}" is not a rote skill for ${order}. Valid: ${allowedSkills.join(", ")}`,
+      })
+    }
+  }
+})
+
+export const applyWisdomTradeoff = Effect.fn("Character.applyWisdomTradeoff")(function* (
+  startingWisdom: number,
+  dotsToSacrifice: number,
+) {
+  const MIN_WISDOM = 5
+  const XP_PER_DOT = 5
+
+  const newWisdom = startingWisdom - dotsToSacrifice
+  if (newWisdom < MIN_WISDOM) {
+    yield* new CreationRuleViolation({
+      message: `Wisdom cannot go below ${MIN_WISDOM}. Starting ${startingWisdom} - ${dotsToSacrifice} = ${newWisdom}`,
+    })
+  }
+
+  return { wisdom: newWisdom, bonusXP: dotsToSacrifice * XP_PER_DOT }
+})
+
+export const activeSpellPenalty = Effect.fn("Character.activeSpellPenalty")(function* (
+  gnosis: number,
+  activeSpells: number,
+) {
+  const freeSpells = gnosis
+  const excess = Math.max(0, activeSpells - freeSpells)
+  return excess === 0 ? 0 : excess * -2
+})

@@ -1,6 +1,12 @@
 import { Effect } from "effect"
 import { describe, expect, it } from "@effect/vitest"
-import { createCharacter, validateCreationRules } from "../character"
+import {
+  createCharacter,
+  validateCreationRules,
+  validateRoteSpecialties,
+  applyWisdomTradeoff,
+  activeSpellPenalty,
+} from "../character"
 
 describe("Character Sheet", () => {
   it.effect("creates a valid character with all required fields", () =>
@@ -254,6 +260,65 @@ describe("Character Sheet", () => {
       })
       const invalidResult = yield* validateCreationRules(invalid).pipe(Effect.flip)
       expect(invalidResult._tag).toBe("CreationRuleViolation")
+    }),
+  )
+
+  it.effect("validates rote specialties must come from order's rote skills", () =>
+    Effect.gen(function* () {
+      // Mysterium rote skills: Investigation, Occult, Survival
+      const valid = yield* validateRoteSpecialties(
+        "Mysterium",
+        [
+          { skill: "Investigation", specialty: "Crime Scenes" },
+          { skill: "Occult", specialty: "Supernal Lore" },
+          { skill: "Survival", specialty: "Urban" },
+        ],
+      )
+      expect(valid).toBeUndefined()
+
+      // Invalid: Athletics is not a Mysterium rote skill
+      const invalid = yield* validateRoteSpecialties(
+        "Mysterium",
+        [
+          { skill: "Investigation", specialty: "Crime Scenes" },
+          { skill: "Athletics", specialty: "Running" },
+          { skill: "Occult", specialty: "Supernal Lore" },
+        ],
+      ).pipe(Effect.flip)
+
+      expect(invalid._tag).toBe("CreationRuleViolation")
+    }),
+  )
+
+  it.effect("wisdom tradeoff: sacrifice dots for XP, minimum wisdom 5", () =>
+    Effect.gen(function* () {
+      // Starting wisdom is 7. Trade 1 dot for 5 XP.
+      const result1 = yield* applyWisdomTradeoff(7, 1)
+      expect(result1.wisdom).toBe(6)
+      expect(result1.bonusXP).toBe(5)
+
+      // Trade max 2 dots (7 → 5) for 10 XP
+      const result2 = yield* applyWisdomTradeoff(7, 2)
+      expect(result2.wisdom).toBe(5)
+      expect(result2.bonusXP).toBe(10)
+
+      // Can't go below 5
+      const invalid = yield* applyWisdomTradeoff(7, 3).pipe(Effect.flip)
+      expect(invalid._tag).toBe("CreationRuleViolation")
+    }),
+  )
+
+  it.effect("active spell penalty: -2 per spell beyond gnosis", () =>
+    Effect.gen(function* () {
+      // Gnosis 1: 1 free spell, penalty starts at 2nd
+      expect(yield* activeSpellPenalty(1, 0)).toBe(0)
+      expect(yield* activeSpellPenalty(1, 1)).toBe(0)
+      expect(yield* activeSpellPenalty(1, 2)).toBe(-2)
+      expect(yield* activeSpellPenalty(1, 3)).toBe(-4)
+
+      // Gnosis 3: 3 free spells
+      expect(yield* activeSpellPenalty(3, 3)).toBe(0)
+      expect(yield* activeSpellPenalty(3, 5)).toBe(-4)
     }),
   )
 })
