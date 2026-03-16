@@ -37,7 +37,7 @@
       },
       "devDependencies": {
         "@effect/language-service": "^0.80.0",
-        "@effect/vitest": "^0.27.0",
+        "@effect/vitest": "4.0.0-beta.33",
         "@tailwindcss/typography": "^0.5.16",
         "@tanstack/devtools-vite": "latest",
         "@testing-library/dom": "^10.4.1",
@@ -150,7 +150,7 @@
 
     "@effect/language-service": ["@effect/language-service@0.80.0", "", { "bin": { "effect-language-service": "cli.js" } }, "sha512-dKMATT1fDzaCpNrICpXga7sjJBtFLpKCAoE/1MiGXI8UwcHA9rmAZ2t52JO9g/kJpERWyomkJ+rl+VFlwNIofg=="],
 
-    "@effect/vitest": ["@effect/vitest@0.27.0", "", { "peerDependencies": { "effect": "^3.19.0", "vitest": "^3.2.0" } }, "sha512-8bM7n9xlMUYw9GqPIVgXFwFm2jf27m/R7psI64PGpwU5+26iwyxp9eAXEsfT5S6lqztYfpQQ1Ubp5o6HfNYzJQ=="],
+    "@effect/vitest": ["@effect/vitest@4.0.0-beta.33", "", { "peerDependencies": { "effect": "^4.0.0-beta.33", "vitest": "^3.0.0 || ^4.0.0" } }, "sha512-atoJmncSbrKm8Fb1W+09mju6LwWRdhfvBicHpChwoPWCiij5fFrwRD7EBgIAmYUjycikR2/RYsPpeKXi8L26kw=="],
 
     "@emnapi/core": ["@emnapi/core@1.9.0", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.0", "tslib": "^2.4.0" } }, "sha512-0DQ98G9ZQZOxfUcQn1waV2yS8aWdZ6kJMbYCJB3oUBecjWYO1fqJ+a1DRfPF3O5JEkwqwP1A9QEN/9mYm2Yd0w=="],
 
