@@ -4,6 +4,7 @@ import {
   createCharacter,
   validateCreationRules,
   validateRoteSpecialties,
+  validateSkillSpecialties,
   applyWisdomTradeoff,
   activeSpellPenalty,
 } from "../character"
@@ -305,6 +306,38 @@ describe("Character Sheet", () => {
       // Can't go below 5
       const invalid = yield* applyWisdomTradeoff(7, 3).pipe(Effect.flip)
       expect(invalid._tag).toBe("CreationRuleViolation")
+    }),
+  )
+
+  it.effect("validates 3 skill specialties, each for a skill with dots", () =>
+    Effect.gen(function* () {
+      const valid = yield* validateSkillSpecialties(
+        [
+          { skill: "Occult", specialty: "Supernal" },
+          { skill: "Investigation", specialty: "Crime Scenes" },
+          { skill: "Stealth", specialty: "Shadowing" },
+        ],
+        { occult: 3, investigation: 2, stealth: 2 },
+      )
+      expect(valid).toBeUndefined()
+
+      // Wrong count
+      const tooFew = yield* validateSkillSpecialties(
+        [{ skill: "Occult", specialty: "Supernal" }],
+        { occult: 3 },
+      ).pipe(Effect.flip)
+      expect(tooFew._tag).toBe("CreationRuleViolation")
+
+      // Specialty in skill with 0 dots
+      const noDots = yield* validateSkillSpecialties(
+        [
+          { skill: "Occult", specialty: "Supernal" },
+          { skill: "Science", specialty: "Physics" },
+          { skill: "Firearms", specialty: "Pistols" },
+        ],
+        { occult: 3, science: 0, firearms: 0 },
+      ).pipe(Effect.flip)
+      expect(noDots._tag).toBe("CreationRuleViolation")
     }),
   )
 

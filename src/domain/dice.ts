@@ -20,6 +20,9 @@ export class DicePool extends Schema.Class<DicePool>("DicePool")({
   size: Schema.Number.check(Schema.isInt()),
 }) {}
 
+const RollVisibilitySchema = Schema.Literals(["public", "hidden"])
+export type RollVisibility = typeof RollVisibilitySchema.Type
+
 export class DiceRollResult extends Schema.Class<DiceRollResult>("DiceRollResult")({
   poolSize: Schema.Number.check(Schema.isInt()),
   rolls: Schema.Array(Schema.Number),
@@ -28,6 +31,7 @@ export class DiceRollResult extends Schema.Class<DiceRollResult>("DiceRollResult
   isChanceDie: Schema.Boolean,
   isDramaticFailure: Schema.Boolean,
   isExceptionalSuccess: Schema.Boolean,
+  visibility: RollVisibilitySchema,
 }) {}
 
 // --- Errors ---
@@ -83,7 +87,10 @@ export const buildPool = Effect.fn("DicePool.build")(function* (
   return new DicePool({ components, size })
 })
 
-export const rollPool = Effect.fn("DicePool.roll")(function* (pool: DicePool) {
+export const rollPool = Effect.fn("DicePool.roll")(function* (
+  pool: DicePool,
+  options?: { visibility?: RollVisibility },
+) {
   const isChanceDie = pool.size <= 0
   const diceToRoll = isChanceDie ? 1 : pool.size
 
@@ -98,6 +105,7 @@ export const rollPool = Effect.fn("DicePool.roll")(function* (pool: DicePool) {
     isChanceDie,
     isDramaticFailure: isChanceDie && rolls[0] === 1,
     isExceptionalSuccess: successes >= EXCEPTIONAL_THRESHOLD,
+    visibility: options?.visibility ?? "public",
   })
 })
 
@@ -124,5 +132,6 @@ export const resolveExplosions = Effect.fn("DicePool.resolveExplosions")(functio
     isChanceDie: result.isChanceDie,
     isDramaticFailure: result.isDramaticFailure,
     isExceptionalSuccess: successes >= EXCEPTIONAL_THRESHOLD,
+    visibility: result.visibility,
   })
 })

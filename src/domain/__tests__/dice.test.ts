@@ -1,6 +1,6 @@
 import { Effect, Random } from "effect"
 import { describe, expect, it } from "@effect/vitest"
-import { buildPool, rollPool, resolveExplosions } from "../dice"
+import { buildPool, rollPool, resolveExplosions, type RollVisibility } from "../dice"
 
 describe("Dice Roller", () => {
   it.effect("rolls a pool and counts 8, 9, 10 as successes", () =>
@@ -137,6 +137,24 @@ describe("Dice Roller", () => {
 
       // 4 + 3 + 2 - 1 = 8
       expect(pool.size).toBe(8)
+    }),
+  )
+
+  it.effect("roll result carries visibility (public or hidden)", () =>
+    Effect.gen(function* () {
+      const pool = yield* buildPool([
+        { type: "attribute", name: "Wits", dots: 3 },
+      ])
+
+      const publicRoll = yield* rollPool(pool, { visibility: "public" }).pipe(
+        Random.withSeed("vis-seed"),
+      )
+      expect(publicRoll.visibility).toBe("public")
+
+      const hiddenRoll = yield* rollPool(pool, { visibility: "hidden" }).pipe(
+        Random.withSeed("vis-seed-2"),
+      )
+      expect(hiddenRoll.visibility).toBe("hidden")
     }),
   )
 })

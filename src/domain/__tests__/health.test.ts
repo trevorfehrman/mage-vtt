@@ -4,6 +4,8 @@ import {
   createHealthTrack,
   applyDamage,
   woundPenalty,
+  healDamage,
+  isIncapacitated,
   type HealthBox,
 } from "../health"
 
@@ -126,6 +128,34 @@ describe("Health Track", () => {
       // 7th box (last) — penalty -3
       track = yield* applyDamage(track, "bashing")
       expect(yield* woundPenalty(track)).toBe(-3)
+    }),
+  )
+
+  it.effect("healing removes rightmost damage of specified type", () =>
+    Effect.gen(function* () {
+      let track = yield* createHealthTrack(5)
+      track = yield* applyDamage(track, "bashing")
+      track = yield* applyDamage(track, "bashing")
+      track = yield* applyDamage(track, "lethal")
+
+      // Heal one bashing — rightmost bashing removed
+      track = yield* healDamage(track, "bashing")
+      const filled = track.boxes.filter((b: HealthBox) => b !== "empty").length
+      expect(filled).toBe(2) // lethal + 1 bashing remain
+    }),
+  )
+
+  it.effect("incapacitated when last health box is filled", () =>
+    Effect.gen(function* () {
+      let track = yield* createHealthTrack(3)
+      expect(yield* isIncapacitated(track)).toBe(false)
+
+      track = yield* applyDamage(track, "bashing")
+      track = yield* applyDamage(track, "bashing")
+      expect(yield* isIncapacitated(track)).toBe(false)
+
+      track = yield* applyDamage(track, "bashing")
+      expect(yield* isIncapacitated(track)).toBe(true)
     }),
   )
 })

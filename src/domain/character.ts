@@ -335,6 +335,26 @@ export const validateRoteSpecialties = Effect.fn("Character.validateRoteSpecialt
   }
 })
 
+export const validateSkillSpecialties = Effect.fn("Character.validateSkillSpecialties")(function* (
+  specialties: ReadonlyArray<{ skill: string; specialty: string }>,
+  skillDots: Record<string, number>,
+) {
+  if (specialties.length !== 3) {
+    yield* new CreationRuleViolation({
+      message: `Must choose exactly 3 skill specialties, got ${specialties.length}`,
+    })
+  }
+
+  for (const spec of specialties) {
+    const dots = skillDots[spec.skill.toLowerCase()] ?? 0
+    if (dots === 0) {
+      yield* new CreationRuleViolation({
+        message: `Cannot specialize in ${spec.skill} — character has 0 dots`,
+      })
+    }
+  }
+})
+
 export const applyWisdomTradeoff = Effect.fn("Character.applyWisdomTradeoff")(function* (
   startingWisdom: number,
   dotsToSacrifice: number,

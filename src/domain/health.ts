@@ -100,6 +100,29 @@ export const applyDamage = Effect.fn("HealthTrack.applyDamage")(function* (
   return new HealthTrack({ boxes })
 })
 
+export const healDamage = Effect.fn("HealthTrack.healDamage")(function* (
+  track: HealthTrack,
+  damageType: DamageType,
+) {
+  const boxes = [...track.boxes] as Array<HealthBox>
+
+  // Find rightmost instance of this damage type and clear it
+  const lastIndex = boxes.lastIndexOf(damageType)
+  if (lastIndex !== -1) {
+    boxes[lastIndex] = "empty"
+    // Re-sort
+    boxes.sort((a, b) => SEVERITY[b] - SEVERITY[a])
+  }
+
+  return new HealthTrack({ boxes })
+})
+
+export const isIncapacitated = Effect.fn("HealthTrack.isIncapacitated")(function* (
+  track: HealthTrack,
+) {
+  return track.boxes.every((b) => b !== "empty")
+})
+
 export const woundPenalty = Effect.fn("HealthTrack.woundPenalty")(function* (
   track: HealthTrack,
 ) {
