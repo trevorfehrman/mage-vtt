@@ -201,3 +201,76 @@ export const applySpellFactors = Effect.fn("Spellcasting.applyFactors")(function
     totalDice,
   })
 })
+
+// --- Duration penalty table (pages 119-120) ---
+
+export const calculateDurationPenalty = Effect.fn("Spellcasting.durationPenalty")(function* (
+  type: "transitory" | "prolonged",
+  steps: number,
+) {
+  // Step 1 is the default (0 penalty), each step beyond is -2
+  if (steps <= 1) return 0
+  return (steps - 1) * -2
+})
+
+// --- Size penalty table (page 118) ---
+
+export const calculateSizePenalty = Effect.fn("Spellcasting.sizePenalty")(function* (
+  size: number,
+) {
+  if (size <= 20) return 0
+  if (size <= 30) return -2
+  if (size <= 40) return -4
+  if (size <= 50) return -6
+  if (size <= 60) return -8
+  // Beyond 60: -8 + -2 per +10 size
+  return -8 + Math.ceil((size - 60) / 10) * -2
+})
+
+// --- Area-affecting penalty tables (page 118) ---
+
+export const calculateAreaPenalty = Effect.fn("Spellcasting.areaPenalty")(function* (
+  radiusYards: number,
+  advanced: boolean,
+) {
+  if (advanced) {
+    // Advanced: 1→0, 4→-2, 16→-4, 64→-6, 256→-8
+    if (radiusYards <= 1) return 0
+    if (radiusYards <= 4) return -2
+    if (radiusYards <= 16) return -4
+    if (radiusYards <= 64) return -6
+    if (radiusYards <= 256) return -8
+    // Beyond: -8 + -2 per ×4
+    let penalty = -8
+    let threshold = 256
+    while (threshold < radiusYards) {
+      threshold *= 4
+      penalty -= 2
+    }
+    return penalty
+  }
+
+  // Basic: 1→0, 2→-2, 4→-4, 8→-6, 16→-8
+  if (radiusYards <= 1) return 0
+  if (radiusYards <= 2) return -2
+  if (radiusYards <= 4) return -4
+  if (radiusYards <= 8) return -6
+  if (radiusYards <= 16) return -8
+  // Beyond: -8 + -2 per ×2
+  let penalty = -8
+  let threshold = 16
+  while (threshold < radiusYards) {
+    threshold *= 2
+    penalty -= 2
+  }
+  return penalty
+})
+
+// --- Aimed spell range (page 116) ---
+
+export const calculateAimedSpellRange = Effect.fn("Spellcasting.aimedRange")(function* (
+  gnosis: number,
+) {
+  const short = gnosis * 10
+  return { short, medium: short * 2, long: short * 4 }
+})
