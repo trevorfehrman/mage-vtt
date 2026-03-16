@@ -13,9 +13,3 @@ __unconfig*
 todos.json
 .vercel
 src/routeTree.gen.ts
-data/pages/
-data/spells.json
-data/character-rules.json
-data/path-data.json
-data/chunks.json
-data/review-queue.json

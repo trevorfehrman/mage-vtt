@@ -1,0 +1,41 @@
+{
+  "initiative": {
+    "name": "Tick-Based Initiative (from Scion: Hero)",
+    "description": "Dynamic initiative system replacing static initiative from the core book.",
+    "replacesCorePage": "Standard initiative rules",
+    "system": {
+      "setup": "Each participant rolls d10 + Dexterity + Composure. Highest total gets 0 ticks, all others get (highest - their total) ticks.",
+      "acting": "When a participant has 0 ticks remaining, they may act. If multiple participants have 0 ticks, highest Wits acts first.",
+      "tiebreakers": [
+        "Wits",
+        "Dexterity",
+        "Composure",
+        "Willpower",
+        "Coinflip"
+      ],
+      "actionCosts": {
+        "attack": 3,
+        "castSpell": 5,
+        "aim": {
+          "min": 1,
+          "max": 3,
+          "effect": "+1 die per tick spent on next attack"
+        },
+        "move": 3,
+        "dodge": {
+          "min": 1,
+          "max": 3,
+          "effect": "+1 Defense per tick spent"
+        },
+        "useItem": {
+          "base": 3,
+          "note": "More at Storyteller discretion"
+        },
+        "otherAction": {
+          "note": "Storyteller discretion"
+        }
+      },
+      "resolution": "When no participants have 0 ticks, all participants remove ticks one at a time until someone reaches 0."
+    }
+  }
+}

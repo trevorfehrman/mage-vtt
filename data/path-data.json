@@ -1,0 +1,250 @@
+{
+  "paths": [
+    {
+      "name": "Acanthus",
+      "realm": "Arcadia",
+      "tarotCard": "The Fool",
+      "rulingArcana": [
+        "Time",
+        "Fate"
+      ],
+      "commonArcana": [
+        "Death",
+        "Life",
+        "Matter",
+        "Mind",
+        "Prime",
+        "Space",
+        "Spirit"
+      ],
+      "inferiorArcanum": "Forces",
+      "resistanceBonus": {
+        "attribute": "Composure",
+        "bonus": 1
+      },
+      "nicknames": [
+        "Enchanters",
+        "Witches"
+      ]
+    },
+    {
+      "name": "Mastigos",
+      "realm": "Pandemonium",
+      "tarotCard": "The Devil",
+      "rulingArcana": [
+        "Space",
+        "Mind"
+      ],
+      "commonArcana": [
+        "Death",
+        "Fate",
+        "Forces",
+        "Mind",
+        "Space",
+        "Spirit",
+        "Time"
+      ],
+      "inferiorArcanum": "Matter",
+      "resistanceBonus": {
+        "attribute": "Resolve",
+        "bonus": 1
+      },
+      "nicknames": [
+        "Psychonauts",
+        "Warlocks"
+      ]
+    },
+    {
+      "name": "Moros",
+      "realm": "Stygia",
+      "tarotCard": "Death",
+      "rulingArcana": [
+        "Matter",
+        "Death"
+      ],
+      "commonArcana": [
+        "Fate",
+        "Life",
+        "Matter",
+        "Mind",
+        "Prime",
+        "Space",
+        "Time"
+      ],
+      "inferiorArcanum": "Spirit",
+      "resistanceBonus": {
+        "attribute": "Composure",
+        "bonus": 1
+      },
+      "nicknames": [
+        "Alchemists",
+        "Necromancers"
+      ]
+    },
+    {
+      "name": "Obrimos",
+      "realm": "The Aether",
+      "tarotCard": "The Sun",
+      "rulingArcana": [
+        "Forces",
+        "Prime"
+      ],
+      "commonArcana": [
+        "Fate",
+        "Life",
+        "Matter",
+        "Mind",
+        "Space",
+        "Spirit",
+        "Time"
+      ],
+      "inferiorArcanum": "Death",
+      "resistanceBonus": {
+        "attribute": "Resolve",
+        "bonus": 1
+      },
+      "nicknames": [
+        "Theurgists",
+        "Thaumaturges"
+      ]
+    },
+    {
+      "name": "Thyrsus",
+      "realm": "The Primal Wild",
+      "tarotCard": "The Moon",
+      "rulingArcana": [
+        "Life",
+        "Spirit"
+      ],
+      "commonArcana": [
+        "Death",
+        "Fate",
+        "Forces",
+        "Matter",
+        "Prime",
+        "Space",
+        "Time"
+      ],
+      "inferiorArcanum": "Mind",
+      "resistanceBonus": {
+        "attribute": "Composure",
+        "bonus": 1
+      },
+      "nicknames": [
+        "Shamans",
+        "Ecstatics"
+      ]
+    }
+  ],
+  "orders": [
+    {
+      "name": "Adamantine Arrow",
+      "roteSkills": [
+        "Athletics",
+        "Intimidation",
+        "Medicine"
+      ],
+      "description": "Warriors and soldiers of the Awakened. Roots in Atlantis."
+    },
+    {
+      "name": "Free Council",
+      "roteSkills": [
+        "Crafts",
+        "Persuasion",
+        "Science"
+      ],
+      "description": "Modernizers of magic. Founded in the 20th century."
+    },
+    {
+      "name": "Guardians of the Veil",
+      "roteSkills": [
+        "Investigation",
+        "Stealth",
+        "Subterfuge"
+      ],
+      "description": "Spies and secret police of the Awakened."
+    },
+    {
+      "name": "Mysterium",
+      "roteSkills": [
+        "Investigation",
+        "Occult",
+        "Survival"
+      ],
+      "description": "Seekers of magical knowledge and lore."
+    },
+    {
+      "name": "Silver Ladder",
+      "roteSkills": [
+        "Expression",
+        "Persuasion",
+        "Subterfuge"
+      ],
+      "description": "Leaders and politicians of the Awakened."
+    }
+  ],
+  "arcana": [
+    {
+      "name": "Death",
+      "purview": "Darkness, decay, ectoplasm, ghosts, soul stealing"
+    },
+    {
+      "name": "Fate",
+      "purview": "Blessings, curses, destiny, fortune, oaths, probability"
+    },
+    {
+      "name": "Forces",
+      "purview": "Electricity, gravity, kinetic energy, light, physics, radiation, sound, weather"
+    },
+    {
+      "name": "Life",
+      "purview": "Disease, evolution, healing, metamorphosis, vigor"
+    },
+    {
+      "name": "Matter",
+      "purview": "Alchemy, elemental air/earth/fire/water, shaping, transmutation"
+    },
+    {
+      "name": "Mind",
+      "purview": "Communication, hallucination, mental projection, telepathy"
+    },
+    {
+      "name": "Prime",
+      "purview": "Illusions, magical imbuement, Mana, resonance, tass"
+    },
+    {
+      "name": "Space",
+      "purview": "Conjuration, scrying, sympathy, teleportation, wards"
+    },
+    {
+      "name": "Spirit",
+      "purview": "Exorcism, the Shadow Realm, soul retrieval, spirits"
+    },
+    {
+      "name": "Time",
+      "purview": "Divination, prophecy, temporal acceleration/deceleration"
+    }
+  ],
+  "arcanaLevelNames": {
+    "1": "Initiate",
+    "2": "Apprentice",
+    "3": "Disciple",
+    "4": "Adept",
+    "5": "Master",
+    "6": "Archmaster"
+  },
+  "arcanaLimits": {
+    "ruling": {
+      "maxWithoutInstruction": 5,
+      "xpCostMultiplier": 6
+    },
+    "common": {
+      "maxWithoutInstruction": 4,
+      "xpCostMultiplier": 7
+    },
+    "inferior": {
+      "maxWithoutInstruction": 2,
+      "xpCostMultiplier": 8
+    }
+  }
+}
