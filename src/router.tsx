@@ -1,19 +1,47 @@
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
+import { createRouter as createTanStackRouter } from "@tanstack/react-router"
+import { QueryClient } from "@tanstack/react-query"
+import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query"
+import { ConvexQueryClient } from "@convex-dev/react-query"
+import { routeTree } from "./routeTree.gen"
 
 export function getRouter() {
+  const convexUrl = (import.meta as any).env.VITE_CONVEX_URL!
+  if (!convexUrl) {
+    throw new Error("VITE_CONVEX_URL is not set")
+  }
+
+  const convexQueryClient = new ConvexQueryClient(convexUrl, {
+    expectAuth: true,
+  })
+
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        queryKeyHashFn: convexQueryClient.hashFn(),
+        queryFn: convexQueryClient.queryFn(),
+      },
+    },
+  })
+
+  convexQueryClient.connect(queryClient)
+
   const router = createTanStackRouter({
     routeTree,
-
-    scrollRestoration: true,
-    defaultPreload: 'intent',
+    defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
+    scrollRestoration: true,
+    context: { queryClient, convexQueryClient },
+  })
+
+  setupRouterSsrQueryIntegration({
+    router,
+    queryClient,
   })
 
   return router
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface Register {
     router: ReturnType<typeof getRouter>
   }
