@@ -31,9 +31,9 @@ const SECTIONS: Section[] = [
   // Skip cover, credits, fiction
   { name: "Cover and Credits", chapter: "Front Matter", pageStart: 1, pageEnd: 13, contentType: "skip" },
   // Introduction
-  { name: "Introduction", chapter: "Introduction", pageStart: 14, pageEnd: 15, contentType: "lore" },
-  { name: "How to Use This Book", chapter: "Introduction", pageStart: 16, pageEnd: 16, contentType: "rules" },
-  { name: "Lexicon", chapter: "Introduction", pageStart: 17, pageEnd: 20, contentType: "glossary" },
+  { name: "Introduction", chapter: "Introduction", pageStart: 14, pageEnd: 16, contentType: "lore" },
+  { name: "Sources and Inspiration", chapter: "Introduction", pageStart: 17, pageEnd: 19, contentType: "lore" },
+  { name: "Lexicon", chapter: "Introduction", pageStart: 20, pageEnd: 22, contentType: "glossary" },
   // Chapter One: Mage Society (lore-heavy, valuable for AI brainstorming)
   { name: "The Awakened World", chapter: "Chapter One", pageStart: 21, pageEnd: 30, contentType: "lore" },
   { name: "The Five Paths", chapter: "Chapter One", pageStart: 31, pageEnd: 40, contentType: "lore" },
@@ -213,6 +213,50 @@ async function chunkText() {
     )
   }
 
+  // Special handling: split glossary into individual term chunks
+  const glossaryChunks = allChunks.filter((c) => c.contentType === "glossary")
+  if (glossaryChunks.length > 0) {
+    const nonGlossary = allChunks.filter((c) => c.contentType !== "glossary")
+    allChunks.length = 0
+    allChunks.push(...nonGlossary)
+
+    // Load raw glossary pages (20-22 contain the actual Lexicon terms)
+    let glossaryText = ""
+    for (let p = 20; p <= 22; p++) {
+      glossaryText += (await loadPage(p)) + "\n"
+    }
+
+    // Match "TermName:" or "TermName (context):" definitions
+    const termPattern = /^([A-Za-z][A-Za-z\s,'()]+?):\s*(.+?)(?=\n[A-Za-z][A-Za-z\s,'()]+?:\s|\n*$)/gms
+    let termMatch
+    let termCount = 0
+
+    while ((termMatch = termPattern.exec(glossaryText)) !== null) {
+      const termName = termMatch[1].trim()
+      const termDef = termMatch[2].trim().replace(/\s+/g, " ")
+
+      // Skip non-term matches (movie/book refs)
+      if (termDef.length < 20) continue
+      if (/directed by|written by|by Robert|by Hakim|by Bill|by James|by Richard/i.test(termDef)) continue
+
+      chunkId++
+      termCount++
+      allChunks.push({
+        id: `chunk-${String(chunkId).padStart(4, "0")}`,
+        text: `${termName}: ${termDef}`,
+        chapter: "Introduction",
+        section: "Lexicon",
+        contentType: "glossary",
+        pageStart: 17,
+        pageEnd: 22,
+        charCount: termName.length + termDef.length + 2,
+        source: "core-rules",
+      })
+    }
+
+    console.log(`  Lexicon: ${termCount} individual term definitions`)
+  }
+
   // Add homebrew rules as chunks
   const homebrewFile = Bun.file(`${OUTPUT_DIR}homebrew-rules.json`)
   if (await homebrewFile.exists()) {
@@ -257,11 +301,6 @@ async function chunkText() {
       console.log(`  Homebrew: Tick-Based Initiative (1 chunk)`)
     }
   }
-
-  // Add glossary entries as individual chunks (high value for RAG)
-  const glossaryChunks = allChunks.filter(
-    (c) => c.contentType === "glossary",
-  )
 
   // Stats
   console.log(`\n--- Summary ---`)
