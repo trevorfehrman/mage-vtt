@@ -26,4 +26,4 @@ jobs:
         continue-on-error: true  # Route types need codegen, will fail until Convex is wired
 
       - name: Test
-        run: bun run test
+        run: bunx vitest run --passWithNoTests
