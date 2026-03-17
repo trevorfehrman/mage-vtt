@@ -68,6 +68,11 @@
     "onlyBuiltDependencies": [
       "esbuild",
       "lightningcss"
-    ]
+    ],
+    "overrides": {
+      "better-auth>zod": "^4.3.6",
+      "@better-auth/core>zod": "^4.3.6",
+      "@convex-dev/better-auth>zod": "^4.3.6"
+    }
   }
 }
