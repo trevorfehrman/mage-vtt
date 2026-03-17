@@ -38,8 +38,18 @@ function AuthRedirect() {
   const { isAuthenticated } = useConvexAuth()
 
   useEffect(() => {
-    // Wait a beat before redirecting — on preview deploys the OTT exchange
-    // may still be in progress when Convex initially reports unauthenticated.
+    // The OTT exchange sets cookies but the Convex WebSocket doesn't
+    // re-authenticate. After a delay (to let the exchange complete),
+    // reload so the server-side auth and Convex client pick up the cookies.
+    // If this was a direct navigation (no OTT), redirect to sign-in.
+    const hadOtt = sessionStorage.getItem("had_ott")
+    if (hadOtt) {
+      sessionStorage.removeItem("had_ott")
+      // OTT was just exchanged — reload to pick up cookies
+      window.location.reload()
+      return
+    }
+
     const timeout = setTimeout(() => {
       if (!isAuthenticated) {
         navigate({ to: "/" })
