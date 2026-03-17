@@ -1,29 +1,20 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect } from "react"
-import { Authenticated, Unauthenticated, useConvexAuth } from "convex/react"
+import { Authenticated, Unauthenticated, AuthLoading, useConvexAuth } from "convex/react"
 import { SessionList } from "#/components/sessions/SessionList"
 import { CreateSessionDialog } from "#/components/sessions/CreateSessionDialog"
 import { JoinSessionDialog } from "#/components/sessions/JoinSessionDialog"
 
 export const Route = createFileRoute("/sessions/")({
-  beforeLoad: ({ context }) => {
-    // On preview deploys with crossDomain OTT flow, the server doesn't
-    // know about the session yet on the first load. Only redirect if
-    // we're sure there's no pending OTT exchange.
-    if (!context.isAuthenticated && typeof window === "undefined") {
-      // Server-side: skip redirect, let client handle auth
-      return
-    }
-    if (!context.isAuthenticated) {
-      throw redirect({ to: "/" })
-    }
-  },
   component: SessionsPage,
 })
 
 function SessionsPage() {
   return (
     <>
+      <AuthLoading>
+        <Loading />
+      </AuthLoading>
       <Authenticated>
         <SessionsContent />
       </Authenticated>
@@ -34,23 +25,22 @@ function SessionsPage() {
   )
 }
 
-function AuthRedirect() {
-  const navigate = useNavigate()
-  const { isLoading } = useConvexAuth()
-
-  useEffect(() => {
-    // Wait until Convex has finished checking auth, then redirect if
-    // still not authenticated (i.e. user navigated here without signing in)
-    if (!isLoading) {
-      navigate({ to: "/" })
-    }
-  }, [isLoading, navigate])
-
+function Loading() {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <p className="text-muted-foreground">Loading...</p>
     </div>
   )
+}
+
+function AuthRedirect() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    navigate({ to: "/" })
+  }, [navigate])
+
+  return <Loading />
 }
 
 function SessionsContent() {
