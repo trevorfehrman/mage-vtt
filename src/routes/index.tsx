@@ -24,7 +24,7 @@ function Home() {
       <div className="flex flex-col items-center gap-4">
         <p className="text-[var(--sea-ink-soft)]">Sign in to start playing</p>
         <button
-          onClick={() => authClient.signIn.social({ provider: "google", callbackURL: "/sessions" })}
+          onClick={() => authClient.signIn.social({ provider: "google" })}
           className="flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold text-black shadow-sm hover:bg-neutral-100"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">

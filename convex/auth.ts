@@ -7,11 +7,13 @@ import { query } from "./_generated/server"
 import type { GenericCtx } from "@convex-dev/better-auth"
 import type { DataModel } from "./_generated/dataModel"
 
+const siteUrl = process.env.SITE_URL!
+
 export const authComponent = createClient<DataModel>(components.betterAuth)
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
   return betterAuth({
-    trustedOrigins: ["https://*.vercel.app", "http://localhost:3000"],
+    baseURL: siteUrl,
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: false,
