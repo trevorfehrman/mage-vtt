@@ -14,7 +14,7 @@ export const SPIRIT_RANKS: ReadonlyArray<SpiritRankDef> = [
   { rank: 1, title: "Squire/Page", attributeDots: 5, traitRange: "5-8", maxEssence: 10 },
   { rank: 2, title: "Knight", attributeDots: 7, traitRange: "9-14", maxEssence: 15 },
   { rank: 3, title: "Baron/Baroness", attributeDots: 9, traitRange: "15-25", maxEssence: 20 },
-  { rank: 4, title: "Count/Countess", attributeDots: 12, traitRange: "26-35", maxEssence: 30 },
+  { rank: 4, title: "Count/Countess", attributeDots: 12, traitRange: "26-35", maxEssence: 25 },
   { rank: 5, title: "Earl (lesser god)", attributeDots: 15, traitRange: "36-50", maxEssence: 50 },
 ]
 

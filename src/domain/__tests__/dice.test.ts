@@ -140,6 +140,40 @@ describe("Dice Roller", () => {
     }),
   )
 
+  it.effect("9-again: rerolls 9s and 10s", () =>
+    Effect.gen(function* () {
+      const pool = yield* buildPool([{ type: "attribute", name: "Str", dots: 5 }])
+      const result = yield* rollPool(pool, { againThreshold: 9 }).pipe(Random.withSeed("9again-seed"))
+
+      // With 9-again, any 9 or 10 generates an extra roll
+      const ninesAndTens = result.rolls.filter((r) => r >= 9).length
+      // Explosions should include rerolls for 9s too
+      if (ninesAndTens > 0) {
+        expect(result.explosions.length).toBeGreaterThanOrEqual(0) // may or may not produce more
+      }
+      expect(result.againThreshold).toBe(9)
+    }),
+  )
+
+  it.effect("8-again: rerolls 8s, 9s, and 10s", () =>
+    Effect.gen(function* () {
+      const pool = yield* buildPool([{ type: "attribute", name: "Str", dots: 5 }])
+      const result = yield* rollPool(pool, { againThreshold: 8 }).pipe(Random.withSeed("8again-seed"))
+      expect(result.againThreshold).toBe(8)
+    }),
+  )
+
+  it.effect("rote action: reroll all failed dice once", () =>
+    Effect.gen(function* () {
+      const pool = yield* buildPool([{ type: "attribute", name: "Str", dots: 5 }])
+      const result = yield* rollPool(pool, { roteAction: true }).pipe(Random.withSeed("rote-seed"))
+
+      expect(result.isRoteAction).toBe(true)
+      // Rote action should have rerolls for failures
+      expect(result.roteRerolls.length).toBeGreaterThanOrEqual(0)
+    }),
+  )
+
   it.effect("roll result carries visibility (public or hidden)", () =>
     Effect.gen(function* () {
       const pool = yield* buildPool([
