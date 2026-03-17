@@ -14,6 +14,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     baseURL: {
       allowedHosts: ["*.vercel.app", "localhost:3000"],
     },
+    trustedOrigins: ["https://*.vercel.app", "http://localhost:3000"],
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: false,
