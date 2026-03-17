@@ -35,10 +35,18 @@ function Loading() {
 
 function AuthRedirect() {
   const navigate = useNavigate()
+  const { isAuthenticated } = useConvexAuth()
 
   useEffect(() => {
-    navigate({ to: "/" })
-  }, [navigate])
+    // Wait a beat before redirecting — on preview deploys the OTT exchange
+    // may still be in progress when Convex initially reports unauthenticated.
+    const timeout = setTimeout(() => {
+      if (!isAuthenticated) {
+        navigate({ to: "/" })
+      }
+    }, 2000)
+    return () => clearTimeout(timeout)
+  }, [isAuthenticated, navigate])
 
   return <Loading />
 }
