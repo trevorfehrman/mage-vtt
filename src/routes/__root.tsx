@@ -58,19 +58,20 @@ export const Route = createRootRouteWithContext<{
 function OttReloader() {
   useEffect(() => {
     if (typeof window === "undefined") return
-    // After the ConvexBetterAuthProvider exchanges the OTT and sets cookies,
-    // reload so the server-side beforeLoad picks up the new session.
-    const handled = sessionStorage.getItem("ott_handled")
-    if (handled) {
-      sessionStorage.removeItem("ott_handled")
-      window.location.reload()
-      return
-    }
-    const url = new URL(window.location.href)
-    if (url.searchParams.has("ott")) {
-      // Mark that we need to reload after the provider processes the OTT
-      sessionStorage.setItem("ott_handled", "1")
-    }
+    if (!window.location.search.includes("ott=")) return
+
+    // The ConvexBetterAuthProvider processes the OTT asynchronously, then
+    // removes ?ott= from the URL via replaceState. Poll for that removal,
+    // then reload so server-side beforeLoad picks up the new session cookies.
+    const interval = setInterval(() => {
+      if (!window.location.search.includes("ott=")) {
+        clearInterval(interval)
+        window.location.reload()
+      }
+    }, 100)
+
+    const timeout = setTimeout(() => clearInterval(interval), 10000)
+    return () => { clearInterval(interval); clearTimeout(timeout) }
   }, [])
   return null
 }
