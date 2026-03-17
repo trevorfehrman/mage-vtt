@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth/minimal"
 import { createClient } from "@convex-dev/better-auth"
-import { convex, crossDomain } from "@convex-dev/better-auth/plugins"
+import { convex } from "@convex-dev/better-auth/plugins"
 import authConfig from "./auth.config"
 import { components } from "./_generated/api"
 import { query } from "./_generated/server"
@@ -22,12 +22,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       },
     },
-    plugins: [
-      convex({ authConfig }),
-      crossDomain({
-        siteUrl: process.env.SITE_URL || "http://localhost:3000",
-      }),
-    ],
+    plugins: [convex({ authConfig })],
   })
 }
 
