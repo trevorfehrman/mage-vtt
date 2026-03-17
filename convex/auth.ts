@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth/minimal"
+import { oAuthProxy } from "better-auth/plugins"
 import { createClient } from "@convex-dev/better-auth"
 import { convex } from "@convex-dev/better-auth/plugins"
 import authConfig from "./auth.config"
@@ -23,7 +24,12 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       },
     },
-    plugins: [convex({ authConfig })],
+    plugins: [
+      convex({ authConfig }),
+      oAuthProxy({
+        productionURL: "https://mage-vtt.vercel.app",
+      }),
+    ],
   })
 }
 
