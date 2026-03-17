@@ -1,4 +1,3 @@
-import { useEffect } from "react"
 import {
   HeadContent,
   Outlet,
@@ -55,27 +54,6 @@ export const Route = createRootRouteWithContext<{
   component: RootComponent,
 })
 
-function OttReloader() {
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    if (!window.location.search.includes("ott=")) return
-
-    // The ConvexBetterAuthProvider processes the OTT asynchronously, then
-    // removes ?ott= from the URL via replaceState. Poll for that removal,
-    // then reload so server-side beforeLoad picks up the new session cookies.
-    const interval = setInterval(() => {
-      if (!window.location.search.includes("ott=")) {
-        clearInterval(interval)
-        window.location.reload()
-      }
-    }, 100)
-
-    const timeout = setTimeout(() => clearInterval(interval), 10000)
-    return () => { clearInterval(interval); clearTimeout(timeout) }
-  }, [])
-  return null
-}
-
 function RootComponent() {
   const context = useRouteContext({ from: Route.id })
 
@@ -85,7 +63,6 @@ function RootComponent() {
       authClient={authClient}
       initialToken={context.token}
     >
-      <OttReloader />
       <RootDocument>
         <Outlet />
       </RootDocument>
