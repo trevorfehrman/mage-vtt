@@ -18,27 +18,6 @@ import appCss from "#/styles.css?url"
 
 const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'auto';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`
 
-// Handle the cross-domain OTT exchange directly in an inline script.
-// The ConvexBetterAuthProvider needs crossDomainClient to call verify,
-// but crossDomainClient breaks production cookies. Instead, we handle
-// the OTT ourselves: call the verify endpoint, then hard-reload so
-// the server picks up the cookies set by the response.
-const OTT_EXCHANGE_SCRIPT = `(function(){
-  var url=new URL(window.location.href);
-  var ott=url.searchParams.get('ott');
-  if(!ott)return;
-  url.searchParams.delete('ott');
-  window.history.replaceState({},'',url);
-  fetch('/api/auth/cross-domain/one-time-token/verify',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({token:ott}),
-    credentials:'include'
-  }).then(function(r){
-    if(r.ok)window.location.href=url.pathname||'/sessions';
-  });
-})();`
-
 const getAuth = createServerFn({ method: "GET" }).handler(async () => {
   try {
     return await getToken()
@@ -96,7 +75,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
-        <script dangerouslySetInnerHTML={{ __html: OTT_EXCHANGE_SCRIPT }} />
         <HeadContent />
       </head>
       <body className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]">
