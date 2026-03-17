@@ -1,6 +1,6 @@
 # Rules Gaps Audit
 
-Full audit of both rulebooks against implemented domain modules. Conducted after reaching 102 tests across 17 modules.
+Full audit of both rulebooks against implemented domain modules. Originally conducted at 102 tests/17 modules. **All 67 gaps have been closed** — now at 155 tests across 24 modules.
 
 ## Summary
 
@@ -118,7 +118,7 @@ Full audit of both rulebooks against implemented domain modules. Conducted after
 
 ## Data Discrepancy Found
 
-- `spirits.ts` has Rank 4 max Essence = 30, but the book says 25 (p.317). Fix needed.
+- ~~`spirits.ts` has Rank 4 max Essence = 30, but the book says 25 (p.317). Fix needed.~~ **FIXED.**
 
 ## Verification Approach
 

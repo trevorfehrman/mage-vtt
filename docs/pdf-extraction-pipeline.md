@@ -1,9 +1,15 @@
 # PDF Extraction Pipeline
 
 ## Source Material
-- **Mage: The Awakening 1st Edition Core Rulebook** (402 pages, 47MB)
-- Located: `~/Downloads/Mage the Awakening - Core Rulebook.pdf`
-- Text extracts cleanly (digital PDF, not OCR)
+- **Mage: The Awakening 1st Edition Core Rulebook** (402 pages, 47MB) — fully processed
+- **World of Darkness Core Rulebook** (226 pages, 14MB) — fully processed
+- Both PDFs extract cleanly (digital, not OCR)
+
+## Final Counts
+- 1,049 Mage chunks + 544 WoD chunks + 34 fine-grained rule chunks = **1,627 total in Convex**
+- 365 spells, 372 rotes as structured data in Convex
+- 5 paths, 5 orders, 10 arcana as reference data
+- All embedded with OpenAI text-embedding-3-small (total cost: ~$0.015)
 
 ## Book Structure
 
