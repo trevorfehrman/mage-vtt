@@ -1,10 +1,7 @@
-import { useEffect } from "react"
 import {
   createFileRoute,
   redirect,
-  useNavigate,
 } from "@tanstack/react-router"
-import { useConvexAuth } from "convex/react"
 import { authClient } from "#/lib/auth-client"
 
 export const Route = createFileRoute("/")({
@@ -17,18 +14,6 @@ export const Route = createFileRoute("/")({
 })
 
 function Home() {
-  const { isAuthenticated } = useConvexAuth()
-  const navigate = useNavigate()
-
-  // After OTT exchange on preview deploys, the Convex session becomes
-  // available client-side before the server knows about it. Redirect
-  // to /sessions as soon as we detect authentication.
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate({ to: "/sessions" })
-    }
-  }, [isAuthenticated, navigate])
-
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
       <h1 className="display-title text-4xl font-bold tracking-tight">
@@ -38,10 +23,7 @@ function Home() {
       <div className="flex flex-col items-center gap-4">
         <p className="text-[var(--sea-ink-soft)]">Sign in to start playing</p>
         <button
-          onClick={() => {
-            sessionStorage.setItem("had_ott", "1")
-            authClient.signIn.social({ provider: "google", callbackURL: `${window.location.origin}/sessions` })
-          }}
+          onClick={() => authClient.signIn.social({ provider: "google", callbackURL: `${window.location.origin}/sessions` })}
           className="flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold text-black shadow-sm hover:bg-neutral-100"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">
