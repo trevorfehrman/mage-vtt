@@ -1,8 +1,10 @@
+import { useEffect } from "react"
 import {
   createFileRoute,
   redirect,
-  useRouteContext,
+  useNavigate,
 } from "@tanstack/react-router"
+import { useConvexAuth } from "convex/react"
 import { authClient } from "#/lib/auth-client"
 
 export const Route = createFileRoute("/")({
@@ -15,6 +17,18 @@ export const Route = createFileRoute("/")({
 })
 
 function Home() {
+  const { isAuthenticated } = useConvexAuth()
+  const navigate = useNavigate()
+
+  // After OTT exchange on preview deploys, the Convex session becomes
+  // available client-side before the server knows about it. Redirect
+  // to /sessions as soon as we detect authentication.
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate({ to: "/sessions" })
+    }
+  }, [isAuthenticated, navigate])
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
       <h1 className="display-title text-4xl font-bold tracking-tight">
