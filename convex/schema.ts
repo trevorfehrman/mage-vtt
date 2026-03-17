@@ -65,4 +65,64 @@ export default defineSchema({
     roteSkills: v.array(v.string()),
     description: v.string(),
   }).index("by_name", ["name"]),
+
+  // --- Game Sessions ---
+  sessions: defineTable({
+    name: v.string(),
+    storytellerId: v.string(),
+    inviteCode: v.string(),
+    status: v.union(v.literal("lobby"), v.literal("active"), v.literal("ended")),
+  })
+    .index("by_inviteCode", ["inviteCode"])
+    .index("by_storytellerId", ["storytellerId"]),
+
+  sessionMembers: defineTable({
+    sessionId: v.id("sessions"),
+    userId: v.string(),
+    role: v.union(v.literal("storyteller"), v.literal("player")),
+    displayName: v.string(),
+  })
+    .index("by_sessionId", ["sessionId"])
+    .index("by_userId", ["userId"]),
+
+  // --- Dice Rolls ---
+  diceRolls: defineTable({
+    sessionId: v.id("sessions"),
+    userId: v.string(),
+    displayName: v.string(),
+    components: v.array(
+      v.object({
+        type: v.string(),
+        name: v.string(),
+        dots: v.number(),
+      }),
+    ),
+    poolSize: v.number(),
+    rolls: v.array(v.number()),
+    explosions: v.array(v.number()),
+    roteRerolls: v.array(v.number()),
+    successes: v.number(),
+    isChanceDie: v.boolean(),
+    isDramaticFailure: v.boolean(),
+    isExceptionalSuccess: v.boolean(),
+    visibility: v.union(v.literal("public"), v.literal("hidden")),
+    againThreshold: v.number(),
+    isRoteAction: v.boolean(),
+    timestamp: v.number(),
+  }).index("by_sessionId", ["sessionId"]),
+
+  // --- Chat Messages ---
+  messages: defineTable({
+    sessionId: v.id("sessions"),
+    senderId: v.string(),
+    senderName: v.string(),
+    text: v.string(),
+    visibilityType: v.union(
+      v.literal("public"),
+      v.literal("whisper"),
+      v.literal("system"),
+    ),
+    whisperTargetId: v.optional(v.string()),
+    timestamp: v.number(),
+  }).index("by_sessionId", ["sessionId"]),
 })

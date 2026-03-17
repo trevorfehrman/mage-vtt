@@ -240,6 +240,12 @@ pre code {
   color: #e8efff;
 }
 
+.session-panel {
+  background: linear-gradient(165deg, var(--surface-strong), var(--surface));
+  border: 1px solid var(--line);
+  backdrop-filter: blur(4px);
+}
+
 .page-wrap {
   width: min(1080px, calc(100% - 2rem));
   margin-inline: auto;

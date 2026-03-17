@@ -11,7 +11,12 @@
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
 import type * as ingest from "../ingest.js";
+import type * as lib_auth from "../lib/auth.js";
+import type * as lib_effect from "../lib/effect.js";
+import type * as messages from "../messages.js";
+import type * as rolls from "../rolls.js";
 import type * as search from "../search.js";
+import type * as sessions from "../sessions.js";
 
 import type {
   ApiFromModules,
@@ -23,7 +28,12 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   http: typeof http;
   ingest: typeof ingest;
+  "lib/auth": typeof lib_auth;
+  "lib/effect": typeof lib_effect;
+  messages: typeof messages;
+  rolls: typeof rolls;
   search: typeof search;
+  sessions: typeof sessions;
 }>;
 
 /**
