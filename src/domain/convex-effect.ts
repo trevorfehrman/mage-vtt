@@ -14,18 +14,15 @@
  * Effect.fn spans are preserved for OpenTelemetry.
  */
 
-import { Cause, Effect, Exit, Schema } from "effect"
+import { Cause, Effect, Exit } from "effect"
 import { ConvexError } from "convex/values"
+import { DocumentNotFound } from "./ports/errors"
 
 // --- Errors ---
 
-export class DocumentNotFound extends Schema.TaggedErrorClass<DocumentNotFound>()(
-  "DocumentNotFound",
-  {
-    table: Schema.String,
-    id: Schema.String,
-  },
-) {}
+// DocumentNotFound now lives beside the ports that raise it (ADR-0010); re-export
+// here so existing bridge consumers keep a single import.
+export { DocumentNotFound }
 
 // --- Error mapping ---
 
@@ -92,7 +89,7 @@ export async function runConvexEffect<A>(
       // Find first typed error (Fail reason)
       const failReason = reasons.find(Cause.isFailReason)
       if (failReason) {
-        throw new ConvexError(mapEffectError(failReason.error))
+        throw new ConvexError(mapEffectError(failReason.error) as Record<string, string>)
       }
 
       // Find first defect (Die reason)

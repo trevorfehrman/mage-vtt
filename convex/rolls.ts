@@ -1,10 +1,13 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { query } from "./_generated/server"
 import { requireUser } from "./lib/auth"
-import { runConvexEffect } from "./lib/effect"
-import { buildPool, rollPool } from "../src/domain/dice"
+import { enforcedMutation } from "./lib/enforce"
+import { createRoll } from "../src/domain/flows/rolls"
 
-export const create = mutation({
+// Re-implemented through the enforcement seam (ADR-0004, ADR-0007). Auth,
+// membership, the persistence mapping, the Activity-Log line, and error mapping
+// all come from the seam; this file supplies only the args and the domain flow.
+export const create = enforcedMutation({
   args: {
     sessionId: v.id("sessions"),
     components: v.array(
@@ -18,71 +21,7 @@ export const create = mutation({
     roteAction: v.optional(v.boolean()),
     visibility: v.optional(v.union(v.literal("public"), v.literal("hidden"))),
   },
-  handler: async (ctx, args) => {
-    const user = await requireUser(ctx)
-
-    // Verify membership
-    const members = await ctx.db
-      .query("sessionMembers")
-      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
-      .collect()
-
-    const member = members.find((m) => m.userId === user._id)
-    if (!member) {
-      throw new Error("Not a member of this session")
-    }
-
-    // Build pool and roll via Effect bridge
-    const pool = await runConvexEffect(buildPool(args.components))
-    const rollOptions: {
-      visibility: "public" | "hidden"
-      againThreshold?: number
-      roteAction?: boolean
-    } = { visibility: args.visibility ?? "public" }
-    if (args.againThreshold != null) rollOptions.againThreshold = args.againThreshold
-    if (args.roteAction != null) rollOptions.roteAction = args.roteAction
-
-    const result = await runConvexEffect(rollPool(pool, rollOptions))
-
-    const timestamp = Date.now()
-
-    const rollId = await ctx.db.insert("diceRolls", {
-      sessionId: args.sessionId,
-      userId: user._id,
-      displayName: member.displayName,
-      components: args.components,
-      poolSize: result.poolSize,
-      rolls: [...result.rolls],
-      explosions: [...result.explosions],
-      roteRerolls: [...result.roteRerolls],
-      successes: result.successes,
-      isChanceDie: result.isChanceDie,
-      isDramaticFailure: result.isDramaticFailure,
-      isExceptionalSuccess: result.isExceptionalSuccess,
-      visibility: result.visibility,
-      againThreshold: result.againThreshold,
-      isRoteAction: result.isRoteAction,
-      timestamp,
-    })
-
-    // Insert system message about the roll
-    const rollSummary = result.isDramaticFailure
-      ? "a dramatic failure!"
-      : result.isExceptionalSuccess
-        ? `an exceptional success (${result.successes} successes)!`
-        : `${result.successes} ${result.successes === 1 ? "success" : "successes"}`
-
-    await ctx.db.insert("messages", {
-      sessionId: args.sessionId,
-      senderId: user._id,
-      senderName: member.displayName,
-      text: `${member.displayName} rolled ${pool.size} dice and got ${rollSummary}`,
-      visibilityType: result.visibility === "hidden" ? "system" : "system",
-      timestamp,
-    })
-
-    return rollId
-  },
+  flow: createRoll,
 })
 
 export const list = query({

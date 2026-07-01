@@ -49,19 +49,9 @@ export const list = query({
       ? rolls
       : rolls.filter((r) => r.visibility === "public" || r.userId === user._id)
 
-    // Build roll timestamps set to suppress duplicate system messages
-    const rollTimestamps = new Set(visibleRolls.map((r) => r.timestamp))
-
-    // Filter out system messages that duplicate a roll entry (same timestamp)
-    const filteredMessages = visibleMessages.filter((m) => {
-      if (m.visibilityType === "system" && rollTimestamps.has(m.timestamp)) {
-        return false
-      }
-      return true
-    })
-
-    // Map to discriminated union
-    const messageItems = filteredMessages.map((m) => ({
+    // Rolls are atomic, self-describing Activity entries (ADR-0009): each carries
+    // its own `summary`, so there is no shadow "system" message to deduplicate.
+    const messageItems = visibleMessages.map((m) => ({
       kind: "message" as const,
       _id: m._id,
       timestamp: m.timestamp,
@@ -90,6 +80,8 @@ export const list = query({
       visibility: r.visibility,
       againThreshold: r.againThreshold,
       isRoteAction: r.isRoteAction,
+      summary: r.summary,
+      override: r.override,
     }))
 
     // Merge by timestamp descending, take 100

@@ -15,6 +15,11 @@ export class PoolComponent extends Schema.Class<PoolComponent>("PoolComponent")(
   dots: Dots,
 }) {}
 
+// The raw, pre-decode shape of a pool component as it crosses the wire / Convex
+// arg boundary. `buildPool` decodes these into branded `PoolComponent`s; the seam
+// and the `diceRolls` row persist this raw form. One named home for the triple.
+export type RawPoolComponent = { type: string; name: string; dots: number }
+
 export class DicePool extends Schema.Class<DicePool>("DicePool")({
   components: Schema.Array(PoolComponent),
   size: Schema.Number.check(Schema.isInt()),
@@ -68,11 +73,7 @@ const countSuccesses = (rolls: ReadonlyArray<number>, chanceDie: boolean): numbe
 // --- Public API ---
 
 export const buildPool = Effect.fn("DicePool.build")(function* (
-  rawComponents: ReadonlyArray<{
-    type: string
-    name: string
-    dots: number
-  }>,
+  rawComponents: ReadonlyArray<RawPoolComponent>,
 ) {
   const components: Array<PoolComponent> = []
 

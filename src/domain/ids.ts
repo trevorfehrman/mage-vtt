@@ -16,6 +16,9 @@ export type MapId = typeof MapId.Type
 export const MessageId = Schema.String.pipe(Schema.brand("MessageId"))
 export type MessageId = typeof MessageId.Type
 
+export const RollId = Schema.String.pipe(Schema.brand("RollId"))
+export type RollId = typeof RollId.Type
+
 export const RoteId = Schema.String.pipe(Schema.brand("RoteId"))
 export type RoteId = typeof RoteId.Type
 

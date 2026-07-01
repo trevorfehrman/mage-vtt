@@ -115,6 +115,12 @@ type RollEntry = {
   visibility: string
   againThreshold: number
   isRoteAction: boolean
+  summary: string
+  override?: {
+    invokedByUserId: string
+    invokedByName: string
+    kind: "godmode-action" | "repair"
+  } | undefined
 }
 
 function RollItem({ roll }: { roll: RollEntry }) {
@@ -138,8 +144,16 @@ function RollItem({ roll }: { roll: RollEntry }) {
               Hidden
             </Badge>
           )}
+          {roll.override && (
+            <Badge variant="outline" className="text-[10px]" title={`Invoked by ${roll.override.invokedByName}`}>
+              {roll.override.kind === "repair" ? "Repair" : "God-mode"}
+            </Badge>
+          )}
         </div>
       </div>
+      {roll.summary && (
+        <p className="mt-1 text-xs text-muted-foreground italic">{roll.summary}</p>
+      )}
       <div className="mt-1 flex items-baseline gap-2">
         <span className="text-xl font-bold tabular-nums">
           {roll.successes}

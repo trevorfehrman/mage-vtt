@@ -5,18 +5,15 @@
  * from src/domain/convex-effect.ts so Convex mutations can run Effect pipelines.
  */
 
-import { Cause, Effect, Exit, Schema } from "effect"
+import { Cause, Effect, Exit } from "effect"
 import { ConvexError } from "convex/values"
+import { DocumentNotFound } from "../../src/domain/ports/errors"
 
 // --- Errors ---
 
-export class DocumentNotFound extends Schema.TaggedErrorClass<DocumentNotFound>()(
-  "DocumentNotFound",
-  {
-    table: Schema.String,
-    id: Schema.String,
-  },
-) {}
+// DocumentNotFound is defined once in the domain ports (ADR-0010); re-export for
+// Convex-runtime consumers of this bridge copy.
+export { DocumentNotFound }
 
 // --- Error mapping ---
 

@@ -108,6 +108,18 @@ export default defineSchema({
     visibility: v.union(v.literal("public"), v.literal("hidden")),
     againThreshold: v.number(),
     isRoteAction: v.boolean(),
+    // Self-describing narrative for the atomic Activity entry (ADR-0009) — governed
+    // by the same `visibility` as the dice, so a hidden roll's summary is hidden too.
+    summary: v.string(),
+    // Override provenance (ADR-0006): present only when a rule was bent. Absent for
+    // normal rolls; scaffolded here, never set by rolls.create.
+    override: v.optional(
+      v.object({
+        invokedByUserId: v.string(),
+        invokedByName: v.string(),
+        kind: v.union(v.literal("godmode-action"), v.literal("repair")),
+      }),
+    ),
     timestamp: v.number(),
   }).index("by_sessionId", ["sessionId"]),
 
