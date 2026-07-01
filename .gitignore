@@ -13,3 +13,12 @@ __unconfig*
 todos.json
 .vercel
 src/routeTree.gen.ts
+
+# Agent skills: only skills-lock.json is versioned.
+# Restore installed skills with `bunx skills experimental_install`.
+.agents/skills/
+.claude/skills/
+.windsurf/skills/
+# Stray skill-symlink farms the CLI can scatter — never commit these.
+/agent/
+data/skills/
