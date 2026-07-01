@@ -1,5 +1,11 @@
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
+import { schemaToConvexValidator } from "../src/domain/schema-bridge"
+import {
+  DiceRollsRow,
+  MessagesRow,
+  SessionMembersRow,
+} from "../src/domain/tables"
 
 export default defineSchema({
   // --- RAG: Rule chunks with vector embeddings ---
@@ -76,52 +82,17 @@ export default defineSchema({
     .index("by_inviteCode", ["inviteCode"])
     .index("by_storytellerId", ["storytellerId"]),
 
-  sessionMembers: defineTable({
-    sessionId: v.id("sessions"),
-    userId: v.string(),
-    role: v.union(v.literal("storyteller"), v.literal("player")),
-    displayName: v.string(),
-  })
+  // Validator derived from the Effect-Schema mirror (ADR-0005); the column shape
+  // lives once in `src/domain/tables.ts`.
+  sessionMembers: defineTable(schemaToConvexValidator(SessionMembersRow))
     .index("by_sessionId", ["sessionId"])
     .index("by_userId", ["userId"]),
 
-  // --- Dice Rolls ---
-  diceRolls: defineTable({
-    sessionId: v.id("sessions"),
-    userId: v.string(),
-    displayName: v.string(),
-    components: v.array(
-      v.object({
-        type: v.string(),
-        name: v.string(),
-        dots: v.number(),
-      }),
-    ),
-    poolSize: v.number(),
-    rolls: v.array(v.number()),
-    explosions: v.array(v.number()),
-    roteRerolls: v.array(v.number()),
-    successes: v.number(),
-    isChanceDie: v.boolean(),
-    isDramaticFailure: v.boolean(),
-    isExceptionalSuccess: v.boolean(),
-    visibility: v.union(v.literal("public"), v.literal("hidden")),
-    againThreshold: v.number(),
-    isRoteAction: v.boolean(),
-    // Self-describing narrative for the atomic Activity entry (ADR-0009) — governed
-    // by the same `visibility` as the dice, so a hidden roll's summary is hidden too.
-    summary: v.string(),
-    // Override provenance (ADR-0006): present only when a rule was bent. Absent for
-    // normal rolls; scaffolded here, never set by rolls.create.
-    override: v.optional(
-      v.object({
-        invokedByUserId: v.string(),
-        invokedByName: v.string(),
-        kind: v.union(v.literal("godmode-action"), v.literal("repair")),
-      }),
-    ),
-    timestamp: v.number(),
-  }).index("by_sessionId", ["sessionId"]),
+  // --- Dice Rolls (derived from the `DiceRollsRow` mirror, ADR-0005) ---
+  diceRolls: defineTable(schemaToConvexValidator(DiceRollsRow)).index(
+    "by_sessionId",
+    ["sessionId"],
+  ),
 
   // --- Characters ---
   characters: defineTable({
@@ -204,18 +175,8 @@ export default defineSchema({
     .index("by_sessionId", ["sessionId"])
     .index("by_sessionMemberId", ["sessionMemberId"]),
 
-  // --- Chat Messages ---
-  messages: defineTable({
-    sessionId: v.id("sessions"),
-    senderId: v.string(),
-    senderName: v.string(),
-    text: v.string(),
-    visibilityType: v.union(
-      v.literal("public"),
-      v.literal("whisper"),
-      v.literal("system"),
-    ),
-    whisperTargetId: v.optional(v.string()),
-    timestamp: v.number(),
-  }).index("by_sessionId", ["sessionId"]),
+  // --- Chat Messages (derived from the `MessagesRow` mirror, ADR-0005) ---
+  messages: defineTable(schemaToConvexValidator(MessagesRow)).index("by_sessionId", [
+    "sessionId",
+  ]),
 })
