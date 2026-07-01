@@ -34,6 +34,12 @@ export function useDicePool(sessionId: Id<"sessions">) {
       send({ type: "ADD_COMPONENT", component }),
     removeComponent: (index: number) =>
       send({ type: "REMOVE_COMPONENT", index }),
+    toggleComponent: (component: { type: string; name: string; dots: number }) =>
+      send({ type: "TOGGLE_COMPONENT", component }),
+    isComponentActive: (type: string, name: string): boolean =>
+      snapshot.context.components.some(
+        (c) => c.type === type && c.name === name,
+      ),
     setAgainThreshold: (value: number) =>
       send({ type: "SET_AGAIN_THRESHOLD", value }),
     setRoteAction: (value: boolean) =>

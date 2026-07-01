@@ -168,6 +168,73 @@ describe("dice-pool machine", () => {
     expect(actor.getSnapshot().value).toBe("idle")
   })
 
+  test("TOGGLE_COMPONENT adds component from idle → building", () => {
+    const actor = startMachine()
+    actor.send({
+      type: "TOGGLE_COMPONENT",
+      component: { type: "attribute", name: "Strength", dots: 3 },
+    })
+    const snap = actor.getSnapshot()
+    expect(snap.value).toBe("building")
+    expect(snap.context.components).toHaveLength(1)
+    expect(snap.context.poolSize).toBe(3)
+  })
+
+  test("TOGGLE_COMPONENT removes existing component in building", () => {
+    const actor = startMachine()
+    actor.send({
+      type: "TOGGLE_COMPONENT",
+      component: { type: "attribute", name: "Strength", dots: 3 },
+    })
+    actor.send({
+      type: "ADD_COMPONENT",
+      component: { type: "skill", name: "Brawl", dots: 2 },
+    })
+    // Toggle off Strength
+    actor.send({
+      type: "TOGGLE_COMPONENT",
+      component: { type: "attribute", name: "Strength", dots: 3 },
+    })
+    const snap = actor.getSnapshot()
+    expect(snap.value).toBe("building")
+    expect(snap.context.components).toHaveLength(1)
+    expect(snap.context.components[0].name).toBe("Brawl")
+    expect(snap.context.poolSize).toBe(2)
+  })
+
+  test("TOGGLE_COMPONENT removing last component returns to idle", () => {
+    const actor = startMachine()
+    actor.send({
+      type: "TOGGLE_COMPONENT",
+      component: { type: "attribute", name: "Strength", dots: 3 },
+    })
+    // Toggle off the only component
+    actor.send({
+      type: "TOGGLE_COMPONENT",
+      component: { type: "attribute", name: "Strength", dots: 3 },
+    })
+    const snap = actor.getSnapshot()
+    expect(snap.value).toBe("idle")
+    expect(snap.context.components).toHaveLength(0)
+    expect(snap.context.poolSize).toBe(0)
+  })
+
+  test("TOGGLE_COMPONENT matches by type+name, not dots", () => {
+    const actor = startMachine()
+    actor.send({
+      type: "TOGGLE_COMPONENT",
+      component: { type: "attribute", name: "Strength", dots: 3 },
+    })
+    // Toggle with different dots — should still match and remove
+    actor.send({
+      type: "TOGGLE_COMPONENT",
+      component: { type: "attribute", name: "Strength", dots: 5 },
+    })
+    const snap = actor.getSnapshot()
+    expect(snap.value).toBe("idle")
+    expect(snap.context.components).toHaveLength(0)
+  })
+
   test("invalid events are ignored", () => {
     const actor = startMachine()
     // Can't ROLL from idle

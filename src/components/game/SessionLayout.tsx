@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import { useState, useCallback, type ReactNode } from "react"
 import {
   type PanelImperativeHandle,
   usePanelRef,
@@ -18,41 +18,72 @@ import {
   TooltipTrigger,
 } from "#/components/ui/tooltip"
 import { Button } from "#/components/ui/button"
-import { usePanelShortcuts } from "#/hooks/use-panel-shortcuts"
+import { useSessionShortcuts } from "#/hooks/use-session-shortcuts"
 
 interface SessionLayoutProps {
   sessionName: string
   inviteCode: string
-  players: ReactNode
-  diceRoller: ReactNode
-  rollHistory: ReactNode
-  chat: ReactNode
-  bottomBar?: ReactNode
+  presence?: ReactNode
+  videoStrip: ReactNode
+  characterSheet?: ReactNode
+  activityLog: ReactNode
+  dicePoolBuilder: ReactNode
+  chatInput: ReactNode
+  onClearPool: () => void
 }
 
 export function SessionLayout({
   sessionName,
   inviteCode,
-  players,
-  diceRoller,
-  rollHistory,
-  chat,
-  bottomBar,
+  presence,
+  videoStrip,
+  characterSheet,
+  activityLog,
+  dicePoolBuilder,
+  chatInput,
+  onClearPool,
 }: SessionLayoutProps) {
   const leftPanelRef = usePanelRef()
   const rightPanelRef = usePanelRef()
+  const [activeTab, setActiveTab] = useState("map")
+  const [isAnimating, setIsAnimating] = useState(false)
 
-  usePanelShortcuts(leftPanelRef, rightPanelRef)
+  const animatedToggle = useCallback(
+    (ref: React.RefObject<PanelImperativeHandle | null>) => {
+      setIsAnimating(true)
+      togglePanel(ref)
+      setTimeout(() => setIsAnimating(false), 250)
+    },
+    [],
+  )
+
+  // Wrap the shortcuts to also trigger animation
+  const animatedToggleLeft = useCallback(
+    () => animatedToggle(leftPanelRef),
+    [animatedToggle, leftPanelRef],
+  )
+  const animatedToggleRight = useCallback(
+    () => animatedToggle(rightPanelRef),
+    [animatedToggle, rightPanelRef],
+  )
+
+  useSessionShortcuts({
+    leftPanelRef,
+    rightPanelRef,
+    onTabChange: setActiveTab,
+    onClearPool,
+    onToggleLeft: animatedToggleLeft,
+    onToggleRight: animatedToggleRight,
+  })
 
   const mainLayout = useDefaultLayout({
-    id: "session-layout",
+    id: "session-layout-v2",
     storage: localStorage,
   })
 
-  const rightLayout = useDefaultLayout({
-    id: "session-right",
-    storage: localStorage,
-  })
+  const animClass = isAnimating
+    ? "[&>[data-slot=resizable-panel]]:transition-[flex-basis,flex-grow] [&>[data-slot=resizable-panel]]:duration-200 [&>[data-slot=resizable-panel]]:ease-out"
+    : ""
 
   return (
     <div className="flex h-screen flex-col">
@@ -65,15 +96,17 @@ export function SessionLayout({
                 <Button
                   variant="ghost"
                   size="icon-xs"
-                  onClick={() => togglePanel(leftPanelRef)}
+                  onClick={() => animatedToggle(leftPanelRef)}
+                  className="cursor-pointer"
                 >
                   <PanelLeftClose className="size-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Toggle players [ </TooltipContent>
+              <TooltipContent side="bottom">Toggle video [ </TooltipContent>
             </Tooltip>
           </TooltipProvider>
           <h1 className="text-lg font-semibold">{sessionName}</h1>
+          {presence}
         </div>
         <div className="flex items-center gap-3">
           <span className="text-muted-foreground text-xs font-mono">
@@ -85,118 +118,101 @@ export function SessionLayout({
                 <Button
                   variant="ghost"
                   size="icon-xs"
-                  onClick={() => togglePanel(rightPanelRef)}
+                  onClick={() => animatedToggle(rightPanelRef)}
+                  className="cursor-pointer"
                 >
                   <PanelRightClose className="size-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Toggle dice & chat ]</TooltipContent>
+              <TooltipContent side="bottom">Toggle activity ]</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
       </header>
 
       {/* Main content area */}
-      <ResizablePanelGroup orientation="vertical" className="flex-1">
-        <ResizablePanel defaultSize={100} minSize={50}>
-          <ResizablePanelGroup
-            orientation="horizontal"
-            defaultLayout={mainLayout.defaultLayout}
-            onLayoutChanged={mainLayout.onLayoutChanged}
-          >
-            {/* Left panel — Players */}
-            <ResizablePanel
-              id="left"
-              panelRef={leftPanelRef}
-              defaultSize={15}
-              minSize={10}
-              collapsedSize={0}
-              collapsible
-              className="session-panel rounded-none border-t-0 border-b-0 border-l-0"
-            >
-              <div className="h-full overflow-y-auto p-3">
-                {players}
-              </div>
-            </ResizablePanel>
-
-            <ResizableHandle />
-
-            {/* Center panel — Map / Character Sheet tabs */}
-            <ResizablePanel id="center" defaultSize={55} minSize={30}>
-              <Tabs defaultValue="map" className="flex h-full flex-col">
-                <div className="shrink-0 border-b border-[var(--line)] px-4 pt-2">
-                  <TabsList>
-                    <TabsTrigger value="map">Map</TabsTrigger>
-                    <TabsTrigger value="sheet">Character Sheet</TabsTrigger>
-                  </TabsList>
-                </div>
-                <TabsContent value="map" className="flex-1 overflow-y-auto p-4">
-                  <div className="flex h-full items-center justify-center text-muted-foreground">
-                    <p className="text-sm">Map canvas — coming soon</p>
-                  </div>
-                </TabsContent>
-                <TabsContent value="sheet" className="flex-1 overflow-y-auto p-4">
-                  <div className="flex h-full items-center justify-center text-muted-foreground">
-                    <p className="text-sm">Character sheet — coming soon</p>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </ResizablePanel>
-
-            <ResizableHandle />
-
-            {/* Right panel — Dice + Chat */}
-            <ResizablePanel
-              id="right"
-              panelRef={rightPanelRef}
-              defaultSize={30}
-              minSize={15}
-              collapsedSize={0}
-              collapsible
-              className="session-panel rounded-none border-t-0 border-b-0 border-r-0"
-            >
-              <ResizablePanelGroup
-                orientation="vertical"
-                defaultLayout={rightLayout.defaultLayout}
-                onLayoutChanged={rightLayout.onLayoutChanged}
-              >
-                {/* Dice roller + Roll history */}
-                <ResizablePanel id="dice" defaultSize={35} minSize={15}>
-                  <div className="flex h-full flex-col overflow-y-auto p-3">
-                    <div className="grid gap-4">
-                      {diceRoller}
-                      {rollHistory}
-                    </div>
-                  </div>
-                </ResizablePanel>
-
-                <ResizableHandle />
-
-                {/* Chat */}
-                <ResizablePanel id="chat" defaultSize={65} minSize={20}>
-                  <div className="h-full overflow-hidden">
-                    {chat}
-                  </div>
-                </ResizablePanel>
-              </ResizablePanelGroup>
-            </ResizablePanel>
-          </ResizablePanelGroup>
+      <ResizablePanelGroup
+        orientation="horizontal"
+        defaultLayout={mainLayout.defaultLayout}
+        onLayoutChanged={mainLayout.onLayoutChanged}
+        className={`flex-1 ${animClass}`}
+      >
+        {/* Left panel — Video strip */}
+        <ResizablePanel
+          id="left"
+          panelRef={leftPanelRef}
+          defaultSize={15}
+          minSize={10}
+          collapsedSize={0}
+          collapsible
+          className="session-panel rounded-none border-t-0 border-b-0 border-l-0"
+        >
+          <div className="h-full overflow-y-auto p-3">
+            {videoStrip}
+          </div>
         </ResizablePanel>
 
-        {/* Bottom bar — future video */}
-        {bottomBar && (
-          <>
-            <ResizableHandle />
-            <ResizablePanel
-              defaultSize={0}
-              minSize={0}
-              collapsedSize={0}
-              collapsible
-            >
-              {bottomBar}
-            </ResizablePanel>
-          </>
-        )}
+        <ResizableHandle />
+
+        {/* Center panel — Tabs: Map / Character Sheet */}
+        <ResizablePanel id="center" defaultSize={55} minSize={30}>
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="flex h-full flex-col"
+          >
+            <div className="shrink-0 border-b border-[var(--line)] px-4 pt-2">
+              <TabsList variant="line">
+                <TabsTrigger value="map" className="cursor-pointer">
+                  Map
+                </TabsTrigger>
+                <TabsTrigger value="sheet" className="cursor-pointer">
+                  Character Sheet
+                </TabsTrigger>
+              </TabsList>
+            </div>
+            <TabsContent value="map" className="flex-1 overflow-y-auto p-4">
+              <div className="flex h-full items-center justify-center text-muted-foreground">
+                <p className="text-sm">Map canvas — coming soon</p>
+              </div>
+            </TabsContent>
+            <TabsContent value="sheet" className="flex-1 overflow-y-auto p-4">
+              {characterSheet ?? (
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  <p className="text-sm">Character sheet — coming soon</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </ResizablePanel>
+
+        <ResizableHandle />
+
+        {/* Right panel — Activity Log + Dice Pool + Chat Input */}
+        <ResizablePanel
+          id="right"
+          panelRef={rightPanelRef}
+          defaultSize={30}
+          minSize={15}
+          collapsedSize={0}
+          collapsible
+          className="session-panel rounded-none border-t-0 border-b-0 border-r-0"
+        >
+          <div className="flex h-full flex-col">
+            {/* Activity log — fills available space */}
+            <div className="flex-1 overflow-hidden">
+              {activityLog}
+            </div>
+            {/* Dice pool builder — collapsible, above chat */}
+            <div className="shrink-0">
+              {dicePoolBuilder}
+            </div>
+            {/* Chat input — pinned to bottom */}
+            <div className="shrink-0">
+              {chatInput}
+            </div>
+          </div>
+        </ResizablePanel>
       </ResizablePanelGroup>
     </div>
   )

@@ -18,6 +18,7 @@ interface DicePoolContext {
 type DicePoolEvent =
   | { type: "ADD_COMPONENT"; component: PoolComponentInput }
   | { type: "REMOVE_COMPONENT"; index: number }
+  | { type: "TOGGLE_COMPONENT"; component: PoolComponentInput }
   | { type: "SET_AGAIN_THRESHOLD"; value: number }
   | { type: "SET_ROTE_ACTION"; value: boolean }
   | { type: "SET_VISIBILITY"; value: "public" | "hidden" }
@@ -28,6 +29,19 @@ type DicePoolEvent =
 
 function calcPoolSize(components: PoolComponentInput[]): number {
   return components.reduce((sum, c) => sum + c.dots, 0)
+}
+
+function toggleComponent(
+  components: PoolComponentInput[],
+  component: PoolComponentInput,
+): PoolComponentInput[] {
+  const idx = components.findIndex(
+    (c) => c.type === component.type && c.name === component.name,
+  )
+  if (idx >= 0) {
+    return components.filter((_, i) => i !== idx)
+  }
+  return [...components, component]
 }
 
 export const dicePoolMachine = setup({
@@ -61,6 +75,18 @@ export const dicePoolMachine = setup({
             error: null,
           }),
         },
+        TOGGLE_COMPONENT: {
+          target: "building",
+          actions: assign({
+            components: ({ context, event }) =>
+              toggleComponent(context.components, event.component),
+            poolSize: ({ context, event }) =>
+              calcPoolSize(
+                toggleComponent(context.components, event.component),
+              ),
+            error: null,
+          }),
+        },
       },
     },
     building: {
@@ -75,6 +101,32 @@ export const dicePoolMachine = setup({
               calcPoolSize([...context.components, event.component]),
           }),
         },
+        TOGGLE_COMPONENT: [
+          {
+            guard: ({ context, event }) => {
+              const next = toggleComponent(
+                context.components,
+                event.component,
+              )
+              return next.length === 0
+            },
+            target: "idle",
+            actions: assign({
+              components: () => [],
+              poolSize: 0,
+            }),
+          },
+          {
+            actions: assign({
+              components: ({ context, event }) =>
+                toggleComponent(context.components, event.component),
+              poolSize: ({ context, event }) =>
+                calcPoolSize(
+                  toggleComponent(context.components, event.component),
+                ),
+            }),
+          },
+        ],
         REMOVE_COMPONENT: [
           {
             guard: ({ context, event }) => {

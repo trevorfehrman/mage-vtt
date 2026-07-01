@@ -17,6 +17,7 @@
     "@ai-sdk/anthropic": "^3.0.58",
     "@ai-sdk/react": "^3.0.118",
     "@convex-dev/better-auth": "^0.11.2",
+    "@convex-dev/presence": "^0.3.0",
     "@convex-dev/react-query": "0.1.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "latest",
