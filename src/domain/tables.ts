@@ -67,6 +67,92 @@ export const DiceRollDoc = Schema.Struct({
   timestamp: Schema.Number,
 })
 
+/**
+ * Full-width mirror of the `characters` table — the raw persisted shape, the
+ * last hand-written table definition retired (PRD #4 slice #6). Deliberately
+ * raw primitives throughout (ADR-0011): representability and domain checks
+ * belong to the `CharacterSheet` artifact decoded at the adapter, never to the
+ * Doc layer. Every column is listed because the table validator needs the whole
+ * width; flows never touch this shape directly.
+ */
+export const CharacterDoc = Schema.Struct({
+  sessionMemberId: ConvexId("sessionMembers"),
+  sessionId: ConvexId("sessions"),
+  userId: Schema.String,
+  name: Schema.String,
+  shadowName: Schema.optionalKey(Schema.String),
+  concept: Schema.String,
+  virtue: Schema.String,
+  vice: Schema.String,
+  path: Schema.String,
+  order: Schema.String,
+  gnosis: Schema.Number,
+  attributes: Schema.Struct({
+    mental: Schema.Struct({
+      intelligence: Schema.Number,
+      wits: Schema.Number,
+      resolve: Schema.Number,
+    }),
+    physical: Schema.Struct({
+      strength: Schema.Number,
+      dexterity: Schema.Number,
+      stamina: Schema.Number,
+    }),
+    social: Schema.Struct({
+      presence: Schema.Number,
+      manipulation: Schema.Number,
+      composure: Schema.Number,
+    }),
+  }),
+  skills: Schema.Struct({
+    mental: Schema.Struct({
+      academics: Schema.Number,
+      computer: Schema.Number,
+      crafts: Schema.Number,
+      investigation: Schema.Number,
+      medicine: Schema.Number,
+      occult: Schema.Number,
+      politics: Schema.Number,
+      science: Schema.Number,
+    }),
+    physical: Schema.Struct({
+      athletics: Schema.Number,
+      brawl: Schema.Number,
+      drive: Schema.Number,
+      firearms: Schema.Number,
+      larceny: Schema.Number,
+      stealth: Schema.Number,
+      survival: Schema.Number,
+      weaponry: Schema.Number,
+    }),
+    social: Schema.Struct({
+      animalKen: Schema.Number,
+      empathy: Schema.Number,
+      expression: Schema.Number,
+      intimidation: Schema.Number,
+      persuasion: Schema.Number,
+      socialize: Schema.Number,
+      streetwise: Schema.Number,
+      subterfuge: Schema.Number,
+    }),
+  }),
+  arcana: Schema.Struct({
+    death: Schema.optionalKey(Schema.Number),
+    fate: Schema.optionalKey(Schema.Number),
+    forces: Schema.optionalKey(Schema.Number),
+    life: Schema.optionalKey(Schema.Number),
+    matter: Schema.optionalKey(Schema.Number),
+    mind: Schema.optionalKey(Schema.Number),
+    prime: Schema.optionalKey(Schema.Number),
+    space: Schema.optionalKey(Schema.Number),
+    spirit: Schema.optionalKey(Schema.Number),
+    time: Schema.optionalKey(Schema.Number),
+  }),
+  healthTrack: Schema.Array(Schema.String),
+  willpowerCurrent: Schema.Number,
+  manaCurrent: Schema.Number,
+})
+
 export const MessageDoc = Schema.Struct({
   sessionId: ConvexId("sessions"),
   senderId: Schema.String,
