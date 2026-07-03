@@ -1,6 +1,13 @@
 import { Effect, Schema } from "effect"
+import { CharacterId, PlayerId, SessionId, SessionMemberId } from "./ids"
 
 // --- Constrained number types ---
+//
+// Two families, two layers (ADR-0011): the `Dots*` schemas below are *creation*
+// strictness — what the book allows a starting character — used only by
+// `CharacterInput` and the creation-rules validation. `SheetDots` further down
+// is *representability* — what fits in a sheet's boxes — used by
+// `CharacterSheet`, which every adapter read decodes through.
 
 const Dots1to5 = Schema.Number.check(
   Schema.isInt(),
@@ -86,7 +93,8 @@ const Skills = Schema.Struct({
 
 // --- Mage-specific ---
 
-const PathName = Schema.Literals(["Acanthus", "Mastigos", "Moros", "Obrimos", "Thyrsus"])
+export const PathName = Schema.Literals(["Acanthus", "Mastigos", "Moros", "Obrimos", "Thyrsus"])
+export type PathName = typeof PathName.Type
 
 const OrderName = Schema.Literals([
   "Adamantine Arrow", "Free Council", "Guardians of the Veil", "Mysterium", "Silver Ladder",
@@ -99,6 +107,15 @@ const Virtue = Schema.Literals([
 const Vice = Schema.Literals([
   "Envy", "Gluttony", "Greed", "Lust", "Pride", "Sloth", "Wrath",
 ])
+
+/** The ten Arcana, lowercase — the canonical key set for arcana maps. */
+export const ARCANA = [
+  "death", "fate", "forces", "life", "matter",
+  "mind", "prime", "space", "spirit", "time",
+] as const
+
+export const ArcanumName = Schema.Literals([...ARCANA])
+export type ArcanumName = typeof ArcanumName.Type
 
 const ArcanaMap = Schema.Struct({
   death: Schema.optional(Dots0to5),
@@ -151,18 +168,93 @@ const PATH_RULING_ARCANA: Record<string, readonly string[]> = {
   Thyrsus: ["life", "spirit"],
 }
 
-export class Character extends Schema.Class<Character>("Character")({
+// --- The Character Sheet (ADR-0011) ---
+//
+// Checks below encode representability — what fits in the sheet's boxes — not
+// game legality. These run on every adapter read, so a wrong check bricks a
+// sheet mid-session: dots go to 10 (Gnosis 6+ raises trait caps, and fudging is
+// a first-class feature), while game rules like allocation totals stay in the
+// creation-rules move validation.
+
+/** What fits in a dot rating's boxes: 0–10. Game-legal maxima live in layer 3. */
+const SheetDots = Dots0to10
+
+/** The four states a health box can hold. */
+export const HealthBoxState = Schema.Literals(["empty", "bashing", "lethal", "aggravated"])
+export type HealthBoxState = typeof HealthBoxState.Type
+
+const SheetAttributes = Schema.Struct({
+  mental: Schema.Struct({ intelligence: SheetDots, wits: SheetDots, resolve: SheetDots }),
+  physical: Schema.Struct({ strength: SheetDots, dexterity: SheetDots, stamina: SheetDots }),
+  social: Schema.Struct({ presence: SheetDots, manipulation: SheetDots, composure: SheetDots }),
+})
+
+const SheetSkills = Schema.Struct({
+  mental: Schema.Struct({
+    academics: SheetDots, computer: SheetDots, crafts: SheetDots,
+    investigation: SheetDots, medicine: SheetDots, occult: SheetDots,
+    politics: SheetDots, science: SheetDots,
+  }),
+  physical: Schema.Struct({
+    athletics: SheetDots, brawl: SheetDots, drive: SheetDots,
+    firearms: SheetDots, larceny: SheetDots, stealth: SheetDots,
+    survival: SheetDots, weaponry: SheetDots,
+  }),
+  social: Schema.Struct({
+    animalKen: SheetDots, empathy: SheetDots, expression: SheetDots,
+    intimidation: SheetDots, persuasion: SheetDots, socialize: SheetDots,
+    streetwise: SheetDots, subterfuge: SheetDots,
+  }),
+})
+
+const SheetArcana = Schema.Struct({
+  death: Schema.optionalKey(SheetDots),
+  fate: Schema.optionalKey(SheetDots),
+  forces: Schema.optionalKey(SheetDots),
+  life: Schema.optionalKey(SheetDots),
+  matter: Schema.optionalKey(SheetDots),
+  mind: Schema.optionalKey(SheetDots),
+  prime: Schema.optionalKey(SheetDots),
+  space: Schema.optionalKey(SheetDots),
+  spirit: Schema.optionalKey(SheetDots),
+  time: Schema.optionalKey(SheetDots),
+})
+
+/** Current totals (Mana can reach 100 at Gnosis 10) — never negative. */
+const CurrentPoints = Schema.Number.check(
+  Schema.isInt(),
+  Schema.isGreaterThanOrEqualTo(0),
+)
+
+/**
+ * The game artifact all sheet-touching flows and UI speak (see CONTEXT.md
+ * "Character Sheet"): identity, rated Traits, current state — plus its linkage
+ * (whose character this is *is* domain data). Decoded from `CharacterDoc` at
+ * the adapter; the game speaks Sheet, the database speaks Doc.
+ *
+ * Absorbs the old strict `Character` class (ADR-0011): the derived getters
+ * carry over, the dot checks loosen to representability, and creation
+ * strictness lives solely in `validateCreationRules`.
+ */
+export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet")({
+  id: CharacterId,
+  sessionId: SessionId,
+  userId: PlayerId,
+  sessionMemberId: SessionMemberId,
   name: Schema.String,
-  shadowName: Schema.optional(Schema.String),
+  shadowName: Schema.optionalKey(Schema.String),
   concept: Schema.String,
   virtue: Virtue,
   vice: Vice,
   path: PathName,
   order: OrderName,
-  attributes: Attributes,
-  skills: Skills,
-  arcana: ArcanaMap,
-  gnosis: Dots0to10,
+  gnosis: SheetDots,
+  attributes: SheetAttributes,
+  skills: SheetSkills,
+  arcana: SheetArcana,
+  healthTrack: Schema.Array(HealthBoxState),
+  willpowerCurrent: CurrentPoints,
+  manaCurrent: CurrentPoints,
 }) {
   get resistanceBonus() {
     return PATH_RESISTANCE[this.path] ?? { attribute: "composure" as const, bonus: 0 }
@@ -221,20 +313,42 @@ export class CreationRuleViolation extends Schema.TaggedErrorClass<CreationRuleV
 
 // --- Public API ---
 
+/**
+ * Decode strict creation input — the first half of the "create a character"
+ * move rule (the other half is `validateCreationRules`). Deliberately stricter
+ * than `CharacterSheet` (ADR-0011): 1–5 attribute dots, 0–5 skills, book
+ * literals. Returns the parsed input; the sheet artifact is only born once the
+ * character is persisted with its linkage and current state.
+ */
 export const createCharacter = Effect.fn("Character.create")(function* (
   input: unknown,
 ) {
-  const parsed = yield* Schema.decodeUnknownEffect(CharacterInput)(input).pipe(
+  return yield* Schema.decodeUnknownEffect(CharacterInput)(input).pipe(
     Effect.mapError(
       (e) => new CharacterValidationError({ message: `Invalid character data: ${e.message}` }),
     ),
   )
-
-  return new Character(parsed)
 })
 
+/** The traits the creation-rules move inspects — structural, so both the strict
+ * creation input and a decoded `CharacterSheet` satisfy it. */
+interface CreationTraits {
+  readonly path: string
+  readonly attributes: {
+    readonly mental: Record<string, number>
+    readonly physical: Record<string, number>
+    readonly social: Record<string, number>
+  }
+  readonly skills: {
+    readonly mental: Record<string, number>
+    readonly physical: Record<string, number>
+    readonly social: Record<string, number>
+  }
+  readonly arcana: Partial<Record<string, number>>
+}
+
 export const validateCreationRules = Effect.fn("Character.validateCreationRules")(function* (
-  character: Character,
+  character: CreationTraits,
 ) {
   // --- Attribute allocation: must be 5/4/3 across categories ---
   const attrCategories = [

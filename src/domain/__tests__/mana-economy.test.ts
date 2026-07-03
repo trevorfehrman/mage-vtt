@@ -7,6 +7,7 @@ import {
   patternRestoration,
   patternScouring,
   oblation,
+  spendMana,
   startingMana,
 } from "../mana-economy"
 
@@ -62,6 +63,26 @@ describe("Mana Economy", () => {
     Effect.gen(function* () {
       expect(yield* startingMana(7)).toBe(7)
       expect(yield* startingMana(5)).toBe(5)
+    }),
+  )
+
+  it.effect("spendMana deducts the cost and returns the remainder", () =>
+    Effect.gen(function* () {
+      expect(yield* spendMana(10, 1)).toBe(9)
+      expect(yield* spendMana(10, 0)).toBe(10)
+      expect(yield* spendMana(3, 3)).toBe(0)
+    }),
+  )
+
+  it.effect("spendMana fails InsufficientMana when the cost can't be paid", () =>
+    Effect.gen(function* () {
+      const error = yield* spendMana(2, 3).pipe(Effect.flip)
+      expect(error._tag).toBe("InsufficientMana")
+      expect(error.current).toBe(2)
+      expect(error.required).toBe(3)
+
+      const zero = yield* spendMana(0, 1).pipe(Effect.flip)
+      expect(zero._tag).toBe("InsufficientMana")
     }),
   )
 })

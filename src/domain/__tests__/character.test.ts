@@ -1,6 +1,7 @@
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import {
+  CharacterSheet,
   createCharacter,
   validateCreationRules,
   validateRoteSpecialties,
@@ -8,6 +9,41 @@ import {
   applyWisdomTradeoff,
   activeSpellPenalty,
 } from "../character"
+
+/**
+ * A complete, book-legal `CharacterSheet` input in its raw (pre-decode) form.
+ * Tests spread overrides onto it to probe representability bounds (ADR-0011).
+ */
+const sheetInput = (overrides: Record<string, unknown> = {}) => ({
+  id: "char-1",
+  sessionId: "session-1",
+  userId: "user-1",
+  sessionMemberId: "member-1",
+  name: "Testmage",
+  concept: "Test",
+  virtue: "Hope",
+  vice: "Sloth",
+  path: "Obrimos",
+  order: "Silver Ladder",
+  gnosis: 1,
+  attributes: {
+    mental: { intelligence: 2, wits: 3, resolve: 3 },
+    physical: { strength: 2, dexterity: 3, stamina: 2 },
+    social: { presence: 2, manipulation: 2, composure: 2 },
+  },
+  skills: {
+    mental: { academics: 2, computer: 0, crafts: 0, investigation: 3, medicine: 0, occult: 3, politics: 1, science: 2 },
+    physical: { athletics: 2, brawl: 0, drive: 1, firearms: 0, larceny: 0, stealth: 2, survival: 1, weaponry: 1 },
+    social: { animalKen: 0, empathy: 0, expression: 1, intimidation: 0, persuasion: 2, socialize: 0, streetwise: 1, subterfuge: 0 },
+  },
+  arcana: { forces: 3, prime: 2, spirit: 1 },
+  healthTrack: ["empty", "empty", "empty", "empty", "empty", "empty", "empty"],
+  willpowerCurrent: 6,
+  manaCurrent: 10,
+  ...overrides,
+})
+
+const decodeSheet = Schema.decodeUnknownEffect(CharacterSheet)
 
 describe("Character Sheet", () => {
   it.effect("creates a valid character with all required fields", () =>
@@ -59,91 +95,140 @@ describe("Character Sheet", () => {
     }),
   )
 
-  it.effect("computes derived stats correctly", () =>
+  it.effect("CharacterSheet computes derived stats correctly", () =>
     Effect.gen(function* () {
-      const character = yield* createCharacter({
-        name: "Testmage",
-        concept: "Test",
-        virtue: "Hope",
-        vice: "Sloth",
-        path: "Obrimos",
-        order: "Silver Ladder",
-        attributes: {
-          mental: { intelligence: 2, wits: 3, resolve: 3 },
-          physical: { strength: 2, dexterity: 3, stamina: 2 },
-          social: { presence: 2, manipulation: 2, composure: 2 },
-        },
-        skills: {
-          mental: { academics: 2, computer: 0, crafts: 0, investigation: 3, medicine: 0, occult: 3, politics: 1, science: 2 },
-          physical: { athletics: 2, brawl: 0, drive: 1, firearms: 0, larceny: 0, stealth: 2, survival: 1, weaponry: 1 },
-          social: { animalKen: 0, empathy: 0, expression: 1, intimidation: 0, persuasion: 2, socialize: 0, streetwise: 1, subterfuge: 0 },
-        },
-        arcana: { forces: 3, prime: 2, spirit: 1 },
-        gnosis: 1,
-      })
+      const sheet = yield* decodeSheet(sheetInput())
 
       // Health = Stamina(2) + Size(5) = 7
-      expect(character.health).toBe(7)
+      expect(sheet.health).toBe(7)
       // Obrimos gives +1 Resolve
       // Willpower = Resolve(3+1) + Composure(2) = 6
-      expect(character.willpower).toBe(6)
+      expect(sheet.willpower).toBe(6)
       // Defense = lower of Dexterity(3) or Wits(3) + Athletics(2) = 3 + 2 = 5
-      expect(character.defense).toBe(5)
+      expect(sheet.defense).toBe(5)
       // Initiative = Dexterity(3) + Composure(2) = 5
-      expect(character.initiative).toBe(5)
+      expect(sheet.initiative).toBe(5)
       // Speed = Strength(2) + Dexterity(3) + 5 = 10
-      expect(character.speed).toBe(10)
+      expect(sheet.speed).toBe(10)
       // Max Mana at Gnosis 1 = 10
-      expect(character.maxMana).toBe(10)
+      expect(sheet.maxMana).toBe(10)
     }),
   )
 
-  it.effect("path resistance bonus applies correctly", () =>
+  it.effect("CharacterSheet path resistance bonus applies correctly", () =>
     Effect.gen(function* () {
       // Moros gives +1 Composure
-      const moros = yield* createCharacter({
-        name: "Test", concept: "Test", virtue: "Hope", vice: "Sloth",
-        path: "Moros", order: "Mysterium",
-        attributes: {
-          mental: { intelligence: 2, wits: 2, resolve: 2 },
-          physical: { strength: 2, dexterity: 2, stamina: 2 },
-          social: { presence: 2, manipulation: 2, composure: 2 },
-        },
-        skills: {
-          mental: { academics: 2, computer: 1, crafts: 0, investigation: 3, medicine: 0, occult: 3, politics: 0, science: 2 },
-          physical: { athletics: 2, brawl: 0, drive: 1, firearms: 0, larceny: 0, stealth: 2, survival: 1, weaponry: 1 },
-          social: { animalKen: 0, empathy: 0, expression: 1, intimidation: 0, persuasion: 2, socialize: 0, streetwise: 1, subterfuge: 0 },
-        },
-        arcana: { death: 3, matter: 2, fate: 1 },
-        gnosis: 1,
-      })
+      const moros = yield* decodeSheet(
+        sheetInput({
+          path: "Moros",
+          order: "Mysterium",
+          attributes: {
+            mental: { intelligence: 2, wits: 2, resolve: 2 },
+            physical: { strength: 2, dexterity: 2, stamina: 2 },
+            social: { presence: 2, manipulation: 2, composure: 2 },
+          },
+          arcana: { death: 3, matter: 2, fate: 1 },
+        }),
+      )
 
-      // Composure is 2, but Moros gives +1 = effective 3 for derived stats
       // Willpower = Resolve(2) + Composure(2+1) = 5
       expect(moros.willpower).toBe(5)
       // Initiative = Dexterity(2) + Composure(2+1) = 5
       expect(moros.initiative).toBe(5)
 
       // Mastigos gives +1 Resolve
-      const mastigos = yield* createCharacter({
-        name: "Test2", concept: "Test", virtue: "Hope", vice: "Sloth",
-        path: "Mastigos", order: "Mysterium",
-        attributes: {
-          mental: { intelligence: 2, wits: 2, resolve: 2 },
-          physical: { strength: 2, dexterity: 2, stamina: 2 },
-          social: { presence: 2, manipulation: 2, composure: 2 },
-        },
-        skills: {
-          mental: { academics: 2, computer: 1, crafts: 0, investigation: 3, medicine: 0, occult: 3, politics: 0, science: 2 },
-          physical: { athletics: 2, brawl: 0, drive: 1, firearms: 0, larceny: 0, stealth: 2, survival: 1, weaponry: 1 },
-          social: { animalKen: 0, empathy: 0, expression: 1, intimidation: 0, persuasion: 2, socialize: 0, streetwise: 1, subterfuge: 0 },
-        },
-        arcana: { space: 3, mind: 2, fate: 1 },
-        gnosis: 1,
-      })
+      const mastigos = yield* decodeSheet(
+        sheetInput({
+          path: "Mastigos",
+          order: "Mysterium",
+          attributes: {
+            mental: { intelligence: 2, wits: 2, resolve: 2 },
+            physical: { strength: 2, dexterity: 2, stamina: 2 },
+            social: { presence: 2, manipulation: 2, composure: 2 },
+          },
+          arcana: { space: 3, mind: 2, fate: 1 },
+        }),
+      )
 
       // Willpower = Resolve(2+1) + Composure(2) = 5
       expect(mastigos.willpower).toBe(5)
+    }),
+  )
+
+  it.effect("CharacterSheet carries its linkage as branded domain data", () =>
+    Effect.gen(function* () {
+      const sheet = yield* decodeSheet(sheetInput())
+      expect(sheet.id).toBe("char-1")
+      expect(sheet.sessionId).toBe("session-1")
+      expect(sheet.userId).toBe("user-1")
+      expect(sheet.sessionMemberId).toBe("member-1")
+      expect(sheet.manaCurrent).toBe(10)
+      expect(sheet.willpowerCurrent).toBe(6)
+      expect(sheet.healthTrack).toHaveLength(7)
+    }),
+  )
+
+  // --- Representability, not game legality (ADR-0011) ---
+
+  it.effect("out-of-book-but-representable values decode (fudged sheets never brick)", () =>
+    Effect.gen(function* () {
+      // 6 dots in an attribute — illegal at creation, legal on a Gnosis 6+ or
+      // deliberately fudged sheet. Must decode.
+      const strong = yield* decodeSheet(
+        sheetInput({
+          attributes: {
+            mental: { intelligence: 2, wits: 3, resolve: 3 },
+            physical: { strength: 6, dexterity: 3, stamina: 2 },
+            social: { presence: 2, manipulation: 2, composure: 2 },
+          },
+        }),
+      )
+      expect(strong.attributes.physical.strength).toBe(6)
+
+      // 7 dots in an Arcanum, 10 Gnosis, wounded health track — all representable.
+      const wild = yield* decodeSheet(
+        sheetInput({
+          gnosis: 10,
+          arcana: { forces: 7 },
+          healthTrack: ["aggravated", "lethal", "bashing", "empty", "empty", "empty", "empty"],
+        }),
+      )
+      expect(wild.arcana.forces).toBe(7)
+      expect(wild.maxMana).toBe(100)
+    }),
+  )
+
+  it.effect("garbage fails to decode: values outside the sheet's boxes", () =>
+    Effect.gen(function* () {
+      // 11 dots doesn't fit a 10-box rating
+      const tooMany = yield* decodeSheet(
+        sheetInput({ arcana: { forces: 11 } }),
+      ).pipe(Effect.exit)
+      expect(tooMany._tag).toBe("Failure")
+
+      // Non-integer dots
+      const fractional = yield* decodeSheet(
+        sheetInput({ gnosis: 1.5 }),
+      ).pipe(Effect.exit)
+      expect(fractional._tag).toBe("Failure")
+
+      // A health box only has four states
+      const badBox = yield* decodeSheet(
+        sheetInput({ healthTrack: ["mangled"] }),
+      ).pipe(Effect.exit)
+      expect(badBox._tag).toBe("Failure")
+
+      // Path is one of five — that's what the sheet's box can hold
+      const badPath = yield* decodeSheet(
+        sheetInput({ path: "Hogwarts" }),
+      ).pipe(Effect.exit)
+      expect(badPath._tag).toBe("Failure")
+
+      // Negative Mana is not representable
+      const negativeMana = yield* decodeSheet(
+        sheetInput({ manaCurrent: -1 }),
+      ).pipe(Effect.exit)
+      expect(negativeMana._tag).toBe("Failure")
     }),
   )
 

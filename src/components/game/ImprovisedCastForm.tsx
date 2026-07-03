@@ -1,0 +1,114 @@
+import { useState } from "react"
+import { useMutation } from "convex/react"
+import { ConvexError } from "convex/values"
+import { api } from "../../../convex/_generated/api"
+import type { Id } from "../../../convex/_generated/dataModel"
+import { ARCANA } from "#/domain/character"
+
+/**
+ * Minimal improvised-cast form — seam-proving scaffolding, NOT the casting UX
+ * (PRD #4). The real casting experience (spell browser, rote cards, XState pool
+ * builder) is its own MVP line item; replacing this form touches zero server
+ * code. Deliberately unpolished — do not invest here.
+ */
+
+interface ImprovisedCastFormProps {
+  sessionId: Id<"sessions">
+  characterId: Id<"characters">
+  arcana: Partial<Record<string, number>>
+}
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+/** Map the seam's tagged errors (ADR-0010) to readable messages. */
+function castErrorMessage(err: unknown): string {
+  if (err instanceof ConvexError && typeof err.data === "object" && err.data !== null) {
+    const data = err.data as Record<string, unknown>
+    switch (data._tag) {
+      case "ArcanumTooWeak":
+        return `You need ${capitalize(String(data.arcanum))} ${data.level} — you have ${data.dots}.`
+      case "InsufficientMana":
+        return `Not enough Mana: need ${data.required}, have ${data.current}.`
+      case "NotYourCharacter":
+        return "That's not your character."
+      case "NotAMember":
+        return "You're not a member of this session."
+      case "DocumentNotFound":
+        return "Character not found."
+      case "InvalidCastDeclaration":
+        return "That declaration isn't castable."
+    }
+  }
+  return "Something went wrong."
+}
+
+export function ImprovisedCastForm({
+  sessionId,
+  characterId,
+  arcana,
+}: ImprovisedCastFormProps) {
+  const cast = useMutation(api.characters.castSpell)
+  const [arcanum, setArcanum] = useState<string>("")
+  const [level, setLevel] = useState(1)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const submit = async () => {
+    if (!arcanum) return
+    setBusy(true)
+    setError(null)
+    try {
+      await cast({ sessionId, characterId, arcanum, level })
+      // The result lands in the Activity Log; nothing to render here.
+    } catch (err) {
+      setError(castErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section>
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--kicker)] mb-2">
+        Improvised Cast
+      </h3>
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <select
+          value={arcanum}
+          onChange={(e) => setArcanum(e.target.value)}
+          className="rounded border border-[var(--line)] bg-background px-2 py-1"
+        >
+          <option value="">Arcanum…</option>
+          {ARCANA.map((name) => (
+            <option key={name} value={name}>
+              {capitalize(name)} ({arcana[name] ?? 0})
+            </option>
+          ))}
+        </select>
+        <label className="flex items-center gap-1">
+          Level
+          <select
+            value={level}
+            onChange={(e) => setLevel(Number(e.target.value))}
+            className="rounded border border-[var(--line)] bg-background px-2 py-1"
+          >
+            {[1, 2, 3, 4, 5].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={busy || !arcanum}
+          className="rounded border border-[var(--line)] px-3 py-1 hover:bg-accent disabled:opacity-50"
+        >
+          {busy ? "Casting…" : "Cast"}
+        </button>
+      </div>
+      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+    </section>
+  )
+}

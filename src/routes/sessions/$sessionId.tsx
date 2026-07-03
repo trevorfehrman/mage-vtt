@@ -10,10 +10,16 @@ import { ActivityLog } from "#/components/game/ActivityLog"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { ChatInput } from "#/components/game/ChatInput"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
+import { ImprovisedCastForm } from "#/components/game/ImprovisedCastForm"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
-import { Character } from "#/domain/character"
+import { Schema } from "effect"
+import { CharacterSheet as CharacterSheetData } from "#/domain/character"
 import { arctusData } from "#/domain/fixtures/arctus"
 import type { Id } from "../../../convex/_generated/dataModel"
+
+// Doc → Sheet at the client boundary, same translation the server adapter does:
+// the UI speaks the checked domain artifact, never the raw Convex document.
+const decodeSheet = Schema.decodeUnknownSync(CharacterSheetData)
 
 export const Route = createFileRoute("/sessions/$sessionId")({
   beforeLoad: ({ context }) => {
@@ -81,28 +87,18 @@ function SessionPage() {
       </div>
     )
   } else {
-    const charInstance = new Character({
-      name: character.name,
-      shadowName: character.shadowName,
-      concept: character.concept,
-      virtue: character.virtue as any,
-      vice: character.vice as any,
-      path: character.path as any,
-      order: character.order as any,
-      gnosis: character.gnosis,
-      attributes: character.attributes,
-      skills: character.skills,
-      arcana: character.arcana as any,
-    })
+    const { _id, _creationTime, ...fields } = character
+    const sheet = decodeSheet({ id: _id, ...fields })
 
     characterSheet = (
-      <CharacterSheet
-        character={charInstance}
-        pool={pool}
-        healthTrack={character.healthTrack}
-        willpowerCurrent={character.willpowerCurrent}
-        manaCurrent={character.manaCurrent}
-      />
+      <div className="grid gap-6">
+        <CharacterSheet character={sheet} pool={pool} />
+        <ImprovisedCastForm
+          sessionId={sessionId as Id<"sessions">}
+          characterId={character._id}
+          arcana={character.arcana}
+        />
+      </div>
     )
   }
 

@@ -1,11 +1,18 @@
 import { Clock, Effect, Layer } from "effect"
+import { CharacterSheet } from "../character"
 import type { DiceRollResult, RawPoolComponent, RollVisibility } from "../dice"
-import { MessageId, PlayerId, RollId, type SessionId } from "../ids"
+import { MessageId, PlayerId, RollId, type CharacterId, type SessionId } from "../ids"
 import type { Membership } from "../membership"
 import { NotAMember } from "../authz"
 import { OverrideMarker, OverrideStamp, makeOverrideStamp } from "../override"
 import { CurrentActor, type Actor } from "../ports/current-actor"
-import { GameStore, type MessageDraft, type RollDraft } from "../ports/game-store"
+import { DocumentNotFound } from "../ports/errors"
+import {
+  GameStore,
+  type MessageDraft,
+  type RollDraft,
+  type SheetPatch,
+} from "../ports/game-store"
 
 /**
  * In-memory adapter (ADR-0004): the second real `GameStore` implementation.
@@ -41,18 +48,32 @@ export interface StoredMessage {
   readonly timestamp: number
 }
 
+/** A `patchSheet` call as the flow issued it — for asserting on writes. */
+export interface StoredSheetPatch {
+  readonly characterId: CharacterId
+  readonly patch: SheetPatch
+}
+
 export interface InMemory {
   readonly layer: Layer.Layer<GameStore | CurrentActor | OverrideStamp>
   readonly rolls: ReadonlyArray<StoredRoll>
   readonly messages: ReadonlyArray<StoredMessage>
+  /** Live sheet state by character id — patches apply here, as in a real store. */
+  readonly sheets: ReadonlyMap<CharacterId, CharacterSheet>
+  readonly sheetPatches: ReadonlyArray<StoredSheetPatch>
 }
 
 export const makeInMemory = (seed: {
   members: ReadonlyArray<Membership>
   actor: Actor
+  sheets?: ReadonlyArray<CharacterSheet>
 }): InMemory => {
   const rolls: Array<StoredRoll> = []
   const messages: Array<StoredMessage> = []
+  const sheets = new Map<CharacterId, CharacterSheet>(
+    (seed.sheets ?? []).map((sheet) => [sheet.id, sheet]),
+  )
+  const sheetPatches: Array<StoredSheetPatch> = []
   const override = makeOverrideStamp()
 
   const gameStore = GameStore.of({
@@ -64,6 +85,36 @@ export const makeInMemory = (seed: {
         ? Effect.succeed(member)
         : Effect.fail(new NotAMember({ sessionId, userId }))
     },
+
+    getSheet: (characterId) => {
+      const sheet = sheets.get(characterId)
+      return sheet
+        ? Effect.succeed(sheet)
+        : Effect.fail(new DocumentNotFound({ table: "characters", id: characterId }))
+    },
+
+    patchSheet: (characterId, patch) =>
+      Effect.sync(() => {
+        const sheet = sheets.get(characterId)
+        if (sheet) {
+          sheets.set(
+            characterId,
+            new CharacterSheet({
+              ...sheet,
+              ...(patch.manaCurrent !== undefined
+                ? { manaCurrent: patch.manaCurrent }
+                : {}),
+              ...(patch.willpowerCurrent !== undefined
+                ? { willpowerCurrent: patch.willpowerCurrent }
+                : {}),
+              ...(patch.healthTrack !== undefined
+                ? { healthTrack: patch.healthTrack }
+                : {}),
+            }),
+          )
+        }
+        sheetPatches.push({ characterId, patch })
+      }),
 
     insertRoll: (draft: RollDraft) =>
       Effect.gen(function* () {
@@ -108,5 +159,5 @@ export const makeInMemory = (seed: {
     Layer.succeed(OverrideStamp, override.stamp),
   )
 
-  return { layer, rolls, messages }
+  return { layer, rolls, messages, sheets, sheetPatches }
 }

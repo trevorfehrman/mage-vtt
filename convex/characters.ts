@@ -1,6 +1,22 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireUser } from "./lib/auth"
+import { enforcedMutation } from "./lib/enforce"
+import { castSpell as castSpellFlow } from "../src/domain/flows/casting"
+
+// A Covert improvised cast through the enforcement seam (ADR-0004, PRD #4).
+// Auth, authority over the sheet, the Mana economy, the dice, the sheet patch,
+// and the Activity entry all come from the domain flow; this file supplies only
+// the args.
+export const castSpell = enforcedMutation({
+  args: {
+    sessionId: v.id("sessions"),
+    characterId: v.id("characters"),
+    arcanum: v.string(),
+    level: v.number(),
+  },
+  flow: castSpellFlow,
+})
 
 export const getForSession = query({
   args: { sessionId: v.id("sessions") },

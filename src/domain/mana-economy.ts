@@ -41,7 +41,37 @@ export class OblationInfo extends Schema.Class<OblationInfo>("OblationInfo")({
   maxManaPerDay: Schema.Number.check(Schema.isInt()),
 }) {}
 
+// --- Errors ---
+
+/**
+ * Rules/precondition failure (ADR-0010): the declared cast (or other spend)
+ * costs more Mana than the sheet holds. Raised by `spendMana` before any write,
+ * so a blocked cast leaves the sheet untouched.
+ */
+export class InsufficientMana extends Schema.TaggedErrorClass<InsufficientMana>()(
+  "InsufficientMana",
+  {
+    current: Schema.Number,
+    required: Schema.Number,
+  },
+) {}
+
 // --- Public API ---
+
+/**
+ * Spend Mana from a current total: the pure leaf of the casting Mana economy
+ * (ADR-0008). Returns the remainder, or fails `InsufficientMana` — a sheet can
+ * never go negative or half-update.
+ */
+export const spendMana = Effect.fn("Mana.spend")(function* (
+  current: number,
+  cost: number,
+) {
+  if (cost > current) {
+    return yield* new InsufficientMana({ current, required: cost })
+  }
+  return current - cost
+})
 
 export const manaPerTurnByGnosis = Effect.fn("Mana.perTurn")(function* (gnosis: number) {
   return MANA_PER_TURN[gnosis - 1] ?? 1

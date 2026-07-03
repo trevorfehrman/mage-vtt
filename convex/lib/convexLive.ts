@@ -7,9 +7,10 @@
  * mirrors, decoded here — the domain never sees Convex's `Doc<T>`.
  */
 
-import { Clock, Effect, Layer } from "effect"
-import type { Id } from "../_generated/dataModel"
+import { Clock, Effect, Layer, Schema } from "effect"
+import type { Doc, Id } from "../_generated/dataModel"
 import type { MutationCtx } from "../_generated/server"
+import { CharacterSheet } from "../../src/domain/character"
 import { PlayerId, MessageId, RollId, SessionId } from "../../src/domain/ids"
 import { NotAMember } from "../../src/domain/authz"
 import { Membership } from "../../src/domain/membership"
@@ -19,6 +20,7 @@ import {
   makeOverrideStamp,
 } from "../../src/domain/override"
 import { CurrentActor, type Actor } from "../../src/domain/ports/current-actor"
+import { DocumentNotFound } from "../../src/domain/ports/errors"
 import {
   GameStore,
   type MessageDraft,
@@ -51,6 +53,19 @@ const overrideToDoc = (marker: OverrideMarker | null) =>
         kind: marker.kind,
       }
     : undefined
+
+/**
+ * Doc → Sheet, once, at the adapter (ADR-0011): the game speaks Sheet, the
+ * database speaks Doc. A stored document that fails the representability decode
+ * is corrupt data — a bug, not a client-actionable failure — so decode failure
+ * dies rather than surfacing a tagged error (ADR-0010's Fail/Die split).
+ */
+const decodeSheet = (doc: Doc<"characters">) => {
+  const { _id, _creationTime, ...fields } = doc
+  return Schema.decodeUnknownEffect(CharacterSheet)({ id: _id, ...fields }).pipe(
+    Effect.orDie,
+  )
+}
 
 export const convexLive = (
   ctx: MutationCtx,
@@ -99,6 +114,43 @@ export const convexLive = (
           role: row.role,
           displayName: row.displayName,
         })
+      }),
+
+    getSheet: (characterId) =>
+      Effect.gen(function* () {
+        const id = ctx.db.normalizeId("characters", characterId)
+        if (id === null) {
+          // Malformed for the table — as absent as an unknown id.
+          return yield* new DocumentNotFound({ table: "characters", id: characterId })
+        }
+        const doc = yield* Effect.promise(() => ctx.db.get(id))
+        if (!doc) {
+          return yield* new DocumentNotFound({ table: "characters", id: characterId })
+        }
+        return yield* decodeSheet(doc)
+      }),
+
+    patchSheet: (characterId, patch) =>
+      Effect.gen(function* () {
+        const id = ctx.db.normalizeId("characters", characterId)
+        if (id === null) {
+          // patchSheet follows a successful getSheet in every flow; a malformed
+          // id here is a bug, so fail loudly like sessionRef does.
+          throw new Error(`Not a valid characters id: ${characterId}`)
+        }
+        yield* Effect.promise(() =>
+          ctx.db.patch(id, {
+            ...(patch.manaCurrent !== undefined
+              ? { manaCurrent: patch.manaCurrent }
+              : {}),
+            ...(patch.willpowerCurrent !== undefined
+              ? { willpowerCurrent: patch.willpowerCurrent }
+              : {}),
+            ...(patch.healthTrack !== undefined
+              ? { healthTrack: [...patch.healthTrack] }
+              : {}),
+          }),
+        )
       }),
 
     insertRoll: (draft: RollDraft) =>

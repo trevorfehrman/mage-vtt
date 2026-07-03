@@ -2,7 +2,15 @@ import { Effect, Random, Schema } from "effect"
 
 // --- Schemas ---
 
-const PoolComponentType = Schema.Literals(["attribute", "skill", "arcanum", "modifier"])
+// A Trait toggled into a pool (see CONTEXT.md): Gnosis is its own kind, not an
+// attribute — casting pools are Gnosis + Arcanum.
+const PoolComponentType = Schema.Literals([
+  "attribute",
+  "skill",
+  "arcanum",
+  "gnosis",
+  "modifier",
+])
 
 const Dots = Schema.Number.check(
   Schema.isInt(),

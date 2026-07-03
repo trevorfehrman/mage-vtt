@@ -1,8 +1,10 @@
 import { Context, Effect } from "effect"
+import type { CharacterSheet, HealthBoxState } from "../character"
 import type { DiceRollResult, RawPoolComponent } from "../dice"
-import type { MessageId, PlayerId, RollId, SessionId } from "../ids"
+import type { CharacterId, MessageId, PlayerId, RollId, SessionId } from "../ids"
 import type { Membership } from "../membership"
 import type { NotAMember } from "../authz"
+import type { DocumentNotFound } from "./errors"
 
 /**
  * Intent-level draft of a dice-roll Activity entry.
@@ -31,6 +33,19 @@ export interface MessageDraft {
 }
 
 /**
+ * The only writes a flow can express against a character sheet: the fields play
+ * mutates. This narrowness is ADR-0011's compensating control for permissive
+ * sheet checks — traits and identity are unreachable until a future flow
+ * (advancement, ST sheet-edit) earns them a door with its own authority story.
+ * Widening this type is a design decision, not a convenience edit.
+ */
+export interface SheetPatch {
+  readonly manaCurrent?: number
+  readonly willpowerCurrent?: number
+  readonly healthTrack?: ReadonlyArray<HealthBoxState>
+}
+
+/**
  * The write-side persistence port (ADR-0004).
  *
  * Domain-specific write helpers hide the wide field maps; typed reads fail with a
@@ -44,6 +59,18 @@ export class GameStore extends Context.Service<
       sessionId: SessionId,
       userId: PlayerId,
     ) => Effect.Effect<Membership, NotAMember>
+    /**
+     * The whole `CharacterSheet`, decoded from the Doc at the adapter — no
+     * per-flow projections (flows destructure narrowly; Convex reads whole
+     * documents anyway).
+     */
+    readonly getSheet: (
+      characterId: CharacterId,
+    ) => Effect.Effect<CharacterSheet, DocumentNotFound>
+    readonly patchSheet: (
+      characterId: CharacterId,
+      patch: SheetPatch,
+    ) => Effect.Effect<void>
     readonly insertRoll: (draft: RollDraft) => Effect.Effect<RollId>
     readonly insertMessage: (draft: MessageDraft) => Effect.Effect<MessageId>
   }

@@ -13,6 +13,9 @@ export type PlayerId = typeof PlayerId.Type
 export const MapId = Schema.String.pipe(Schema.brand("MapId"))
 export type MapId = typeof MapId.Type
 
+export const SessionMemberId = Schema.String.pipe(Schema.brand("SessionMemberId"))
+export type SessionMemberId = typeof SessionMemberId.Type
+
 export const MessageId = Schema.String.pipe(Schema.brand("MessageId"))
 export type MessageId = typeof MessageId.Type
 

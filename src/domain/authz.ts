@@ -1,5 +1,6 @@
 import { Effect, Schema } from "effect"
-import { PlayerId, SessionId } from "./ids"
+import type { CharacterSheet } from "./character"
+import { CharacterId, PlayerId, SessionId } from "./ids"
 import { Membership } from "./membership"
 import { OverrideMarker, OverrideStamp } from "./override"
 import { CurrentActor } from "./ports/current-actor"
@@ -8,15 +9,38 @@ import { GameStore } from "./ports/game-store"
 /**
  * Authorization helpers (ADR-0004) and their errors.
  *
- * Errors live beside the code that raises them (ADR-0010): `NotAMember` is an
- * Authorization-category tag the client dispatches on — distinct tags, not a
- * stringly `Unauthorized { reason }`.
+ * Errors live beside the code that raises them (ADR-0010): `NotAMember` and
+ * `NotYourCharacter` are Authorization-category tags the client dispatches on —
+ * distinct tags, not a stringly `Unauthorized { reason }`.
  */
 
 export class NotAMember extends Schema.TaggedErrorClass<NotAMember>()("NotAMember", {
   sessionId: SessionId,
   userId: PlayerId,
 }) {}
+
+export class NotYourCharacter extends Schema.TaggedErrorClass<NotYourCharacter>()(
+  "NotYourCharacter",
+  {
+    characterId: CharacterId,
+    userId: PlayerId,
+  },
+) {}
+
+/**
+ * The authority ladder over a character sheet (ownership = the (user, session)
+ * pair the sheet links). The owner passes unmarked; anyone else fails
+ * `NotYourCharacter`. The Storyteller and Dev rungs — pass with an `Override`
+ * marker (ADR-0006) — land with the authority-ladder slice.
+ */
+export const requireOwnedCharacter = Effect.fn("Authz.requireOwnedCharacter")(function* (
+  sheet: CharacterSheet,
+) {
+  const actor = yield* CurrentActor
+  if (actor.userId !== sheet.userId) {
+    return yield* new NotYourCharacter({ characterId: sheet.id, userId: actor.userId })
+  }
+})
 
 /**
  * Resolve the current actor's membership in a session, or fail `NotAMember`.

@@ -1,4 +1,4 @@
-import { Character } from "#/domain/character"
+import type { CharacterSheet as CharacterSheetData } from "#/domain/character"
 import { DotRating } from "./DotRating"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
@@ -14,20 +14,12 @@ const PATH_RULING_ARCANA: Record<string, readonly string[]> = {
 }
 
 interface CharacterSheetProps {
-  character: Character
+  character: CharacterSheetData
   pool: DicePoolAPI
-  healthTrack: string[]
-  willpowerCurrent: number
-  manaCurrent: number
 }
 
-export function CharacterSheet({
-  character,
-  pool,
-  healthTrack,
-  willpowerCurrent,
-  manaCurrent,
-}: CharacterSheetProps) {
+export function CharacterSheet({ character, pool }: CharacterSheetProps) {
+  const { healthTrack, willpowerCurrent, manaCurrent } = character
   const canToggle = pool.state === "idle" || pool.state === "building"
 
   const toggle = (type: string, name: string, dots: number) => {
