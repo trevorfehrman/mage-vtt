@@ -38,9 +38,45 @@ _Avoid_: Morality, Humanity, Sanity (those belong to other splats).
 **Virtue / Vice**:
 A character's two moral anchors (nWoD 1e); role-playing them restores Willpower.
 
+**Improvised spell**:
+A spell cast from raw Supernal understanding — no training, any effect the
+mage's Arcanum dots allow, decided in the moment. Dice pool = Gnosis + Arcanum.
+Compare Rote.
+
 **Rote**:
-A practiced spell cast with a larger, pre-calculated dice pool, chosen from the
-book by Arcanum.
+A practiced spell learned through training and experience points, chosen from
+the book. Dice pool = Attribute + Skill + Arcanum (listed per rote; usually
+larger than an improvised pool). Compare Improvised spell.
+_Avoid_: confusing with the **rote quality / rote action** — the generic
+reroll-failed-dice-once dice mechanic. Casting a Rote does **not** grant the
+rote quality; they are unrelated mechanics that share a name.
+
+**Practice**:
+The tier of effect an Arcanum dot rating unlocks (1 dot: Knowing/Compelling/
+Unveiling … 3: Weaving/Fraying/Perfecting … 5: Making/Unmaking). A mage can
+only attempt effects whose level his Arcanum dots meet — the level of the
+effect, not merely knowing the Arcanum, gates the cast.
+
+**Aspect** (**Covert** / **Vulgar**):
+Whether a spell's effect is deniable (**Covert** — subtle, explains away as
+coincidence) or blatantly impossible (**Vulgar**). Only Vulgar spells risk
+Paradox; Covert spells never roll it.
+
+**Paradox**:
+Reality's backlash against Vulgar magic. The Storyteller rolls a Paradox pool
+*before* the casting roll; successes both penalize the cast (–1 die each) and,
+unless contained, manifest as an escalating effect (Havoc → Bedlam → Anomaly →
+Branding → Manifestation). Rolled only for Vulgar casting.
+
+**Backlash**:
+A caster voluntarily absorbing Paradox successes as Resistant bashing damage,
+one wound per success, to stop them from manifesting. Partial and health-capped —
+a post-roll decision, not automatic.
+
+**Scene**:
+A unit of narrative time within a Session. Some effects accumulate across it —
+notably Paradox pools grow +1 die per prior Paradox roll in the same Scene.
+_Avoid_: Turn (that is one action), Session (that is the whole campaign room).
 
 **Again** (10-again / 9-again / 8-again):
 The reroll-on-high-die rule for a roll. 10-again is standard; 9- and 8-again are
@@ -64,6 +100,18 @@ _Avoid_: GM, DM, Game Master, Dungeon Master.
 **Player**:
 A participant controlling a single character.
 
+**Dev** (**god-mode**):
+A global, cross-session repair authority held by the app operator, not a session
+role. Exists to un-fork state and help players mid-session. Orthogonal to
+Storyteller/Player membership: a Dev is still a Player or Storyteller in any given
+Session, and additionally may bypass **write** authority (act as any character's
+owner, and take Storyteller-gated actions). God-mode is a **write-path** capability
+only: it never widens **read** visibility, so it cannot see hidden Rolls, Whispers,
+or Storyteller-secret content. Seeing a forked secret to repair it is a separate,
+explicit, opt-in, logged action — never implied by god-mode.
+_Avoid_: Admin, superuser (this is a single-operator repair capability, not a
+role tier in the Session).
+
 ### The table
 
 **Session**:
@@ -74,10 +122,23 @@ a free-text label on the character sheet.)
 
 **Session member**:
 A player's or Storyteller's membership in a Session — the join between a user and
-a Session, and what a character is attached to.
+a Session, and what a character is attached to. Its identity is the **(user,
+session) pair**, not its surrogate row id: the same person rejoining a Session is
+the same member, and character ownership is decided by matching that pair.
 
 **Invite code**:
 The short code that admits a user to a Session as a new session member.
+
+### The sheet
+
+**Character Sheet**:
+The record of a single character: identity (name, Path, Order, Virtue/Vice),
+rated Traits, and current state (health, Willpower, Mana). The sheet records
+what is **representable** — anything that fits in its boxes — not what was
+legally earned: whether a change is allowed is a question about the *action*
+(and may be fudged, leaving an Override), never about the sheet itself. A sheet
+that can be written can always be read back.
+_Avoid_: Stat block, character record.
 
 ### The feed
 
@@ -101,8 +162,21 @@ visibility.
 A private Message between two users (commonly Storyteller ↔ Player), visible only
 to sender, target, and the Storyteller.
 
+**Override**:
+A provenance marker on an Activity recording that a rule was bent to produce it —
+a god-mode action or repair by the Dev, or the Storyteller acting in a player's
+stead (e.g. casting from their sheet). Names the invoker on top of the action's
+normal owner, so rule-bending is transparent at the table. Absent on ordinary
+Activity.
+_Avoid_: Audit entry, admin flag.
+
 **Hidden roll**:
 A Roll visible only to the Storyteller (and the roller), used for secret checks.
+Orthogonal to a spell's Aspect: a Covert spell is usually rolled publicly (the
+table sees the dice; the fiction's witnesses notice nothing), and an NPC's spell
+is usually a Hidden roll regardless of Aspect.
+_Avoid_: Secret roll, covert roll (Covert is an Aspect in the fiction, not table
+visibility).
 
 ### Dice pools
 
