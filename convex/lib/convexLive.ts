@@ -60,12 +60,14 @@ const overrideToDoc = (marker: OverrideMarker | null) =>
  * is corrupt data — a bug, not a client-actionable failure — so decode failure
  * dies rather than surfacing a tagged error (ADR-0010's Fail/Die split).
  */
-const decodeSheet = (doc: Doc<"characters">) => {
+const decodeSheet = Effect.fn("ConvexLive.decodeSheet")(function* (
+  doc: Doc<"characters">,
+) {
   const { _id, _creationTime, ...fields } = doc
-  return Schema.decodeUnknownEffect(CharacterSheet)({ id: _id, ...fields }).pipe(
+  return yield* Schema.decodeUnknownEffect(CharacterSheet)({ id: _id, ...fields }).pipe(
     Effect.orDie,
   )
-}
+})
 
 export const convexLive = (
   ctx: MutationCtx,

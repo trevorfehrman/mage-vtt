@@ -57,7 +57,7 @@ export interface CastSpellArgs {
 export class ArcanumTooWeak extends Schema.TaggedErrorClass<ArcanumTooWeak>()(
   "ArcanumTooWeak",
   {
-    arcanum: Schema.String,
+    arcanum: ArcanumName,
     level: Schema.Number,
     dots: Schema.Number,
   },
@@ -184,21 +184,35 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
   const manaCost = pathCost + pool.manaCost + (declaration.extraManaCost ?? 0)
   const manaRemaining = yield* spendMana(sheet.manaCurrent, manaCost)
 
+  // A declared penalty past the pool's floor changes nothing mechanically —
+  // zero and fewer dice are the same chance die — so record only the effective
+  // portion, chunked to fit a component's dots range (a book-legal Potency 12
+  // can be -22, far outside one component's box).
+  const positiveDice = pool.totalDice - pool.factorPenalty
+  const effectivePenalty = Math.max(pool.factorPenalty, -positiveDice)
+  const penaltyComponents: Array<RawPoolComponent> = []
+  for (let rest = effectivePenalty; rest < 0; rest += 10) {
+    penaltyComponents.push({
+      type: "modifier",
+      name: "Spell factors",
+      dots: Math.max(rest, -10),
+    })
+  }
+
   const components: ReadonlyArray<RawPoolComponent> = [
     { type: "gnosis", name: "Gnosis", dots: sheet.gnosis },
     { type: "arcanum", name: capitalize(declaration.arcanum), dots },
     ...(declaration.highSpeech
       ? [{ type: "modifier", name: "High Speech", dots: 2 }]
       : []),
-    ...(pool.factorPenalty !== 0
-      ? [{ type: "modifier", name: "Spell factors", dots: pool.factorPenalty }]
-      : []),
+    ...penaltyComponents,
   ]
   const dicePool = yield* buildPool(components)
-  if (dicePool.size !== pool.totalDice) {
+  const expectedDice = Math.max(pool.totalDice, 0)
+  if (dicePool.size !== expectedDice) {
     return yield* Effect.die(
       new Error(
-        `Invariant violated: cast components sum to ${dicePool.size} dice but the casting pool computed ${pool.totalDice}`,
+        `Invariant violated: cast components sum to ${dicePool.size} dice but the casting pool computed ${expectedDice}`,
       ),
     )
   }
@@ -237,9 +251,12 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
  * a Vulgar pool here means the flow itself is buggy, not that the caller erred,
  * so it dies rather than failing with a client-dispatchable tag.
  */
-const assertCovert = (pool: CastingPool) =>
-  pool.isVulgar
-    ? Effect.die(
-        new Error("Invariant violated: Covert improvised cast computed a Vulgar pool"),
-      )
-    : Effect.void
+const assertCovert = Effect.fn("Flows.casting.assertCovert")(function* (
+  pool: CastingPool,
+) {
+  if (pool.isVulgar) {
+    return yield* Effect.die(
+      new Error("Invariant violated: Covert improvised cast computed a Vulgar pool"),
+    )
+  }
+})

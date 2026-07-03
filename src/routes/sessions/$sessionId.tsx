@@ -19,7 +19,15 @@ import type { Id } from "../../../convex/_generated/dataModel"
 
 // Doc → Sheet at the client boundary, same translation the server adapter does:
 // the UI speaks the checked domain artifact, never the raw Convex document.
-const decodeSheet = Schema.decodeUnknownSync(CharacterSheetData)
+// Failure degrades to null (rendered as a message) — a corrupt document must
+// not take the whole session page down with it.
+const decodeSheet = (input: unknown): CharacterSheetData | null => {
+  try {
+    return Schema.decodeUnknownSync(CharacterSheetData)(input)
+  } catch {
+    return null
+  }
+}
 
 export const Route = createFileRoute("/sessions/$sessionId")({
   beforeLoad: ({ context }) => {
@@ -90,7 +98,7 @@ function SessionPage() {
     const { _id, _creationTime, ...fields } = character
     const sheet = decodeSheet({ id: _id, ...fields })
 
-    characterSheet = (
+    characterSheet = sheet ? (
       <div className="grid gap-6">
         <CharacterSheet character={sheet} pool={pool} />
         <ImprovisedCastForm
@@ -98,6 +106,10 @@ function SessionPage() {
           characterId={character._id}
           arcana={character.arcana}
         />
+      </div>
+    ) : (
+      <div className="flex h-full items-center justify-center text-muted-foreground">
+        <p className="text-sm">This character sheet couldn&apos;t be read.</p>
       </div>
     )
   }

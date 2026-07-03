@@ -543,6 +543,45 @@ describe("Flows.casting.castSpell spell factors (PRD #4 slice #9)", () => {
     }),
   )
 
+  it.effect("a penalty far past the pool's floor still casts as a chance die", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      // Potency 5 (-8) + 4 targets (-4) = -12 on a 4-die pool. The book allows
+      // the declaration; mechanically anything past the floor is the same
+      // chance die, and the cast must not error out.
+      yield* castDeath(store, { potency: 5, targets: 4 })
+
+      const entry = store.rolls[0]!
+      expect(entry.result.poolSize).toBe(0)
+      expect(entry.result.isChanceDie).toBe(true)
+      expect(entry.summary).toContain("Potency 5")
+      expect(entry.summary).toContain("4 targets")
+    }),
+  )
+
+  it.effect("a huge penalty on a huge fudged pool stays within component bounds", () =>
+    Effect.gen(function* () {
+      // Gnosis 10 + Death 10 = 20 positive dice; Potency 12 is -22. The
+      // effective penalty (-20, floor at zero dice) must be recorded in
+      // components that each fit a component's dots range.
+      const store = seed({ sheet: makeSheet({ gnosis: 10, arcana: { death: 10 } }) })
+
+      yield* castDeath(store, { potency: 12 })
+
+      const entry = store.rolls[0]!
+      expect(entry.result.poolSize).toBe(0)
+      expect(entry.result.isChanceDie).toBe(true)
+      const penaltyTotal = entry.components
+        .filter((c) => c.name === "Spell factors")
+        .reduce((sum, c) => sum + c.dots, 0)
+      expect(penaltyTotal).toBe(-20)
+      for (const c of entry.components) {
+        expect(Math.abs(c.dots)).toBeLessThanOrEqual(10)
+      }
+    }),
+  )
+
   it.effect("extraManaCost adds to the server-computed cost and is deducted", () =>
     Effect.gen(function* () {
       const store = seed()
