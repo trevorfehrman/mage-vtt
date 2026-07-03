@@ -2,9 +2,9 @@ import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
 import { schemaToConvexValidator } from "../src/domain/schema-bridge"
 import {
-  DiceRollsRow,
-  MessagesRow,
-  SessionMembersRow,
+  DiceRollDoc,
+  MessageDoc,
+  SessionMemberDoc,
 } from "../src/domain/tables"
 
 export default defineSchema({
@@ -84,12 +84,12 @@ export default defineSchema({
 
   // Validator derived from the Effect-Schema mirror (ADR-0005); the column shape
   // lives once in `src/domain/tables.ts`.
-  sessionMembers: defineTable(schemaToConvexValidator(SessionMembersRow))
+  sessionMembers: defineTable(schemaToConvexValidator(SessionMemberDoc))
     .index("by_sessionId", ["sessionId"])
     .index("by_userId", ["userId"]),
 
-  // --- Dice Rolls (derived from the `DiceRollsRow` mirror, ADR-0005) ---
-  diceRolls: defineTable(schemaToConvexValidator(DiceRollsRow)).index(
+  // --- Dice Rolls (derived from the `DiceRollDoc` mirror, ADR-0005) ---
+  diceRolls: defineTable(schemaToConvexValidator(DiceRollDoc)).index(
     "by_sessionId",
     ["sessionId"],
   ),
@@ -175,8 +175,8 @@ export default defineSchema({
     .index("by_sessionId", ["sessionId"])
     .index("by_sessionMemberId", ["sessionMemberId"]),
 
-  // --- Chat Messages (derived from the `MessagesRow` mirror, ADR-0005) ---
-  messages: defineTable(schemaToConvexValidator(MessagesRow)).index("by_sessionId", [
+  // --- Chat Messages (derived from the `MessageDoc` mirror, ADR-0005) ---
+  messages: defineTable(schemaToConvexValidator(MessageDoc)).index("by_sessionId", [
     "sessionId",
   ]),
 })

@@ -6,9 +6,11 @@
  * validator from the mirror here via `schemaToConvexValidator`, so the `v.*`
  * column list is never hand-maintained alongside the domain shape.
  *
- * They describe the *persisted row* — raw primitives as written by the adapter,
- * not the branded/checked domain values `dice.ts` decodes into. Convex adds `_id`
- * and `_creationTime`, so they are deliberately absent. `sessionId` uses
+ * They describe the *persisted document* — raw primitives as written by the
+ * adapter, not the branded/checked domain values `dice.ts` decodes into. Named
+ * `*Doc` (singular), matching Convex's own `Doc<"table">` vocabulary — "Row"
+ * collided with rows *on* a character sheet. Convex adds `_id` and
+ * `_creationTime`, so they are deliberately absent. `sessionId` uses
  * `ConvexId("sessions")` to compile to `v.id("sessions")`; user/sender ids are
  * Better-Auth strings, so they stay `Schema.String` (compiling to `v.string()`).
  */
@@ -17,7 +19,7 @@ import { Schema } from "effect"
 import { ConvexId } from "./schema-bridge"
 import { OverrideKind } from "./override"
 
-export const SessionMembersRow = Schema.Struct({
+export const SessionMemberDoc = Schema.Struct({
   sessionId: ConvexId("sessions"),
   userId: Schema.String,
   role: Schema.Literals(["storyteller", "player"]),
@@ -25,7 +27,7 @@ export const SessionMembersRow = Schema.Struct({
 })
 
 /** One entry of a `diceRolls` pool — the raw `RawPoolComponent` triple. */
-const DiceRollComponentRow = Schema.Struct({
+const DiceRollComponentDoc = Schema.Struct({
   type: Schema.String,
   name: Schema.String,
   dots: Schema.Number,
@@ -36,17 +38,17 @@ const DiceRollComponentRow = Schema.Struct({
  * (not the domain `OverrideMarker` class) so the derived column type stays a
  * flat Convex object; reuses `OverrideKind` so the marker kinds have one home.
  */
-const OverrideMarkerRow = Schema.Struct({
+const OverrideMarkerDoc = Schema.Struct({
   invokedByUserId: Schema.String,
   invokedByName: Schema.String,
   kind: OverrideKind,
 })
 
-export const DiceRollsRow = Schema.Struct({
+export const DiceRollDoc = Schema.Struct({
   sessionId: ConvexId("sessions"),
   userId: Schema.String,
   displayName: Schema.String,
-  components: Schema.Array(DiceRollComponentRow),
+  components: Schema.Array(DiceRollComponentDoc),
   poolSize: Schema.Number,
   rolls: Schema.Array(Schema.Number),
   explosions: Schema.Array(Schema.Number),
@@ -61,11 +63,11 @@ export const DiceRollsRow = Schema.Struct({
   // Self-describing narrative for the atomic Activity entry (ADR-0009).
   summary: Schema.String,
   // Override provenance (ADR-0006): present only when a rule was bent.
-  override: Schema.optionalKey(OverrideMarkerRow),
+  override: Schema.optionalKey(OverrideMarkerDoc),
   timestamp: Schema.Number,
 })
 
-export const MessagesRow = Schema.Struct({
+export const MessageDoc = Schema.Struct({
   sessionId: ConvexId("sessions"),
   senderId: Schema.String,
   senderName: Schema.String,
