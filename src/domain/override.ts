@@ -4,13 +4,17 @@ import { Context, Effect, Schema } from "effect"
  * Override provenance (ADR-0006).
  *
  * A structured marker stamped on Activity records produced by *bending a rule* —
- * a god-mode action or a repair. Normal actions leave it absent. This tracer
- * bullet only scaffolds the path: `rolls.create` never sets it, so every record
- * it writes carries `override: undefined`. The wiring exists so later
- * rule-bending flows light it up without re-plumbing.
+ * a Storyteller or Dev acting as another player's character, or a repair.
+ * Normal actions leave it absent; it fires on bypass, not identity (an ST/Dev
+ * casting their own character is unmarked). `requireOwnedCharacter` records the
+ * bypass; the `GameStore` write helpers stamp every record the mutation writes.
  */
 
-export const OverrideKind = Schema.Literals(["godmode-action", "repair"])
+export const OverrideKind = Schema.Literals([
+  "godmode-action",
+  "storyteller-action",
+  "repair",
+])
 export type OverrideKind = typeof OverrideKind.Type
 
 export class OverrideMarker extends Schema.Class<OverrideMarker>("OverrideMarker")({

@@ -119,7 +119,7 @@ type RollEntry = {
   override?: {
     invokedByUserId: string
     invokedByName: string
-    kind: "godmode-action" | "repair"
+    kind: "godmode-action" | "storyteller-action" | "repair"
   } | undefined
 }
 

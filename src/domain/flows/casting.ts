@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
-import { requireMember, requireOwnedCharacter } from "../authz"
+import { requireOwnedCharacter } from "../authz"
 import { ArcanumName } from "../character"
 import { buildPool, rollPool, type RawPoolComponent } from "../dice"
 import { CharacterId, SessionId } from "../ids"
@@ -88,8 +88,6 @@ const castSummary = (input: {
 export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
   args: CastSpellArgs,
 ) {
-  const member = yield* requireMember(SessionId.make(args.sessionId))
-
   const declaration = yield* Schema.decodeUnknownEffect(CastDeclaration)({
     arcanum: args.arcanum,
     level: args.level,
@@ -108,11 +106,18 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
 
   // Scoped read: a character outside this session isn't there, as far as this
   // session's flows are concerned.
-  if (sheet.sessionId !== member.sessionId) {
+  if (sheet.sessionId !== SessionId.make(args.sessionId)) {
     return yield* new DocumentNotFound({ table: "characters", id: args.characterId })
   }
 
+  // The authority ladder (ADR-0006): owner unmarked, ST/Dev with an Override
+  // recorded into request scope, anyone else refused. Deliberately not
+  // requireMember — a Dev may cast in a session they aren't a member of.
   yield* requireOwnedCharacter(sheet)
+
+  // Attribution follows the character's owner (ADR-0006): the entry is the
+  // owner's action in their visibility scope, whoever invoked it.
+  const member = yield* store.getMembership(sheet.sessionId, sheet.userId)
 
   // Move rule: the sheet's Arcanum dots must meet the declared level (the
   // Practices ladder). Which level an improvised effect *is* stays table

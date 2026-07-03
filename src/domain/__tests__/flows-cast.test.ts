@@ -318,6 +318,147 @@ describe("Flows.casting.castSpell (covert improvised tracer)", () => {
   )
 })
 
+describe("Flows.casting.castSpell authority ladder (ADR-0006)", () => {
+  const STORYTELLER = PlayerId.make("user-morgan")
+  const DEV = PlayerId.make("user-dev")
+
+  const morgan = new Membership({
+    userId: STORYTELLER,
+    sessionId: SESSION,
+    role: "storyteller",
+    displayName: "Morgan",
+  })
+
+  const ladderSeed = (opts: {
+    actor: PlayerId
+    isDev?: boolean
+    sheet?: CharacterSheet
+  }) =>
+    makeInMemory({
+      members: [aldous, briar, morgan],
+      actor: { userId: opts.actor, isDev: opts.isDev ?? false },
+      sheets: [opts.sheet ?? makeSheet()],
+    })
+
+  const cast = (store: ReturnType<typeof makeInMemory>, characterId = CHARACTER) =>
+    castSpell({
+      sessionId: SESSION,
+      characterId,
+      arcanum: "prime",
+      level: 1,
+    }).pipe(Effect.provide(store.layer), Random.withSeed("ladder-seed"))
+
+  it.effect("the session's Storyteller casts in a player's stead: marked, attributed to the owner", () =>
+    Effect.gen(function* () {
+      const store = ladderSeed({ actor: STORYTELLER })
+
+      yield* cast(store)
+
+      const entry = store.rolls[0]!
+      // Attribution follows the character's owner — it lands in their scope
+      expect(entry.userId).toBe(PLAYER)
+      expect(entry.displayName).toBe("Aldous")
+      // The marker records who invoked it, on top
+      expect(entry.override).toEqual({
+        invokedByUserId: STORYTELLER,
+        invokedByName: "Morgan",
+        kind: "storyteller-action",
+      })
+      // Mana deducted from the character's sheet as if the owner cast
+      expect(store.sheets.get(CHARACTER)!.manaCurrent).toBe(9)
+    }),
+  )
+
+  it.effect("a Dev casts from any character's sheet in any session: godmode-action", () =>
+    Effect.gen(function* () {
+      // The Dev is not even a member of this session.
+      const store = ladderSeed({ actor: DEV, isDev: true })
+
+      yield* cast(store)
+
+      const entry = store.rolls[0]!
+      expect(entry.userId).toBe(PLAYER)
+      expect(entry.override).toEqual({
+        invokedByUserId: DEV,
+        invokedByName: DEV, // no membership to take a display name from
+        kind: "godmode-action",
+      })
+    }),
+  )
+
+  it.effect("marker fires on bypass, not identity: an ST casting their own character is unmarked", () =>
+    Effect.gen(function* () {
+      const store = ladderSeed({
+        actor: STORYTELLER,
+        sheet: makeSheet({
+          userId: STORYTELLER,
+          sessionMemberId: SessionMemberId.make("member-morgan"),
+        }),
+      })
+
+      yield* cast(store)
+
+      const entry = store.rolls[0]!
+      expect(entry.override).toBeNull()
+      expect(entry.userId).toBe(STORYTELLER)
+      expect(entry.displayName).toBe("Morgan")
+    }),
+  )
+
+  it.effect("a Dev who owns the character is likewise unmarked", () =>
+    Effect.gen(function* () {
+      const store = makeInMemory({
+        members: [
+          aldous,
+          new Membership({
+            userId: DEV,
+            sessionId: SESSION,
+            role: "player",
+            displayName: "The Dev",
+          }),
+        ],
+        actor: { userId: DEV, isDev: true },
+        sheets: [
+          makeSheet({
+            userId: DEV,
+            sessionMemberId: SessionMemberId.make("member-dev"),
+          }),
+        ],
+      })
+
+      yield* cast(store)
+
+      expect(store.rolls[0]!.override).toBeNull()
+    }),
+  )
+
+  it.effect("a plain player casting another's character still fails NotYourCharacter", () =>
+    Effect.gen(function* () {
+      const store = ladderSeed({ actor: OTHER_PLAYER })
+
+      const exit = yield* cast(store).pipe(Effect.exit)
+
+      expect(failureTag(exit)).toBe("NotYourCharacter")
+      expect(store.rolls).toHaveLength(0)
+    }),
+  )
+
+  it.effect("InsufficientMana still blocks an ST-invoked cast — same rules apply", () =>
+    Effect.gen(function* () {
+      const store = ladderSeed({
+        actor: STORYTELLER,
+        sheet: makeSheet({ manaCurrent: 0 }),
+      })
+
+      const exit = yield* cast(store).pipe(Effect.exit)
+
+      expect(failureTag(exit)).toBe("InsufficientMana")
+      expect(store.rolls).toHaveLength(0)
+      expect(store.sheetPatches).toHaveLength(0)
+    }),
+  )
+})
+
 // --- Type-level guard: the narrow patch port (ADR-0011) ---
 // `SheetPatch` is the compensating control for permissive sheet checks: it must
 // not be able to express writes outside the fields play mutates.

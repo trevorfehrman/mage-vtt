@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect"
+import { Effect, Option, Schema } from "effect"
 import type { CharacterSheet } from "./character"
 import { CharacterId, PlayerId, SessionId } from "./ids"
 import { Membership } from "./membership"
@@ -28,18 +28,57 @@ export class NotYourCharacter extends Schema.TaggedErrorClass<NotYourCharacter>(
 ) {}
 
 /**
- * The authority ladder over a character sheet (ownership = the (user, session)
- * pair the sheet links). The owner passes unmarked; anyone else fails
- * `NotYourCharacter`. The Storyteller and Dev rungs — pass with an `Override`
- * marker (ADR-0006) — land with the authority-ladder slice.
+ * The authority ladder over a character sheet (ADR-0006; ownership = the
+ * (user, session) pair the sheet links):
+ *
+ * 1. Owner → pass, unmarked.
+ * 2. The session's Storyteller → pass, `storyteller-action` Override recorded.
+ * 3. A Dev (god-mode, any session) → pass, `godmode-action` Override recorded.
+ * 4. Anyone else → `NotYourCharacter`.
+ *
+ * The marker fires on **bypass, not identity**: an ST or Dev casting their own
+ * character takes rung 1 and stays unmarked. Recording goes through the
+ * request-scoped `OverrideStamp`, so every record the mutation writes carries
+ * the marker structurally — the flow author writes nothing by hand.
  */
 export const requireOwnedCharacter = Effect.fn("Authz.requireOwnedCharacter")(function* (
   sheet: CharacterSheet,
 ) {
   const actor = yield* CurrentActor
-  if (actor.userId !== sheet.userId) {
-    return yield* new NotYourCharacter({ characterId: sheet.id, userId: actor.userId })
+  if (actor.userId === sheet.userId) return
+
+  const store = yield* GameStore
+  const actorMembership = yield* store
+    .getMembership(sheet.sessionId, actor.userId)
+    .pipe(Effect.option)
+
+  if (
+    Option.isSome(actorMembership) &&
+    actorMembership.value.role === "storyteller"
+  ) {
+    return yield* recordBypass(
+      new OverrideMarker({
+        invokedByUserId: actor.userId,
+        invokedByName: actorMembership.value.displayName,
+        kind: "storyteller-action",
+      }),
+    )
   }
+
+  if (actor.isDev) {
+    return yield* recordBypass(
+      new OverrideMarker({
+        invokedByUserId: actor.userId,
+        // A Dev may not be a member of the session at all; fall back to the id.
+        invokedByName: Option.isSome(actorMembership)
+          ? actorMembership.value.displayName
+          : actor.userId,
+        kind: "godmode-action",
+      }),
+    )
+  }
+
+  return yield* new NotYourCharacter({ characterId: sheet.id, userId: actor.userId })
 })
 
 /**
@@ -62,9 +101,8 @@ export const requireMember = Effect.fn("Authz.requireMember")(function* (
  * Record that the current mutation bent a rule (ADR-0006), so the `GameStore`
  * write helpers stamp every record with the `Override` marker.
  *
- * Scaffold: present and wired end-to-end, but no flow in the tracer bullet calls
- * it — `rolls.create` never overrides. Future rule-bending flows invoke this
- * without re-plumbing the write path.
+ * Exercised by `requireOwnedCharacter`'s Storyteller/Dev rungs; `rolls.create`
+ * never overrides.
  */
 export const recordBypass = Effect.fn("Authz.recordBypass")(function* (
   marker: OverrideMarker,

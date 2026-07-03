@@ -15,6 +15,7 @@ import type { MutationCtx } from "../_generated/server"
 import { requireUser } from "./auth"
 import { runConvexEffect } from "./effect"
 import { convexLive } from "./convexLive"
+import type { OverrideStamp } from "../../src/domain/override"
 import type { CurrentActor } from "../../src/domain/ports/current-actor"
 import type { GameStore } from "../../src/domain/ports/game-store"
 
@@ -26,7 +27,9 @@ import type { GameStore } from "../../src/domain/ports/game-store"
  */
 const enforcedHandler =
   <Args extends PropertyValidators, A, E>(
-    flow: (args: ObjectType<Args>) => Effect.Effect<A, E, GameStore | CurrentActor>,
+    flow: (
+      args: ObjectType<Args>,
+    ) => Effect.Effect<A, E, GameStore | CurrentActor | OverrideStamp>,
   ) =>
   async (ctx: MutationCtx, args: ObjectType<Args>): Promise<A> => {
     const user = await requireUser(ctx) // auth, once
@@ -43,7 +46,9 @@ const enforcedHandler =
  */
 export function enforcedMutation<Args extends PropertyValidators, A, E>(config: {
   args: Args
-  flow: (args: ObjectType<Args>) => Effect.Effect<A, E, GameStore | CurrentActor>
+  flow: (
+    args: ObjectType<Args>,
+  ) => Effect.Effect<A, E, GameStore | CurrentActor | OverrideStamp>
 }) {
   return mutation({
     args: config.args,
