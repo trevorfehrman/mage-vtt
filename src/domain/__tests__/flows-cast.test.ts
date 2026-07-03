@@ -459,6 +459,158 @@ describe("Flows.casting.castSpell authority ladder (ADR-0006)", () => {
   )
 })
 
+describe("Flows.casting.castSpell spell factors (PRD #4 slice #9)", () => {
+  // Death 3 + Gnosis 1 = 4 base dice, Ruling for Moros (0 base Mana).
+  const castDeath = (
+    store: ReturnType<typeof makeInMemory>,
+    extras: Partial<Parameters<typeof castSpell>[0]> = {},
+  ) =>
+    castSpell({
+      sessionId: SESSION,
+      characterId: CHARACTER,
+      arcanum: "death",
+      level: 1,
+      ...extras,
+    }).pipe(Effect.provide(store.layer), Random.withSeed("factor-seed"))
+
+  it.effect("Potency 2 costs 2 dice off the pool, visible as a component", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      yield* castDeath(store, { potency: 2 })
+
+      const entry = store.rolls[0]!
+      expect(entry.result.poolSize).toBe(2) // 4 - 2
+      expect(entry.components).toContainEqual({
+        type: "modifier",
+        name: "Spell factors",
+        dots: -2,
+      })
+      expect(entry.summary).toContain("Potency 2")
+    }),
+  )
+
+  it.effect("2 targets costs 2 dice", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      yield* castDeath(store, { targets: 2 })
+
+      const entry = store.rolls[0]!
+      expect(entry.result.poolSize).toBe(2)
+      expect(entry.summary).toContain("2 targets")
+    }),
+  )
+
+  it.effect("High Speech adds +2 dice", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      yield* castDeath(store, { highSpeech: true })
+
+      const entry = store.rolls[0]!
+      expect(entry.result.poolSize).toBe(6) // 4 + 2
+      expect(entry.components).toContainEqual({
+        type: "modifier",
+        name: "High Speech",
+        dots: 2,
+      })
+      expect(entry.summary).toContain("High Speech")
+    }),
+  )
+
+  it.effect("factors combine: potency 2 + 2 targets + High Speech", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      yield* castDeath(store, { potency: 2, targets: 2, highSpeech: true })
+
+      const entry = store.rolls[0]!
+      expect(entry.result.poolSize).toBe(2) // 4 - 2 - 2 + 2
+    }),
+  )
+
+  it.effect("factor penalties can drive the pool to a chance die", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      yield* castDeath(store, { potency: 3 }) // 4 - 4 = 0
+
+      const entry = store.rolls[0]!
+      expect(entry.result.poolSize).toBe(0)
+      expect(entry.result.isChanceDie).toBe(true)
+      expect(entry.summary).toContain("a chance die")
+    }),
+  )
+
+  it.effect("extraManaCost adds to the server-computed cost and is deducted", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      // Ruling (0) + declared extra 2 = 2 total
+      yield* castDeath(store, { extraManaCost: 2 })
+
+      expect(store.sheets.get(CHARACTER)!.manaCurrent).toBe(8)
+      expect(store.rolls[0]!.summary).toContain("2 Mana")
+    }),
+  )
+
+  it.effect("extraManaCost stacks on the non-Ruling cost", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      yield* castSpell({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        arcanum: "prime", // non-Ruling: 1
+        level: 1,
+        extraManaCost: 1,
+      }).pipe(Effect.provide(store.layer), Random.withSeed("factor-seed"))
+
+      expect(store.sheets.get(CHARACTER)!.manaCurrent).toBe(8) // 10 - (1 + 1)
+    }),
+  )
+
+  it.effect("an unpayable combined cost blocks the cast atomically", () =>
+    Effect.gen(function* () {
+      const store = seed({ sheet: makeSheet({ manaCurrent: 1 }) })
+
+      const exit = yield* castDeath(store, { extraManaCost: 2 }).pipe(Effect.exit)
+
+      expect(failureTag(exit)).toBe("InsufficientMana")
+      expect(store.rolls).toHaveLength(0)
+      expect(store.sheetPatches).toHaveLength(0)
+      expect(store.sheets.get(CHARACTER)!.manaCurrent).toBe(1)
+    }),
+  )
+
+  it.effect("a hidden cast is written visibility:hidden", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      yield* castDeath(store, { visibility: "hidden" })
+
+      expect(store.rolls[0]!.visibility).toBe("hidden")
+    }),
+  )
+
+  it.effect("malformed factors fail InvalidCastDeclaration", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      const zeroPotency = yield* castDeath(store, { potency: 0 }).pipe(Effect.exit)
+      expect(failureTag(zeroPotency)).toBe("InvalidCastDeclaration")
+
+      const negativeExtra = yield* castDeath(store, { extraManaCost: -1 }).pipe(
+        Effect.exit,
+      )
+      expect(failureTag(negativeExtra)).toBe("InvalidCastDeclaration")
+
+      expect(store.rolls).toHaveLength(0)
+    }),
+  )
+})
+
 // --- Type-level guard: the narrow patch port (ADR-0011) ---
 // `SheetPatch` is the compensating control for permissive sheet checks: it must
 // not be able to express writes outside the fields play mutates.

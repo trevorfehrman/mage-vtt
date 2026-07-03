@@ -14,6 +14,11 @@ export const castSpell = enforcedMutation({
     characterId: v.id("characters"),
     arcanum: v.string(),
     level: v.number(),
+    potency: v.optional(v.number()),
+    targets: v.optional(v.number()),
+    highSpeech: v.optional(v.boolean()),
+    extraManaCost: v.optional(v.number()),
+    visibility: v.optional(v.union(v.literal("public"), v.literal("hidden"))),
   },
   flow: castSpellFlow,
 })

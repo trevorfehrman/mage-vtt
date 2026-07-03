@@ -50,6 +50,11 @@ export function ImprovisedCastForm({
   const cast = useMutation(api.characters.castSpell)
   const [arcanum, setArcanum] = useState<string>("")
   const [level, setLevel] = useState(1)
+  const [potency, setPotency] = useState(1)
+  const [targets, setTargets] = useState(1)
+  const [highSpeech, setHighSpeech] = useState(false)
+  const [extraMana, setExtraMana] = useState(0)
+  const [hidden, setHidden] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -58,7 +63,17 @@ export function ImprovisedCastForm({
     setBusy(true)
     setError(null)
     try {
-      await cast({ sessionId, characterId, arcanum, level })
+      await cast({
+        sessionId,
+        characterId,
+        arcanum,
+        level,
+        ...(potency > 1 ? { potency } : {}),
+        ...(targets > 1 ? { targets } : {}),
+        ...(highSpeech ? { highSpeech } : {}),
+        ...(extraMana > 0 ? { extraManaCost: extraMana } : {}),
+        ...(hidden ? { visibility: "hidden" as const } : {}),
+      })
       // The result lands in the Activity Log; nothing to render here.
     } catch (err) {
       setError(castErrorMessage(err))
@@ -98,6 +113,52 @@ export function ImprovisedCastForm({
               </option>
             ))}
           </select>
+        </label>
+        <label className="flex items-center gap-1">
+          Potency
+          <input
+            type="number"
+            min={1}
+            value={potency}
+            onChange={(e) => setPotency(Number(e.target.value))}
+            className="w-12 rounded border border-[var(--line)] bg-background px-1 py-1"
+          />
+        </label>
+        <label className="flex items-center gap-1">
+          Targets
+          <input
+            type="number"
+            min={1}
+            value={targets}
+            onChange={(e) => setTargets(Number(e.target.value))}
+            className="w-12 rounded border border-[var(--line)] bg-background px-1 py-1"
+          />
+        </label>
+        <label className="flex items-center gap-1">
+          Extra Mana
+          <input
+            type="number"
+            min={0}
+            value={extraMana}
+            onChange={(e) => setExtraMana(Number(e.target.value))}
+            className="w-12 rounded border border-[var(--line)] bg-background px-1 py-1"
+          />
+        </label>
+        <label className="flex items-center gap-1">
+          <input
+            type="checkbox"
+            checked={highSpeech}
+            onChange={(e) => setHighSpeech(e.target.checked)}
+          />
+          High Speech
+        </label>
+        <label className="flex items-center gap-1">
+          <input
+            type="checkbox"
+            checked={hidden}
+            onChange={(e) => setHidden(e.target.checked)}
+          />
+          Hidden
         </label>
         <button
           type="button"

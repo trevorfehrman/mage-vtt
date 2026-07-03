@@ -1,12 +1,16 @@
 import { Effect, Schema } from "effect"
 import { requireOwnedCharacter } from "../authz"
 import { ArcanumName } from "../character"
-import { buildPool, rollPool, type RawPoolComponent } from "../dice"
+import { buildPool, rollPool, type RawPoolComponent, type RollVisibility } from "../dice"
 import { CharacterId, SessionId } from "../ids"
 import { improvisedManaCost, spendMana } from "../mana-economy"
 import { DocumentNotFound } from "../ports/errors"
 import { GameStore } from "../ports/game-store"
-import { calculateImprovisedPool, type CastingPool } from "../spellcasting"
+import {
+  applySpellFactors,
+  calculateImprovisedPool,
+  type CastingPool,
+} from "../spellcasting"
 import type { DiceRollResult } from "../dice"
 
 /**
@@ -31,6 +35,20 @@ export interface CastSpellArgs {
   readonly characterId: string
   readonly arcanum: string
   readonly level: number
+  /** Spell factor: effect Potency beyond 1 costs dice (book table). */
+  readonly potency?: number
+  /** Spell factor: targets beyond 1 cost dice (book table). */
+  readonly targets?: number
+  /** High Speech: +2 dice. */
+  readonly highSpeech?: boolean
+  /**
+   * Declared additional Mana, for improvised effects replicating book spells
+   * that list a cost. Whether it applies is table adjudication; once declared,
+   * the deduction is mechanical — on top of the server-computed Path cost.
+   */
+  readonly extraManaCost?: number
+  /** Table visibility of the roll (a Hidden roll) — orthogonal to the Covert Aspect. */
+  readonly visibility?: RollVisibility
 }
 
 // --- Errors (ADR-0010) ---
@@ -51,12 +69,22 @@ export class InvalidCastDeclaration extends Schema.TaggedErrorClass<InvalidCastD
   { message: Schema.String },
 ) {}
 
-/** The declared shape of the effect: which Arcanum, at what level (Practice tier). */
+/** The declared shape of the effect: Arcanum, level (Practice tier), factors. */
 const CastDeclaration = Schema.Struct({
   arcanum: ArcanumName,
   level: Schema.Number.check(
     Schema.isInt(),
     Schema.isBetween({ minimum: 1, maximum: 5 }),
+  ),
+  potency: Schema.optional(
+    Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(1)),
+  ),
+  targets: Schema.optional(
+    Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(1)),
+  ),
+  highSpeech: Schema.optional(Schema.Boolean),
+  extraManaCost: Schema.optional(
+    Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
   ),
 })
 
@@ -73,15 +101,17 @@ const castSummary = (input: {
   displayName: string
   arcanum: string
   level: number
+  factors: ReadonlyArray<string>
   result: DiceRollResult
   manaCost: number
 }): string => {
   const dice = input.result.isChanceDie
     ? "a chance die"
     : `${input.result.poolSize} dice`
+  const factors = input.factors.length > 0 ? ` with ${input.factors.join(", ")}` : ""
   return (
-    `${input.displayName} cast an improvised ${capitalize(input.arcanum)} ${input.level} spell ` +
-    `(${dice}, ${input.manaCost} Mana) and got ${outcomeOf(input.result)}`
+    `${input.displayName} cast an improvised ${capitalize(input.arcanum)} ${input.level} spell` +
+    `${factors} (${dice}, ${input.manaCost} Mana) and got ${outcomeOf(input.result)}`
   )
 }
 
@@ -91,6 +121,12 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
   const declaration = yield* Schema.decodeUnknownEffect(CastDeclaration)({
     arcanum: args.arcanum,
     level: args.level,
+    ...(args.potency !== undefined ? { potency: args.potency } : {}),
+    ...(args.targets !== undefined ? { targets: args.targets } : {}),
+    ...(args.highSpeech !== undefined ? { highSpeech: args.highSpeech } : {}),
+    ...(args.extraManaCost !== undefined
+      ? { extraManaCost: args.extraManaCost }
+      : {}),
   }).pipe(
     Effect.mapError(
       () =>
@@ -131,21 +167,32 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
     })
   }
 
-  const pool = yield* calculateImprovisedPool({
+  const basePool = yield* calculateImprovisedPool({
     gnosis: sheet.gnosis,
     arcanumDots: dots,
+    ...(declaration.highSpeech ? { highSpeech: true } : {}),
+  })
+  const pool = yield* applySpellFactors(basePool, {
+    ...(declaration.potency !== undefined ? { potency: declaration.potency } : {}),
+    ...(declaration.targets !== undefined ? { targets: declaration.targets } : {}),
   })
   yield* assertCovert(pool)
 
   // Mana: improvised cost by Path (Ruling free, otherwise 1 — computed here,
-  // never declared) + whatever the pool itself demands.
+  // never declared) + whatever the pool itself demands + the declared extra.
   const pathCost = yield* improvisedManaCost(sheet.path, declaration.arcanum)
-  const manaCost = pathCost + pool.manaCost
+  const manaCost = pathCost + pool.manaCost + (declaration.extraManaCost ?? 0)
   const manaRemaining = yield* spendMana(sheet.manaCurrent, manaCost)
 
   const components: ReadonlyArray<RawPoolComponent> = [
     { type: "gnosis", name: "Gnosis", dots: sheet.gnosis },
     { type: "arcanum", name: capitalize(declaration.arcanum), dots },
+    ...(declaration.highSpeech
+      ? [{ type: "modifier", name: "High Speech", dots: 2 }]
+      : []),
+    ...(pool.factorPenalty !== 0
+      ? [{ type: "modifier", name: "Spell factors", dots: pool.factorPenalty }]
+      : []),
   ]
   const dicePool = yield* buildPool(components)
   if (dicePool.size !== pool.totalDice) {
@@ -156,7 +203,9 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
     )
   }
 
-  const result = yield* rollPool(dicePool, { visibility: "public" })
+  const result = yield* rollPool(dicePool, {
+    visibility: args.visibility ?? "public",
+  })
 
   yield* store.patchSheet(sheet.id, { manaCurrent: manaRemaining })
   return yield* store.insertRoll({
@@ -168,6 +217,15 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
       displayName: member.displayName,
       arcanum: declaration.arcanum,
       level: declaration.level,
+      factors: [
+        ...(declaration.potency && declaration.potency > 1
+          ? [`Potency ${declaration.potency}`]
+          : []),
+        ...(declaration.targets && declaration.targets > 1
+          ? [`${declaration.targets} targets`]
+          : []),
+        ...(declaration.highSpeech ? ["High Speech"] : []),
+      ],
       result,
       manaCost,
     }),
