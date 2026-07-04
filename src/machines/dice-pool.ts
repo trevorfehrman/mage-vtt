@@ -176,7 +176,18 @@ export const dicePoolMachine = setup({
           }),
         },
         ROLL: "rolling",
-        RESET: "idle",
+        RESET: {
+          target: "idle",
+          actions: assign({
+            components: () => [],
+            poolSize: 0,
+            againThreshold: 10,
+            isRoteAction: false,
+            spendWillpower: false,
+            visibility: () => "public" as const,
+            error: null,
+          }),
+        },
       },
     },
     rolling: {
