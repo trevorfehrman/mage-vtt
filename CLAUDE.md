@@ -84,12 +84,14 @@ scripts/           — Bun scripts for data pipeline
 ├── extract-pages.ts, parse-spells.ts, apply-corrections.ts
 ├── extract-rules.ts, chunk-text.ts, chunk-wod.ts
 ├── generate-rule-chunks.ts, embed-and-upload.ts, embed-all.ts
+├── ingest-character.ts — Dev-side character upsert into a Session (issue #16)
 
 data/              — Extracted game data (committed)
 ├── pages/         — 402 Mage pages (JSON)
 ├── wod-pages/     — 226 WoD Core pages (JSON)
 ├── spells.json, path-data.json, character-rules.json
 ├── chunks.json, wod-chunks.json, rule-chunks.json
+├── characters/    — Ingestable character files (example-character.json is the template)
 
 docs/              — Technical documentation
 ```
