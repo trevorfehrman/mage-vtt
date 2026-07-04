@@ -1,25 +1,15 @@
 import { useMachine } from "@xstate/react"
 import { useMutation } from "convex/react"
-import { ConvexError } from "convex/values"
 import { api } from "../../convex/_generated/api"
 import { dicePoolMachine } from "#/machines/dice-pool"
+import { seamErrorMessage } from "#/lib/seam-errors"
 import type { Id } from "../../convex/_generated/dataModel"
 
-/** Map the seam's tagged errors (ADR-0010) to readable messages. */
-function rollErrorMessage(err: unknown): string {
-  if (err instanceof ConvexError && typeof err.data === "object" && err.data !== null) {
-    const data = err.data as Record<string, unknown>
-    switch (data._tag) {
-      case "InsufficientWillpower":
-        return "No Willpower left to spend."
-      case "NotYourCharacter":
-        return "That's not your character's Willpower."
-      case "NotAMember":
-        return "You're not a member of this session."
-    }
-  }
-  return err instanceof Error ? err.message : "Roll failed"
-}
+const rollErrorMessage = (err: unknown): string =>
+  seamErrorMessage(err, {
+    overrides: { NotYourCharacter: "That's not your character's Willpower." },
+    fallback: (e) => (e instanceof Error ? e.message : "Roll failed"),
+  })
 
 export function useDicePool(
   sessionId: Id<"sessions">,

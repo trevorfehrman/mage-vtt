@@ -93,7 +93,8 @@ const CastDeclaration = Schema.Struct({
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-const outcomeOf = (result: DiceRollResult): string =>
+/** Shared narrative fragment for cast summaries (also the sheet-less flow). */
+export const outcomeOf = (result: DiceRollResult): string =>
   result.isDramaticFailure
     ? "a dramatic failure!"
     : result.isExceptionalSuccess

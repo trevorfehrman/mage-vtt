@@ -10,6 +10,7 @@ import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { ChatInput } from "#/components/game/ChatInput"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { ImprovisedCastForm } from "#/components/game/ImprovisedCastForm"
+import { SheetlessCastForm } from "#/components/game/SheetlessCastForm"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { Schema } from "effect"
 import { CharacterSheet as CharacterSheetData } from "#/domain/character"
@@ -113,6 +114,12 @@ function SessionPage() {
     )
   }
 
+  // The affordance renders only for the Storyteller (a Dev who is also ST
+  // sees it too); the server refuses everyone else regardless (issue #15).
+  const isStoryteller = session.members.some(
+    (m) => m.userId === user._id && m.role === "storyteller",
+  )
+
   return (
     <SessionLayout
       sessionName={session.name}
@@ -131,6 +138,11 @@ function SessionPage() {
         />
       }
       dicePoolBuilder={<DicePoolBuilder pool={pool} />}
+      storytellerTools={
+        isStoryteller ? (
+          <SheetlessCastForm sessionId={sessionId as Id<"sessions">} />
+        ) : undefined
+      }
       chatInput={
         <ChatInput
           sessionId={sessionId as Id<"sessions">}

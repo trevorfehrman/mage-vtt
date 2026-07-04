@@ -3,6 +3,7 @@ import { query } from "./_generated/server"
 import { requireUser } from "./lib/auth"
 import { enforcedMutation } from "./lib/enforce"
 import { createRoll } from "../src/domain/flows/rolls"
+import { castSheetless as castSheetlessFlow } from "../src/domain/flows/sheetless-cast"
 
 // Re-implemented through the enforcement seam (ADR-0004, ADR-0007). Auth,
 // membership, the persistence mapping, the Activity-Log line, and error mapping
@@ -23,6 +24,18 @@ export const create = enforcedMutation({
     willpower: v.optional(v.object({ characterId: v.id("characters") })),
   },
   flow: createRoll,
+})
+
+// ST/Dev NPC opposition: a hand-declared pool, Hidden by default, zero sheet
+// writes (PRD #11, issue #15). Sibling of `create`; authority and the typed
+// refusal live in the domain flow.
+export const castSheetless = enforcedMutation({
+  args: {
+    sessionId: v.id("sessions"),
+    poolSize: v.number(),
+    visibility: v.optional(v.union(v.literal("public"), v.literal("hidden"))),
+  },
+  flow: castSheetlessFlow,
 })
 
 export const list = query({

@@ -1,14 +1,7 @@
-import { Effect, Exit } from "effect"
+import { Effect } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import { formatRotePool, parseRotePool, RotePool } from "../rote-pool"
-
-const failureTag = (exit: Exit.Exit<unknown, unknown>) => {
-  if (!Exit.isFailure(exit)) return null
-  const fail = exit.cause.reasons.find((r) => r._tag === "Fail") as
-    | { error: { _tag: string } }
-    | undefined
-  return fail?.error._tag ?? null
-}
+import { failureTag } from "../testing/fixtures"
 
 describe("RotePool.parse (issue #14 grammar)", () => {
   it.effect("a plain Attribute + Skill + Arcanum pool", () =>

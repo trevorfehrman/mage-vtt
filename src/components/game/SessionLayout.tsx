@@ -33,6 +33,8 @@ interface SessionLayoutProps {
   characterSheet?: ReactNode
   activityLog: ReactNode
   dicePoolBuilder: ReactNode
+  /** ST/Dev-only affordances (e.g. the sheet-less cast) — absent for players. */
+  storytellerTools?: ReactNode
   chatInput: ReactNode
   onClearPool: () => void
 }
@@ -44,6 +46,7 @@ export function SessionLayout({
   characterSheet,
   activityLog,
   dicePoolBuilder,
+  storytellerTools,
   chatInput,
   onClearPool,
 }: SessionLayoutProps) {
@@ -133,6 +136,8 @@ export function SessionLayout({
             <div className="flex-1 overflow-hidden">{activityLog}</div>
             {/* Dice pool — foot of the rail, above chat */}
             <div className="shrink-0">{dicePoolBuilder}</div>
+            {/* ST/Dev tools — only rendered when provided */}
+            {storytellerTools && <div className="shrink-0">{storytellerTools}</div>}
             {/* Chat input — pinned to bottom */}
             <div className="shrink-0">{chatInput}</div>
           </div>

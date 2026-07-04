@@ -83,6 +83,43 @@ export const requireOwnedCharacter = Effect.fn("Authz.requireOwnedCharacter")(fu
 })
 
 /**
+ * The Storyteller's door (issue #15): resolve the actor's membership and
+ * require the storyteller role. A Dev member passes with a `godmode-action`
+ * Override recorded (bypass, not identity — ADR-0006). Unlike
+ * `requireOwnedCharacter`'s god-mode rung, a Dev who is NOT a member fails
+ * `NotAMember` first: these flows attribute the action to the actor's own
+ * membership, so there must be one.
+ */
+export const requireStoryteller = Effect.fn("Authz.requireStoryteller")(function* (
+  sessionId: SessionId,
+) {
+  const member = yield* requireMember(sessionId)
+  if (member.role === "storyteller") return member
+
+  const actor = yield* CurrentActor
+  if (!actor.isDev) {
+    return yield* new NotStoryteller({ sessionId: member.sessionId, userId: member.userId })
+  }
+  yield* recordBypass(
+    new OverrideMarker({
+      invokedByUserId: actor.userId,
+      invokedByName: member.displayName,
+      kind: "godmode-action",
+    }),
+  )
+  return member
+})
+
+/** Authorization: this door is the Storyteller's (or a Dev's). */
+export class NotStoryteller extends Schema.TaggedErrorClass<NotStoryteller>()(
+  "NotStoryteller",
+  {
+    sessionId: SessionId,
+    userId: PlayerId,
+  },
+) {}
+
+/**
  * Resolve a character sheet as this session's flows see it, and walk the
  * authority ladder over it: the sheet is fetched, scoped to the session (a
  * character outside this session isn't there, as far as this session's flows
