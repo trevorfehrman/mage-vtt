@@ -1,5 +1,6 @@
 import { Effect, Schema } from "effect"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "./ids"
+import { RoteArcanumName, RotePool } from "./rote-pool"
 
 // --- Constrained number types ---
 //
@@ -227,6 +228,21 @@ const CurrentPoints = Schema.Number.check(
 )
 
 /**
+ * A Rote the character trained (issue #16): the sheet-side mirror of
+ * `KnownRoteDoc` — spell business key, source Order, and the structured pool
+ * whose trait names the cast flow resolves against the caster's ratings.
+ * Casting a Rote does NOT grant the rote quality (glossary namespace trap).
+ */
+export class KnownRote extends Schema.Class<KnownRote>("KnownRote")({
+  name: Schema.String,
+  spellName: Schema.String,
+  spellArcanum: RoteArcanumName,
+  spellLevel: Dots1to5,
+  order: OrderName,
+  pool: RotePool,
+}) {}
+
+/**
  * The game artifact all sheet-touching flows and UI speak (see CONTEXT.md
  * "Character Sheet"): identity, rated Traits, current state — plus its linkage
  * (whose character this is *is* domain data). Decoded from `CharacterDoc` at
@@ -255,7 +271,13 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   healthTrack: Schema.Array(HealthBoxState),
   willpowerCurrent: CurrentPoints,
   manaCurrent: CurrentPoints,
+  knownRotes: Schema.optionalKey(Schema.Array(KnownRote)),
 }) {
+  /** Known Rotes, absent-column-safe: rows stored before issue #16 have none. */
+  get rotes(): ReadonlyArray<KnownRote> {
+    return this.knownRotes ?? []
+  }
+
   get resistanceBonus() {
     return PATH_RESISTANCE[this.path] ?? { attribute: "composure" as const, bonus: 0 }
   }

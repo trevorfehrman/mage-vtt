@@ -1,0 +1,90 @@
+{
+  "sessionId": "REPLACE_WITH_SESSION_ID",
+  "userId": "REPLACE_WITH_USER_ID",
+  "character": {
+    "name": "Corvin Ashe",
+    "shadowName": "Tessellate",
+    "concept": "Forensic accountant turned relic hunter",
+    "virtue": "Prudence",
+    "vice": "Greed",
+    "path": "Moros",
+    "order": "Mysterium",
+    "gnosis": 2,
+    "attributes": {
+      "mental": { "intelligence": 3, "wits": 2, "resolve": 3 },
+      "physical": { "strength": 2, "dexterity": 3, "stamina": 2 },
+      "social": { "presence": 2, "manipulation": 2, "composure": 2 }
+    },
+    "skills": {
+      "mental": {
+        "academics": 2,
+        "computer": 0,
+        "crafts": 0,
+        "investigation": 2,
+        "medicine": 1,
+        "occult": 3,
+        "politics": 0,
+        "science": 3
+      },
+      "physical": {
+        "athletics": 2,
+        "brawl": 1,
+        "drive": 1,
+        "firearms": 0,
+        "larceny": 1,
+        "stealth": 2,
+        "survival": 0,
+        "weaponry": 0
+      },
+      "social": {
+        "animalKen": 0,
+        "empathy": 1,
+        "expression": 0,
+        "intimidation": 0,
+        "persuasion": 1,
+        "socialize": 1,
+        "streetwise": 0,
+        "subterfuge": 1
+      }
+    },
+    "arcana": { "death": 2, "matter": 3, "prime": 1 },
+    "healthTrack": ["empty", "empty", "empty", "empty", "empty", "empty", "empty"],
+    "willpowerCurrent": 6,
+    "manaCurrent": 11,
+    "knownRotes": [
+      {
+        "name": "Clamor of the",
+        "spellName": "Speak with the Dead",
+        "spellArcanum": "Death",
+        "spellLevel": 1,
+        "order": "Mysterium",
+        "pool": { "attribute": "Wits", "skills": ["Occult"], "arcanum": "Death" }
+      },
+      {
+        "name": "The Seal of",
+        "spellName": "Ectoplasmic Shaping",
+        "spellArcanum": "Death",
+        "spellLevel": 1,
+        "order": "Mysterium",
+        "pool": {
+          "attribute": "Presence",
+          "skills": ["Occult"],
+          "arcanum": "Death",
+          "vs": ["Resolve", "Gnosis"]
+        }
+      },
+      {
+        "name": "Rube Goldberg’s",
+        "spellName": "Craftsman's Eye",
+        "spellArcanum": "Matter",
+        "spellLevel": 1,
+        "order": "Mysterium",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": ["Investigation", "Science"],
+          "arcanum": "Matter"
+        }
+      }
+    ]
+  }
+}

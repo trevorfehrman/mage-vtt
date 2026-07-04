@@ -67,18 +67,38 @@ export const DiceRollDoc = Schema.Struct({
   timestamp: Schema.Number,
 })
 
+/** Raw persisted shape of a structured Rote pool — the Doc-layer mirror of
+ * `RotePool` (rote-pool.ts): plain strings, `vs` present only on contested
+ * pools. Matches the hand-written `rotePoolValidator` on the `rotes` table. */
+const RotePoolDoc = Schema.Struct({
+  attribute: Schema.String,
+  skills: Schema.Array(Schema.String),
+  arcanum: Schema.String,
+  vs: Schema.optionalKey(Schema.Array(Schema.String)),
+})
+
 /**
- * Full-width mirror of the `characters` table — the raw persisted shape, the
- * last hand-written table definition retired (PRD #4 slice #6). Deliberately
- * raw primitives throughout (ADR-0011): representability and domain checks
- * belong to the `CharacterSheet` artifact decoded at the adapter, never to the
- * Doc layer. Every column is listed because the table validator needs the whole
- * width; flows never touch this shape directly.
+ * One known Rote on a character (issue #16) — an embedded structured entry,
+ * not a `v.id("rotes")` reference: the data pipeline clears and re-inserts the
+ * `rotes` table, so its `_id`s are unstable. The spell is referenced by its
+ * business key (`spellName` + `spellArcanum`).
  */
-export const CharacterDoc = Schema.Struct({
-  sessionMemberId: ConvexId("sessionMembers"),
-  sessionId: ConvexId("sessions"),
-  userId: Schema.String,
+export const KnownRoteDoc = Schema.Struct({
+  name: Schema.String,
+  spellName: Schema.String,
+  spellArcanum: Schema.String,
+  spellLevel: Schema.Number,
+  order: Schema.String,
+  pool: RotePoolDoc,
+})
+
+/**
+ * The ingestable width of a character — identity, rated Traits, current state,
+ * known Rotes — everything except the linkage columns. The Dev-side character
+ * ingestion mutation (issue #16) derives its `data` arg validator from this
+ * struct; `CharacterDoc` composes it with the linkage.
+ */
+export const CharacterData = Schema.Struct({
   name: Schema.String,
   shadowName: Schema.optionalKey(Schema.String),
   concept: Schema.String,
@@ -151,6 +171,23 @@ export const CharacterDoc = Schema.Struct({
   healthTrack: Schema.Array(Schema.String),
   willpowerCurrent: Schema.Number,
   manaCurrent: Schema.Number,
+  // Optional column: rows stored before issue #16 have no knownRotes.
+  knownRotes: Schema.optionalKey(Schema.Array(KnownRoteDoc)),
+})
+
+/**
+ * Full-width mirror of the `characters` table — the raw persisted shape, the
+ * last hand-written table definition retired (PRD #4 slice #6). Deliberately
+ * raw primitives throughout (ADR-0011): representability and domain checks
+ * belong to the `CharacterSheet` artifact decoded at the adapter, never to the
+ * Doc layer. Every column is listed because the table validator needs the whole
+ * width; flows never touch this shape directly.
+ */
+export const CharacterDoc = Schema.Struct({
+  sessionMemberId: ConvexId("sessionMembers"),
+  sessionId: ConvexId("sessions"),
+  userId: Schema.String,
+  ...CharacterData.fields,
 })
 
 export const MessageDoc = Schema.Struct({

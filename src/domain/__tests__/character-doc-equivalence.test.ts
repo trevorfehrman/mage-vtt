@@ -15,7 +15,9 @@ import { CharacterDoc } from "../tables"
  */
 
 // The `characters` definition exactly as it was hand-written in convex/schema.ts
-// before derivation. Frozen here as the shape contract for existing documents.
+// before derivation. Frozen here as the shape contract for existing documents —
+// never edited; columns added since are declared separately below so this block
+// keeps guarding the pre-existing stored shape.
 const handWritten = v.object({
   sessionMemberId: v.id("sessionMembers"),
   sessionId: v.id("sessions"),
@@ -94,12 +96,35 @@ const handWritten = v.object({
   manaCurrent: v.number(),
 })
 
+// Columns added after the migration, each *optional* so every document stored
+// under the frozen shape above still validates. `knownRotes`: issue #16.
+const addedColumns = {
+  knownRotes: v.optional(
+    v.array(
+      v.object({
+        name: v.string(),
+        spellName: v.string(),
+        spellArcanum: v.string(),
+        spellLevel: v.number(),
+        order: v.string(),
+        pool: v.object({
+          attribute: v.string(),
+          skills: v.array(v.string()),
+          arcanum: v.string(),
+          vs: v.optional(v.array(v.string())),
+        }),
+      }),
+    ),
+  ),
+}
+
 const structuralJson = (validator: unknown): unknown =>
   JSON.parse(JSON.stringify((validator as { json: unknown }).json))
 
 describe("characters table: derived validator equals the hand-written shape", () => {
-  it("schemaToConvexValidator(CharacterDoc) compiles to the previous definition", () => {
+  it("schemaToConvexValidator(CharacterDoc) compiles to the frozen definition plus the optional added columns", () => {
     const derived = schemaToConvexValidator(CharacterDoc)
-    expect(structuralJson(derived)).toEqual(structuralJson(handWritten))
+    const expected = v.object({ ...handWritten.fields, ...addedColumns })
+    expect(structuralJson(derived)).toEqual(structuralJson(expected))
   })
 })

@@ -1,6 +1,8 @@
-import { mutation } from "./_generated/server"
+import { internalMutation, mutation } from "./_generated/server"
 import { v } from "convex/values"
 import { rotePoolValidator } from "./schema"
+import { schemaToConvexValidator } from "../src/domain/schema-bridge"
+import { CharacterData } from "../src/domain/tables"
 
 export const insertRuleChunk = mutation({
   args: {
@@ -101,6 +103,57 @@ export const insertOrder = mutation({
       .first()
     if (existing) await ctx.db.delete(existing._id)
     await ctx.db.insert("orders", args)
+  },
+})
+
+/**
+ * Dev-side character ingestion (issue #16): upsert a complete character —
+ * identity, rated Traits, current state, known Rotes — for a session member.
+ * An `internalMutation`, so it is unreachable from clients; the only caller is
+ * `scripts/ingest-character.ts` through `bunx convex run` (CLI admin auth),
+ * which is the Dev authority story — no UI, no public endpoint.
+ *
+ * Ownership binds to the (user, session) member pair. The upsert keys on that
+ * member's character row and replaces it whole, so re-running the same payload
+ * is idempotent and re-ingestion corrects earlier data.
+ */
+export const upsertCharacter = internalMutation({
+  args: {
+    sessionId: v.id("sessions"),
+    userId: v.string(),
+    data: schemaToConvexValidator(CharacterData),
+  },
+  handler: async (ctx, args) => {
+    const members = await ctx.db
+      .query("sessionMembers")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .collect()
+    const member = members.find((m) => m.userId === args.userId)
+    if (!member) {
+      throw new Error(
+        `User ${args.userId} is not a member of session ${args.sessionId}`,
+      )
+    }
+
+    const doc = {
+      sessionMemberId: member._id,
+      sessionId: args.sessionId,
+      userId: args.userId,
+      ...args.data,
+    }
+
+    const existing = await ctx.db
+      .query("characters")
+      .withIndex("by_sessionMemberId", (q) =>
+        q.eq("sessionMemberId", member._id),
+      )
+      .unique()
+
+    if (existing) {
+      await ctx.db.replace(existing._id, doc)
+      return existing._id
+    }
+    return await ctx.db.insert("characters", doc)
   },
 })
 
