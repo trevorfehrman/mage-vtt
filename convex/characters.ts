@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server"
 import { requireUser } from "./lib/auth"
 import { enforcedMutation } from "./lib/enforce"
 import { castSpell as castSpellFlow } from "../src/domain/flows/casting"
+import { castRote as castRoteFlow } from "../src/domain/flows/rote-cast"
 
 // A Covert improvised cast through the enforcement seam (ADR-0004, PRD #4).
 // Auth, authority over the sheet, the Mana economy, the dice, the sheet patch,
@@ -22,6 +23,25 @@ export const castSpell = enforcedMutation({
     visibility: v.optional(v.union(v.literal("public"), v.literal("hidden"))),
   },
   flow: castSpellFlow,
+})
+
+// A known-Rote cast through the seam (PRD #11, issue #18). The Rote lookup,
+// the Aspect gate, the pool from the caster's own sheet, and the writes all
+// live in the domain flow; this file supplies only the args.
+export const castRote = enforcedMutation({
+  args: {
+    sessionId: v.id("sessions"),
+    characterId: v.id("characters"),
+    roteName: v.string(),
+    skillChoice: v.optional(v.string()),
+    potency: v.optional(v.number()),
+    targets: v.optional(v.number()),
+    highSpeech: v.optional(v.boolean()),
+    extraManaCost: v.optional(v.number()),
+    spendWillpower: v.optional(v.boolean()),
+    visibility: v.optional(v.union(v.literal("public"), v.literal("hidden"))),
+  },
+  flow: castRoteFlow,
 })
 
 export const getForSession = query({

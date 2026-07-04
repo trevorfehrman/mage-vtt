@@ -7,6 +7,7 @@ import { NotAMember } from "../authz"
 import { OverrideMarker, OverrideStamp, makeOverrideStamp } from "../override"
 import { CurrentActor, type Actor } from "../ports/current-actor"
 import { DocumentNotFound } from "../ports/errors"
+import type { SpellRef } from "../rote-cast"
 import {
   GameStore,
   type MessageDraft,
@@ -67,6 +68,8 @@ export const makeInMemory = (seed: {
   members: ReadonlyArray<Membership>
   actor: Actor
   sheets?: ReadonlyArray<CharacterSheet>
+  /** Spell reference rows the read side resolves (issue #18). */
+  spells?: ReadonlyArray<SpellRef>
 }): InMemory => {
   const rolls: Array<StoredRoll> = []
   const messages: Array<StoredMessage> = []
@@ -91,6 +94,17 @@ export const makeInMemory = (seed: {
       return sheet
         ? Effect.succeed(sheet)
         : Effect.fail(new DocumentNotFound({ table: "characters", id: characterId }))
+    },
+
+    getSpell: (spellName, arcanum) => {
+      const spell = (seed.spells ?? []).find(
+        (s) => s.name === spellName && s.arcanum === arcanum,
+      )
+      return spell
+        ? Effect.succeed(spell)
+        : Effect.fail(
+            new DocumentNotFound({ table: "spells", id: `${spellName} (${arcanum})` }),
+          )
     },
 
     patchSheet: (characterId, patch) =>

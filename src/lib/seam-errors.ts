@@ -41,6 +41,12 @@ export function seamErrorMessage(
         return "That declaration isn't castable."
       case "InvalidSheetlessCast":
         return `That pool isn't castable (0–${MAX_DECLARED_POOL} dice).`
+      case "VulgarCastingNotYetSupported":
+        return `${data.spellName} is Vulgar — Vulgar casting awaits the Paradox phase.`
+      case "RoteNotKnown":
+        return `Your character hasn't trained the Rote "${data.roteName}".`
+      case "RoteSkillChoiceRequired":
+        return `Pick one skill for this Rote: ${(data.alternatives as string[] | undefined)?.join(" or ") ?? "one of its alternatives"}.`
     }
   }
   const fallback = opts.fallback

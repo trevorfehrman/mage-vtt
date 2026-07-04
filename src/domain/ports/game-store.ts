@@ -4,6 +4,8 @@ import type { DiceRollResult, RawPoolComponent } from "../dice"
 import type { CharacterId, MessageId, PlayerId, RollId, SessionId } from "../ids"
 import type { Membership } from "../membership"
 import type { NotAMember } from "../authz"
+import type { SpellRef } from "../rote-cast"
+import type { RoteArcanumName } from "../rote-pool"
 import type { DocumentNotFound } from "./errors"
 
 /**
@@ -71,6 +73,15 @@ export class GameStore extends Context.Service<
       characterId: CharacterId,
       patch: SheetPatch,
     ) => Effect.Effect<void>
+    /**
+     * The read side's spell reference (issue #18): resolve a spell by its
+     * business key — the (name, Arcanum) pair a `KnownRote` carries — into the
+     * decoded `SpellRef` the cast flows consult for the Aspect gate.
+     */
+    readonly getSpell: (
+      spellName: string,
+      arcanum: typeof RoteArcanumName.Type,
+    ) => Effect.Effect<SpellRef, DocumentNotFound>
     readonly insertRoll: (draft: RollDraft) => Effect.Effect<RollId>
     readonly insertMessage: (draft: MessageDraft) => Effect.Effect<MessageId>
   }

@@ -159,12 +159,17 @@ export const calculateRotePool = Effect.fn("Spellcasting.rotePool")(function* (i
   skillDots: number
   arcanumDots: number
   highSpeech?: boolean
+  willpower?: boolean
 }) {
   const baseDice = input.attributeDots + input.skillDots + input.arcanumDots
   const bonuses: Array<DiceBonus> = []
 
   if (input.highSpeech) {
     bonuses.push({ source: "High Speech", dice: 2 })
+  }
+
+  if (input.willpower) {
+    bonuses.push({ source: "Willpower", dice: WILLPOWER_BONUS_DICE })
   }
 
   const totalDice = sumDice(baseDice, bonuses, [], 0)

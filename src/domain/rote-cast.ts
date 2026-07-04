@@ -1,0 +1,197 @@
+import { Effect, Schema } from "effect"
+import type { CharacterSheet, KnownRote } from "./character"
+import {
+  ROTE_ATTRIBUTES,
+  ROTE_SKILLS,
+  RoteArcanumName,
+  SkillSlotTraitName,
+  type RotePool,
+} from "./rote-pool"
+
+/** A spell is Covert or Vulgar — nothing else survives the data pipeline
+ * (issue #14's cleanup; the conformance test is the tripwire). */
+export const SpellAspect = Schema.Literals(["Covert", "Vulgar"])
+export type SpellAspect = typeof SpellAspect.Type
+
+/**
+ * The spell reference row as the domain reads it (issue #18): the business key
+ * a `KnownRote` names (spell name + Arcanum) plus what casting consults — the
+ * Aspect for the phase gate, the level for the narrative. Decoded from the
+ * `spells` table at the adapter; a row that fails this decode is corrupt data.
+ */
+export class SpellRef extends Schema.Class<SpellRef>("SpellRef")({
+  name: Schema.String,
+  arcanum: RoteArcanumName,
+  level: Schema.Number.check(
+    Schema.isInt(),
+    Schema.isBetween({ minimum: 1, maximum: 5 }),
+  ),
+  aspect: SpellAspect,
+}) {}
+
+/**
+ * Pure leaves of Rote casting (PRD #11, issue #18): a Rote's structured pool
+ * names Traits ("Presence + Occult + Death"); casting resolves those names
+ * against the caster's own sheet. The vocabulary bridge lives here — the
+ * capitalized book names of `RotePool` map onto the sheet's lowercase nested
+ * ratings once, in one place.
+ */
+
+type SheetRatings = Pick<CharacterSheet, "attributes" | "skills" | "arcana">
+
+const ATTRIBUTE_DOTS: Record<
+  (typeof ROTE_ATTRIBUTES)[number],
+  (sheet: SheetRatings) => number
+> = {
+  Strength: (s) => s.attributes.physical.strength,
+  Dexterity: (s) => s.attributes.physical.dexterity,
+  Stamina: (s) => s.attributes.physical.stamina,
+  Intelligence: (s) => s.attributes.mental.intelligence,
+  Wits: (s) => s.attributes.mental.wits,
+  Resolve: (s) => s.attributes.mental.resolve,
+  Presence: (s) => s.attributes.social.presence,
+  Manipulation: (s) => s.attributes.social.manipulation,
+  Composure: (s) => s.attributes.social.composure,
+}
+
+const SKILL_DOTS: Record<
+  (typeof ROTE_SKILLS)[number],
+  (sheet: SheetRatings) => number
+> = {
+  Academics: (s) => s.skills.mental.academics,
+  Computer: (s) => s.skills.mental.computer,
+  Crafts: (s) => s.skills.mental.crafts,
+  Investigation: (s) => s.skills.mental.investigation,
+  Medicine: (s) => s.skills.mental.medicine,
+  Occult: (s) => s.skills.mental.occult,
+  Politics: (s) => s.skills.mental.politics,
+  Science: (s) => s.skills.mental.science,
+  Athletics: (s) => s.skills.physical.athletics,
+  Brawl: (s) => s.skills.physical.brawl,
+  Drive: (s) => s.skills.physical.drive,
+  Firearms: (s) => s.skills.physical.firearms,
+  Larceny: (s) => s.skills.physical.larceny,
+  Stealth: (s) => s.skills.physical.stealth,
+  Survival: (s) => s.skills.physical.survival,
+  Weaponry: (s) => s.skills.physical.weaponry,
+  "Animal Ken": (s) => s.skills.social.animalKen,
+  Empathy: (s) => s.skills.social.empathy,
+  Expression: (s) => s.skills.social.expression,
+  Intimidation: (s) => s.skills.social.intimidation,
+  Persuasion: (s) => s.skills.social.persuasion,
+  Socialize: (s) => s.skills.social.socialize,
+  Streetwise: (s) => s.skills.social.streetwise,
+  Subterfuge: (s) => s.skills.social.subterfuge,
+}
+
+/** Skill-slot lookup across both vocabularies: a handful of book pools rate a
+ * second Attribute in the skill slot; names never collide. */
+const skillSlotDots = (
+  sheet: SheetRatings,
+  name: (typeof ROTE_SKILLS)[number] | (typeof ROTE_ATTRIBUTES)[number],
+): { dots: number; kind: "skill" | "attribute" } =>
+  name in SKILL_DOTS
+    ? { dots: SKILL_DOTS[name as (typeof ROTE_SKILLS)[number]](sheet), kind: "skill" }
+    : {
+        dots: ATTRIBUTE_DOTS[name as (typeof ROTE_ATTRIBUTES)[number]](sheet),
+        kind: "attribute",
+      }
+
+// --- Errors (ADR-0010) ---
+
+/**
+ * Rules/precondition: the spell is Vulgar-aspected, and Vulgar casting awaits
+ * the Paradox phase (`vulgar-paradox-design`) — refusing loudly beats silently
+ * skipping Paradox. Aspect gates; method does not: this is the same refusal
+ * for a Rote or an improvised effect of the spell.
+ */
+export class VulgarCastingNotYetSupported extends Schema.TaggedErrorClass<VulgarCastingNotYetSupported>()(
+  "VulgarCastingNotYetSupported",
+  {
+    spellName: Schema.String,
+    arcanum: RoteArcanumName,
+  },
+) {}
+
+/**
+ * Rules/precondition: the Rote's pool offers "or" alternatives and the cast
+ * declared no pick (or picked something the book never offered). The caster
+ * chooses one alternative at cast time.
+ */
+export class RoteSkillChoiceRequired extends Schema.TaggedErrorClass<RoteSkillChoiceRequired>()(
+  "RoteSkillChoiceRequired",
+  {
+    roteName: Schema.String,
+    alternatives: Schema.Array(SkillSlotTraitName),
+  },
+) {}
+
+/** The Covert-tier gate (PRD #11): every cast flow consults the spell's Aspect
+ * and refuses Vulgar with the phase's typed error. */
+export const requireCovertSpell = Effect.fn("RoteCast.requireCovertSpell")(function* (
+  spell: SpellRef,
+) {
+  if (spell.aspect === "Vulgar") {
+    return yield* new VulgarCastingNotYetSupported({
+      spellName: spell.name,
+      arcanum: spell.arcanum,
+    })
+  }
+})
+
+/** The resolved casting traits: names straight off the Rote, dots off the sheet. */
+export interface ResolvedRotePool {
+  readonly attribute: { readonly name: string; readonly dots: number }
+  /** The skill slot may hold a second Attribute ("Wits + Composure + Forces"). */
+  readonly skill: {
+    readonly name: string
+    readonly dots: number
+    readonly kind: "skill" | "attribute"
+  }
+  readonly arcanum: { readonly name: string; readonly dots: number }
+}
+
+export const resolveRotePool = Effect.fn("RoteCast.resolveRotePool")(function* (
+  sheet: SheetRatings,
+  rote: KnownRote,
+  skillChoice?: string,
+) {
+  const pool: RotePool = rote.pool
+
+  // The skill slot: a declared choice must be one the book offered; an "or"
+  // pool with no declaration is unpickable by the engine — the caster decides.
+  let skillName: (typeof pool.skills)[number]
+  if (skillChoice !== undefined) {
+    const chosen = pool.skills.find((s) => s === skillChoice)
+    if (!chosen) {
+      return yield* new RoteSkillChoiceRequired({
+        roteName: rote.name,
+        alternatives: pool.skills,
+      })
+    }
+    skillName = chosen
+  } else if (pool.skills.length > 1) {
+    return yield* new RoteSkillChoiceRequired({
+      roteName: rote.name,
+      alternatives: pool.skills,
+    })
+  } else {
+    skillName = pool.skills[0]
+  }
+
+  const resolved: ResolvedRotePool = {
+    attribute: {
+      name: pool.attribute,
+      dots: ATTRIBUTE_DOTS[pool.attribute](sheet),
+    },
+    skill: {
+      name: skillName,
+      ...skillSlotDots(sheet, skillName),
+    },
+    arcanum: {
+      name: pool.arcanum,
+      dots: sheet.arcana[pool.arcanum.toLowerCase() as keyof typeof sheet.arcana] ?? 0,
+    },
+  }
+  return resolved
+})

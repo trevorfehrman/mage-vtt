@@ -21,6 +21,7 @@ import {
 } from "../../src/domain/override"
 import { CurrentActor, type Actor } from "../../src/domain/ports/current-actor"
 import { DocumentNotFound } from "../../src/domain/ports/errors"
+import { SpellRef } from "../../src/domain/rote-cast"
 import {
   GameStore,
   type MessageDraft,
@@ -130,6 +131,32 @@ export const convexLive = (
           return yield* new DocumentNotFound({ table: "characters", id: characterId })
         }
         return yield* decodeSheet(doc)
+      }),
+
+    getSpell: (spellName, arcanum) =>
+      Effect.gen(function* () {
+        const rows = yield* Effect.promise(() =>
+          ctx.db
+            .query("spells")
+            .withIndex("by_name", (q) => q.eq("name", spellName))
+            .collect(),
+        )
+        const row = rows.find((s) => s.arcanum === arcanum)
+        if (!row) {
+          return yield* new DocumentNotFound({
+            table: "spells",
+            id: `${spellName} (${arcanum})`,
+          })
+        }
+        // A reference row that fails the decode (a dirty Aspect, an
+        // out-of-range level) is corrupt data — a pipeline bug, not a
+        // client-actionable failure (ADR-0010's Fail/Die split).
+        return yield* Schema.decodeUnknownEffect(SpellRef)({
+          name: row.name,
+          arcanum: row.arcanum,
+          level: row.level,
+          aspect: row.aspect,
+        }).pipe(Effect.orDie)
       }),
 
     patchSheet: (characterId, patch) =>

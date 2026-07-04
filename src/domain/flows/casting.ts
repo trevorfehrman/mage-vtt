@@ -93,6 +93,29 @@ const CastDeclaration = Schema.Struct({
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
+/**
+ * A declared factor penalty past the pool's floor changes nothing mechanically —
+ * zero and fewer dice are the same chance die — so record only the effective
+ * portion, chunked to fit a component's dots range (a book-legal Potency 12
+ * can be -22, far outside one component's box). Shared by every casting flow
+ * that applies spell factors.
+ */
+export const factorPenaltyComponents = (
+  pool: CastingPool,
+): Array<RawPoolComponent> => {
+  const positiveDice = pool.totalDice - pool.factorPenalty
+  const effectivePenalty = Math.max(pool.factorPenalty, -positiveDice)
+  const components: Array<RawPoolComponent> = []
+  for (let rest = effectivePenalty; rest < 0; rest += 10) {
+    components.push({
+      type: "modifier",
+      name: "Spell factors",
+      dots: Math.max(rest, -10),
+    })
+  }
+  return components
+}
+
 /** Shared narrative fragment for cast summaries (also the sheet-less flow). */
 export const outcomeOf = (result: DiceRollResult): string =>
   result.isDramaticFailure
@@ -192,20 +215,7 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
     ? yield* spendWillpower(sheet.willpowerCurrent)
     : null
 
-  // A declared penalty past the pool's floor changes nothing mechanically —
-  // zero and fewer dice are the same chance die — so record only the effective
-  // portion, chunked to fit a component's dots range (a book-legal Potency 12
-  // can be -22, far outside one component's box).
-  const positiveDice = pool.totalDice - pool.factorPenalty
-  const effectivePenalty = Math.max(pool.factorPenalty, -positiveDice)
-  const penaltyComponents: Array<RawPoolComponent> = []
-  for (let rest = effectivePenalty; rest < 0; rest += 10) {
-    penaltyComponents.push({
-      type: "modifier",
-      name: "Spell factors",
-      dots: Math.max(rest, -10),
-    })
-  }
+  const penaltyComponents = factorPenaltyComponents(pool)
 
   const components: ReadonlyArray<RawPoolComponent> = [
     { type: "gnosis", name: "Gnosis", dots: sheet.gnosis },

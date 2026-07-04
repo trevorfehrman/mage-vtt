@@ -36,6 +36,21 @@ describe("Spellcasting", () => {
     }),
   )
 
+  it.effect("a willpower spend adds +3 to a rote pool (issue #18)", () =>
+    Effect.gen(function* () {
+      const pool = yield* calculateRotePool({
+        attributeDots: 2,
+        skillDots: 4,
+        arcanumDots: 3,
+        willpower: true,
+      })
+
+      expect(pool.baseDice).toBe(9)
+      expect(pool.bonuses).toContainEqual({ source: "Willpower", dice: 3 })
+      expect(pool.totalDice).toBe(12)
+    }),
+  )
+
   it.effect("high speech adds +2 to casting pool", () =>
     Effect.gen(function* () {
       const pool = yield* calculateImprovisedPool({

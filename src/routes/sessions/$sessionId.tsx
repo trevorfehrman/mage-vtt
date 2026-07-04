@@ -10,6 +10,7 @@ import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { ChatInput } from "#/components/game/ChatInput"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { ImprovisedCastForm } from "#/components/game/ImprovisedCastForm"
+import { RoteCastForm } from "#/components/game/RoteCastForm"
 import { SheetlessCastForm } from "#/components/game/SheetlessCastForm"
 import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
@@ -102,6 +103,11 @@ function SessionPage() {
     characterSheet = sheet ? (
       <div className="grid gap-6">
         <CharacterSheet character={sheet} pool={pool} />
+        <RoteCastForm
+          sessionId={sessionId as Id<"sessions">}
+          characterId={character._id}
+          rotes={sheet.rotes}
+        />
         <ImprovisedCastForm
           sessionId={sessionId as Id<"sessions">}
           characterId={character._id}
