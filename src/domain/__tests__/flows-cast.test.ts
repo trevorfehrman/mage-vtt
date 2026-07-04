@@ -650,6 +650,117 @@ describe("Flows.casting.castSpell spell factors (PRD #4 slice #9)", () => {
   )
 })
 
+describe("Flows.casting.castSpell willpower spend (PRD #11, issue #12)", () => {
+  // Death 3 + Gnosis 1 = 4 base dice, Ruling for Moros (0 base Mana).
+  const castDeath = (
+    store: ReturnType<typeof makeInMemory>,
+    extras: Partial<Parameters<typeof castSpell>[0]> = {},
+  ) =>
+    castSpell({
+      sessionId: SESSION,
+      characterId: CHARACTER,
+      arcanum: "death",
+      level: 1,
+      ...extras,
+    }).pipe(Effect.provide(store.layer), Random.withSeed("wp-cast-seed"))
+
+  it.effect("a willpower spend adds +3 dice and decrements the sheet in the same patch", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      yield* castDeath(store, { spendWillpower: true })
+
+      const entry = store.rolls[0]!
+      // Pool = Gnosis 1 + Death 3 + Willpower 3
+      expect(entry.result.poolSize).toBe(7)
+      expect(entry.components).toContainEqual({
+        type: "modifier",
+        name: "Willpower",
+        dots: 3,
+      })
+      // One atomic patch carries both currencies
+      expect(store.sheetPatches).toEqual([
+        {
+          characterId: CHARACTER,
+          patch: { manaCurrent: 10, willpowerCurrent: 5 },
+        },
+      ])
+      expect(store.sheets.get(CHARACTER)!.willpowerCurrent).toBe(5)
+      // The narrative names the spend
+      expect(entry.summary).toContain("Willpower")
+    }),
+  )
+
+  it.effect("willpower stacks with the other factors", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      // 4 base + 2 High Speech + 3 Willpower - 2 Potency = 7
+      yield* castDeath(store, {
+        spendWillpower: true,
+        highSpeech: true,
+        potency: 2,
+      })
+
+      expect(store.rolls[0]!.result.poolSize).toBe(7)
+    }),
+  )
+
+  it.effect("a spend at 0 Willpower fails InsufficientWillpower atomically — no writes", () =>
+    Effect.gen(function* () {
+      const store = seed({ sheet: makeSheet({ willpowerCurrent: 0 }) })
+
+      const exit = yield* castDeath(store, { spendWillpower: true }).pipe(Effect.exit)
+
+      expect(failureTag(exit)).toBe("InsufficientWillpower")
+      expect(store.rolls).toHaveLength(0)
+      expect(store.sheetPatches).toHaveLength(0)
+      expect(store.sheets.get(CHARACTER)!.willpowerCurrent).toBe(0)
+      expect(store.sheets.get(CHARACTER)!.manaCurrent).toBe(10)
+    }),
+  )
+
+  it.effect("the Storyteller spending in a player's stead carries the Override marker", () =>
+    Effect.gen(function* () {
+      const STORYTELLER = PlayerId.make("user-morgan")
+      const morgan = new Membership({
+        userId: STORYTELLER,
+        sessionId: SESSION,
+        role: "storyteller",
+        displayName: "Morgan",
+      })
+      const store = makeInMemory({
+        members: [aldous, briar, morgan],
+        actor: { userId: STORYTELLER, isDev: false },
+        sheets: [makeSheet()],
+      })
+
+      yield* castDeath(store, { spendWillpower: true })
+
+      const entry = store.rolls[0]!
+      expect(entry.override).toEqual({
+        invokedByUserId: STORYTELLER,
+        invokedByName: "Morgan",
+        kind: "storyteller-action",
+      })
+      expect(store.sheets.get(CHARACTER)!.willpowerCurrent).toBe(5)
+    }),
+  )
+
+  it.effect("a cast without the declaration touches no Willpower", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      yield* castDeath(store)
+
+      expect(store.sheetPatches).toEqual([
+        { characterId: CHARACTER, patch: { manaCurrent: 10 } },
+      ])
+      expect(store.sheets.get(CHARACTER)!.willpowerCurrent).toBe(6)
+    }),
+  )
+})
+
 // --- Type-level guard: the narrow patch port (ADR-0011) ---
 // `SheetPatch` is the compensating control for permissive sheet checks: it must
 // not be able to express writes outside the fields play mutates.

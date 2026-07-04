@@ -11,6 +11,7 @@ interface DicePoolContext {
   poolSize: number
   againThreshold: number
   isRoteAction: boolean
+  spendWillpower: boolean
   visibility: "public" | "hidden"
   error: string | null
 }
@@ -21,6 +22,7 @@ type DicePoolEvent =
   | { type: "TOGGLE_COMPONENT"; component: PoolComponentInput }
   | { type: "SET_AGAIN_THRESHOLD"; value: number }
   | { type: "SET_ROTE_ACTION"; value: boolean }
+  | { type: "SET_SPEND_WILLPOWER"; value: boolean }
   | { type: "SET_VISIBILITY"; value: "public" | "hidden" }
   | { type: "ROLL" }
   | { type: "ROLL_COMPLETE" }
@@ -57,6 +59,7 @@ export const dicePoolMachine = setup({
     poolSize: 0,
     againThreshold: 10,
     isRoteAction: false,
+    spendWillpower: false,
     visibility: "public",
     error: null,
   },
@@ -162,6 +165,11 @@ export const dicePoolMachine = setup({
             isRoteAction: ({ event }) => event.value,
           }),
         },
+        SET_SPEND_WILLPOWER: {
+          actions: assign({
+            spendWillpower: ({ event }) => event.value,
+          }),
+        },
         SET_VISIBILITY: {
           actions: assign({
             visibility: ({ event }) => event.value,
@@ -191,6 +199,7 @@ export const dicePoolMachine = setup({
             poolSize: 0,
             againThreshold: 10,
             isRoteAction: false,
+            spendWillpower: false,
             visibility: () => "public" as const,
             error: null,
           }),

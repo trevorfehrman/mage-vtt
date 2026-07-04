@@ -1,4 +1,5 @@
 import { Effect, Schema } from "effect"
+import { WILLPOWER_BONUS_DICE } from "./willpower-economy"
 
 // --- Types ---
 
@@ -107,6 +108,7 @@ export const calculateImprovisedPool = Effect.fn("Spellcasting.improvisedPool")(
   gnosis: number
   arcanumDots: number
   highSpeech?: boolean
+  willpower?: boolean
   sympatheticConnection?: string
 }) {
   const baseDice = input.gnosis + input.arcanumDots
@@ -117,6 +119,10 @@ export const calculateImprovisedPool = Effect.fn("Spellcasting.improvisedPool")(
 
   if (input.highSpeech) {
     bonuses.push({ source: "High Speech", dice: 2 })
+  }
+
+  if (input.willpower) {
+    bonuses.push({ source: "Willpower", dice: WILLPOWER_BONUS_DICE })
   }
 
   if (input.sympatheticConnection) {

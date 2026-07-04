@@ -15,6 +15,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "#/components/ui/collapsible"
+import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
 type DicePoolAPI = ReturnType<typeof useDicePool>
@@ -24,6 +25,10 @@ export function DicePoolBuilder({ pool }: { pool: DicePoolAPI }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const hasComponents = pool.context.components.length > 0
   const canInteract = pool.state === "idle" || pool.state === "building"
+  // The bonus is server-added on roll; mirror it in the displayed size.
+  const displaySize =
+    pool.context.poolSize +
+    (pool.context.spendWillpower ? WILLPOWER_BONUS_DICE : 0)
 
   const handleAddModifier = () => {
     if (modifier === 0) return
@@ -63,7 +68,7 @@ export function DicePoolBuilder({ pool }: { pool: DicePoolAPI }) {
         {hasComponents && (
           <>
             <span className="text-lg font-bold tabular-nums ml-1">
-              {pool.context.poolSize}
+              {displaySize}
             </span>
 
             {/* Inline component badges in collapsed mode */}
@@ -180,6 +185,17 @@ export function DicePoolBuilder({ pool }: { pool: DicePoolAPI }) {
                 />
                 <span>Hidden</span>
               </label>
+
+              {pool.canSpendWillpower && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Switch
+                    size="sm"
+                    checked={pool.context.spendWillpower}
+                    onCheckedChange={(v) => pool.setSpendWillpower(v)}
+                  />
+                  <span>Willpower +{WILLPOWER_BONUS_DICE}</span>
+                </label>
+              )}
             </div>
           )}
 
@@ -191,7 +207,7 @@ export function DicePoolBuilder({ pool }: { pool: DicePoolAPI }) {
                   onClick={pool.roll}
                   className="flex-1 cursor-pointer h-9"
                 >
-                  Roll {pool.context.poolSize} dice
+                  Roll {displaySize} dice
                 </Button>
                 <Button
                   variant="ghost"

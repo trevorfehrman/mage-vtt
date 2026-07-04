@@ -44,7 +44,6 @@ function SessionPage() {
     sessionId: sessionId as Id<"sessions">,
   })
   const user = useQuery(api.auth.getCurrentUser)
-  const pool = useDicePool(sessionId as Id<"sessions">)
 
   // Presence — heartbeat for this session room
   const presenceState = usePresence(
@@ -56,6 +55,7 @@ function SessionPage() {
   const character = useQuery(api.characters.getForSession, {
     sessionId: sessionId as Id<"sessions">,
   })
+  const pool = useDicePool(sessionId as Id<"sessions">, character?._id)
   const seedCharacter = useMutation(api.characters.seed)
   const seededRef = useRef(false)
 

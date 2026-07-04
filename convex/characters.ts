@@ -18,6 +18,7 @@ export const castSpell = enforcedMutation({
     targets: v.optional(v.number()),
     highSpeech: v.optional(v.boolean()),
     extraManaCost: v.optional(v.number()),
+    spendWillpower: v.optional(v.boolean()),
     visibility: v.optional(v.union(v.literal("public"), v.literal("hidden"))),
   },
   flow: castSpellFlow,

@@ -29,6 +29,8 @@ function castErrorMessage(err: unknown): string {
         return `You need ${capitalize(String(data.arcanum))} ${data.level} — you have ${data.dots}.`
       case "InsufficientMana":
         return `Not enough Mana: need ${data.required}, have ${data.current}.`
+      case "InsufficientWillpower":
+        return "No Willpower left to spend."
       case "NotYourCharacter":
         return "That's not your character."
       case "NotAMember":
@@ -53,6 +55,7 @@ export function ImprovisedCastForm({
   const [potency, setPotency] = useState(1)
   const [targets, setTargets] = useState(1)
   const [highSpeech, setHighSpeech] = useState(false)
+  const [willpower, setWillpower] = useState(false)
   const [extraMana, setExtraMana] = useState(0)
   const [hidden, setHidden] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -71,6 +74,7 @@ export function ImprovisedCastForm({
         ...(potency > 1 ? { potency } : {}),
         ...(targets > 1 ? { targets } : {}),
         ...(highSpeech ? { highSpeech } : {}),
+        ...(willpower ? { spendWillpower: true } : {}),
         ...(extraMana > 0 ? { extraManaCost: extraMana } : {}),
         ...(hidden ? { visibility: "hidden" as const } : {}),
       })
@@ -151,6 +155,14 @@ export function ImprovisedCastForm({
             onChange={(e) => setHighSpeech(e.target.checked)}
           />
           High Speech
+        </label>
+        <label className="flex items-center gap-1">
+          <input
+            type="checkbox"
+            checked={willpower}
+            onChange={(e) => setWillpower(e.target.checked)}
+          />
+          Willpower +3
         </label>
         <label className="flex items-center gap-1">
           <input

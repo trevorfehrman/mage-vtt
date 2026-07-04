@@ -4,6 +4,7 @@ import { CharacterId, PlayerId, SessionId } from "./ids"
 import { Membership } from "./membership"
 import { OverrideMarker, OverrideStamp } from "./override"
 import { CurrentActor } from "./ports/current-actor"
+import { DocumentNotFound } from "./ports/errors"
 import { GameStore } from "./ports/game-store"
 
 /**
@@ -80,6 +81,28 @@ export const requireOwnedCharacter = Effect.fn("Authz.requireOwnedCharacter")(fu
 
   return yield* new NotYourCharacter({ characterId: sheet.id, userId: actor.userId })
 })
+
+/**
+ * Resolve a character sheet as this session's flows see it, and walk the
+ * authority ladder over it: the sheet is fetched, scoped to the session (a
+ * character outside this session isn't there, as far as this session's flows
+ * are concerned — `DocumentNotFound`, not a leak), and `requireOwnedCharacter`
+ * guards who may act through it. The one door every sheet-funded action
+ * shares (cast, Willpower spend, ...).
+ */
+export const requireSessionCharacter = Effect.fn("Authz.requireSessionCharacter")(
+  function* (sessionId: SessionId, characterId: CharacterId) {
+    const store = yield* GameStore
+    const sheet = yield* store.getSheet(characterId)
+
+    if (sheet.sessionId !== sessionId) {
+      return yield* new DocumentNotFound({ table: "characters", id: characterId })
+    }
+
+    yield* requireOwnedCharacter(sheet)
+    return sheet
+  },
+)
 
 /**
  * Resolve the current actor's membership in a session, or fail `NotAMember`.

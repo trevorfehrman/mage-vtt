@@ -1,10 +1,10 @@
 import { Effect, Schema } from "effect"
-import { requireOwnedCharacter } from "../authz"
+import { requireSessionCharacter } from "../authz"
 import { ArcanumName } from "../character"
 import { buildPool, rollPool, type RawPoolComponent, type RollVisibility } from "../dice"
 import { CharacterId, SessionId } from "../ids"
 import { improvisedManaCost, spendMana } from "../mana-economy"
-import { DocumentNotFound } from "../ports/errors"
+import { spendWillpower, WILLPOWER_BONUS_DICE } from "../willpower-economy"
 import { GameStore } from "../ports/game-store"
 import {
   applySpellFactors,
@@ -47,6 +47,8 @@ export interface CastSpellArgs {
    * the deduction is mechanical — on top of the server-computed Path cost.
    */
   readonly extraManaCost?: number
+  /** Willpower spend: +3 dice, one point off the sheet (issue #12). */
+  readonly spendWillpower?: boolean
   /** Table visibility of the roll (a Hidden roll) — orthogonal to the Covert Aspect. */
   readonly visibility?: RollVisibility
 }
@@ -86,6 +88,7 @@ const CastDeclaration = Schema.Struct({
   extraManaCost: Schema.optional(
     Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
   ),
+  spendWillpower: Schema.optional(Schema.Boolean),
 })
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
@@ -127,6 +130,9 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
     ...(args.extraManaCost !== undefined
       ? { extraManaCost: args.extraManaCost }
       : {}),
+    ...(args.spendWillpower !== undefined
+      ? { spendWillpower: args.spendWillpower }
+      : {}),
   }).pipe(
     Effect.mapError(
       () =>
@@ -137,19 +143,14 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
   )
 
   const store = yield* GameStore
-  const characterId = CharacterId.make(args.characterId)
-  const sheet = yield* store.getSheet(characterId)
 
-  // Scoped read: a character outside this session isn't there, as far as this
-  // session's flows are concerned.
-  if (sheet.sessionId !== SessionId.make(args.sessionId)) {
-    return yield* new DocumentNotFound({ table: "characters", id: args.characterId })
-  }
-
-  // The authority ladder (ADR-0006): owner unmarked, ST/Dev with an Override
-  // recorded into request scope, anyone else refused. Deliberately not
-  // requireMember — a Dev may cast in a session they aren't a member of.
-  yield* requireOwnedCharacter(sheet)
+  // Scoped read + the authority ladder (ADR-0006): owner unmarked, ST/Dev with
+  // an Override recorded into request scope, anyone else refused. Deliberately
+  // not requireMember — a Dev may cast in a session they aren't a member of.
+  const sheet = yield* requireSessionCharacter(
+    SessionId.make(args.sessionId),
+    CharacterId.make(args.characterId),
+  )
 
   // Attribution follows the character's owner (ADR-0006): the entry is the
   // owner's action in their visibility scope, whoever invoked it.
@@ -171,6 +172,7 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
     gnosis: sheet.gnosis,
     arcanumDots: dots,
     ...(declaration.highSpeech ? { highSpeech: true } : {}),
+    ...(declaration.spendWillpower ? { willpower: true } : {}),
   })
   const pool = yield* applySpellFactors(basePool, {
     ...(declaration.potency !== undefined ? { potency: declaration.potency } : {}),
@@ -183,6 +185,11 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
   const pathCost = yield* improvisedManaCost(sheet.path, declaration.arcanum)
   const manaCost = pathCost + pool.manaCost + (declaration.extraManaCost ?? 0)
   const manaRemaining = yield* spendMana(sheet.manaCurrent, manaCost)
+
+  // Willpower: declared, checked before anything rolls or writes (issue #12).
+  const willpowerRemaining = declaration.spendWillpower
+    ? yield* spendWillpower(sheet.willpowerCurrent)
+    : null
 
   // A declared penalty past the pool's floor changes nothing mechanically —
   // zero and fewer dice are the same chance die — so record only the effective
@@ -205,6 +212,9 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
     ...(declaration.highSpeech
       ? [{ type: "modifier", name: "High Speech", dots: 2 }]
       : []),
+    ...(declaration.spendWillpower
+      ? [{ type: "modifier", name: "Willpower", dots: WILLPOWER_BONUS_DICE }]
+      : []),
     ...penaltyComponents,
   ]
   const dicePool = yield* buildPool(components)
@@ -221,7 +231,10 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
     visibility: args.visibility ?? "public",
   })
 
-  yield* store.patchSheet(sheet.id, { manaCurrent: manaRemaining })
+  yield* store.patchSheet(sheet.id, {
+    manaCurrent: manaRemaining,
+    ...(willpowerRemaining !== null ? { willpowerCurrent: willpowerRemaining } : {}),
+  })
   return yield* store.insertRoll({
     sessionId: member.sessionId,
     member,
@@ -239,6 +252,7 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
           ? [`${declaration.targets} targets`]
           : []),
         ...(declaration.highSpeech ? ["High Speech"] : []),
+        ...(declaration.spendWillpower ? ["Willpower"] : []),
       ],
       result,
       manaCost,

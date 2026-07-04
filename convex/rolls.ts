@@ -20,6 +20,7 @@ export const create = enforcedMutation({
     againThreshold: v.optional(v.number()),
     roteAction: v.optional(v.boolean()),
     visibility: v.optional(v.union(v.literal("public"), v.literal("hidden"))),
+    willpower: v.optional(v.object({ characterId: v.id("characters") })),
   },
   flow: createRoll,
 })

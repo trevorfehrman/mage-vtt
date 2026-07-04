@@ -1,13 +1,15 @@
 import { Effect, Exit, Random } from "effect"
 import { describe, expect, it } from "@effect/vitest"
+import { CharacterSheet } from "../character"
 import { buildPool, rollPool } from "../dice"
 import { createRoll } from "../flows/rolls"
-import { PlayerId, SessionId } from "../ids"
+import { CharacterId, PlayerId, SessionId, SessionMemberId } from "../ids"
 import { Membership } from "../membership"
 import { makeInMemory } from "../testing/in-memory"
 
 const SESSION = SessionId.make("session-1")
 const PLAYER = PlayerId.make("user-aldous")
+const CHARACTER = CharacterId.make("char-aldous")
 
 const member = new Membership({
   userId: PLAYER,
@@ -26,6 +28,46 @@ const components = [
   { type: "attribute", name: "Strength", dots: 3 },
   { type: "skill", name: "Brawl", dots: 2 },
 ]
+
+const makeSheet = (
+  overrides: Partial<ConstructorParameters<typeof CharacterSheet>[0]> = {},
+) =>
+  new CharacterSheet({
+    id: CHARACTER,
+    sessionId: SESSION,
+    userId: PLAYER,
+    sessionMemberId: SessionMemberId.make("member-aldous"),
+    name: "Aldous",
+    concept: "Occult investigator",
+    virtue: "Justice",
+    vice: "Pride",
+    path: "Moros",
+    order: "Mysterium",
+    gnosis: 1,
+    attributes: {
+      mental: { intelligence: 3, wits: 2, resolve: 2 },
+      physical: { strength: 2, dexterity: 2, stamina: 2 },
+      social: { presence: 2, manipulation: 3, composure: 3 },
+    },
+    skills: {
+      mental: { academics: 2, computer: 0, crafts: 0, investigation: 3, medicine: 0, occult: 4, politics: 0, science: 2 },
+      physical: { athletics: 1, brawl: 0, drive: 1, firearms: 0, larceny: 2, stealth: 2, survival: 1, weaponry: 0 },
+      social: { animalKen: 0, empathy: 1, expression: 0, intimidation: 0, persuasion: 1, socialize: 1, streetwise: 1, subterfuge: 0 },
+    },
+    arcana: { death: 3, matter: 2, prime: 1 },
+    healthTrack: ["empty", "empty", "empty", "empty", "empty", "empty", "empty"],
+    willpowerCurrent: 6,
+    manaCurrent: 10,
+    ...overrides,
+  })
+
+const failureTag = (exit: Exit.Exit<unknown, unknown>) => {
+  if (!Exit.isFailure(exit)) return null
+  const fail = exit.cause.reasons.find((r) => r._tag === "Fail") as
+    | { error: { _tag: string } }
+    | undefined
+  return fail?.error._tag ?? null
+}
 
 describe("Flows.rolls.create (enforcement seam tracer bullet)", () => {
   it.effect("a member's public roll produces one atomic Activity entry", () =>
@@ -108,6 +150,138 @@ describe("Flows.rolls.create (enforcement seam tracer bullet)", () => {
       expect(actual.poolSize).toBe(expected.poolSize)
       expect(actual.isExceptionalSuccess).toBe(expected.isExceptionalSuccess)
       expect(actual.isDramaticFailure).toBe(expected.isDramaticFailure)
+    }),
+  )
+
+  it.effect("a willpower spend adds +3 dice and decrements the sheet", () =>
+    Effect.gen(function* () {
+      const store = makeInMemory({
+        members: [member],
+        actor: { userId: PLAYER, isDev: false },
+        sheets: [makeSheet()],
+      })
+
+      yield* createRoll({
+        sessionId: SESSION,
+        components,
+        willpower: { characterId: CHARACTER },
+      }).pipe(Effect.provide(store.layer), Random.withSeed("wp-seed"))
+
+      const entry = store.rolls[0]!
+      // Pool = Strength 3 + Brawl 2 + Willpower 3
+      expect(entry.result.poolSize).toBe(8)
+      // The breakdown names the spend (server-added, never client-declared)
+      expect(entry.components).toContainEqual({
+        type: "modifier",
+        name: "Willpower",
+        dots: 3,
+      })
+      // The point left the sheet through the narrow patch port
+      expect(store.sheetPatches).toEqual([
+        { characterId: CHARACTER, patch: { willpowerCurrent: 5 } },
+      ])
+      expect(store.sheets.get(CHARACTER)!.willpowerCurrent).toBe(5)
+      // No rule bent: the owner spent their own point
+      expect(entry.override).toBeNull()
+    }),
+  )
+
+  it.effect("a spend at 0 Willpower fails InsufficientWillpower — no roll, no write", () =>
+    Effect.gen(function* () {
+      const store = makeInMemory({
+        members: [member],
+        actor: { userId: PLAYER, isDev: false },
+        sheets: [makeSheet({ willpowerCurrent: 0 })],
+      })
+
+      const exit = yield* createRoll({
+        sessionId: SESSION,
+        components,
+        willpower: { characterId: CHARACTER },
+      }).pipe(Effect.provide(store.layer), Random.withSeed("wp-seed"), Effect.exit)
+
+      expect(failureTag(exit)).toBe("InsufficientWillpower")
+      expect(store.rolls).toHaveLength(0)
+      expect(store.sheetPatches).toHaveLength(0)
+      expect(store.sheets.get(CHARACTER)!.willpowerCurrent).toBe(0)
+    }),
+  )
+
+  it.effect("the Storyteller spending in a player's stead carries the Override marker", () =>
+    Effect.gen(function* () {
+      const STORYTELLER = PlayerId.make("user-morgan")
+      const morgan = new Membership({
+        userId: STORYTELLER,
+        sessionId: SESSION,
+        role: "storyteller",
+        displayName: "Morgan",
+      })
+      const store = makeInMemory({
+        members: [member, morgan],
+        actor: { userId: STORYTELLER, isDev: false },
+        sheets: [makeSheet()],
+      })
+
+      yield* createRoll({
+        sessionId: SESSION,
+        components,
+        willpower: { characterId: CHARACTER },
+      }).pipe(Effect.provide(store.layer), Random.withSeed("wp-seed"))
+
+      const entry = store.rolls[0]!
+      expect(entry.override).toEqual({
+        invokedByUserId: STORYTELLER,
+        invokedByName: "Morgan",
+        kind: "storyteller-action",
+      })
+      expect(store.sheets.get(CHARACTER)!.willpowerCurrent).toBe(5)
+    }),
+  )
+
+  it.effect("spending from another player's sheet fails NotYourCharacter", () =>
+    Effect.gen(function* () {
+      const INTRUDER = PlayerId.make("user-briar")
+      const briar = new Membership({
+        userId: INTRUDER,
+        sessionId: SESSION,
+        role: "player",
+        displayName: "Briar",
+      })
+      const store = makeInMemory({
+        members: [member, briar],
+        actor: { userId: INTRUDER, isDev: false },
+        sheets: [makeSheet()],
+      })
+
+      const exit = yield* createRoll({
+        sessionId: SESSION,
+        components,
+        willpower: { characterId: CHARACTER },
+      }).pipe(Effect.provide(store.layer), Random.withSeed("wp-seed"), Effect.exit)
+
+      expect(failureTag(exit)).toBe("NotYourCharacter")
+      expect(store.rolls).toHaveLength(0)
+      expect(store.sheetPatches).toHaveLength(0)
+    }),
+  )
+
+  it.effect("a sheet from a different session is not found in this one", () =>
+    Effect.gen(function* () {
+      const store = makeInMemory({
+        members: [member],
+        actor: { userId: PLAYER, isDev: false },
+        sheets: [makeSheet({ sessionId: SessionId.make("session-elsewhere") })],
+      })
+
+      const exit = yield* createRoll({
+        sessionId: SESSION,
+        components,
+        willpower: { characterId: CHARACTER },
+      }).pipe(Effect.provide(store.layer), Random.withSeed("wp-seed"), Effect.exit)
+
+      expect(failureTag(exit)).toBe("DocumentNotFound")
+      expect(store.rolls).toHaveLength(0)
+      expect(store.sheetPatches).toHaveLength(0)
     }),
   )
 
