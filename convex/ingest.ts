@@ -1,5 +1,6 @@
 import { mutation } from "./_generated/server"
 import { v } from "convex/values"
+import { rotePoolValidator } from "./schema"
 
 export const insertRuleChunk = mutation({
   args: {
@@ -60,6 +61,7 @@ export const insertRote = mutation({
     order: v.string(),
     name: v.string(),
     dicePool: v.string(),
+    pool: v.optional(rotePoolValidator),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("rotes", args)

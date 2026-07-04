@@ -8,6 +8,19 @@ import {
   SessionMemberDoc,
 } from "../src/domain/tables"
 
+/**
+ * A Rote's structured dice pool (issue #14), mirroring
+ * src/domain/rote-pool.ts `RotePool`: `skills` ≥1 (more than one = the book's
+ * "or" alternatives), `vs` present = a contested pool. Shared with the
+ * `insertRote` ingest mutation.
+ */
+export const rotePoolValidator = v.object({
+  attribute: v.string(),
+  skills: v.array(v.string()),
+  arcanum: v.string(),
+  vs: v.optional(v.array(v.string())),
+})
+
 export default defineSchema({
   // --- RAG: Rule chunks with vector embeddings ---
   ruleChunks: defineTable({
@@ -51,7 +64,11 @@ export default defineSchema({
     spellLevel: v.number(),
     order: v.string(),
     name: v.string(),
+    // Canonical prose form of `pool` — display only.
     dicePool: v.string(),
+    // The structured pool (issue #14) — what the domain consumes. Optional
+    // only for rows predating re-ingestion.
+    pool: v.optional(rotePoolValidator),
   })
     .index("by_order", ["order"])
     .index("by_spell", ["spellName", "spellArcanum"]),

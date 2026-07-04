@@ -23,6 +23,8 @@ const ORDERS = [
   "Mysterium", "Silver Ladder",
 ] as const
 
+// Keep in sync with ROTE_ATTRIBUTES / ROTE_SKILLS in src/domain/rote-pool.ts —
+// drift is caught by src/domain/__tests__/spell-data.conformance.test.ts.
 const ATTRIBUTES = [
   "Strength", "Dexterity", "Stamina",
   "Intelligence", "Wits", "Resolve",

@@ -165,6 +165,7 @@ async function uploadStructuredData() {
         order: rote.order,
         name: rote.name,
         dicePool: rote.dicePool,
+        ...(rote.pool ? { pool: rote.pool } : {}),
       })
     }
   }

@@ -13,7 +13,18 @@
       {
         "order": "Mysterium",
         "name": "The Seal of",
-        "dicePool": "Presence + Occult + Death vs Resolve + Gnosis"
+        "dicePool": "Presence + Occult + Death vs Resolve + Gnosis",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death",
+          "vs": [
+            "Resolve",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 135
@@ -32,7 +43,14 @@
       {
         "order": "Free Council",
         "name": "Reaper’s Scent",
-        "dicePool": "Intelligence + Medicine + Death This"
+        "dicePool": "Intelligence + Medicine + Death",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 136
@@ -51,7 +69,14 @@
       {
         "order": "Silver Ladder",
         "name": "Aura of Gloom",
-        "dicePool": "Wits + Occult + Death Those"
+        "dicePool": "Wits + Occult + Death",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 136
@@ -70,7 +95,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Fall of",
-        "dicePool": "Wits + Occult + Death Sleepers"
+        "dicePool": "Wits + Occult + Death",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 137
@@ -89,7 +121,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Wounds",
-        "dicePool": "Intelligence + Medicine + Death Arrow"
+        "dicePool": "Intelligence + Medicine + Death",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 137
@@ -108,7 +147,14 @@
       {
         "order": "Mysterium",
         "name": "Clamor of the",
-        "dicePool": "Wits + Occult + Death Long"
+        "dicePool": "Wits + Occult + Death",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 137
@@ -127,7 +173,14 @@
       {
         "order": "Mysterium",
         "name": "Light’s Nemesis",
-        "dicePool": "Wits + Occult + Death Occasionally the"
+        "dicePool": "Wits + Occult + Death",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 138
@@ -146,7 +199,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Mortician’s Touch",
-        "dicePool": "Intelligence + Subterfuge + Death Even the"
+        "dicePool": "Intelligence + Subterfuge + Death",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 138
@@ -165,7 +225,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Return",
-        "dicePool": "Stamina + Intimidation + Death Mundane"
+        "dicePool": "Stamina + Intimidation + Death",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 138
@@ -184,7 +251,14 @@
       {
         "order": "Free Council",
         "name": "A Mirror",
-        "dicePool": "Stamina + Occult + Death Spectral"
+        "dicePool": "Stamina + Occult + Death",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 138
@@ -203,7 +277,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Shield",
-        "dicePool": "Wits + Occult + Death While"
+        "dicePool": "Wits + Occult + Death",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 138
@@ -222,7 +303,17 @@
       {
         "order": "Silver Ladder",
         "name": "Muster the Dead",
-        "dicePool": "Presence + Persuasion + Death vs Resistance Even the"
+        "dicePool": "Presence + Persuasion + Death vs Resistance",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Death",
+          "vs": [
+            "Resistance"
+          ]
+        }
       }
     ],
     "pageStart": 139
@@ -241,7 +332,14 @@
       {
         "order": "Free Council",
         "name": "Opening the",
-        "dicePool": "Manipulation + Persuasion + Death The"
+        "dicePool": "Manipulation + Persuasion + Death",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 139
@@ -260,7 +358,14 @@
       {
         "order": "Silver Ladder",
         "name": "Urn of Motes",
-        "dicePool": "Presence + Crafts + Death"
+        "dicePool": "Presence + Crafts + Death",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Crafts"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 139
@@ -279,7 +384,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Cloaking the Anointed",
-        "dicePool": "Manipulation + Subterfuge + Death Concealing the"
+        "dicePool": "Manipulation + Subterfuge + Death",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 139
@@ -298,7 +410,14 @@
       {
         "order": "Mysterium",
         "name": "Ashen Grasp",
-        "dicePool": "Dexterity + Survival + Death Often the"
+        "dicePool": "Dexterity + Survival + Death",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Survival"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 140
@@ -317,7 +436,17 @@
       {
         "order": "Silver Ladder",
         "name": "Word of Woe",
-        "dicePool": "Presence + Intimidation + Death vs Resistance The"
+        "dicePool": "Presence + Intimidation + Death vs Resistance",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Death",
+          "vs": [
+            "Resistance"
+          ]
+        }
       }
     ],
     "pageStart": 140
@@ -336,7 +465,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Shattering the Fetters",
-        "dicePool": "Resolve + Occult + Death Even"
+        "dicePool": "Resolve + Occult + Death",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 140
@@ -355,7 +491,15 @@
       {
         "order": "Adamantine Arrow",
         "name": "Breaking the Chains",
-        "dicePool": "Resolve + Crafts or Science + Death"
+        "dicePool": "Resolve + Crafts or Science + Death",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Crafts",
+            "Science"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 141
@@ -374,7 +518,14 @@
       {
         "order": "Free Council",
         "name": "Energetic",
-        "dicePool": "Manipulation + Persuasion + Death Some"
+        "dicePool": "Manipulation + Persuasion + Death",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 141
@@ -393,7 +544,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Shroud",
-        "dicePool": "Wits + Occult + Death The Guardians"
+        "dicePool": "Wits + Occult + Death",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 141
@@ -412,7 +570,14 @@
       {
         "order": "Mysterium",
         "name": "Calling the",
-        "dicePool": "Resolve + Occult + Death While"
+        "dicePool": "Resolve + Occult + Death",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 141
@@ -431,7 +596,15 @@
       {
         "order": "Mysterium",
         "name": "Night Hallowing",
-        "dicePool": "Resolve + Occult or Science + Death Mysterium"
+        "dicePool": "Resolve + Occult or Science + Death",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 142
@@ -450,7 +623,14 @@
       {
         "order": "Silver Ladder",
         "name": "Rise and Obey",
-        "dicePool": "Presence + Persuasion + Death Most Ladder"
+        "dicePool": "Presence + Persuasion + Death",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 142
@@ -469,7 +649,14 @@
       {
         "order": "Free Council",
         "name": "Spectral Poultice",
-        "dicePool": "Composure + Occult + Death Some"
+        "dicePool": "Composure + Occult + Death",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 143
@@ -488,7 +675,14 @@
       {
         "order": "Mysterium",
         "name": "Spirit-smithing",
-        "dicePool": "Dexterity + Crafts + Death Mysterium"
+        "dicePool": "Dexterity + Crafts + Death",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Crafts"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 143
@@ -507,7 +701,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Stripping the Wicked",
-        "dicePool": "Presence + Intimidation + Death Arrow"
+        "dicePool": "Presence + Intimidation + Death",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 143
@@ -526,7 +727,14 @@
       {
         "order": "Free Council",
         "name": "Child of Midnight",
-        "dicePool": "Wits + Occult + Death By"
+        "dicePool": "Wits + Occult + Death",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 144
@@ -545,7 +753,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Descending to the Grave",
-        "dicePool": "Composure + Subterfuge + Death Not"
+        "dicePool": "Composure + Subterfuge + Death",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 144
@@ -564,7 +779,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Weight",
-        "dicePool": "Presence + Occult + Death If"
+        "dicePool": "Presence + Occult + Death",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 145
@@ -583,7 +805,17 @@
       {
         "order": "Silver Ladder",
         "name": "Eternal Unrest",
-        "dicePool": "Presence + Persuasion + Death vs Resolve"
+        "dicePool": "Presence + Persuasion + Death vs Resolve",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Death",
+          "vs": [
+            "Resolve"
+          ]
+        }
       }
     ],
     "pageStart": 145
@@ -602,7 +834,18 @@
       {
         "order": "Guardians of the Veil",
         "name": "Consign to the Mausoleum",
-        "dicePool": "Manipulation + Subterfuge + Death vs Composure + Gnosis When"
+        "dicePool": "Manipulation + Subterfuge + Death vs Composure + Gnosis",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Death",
+          "vs": [
+            "Composure",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 146
@@ -621,7 +864,14 @@
       {
         "order": "Silver Ladder",
         "name": "Duty Before",
-        "dicePool": "Manipulation + Persuasion + Death Ladder"
+        "dicePool": "Manipulation + Persuasion + Death",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 145
@@ -640,7 +890,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Teeth of",
-        "dicePool": "Strength + Intimidation + Death"
+        "dicePool": "Strength + Intimidation + Death",
+        "pool": {
+          "attribute": "Strength",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 146
@@ -659,7 +916,14 @@
       {
         "order": "Free Council",
         "name": "Restoration",
-        "dicePool": "Composure + Empathy + Death Used"
+        "dicePool": "Composure + Empathy + Death",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Empathy"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 146
@@ -678,7 +942,14 @@
       {
         "order": "Mysterium",
         "name": "Stepping Over",
-        "dicePool": "Stamina + Occult + Death"
+        "dicePool": "Stamina + Occult + Death",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 147
@@ -697,7 +968,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Plucking Teeth",
-        "dicePool": "Strength + Intimidation + Death"
+        "dicePool": "Strength + Intimidation + Death",
+        "pool": {
+          "attribute": "Strength",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 147
@@ -716,7 +994,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Spoils to",
-        "dicePool": "Manipulation + Intimidation + Death"
+        "dicePool": "Manipulation + Intimidation + Death",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 147
@@ -748,7 +1033,14 @@
       {
         "order": "Mysterium",
         "name": "Remembrance of",
-        "dicePool": "Manipulation + Occult + Death Ghosts"
+        "dicePool": "Manipulation + Occult + Death",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 148
@@ -767,7 +1059,14 @@
       {
         "order": "Free Council",
         "name": "Starting Anew",
-        "dicePool": "Intelligence + Subterfuge + Death The Free Council"
+        "dicePool": "Intelligence + Subterfuge + Death",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Death"
+        }
       }
     ],
     "pageStart": 146
@@ -786,7 +1085,17 @@
       {
         "order": "Silver Ladder",
         "name": "Drawing the",
-        "dicePool": "Manipulation + Subterfuge + Death vs Stamina Building"
+        "dicePool": "Manipulation + Subterfuge + Death vs Stamina",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Death",
+          "vs": [
+            "Stamina"
+          ]
+        }
       }
     ],
     "pageStart": 148
@@ -805,7 +1114,17 @@
       {
         "order": "Silver Ladder",
         "name": "Demanding an",
-        "dicePool": "Presence + Persuasion + Death vs Resistance Even the"
+        "dicePool": "Presence + Persuasion + Death vs Resistance",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Death",
+          "vs": [
+            "Resistance"
+          ]
+        }
       }
     ],
     "pageStart": 148
@@ -824,7 +1143,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Indra’s",
-        "dicePool": "Intelligence + Investigation + Fate The"
+        "dicePool": "Intelligence + Investigation + Fate",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 150
@@ -843,7 +1169,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Eye of",
-        "dicePool": "Wits + Occult + Fate In the"
+        "dicePool": "Wits + Occult + Fate",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 150
@@ -862,12 +1195,26 @@
       {
         "order": "Guardians of the Veil",
         "name": "The",
-        "dicePool": "Composure + Firearms + Fate More"
+        "dicePool": "Composure + Firearms + Fate",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Firearms"
+          ],
+          "arcanum": "Fate"
+        }
       },
       {
         "order": "Silver Ladder",
         "name": "Lakshmi’s Touch",
-        "dicePool": "Wits + Investigation + Fate There"
+        "dicePool": "Wits + Investigation + Fate",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 151
@@ -886,7 +1233,14 @@
       {
         "order": "Mysterium",
         "name": "Flight of Birds",
-        "dicePool": "Wits + Occult + Fate Perceiving the"
+        "dicePool": "Wits + Occult + Fate",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 151
@@ -905,7 +1259,14 @@
       {
         "order": "Free Council",
         "name": "Nudging Probability",
-        "dicePool": "Wits + Subterfuge + Fate Quantum"
+        "dicePool": "Wits + Subterfuge + Fate",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 152
@@ -937,7 +1298,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Blessings of the Gods",
-        "dicePool": "Manipulation + Occult + Fate Prowess of"
+        "dicePool": "Manipulation + Occult + Fate",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 153
@@ -956,7 +1324,15 @@
       {
         "order": "Free Council",
         "name": "Atomic Clock",
-        "dicePool": "Intelligence + Occult or Science + Fate In the"
+        "dicePool": "Intelligence + Occult or Science + Fate",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 154
@@ -975,7 +1351,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Untouchable",
-        "dicePool": "Composure + Athletics + Fate Not"
+        "dicePool": "Composure + Athletics + Fate",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 154
@@ -994,7 +1377,15 @@
       {
         "order": "Free Council",
         "name": "The Butterfly",
-        "dicePool": "Wits + Occult or Science + Fate There"
+        "dicePool": "Wits + Occult or Science + Fate",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 155
@@ -1013,7 +1404,14 @@
       {
         "order": "Mysterium",
         "name": "Flock of Augurs",
-        "dicePool": "Manipulation+Occult+Fate It is not always sufficient to perc"
+        "dicePool": "Manipulation + Occult + Fate",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 154
@@ -1032,7 +1430,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Testifying to the Gods",
-        "dicePool": "Presence + Persuasion + Fate There"
+        "dicePool": "Presence + Persuasion + Fate",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 155
@@ -1064,7 +1469,14 @@
       {
         "order": "Silver Ladder",
         "name": "Imprecation",
-        "dicePool": "Manipulation + Persuasion + Fate"
+        "dicePool": "Manipulation + Persuasion + Fate",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 153
@@ -1083,7 +1495,14 @@
       {
         "order": "Mysterium",
         "name": "Everything’s Zen",
-        "dicePool": "Wits + Occult + Fate"
+        "dicePool": "Wits + Occult + Fate",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 154
@@ -1102,7 +1521,14 @@
       {
         "order": "Silver Ladder",
         "name": "Nullify the",
-        "dicePool": "Manipulation + Politics"
+        "dicePool": "Manipulation + Politics + Fate",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Politics"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 156
@@ -1121,7 +1547,14 @@
       {
         "order": "Free Council",
         "name": "Rabbit’s Foot",
-        "dicePool": "Manipulation + Persuasion + Fate Sometimes the"
+        "dicePool": "Manipulation + Persuasion + Fate",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 157
@@ -1140,7 +1573,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "False",
-        "dicePool": "Intelligence + Subterfuge + Fate"
+        "dicePool": "Intelligence + Subterfuge + Fate",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 157
@@ -1159,7 +1599,15 @@
       {
         "order": "Mysterium",
         "name": "Four-Leaf Clover",
-        "dicePool": "Wits + Occult or Science + Fate Some"
+        "dicePool": "Wits + Occult or Science + Fate",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 157
@@ -1178,7 +1626,15 @@
       {
         "order": "Adamantine Arrow",
         "name": "Sword",
-        "dicePool": "Wits + Occult or Science + Fate Adamantine Arrow"
+        "dicePool": "Wits + Occult or Science + Fate",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 157
@@ -1197,7 +1653,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Hidden Treasure",
-        "dicePool": "Intelligence + Subterfuge + Fate Guardians"
+        "dicePool": "Intelligence + Subterfuge + Fate",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 158
@@ -1216,7 +1679,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Bolster",
-        "dicePool": "Presence + Persuasion + Fate While"
+        "dicePool": "Presence + Persuasion + Fate",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 157
@@ -1235,7 +1705,14 @@
       {
         "order": "Silver Ladder",
         "name": "Walking the",
-        "dicePool": "Resolve + Occult + Fate Like"
+        "dicePool": "Resolve + Occult + Fate",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 158
@@ -1254,12 +1731,29 @@
       {
         "order": "Adamantine Arrow",
         "name": "Cutting",
-        "dicePool": "Resolve + Occult + Fate vs"
+        "dicePool": "Resolve + Occult + Fate vs Potency",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Fate",
+          "vs": [
+            "Potency"
+          ]
+        }
       },
       {
         "order": "Mysterium",
         "name": "True Ownership",
-        "dicePool": "Intelligence + Investigation + Fate Members of the Mysterium"
+        "dicePool": "Intelligence + Investigation + Fate",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 158
@@ -1278,7 +1772,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Assured Acquisition",
-        "dicePool": "Composure + Occult + Fate This"
+        "dicePool": "Composure + Occult + Fate",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 159
@@ -1297,7 +1798,14 @@
       {
         "order": "Silver Ladder",
         "name": "Let Their",
-        "dicePool": "Presence + Expression + Fate Those"
+        "dicePool": "Presence + Expression + Fate",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Expression"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 159
@@ -1316,7 +1824,17 @@
       {
         "order": "Silver Ladder",
         "name": "Magistrate’s",
-        "dicePool": "Manipulation + Occult + Fate vs"
+        "dicePool": "Manipulation + Occult + Fate vs Potency",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Fate",
+          "vs": [
+            "Potency"
+          ]
+        }
       }
     ],
     "pageStart": 160
@@ -1348,7 +1866,17 @@
       {
         "order": "Free Council",
         "name": "The Hidden",
-        "dicePool": "Wits + Occult + Fate vs"
+        "dicePool": "Wits + Occult + Fate vs Potency",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Fate",
+          "vs": [
+            "Potency"
+          ]
+        }
       }
     ],
     "pageStart": 161
@@ -1367,7 +1895,18 @@
       {
         "order": "Guardians of the Veil",
         "name": "Anointing the Chosen One",
-        "dicePool": "Manipulation + Persuasion + Fate vs Resolve + Gnosis Setting"
+        "dicePool": "Manipulation + Persuasion + Fate vs Resolve + Gnosis",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Fate",
+          "vs": [
+            "Resolve",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 161
@@ -1386,7 +1925,18 @@
       {
         "order": "Adamantine Arrow",
         "name": "Achilles’ Heel",
-        "dicePool": "Resolve + Intimidation + Fate vs Resolve + Gnosis Even"
+        "dicePool": "Resolve + Intimidation + Fate vs Resolve + Gnosis",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Fate",
+          "vs": [
+            "Resolve",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 161
@@ -1405,7 +1955,18 @@
       {
         "order": "Mysterium",
         "name": "The Secret",
-        "dicePool": "Composure + Survival + Fate vs Resolve + Gnosis Some"
+        "dicePool": "Composure + Survival + Fate vs Resolve + Gnosis",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Survival"
+          ],
+          "arcanum": "Fate",
+          "vs": [
+            "Resolve",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 161
@@ -1424,7 +1985,18 @@
       {
         "order": "Silver Ladder",
         "name": "Chain of the",
-        "dicePool": "Presence + Expression + Fate vs Resolve + Gnosis There"
+        "dicePool": "Presence + Expression + Fate vs Resolve + Gnosis",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Expression"
+          ],
+          "arcanum": "Fate",
+          "vs": [
+            "Resolve",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 162
@@ -1443,7 +2015,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Wrack and Ruin",
-        "dicePool": "Manipulation + Intimidation + Fate"
+        "dicePool": "Manipulation + Intimidation + Fate",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 162
@@ -1462,7 +2041,15 @@
       {
         "order": "Free Council",
         "name": "Fortean Storm",
-        "dicePool": "Wits + Occult or Science + Fate This"
+        "dicePool": "Wits + Occult or Science + Fate",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Fate"
+        }
       }
     ],
     "pageStart": 163
@@ -1481,7 +2068,15 @@
       {
         "order": "Mysterium",
         "name": "Radiant Blessing",
-        "dicePool": "Intelligence + Occult or Science + Forces"
+        "dicePool": "Intelligence + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 164
@@ -1500,7 +2095,15 @@
       {
         "order": "Silver Ladder",
         "name": "Brilliant Flow",
-        "dicePool": "Intelligence + Occult or Science + Forces"
+        "dicePool": "Intelligence + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 165
@@ -1519,7 +2122,15 @@
       {
         "order": "Silver Ladder",
         "name": "Fording the",
-        "dicePool": "Intelligence + Occult or Science + Forces"
+        "dicePool": "Intelligence + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 165
@@ -1538,7 +2149,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Night As",
-        "dicePool": "Wits + Composure + Forces Few"
+        "dicePool": "Wits + Composure + Forces",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Composure"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 165
@@ -1557,7 +2175,15 @@
       {
         "order": "Mysterium",
         "name": "The Electric Invisible",
-        "dicePool": "Wits + Occult or Science + Forces The"
+        "dicePool": "Wits + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 165
@@ -1576,7 +2202,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Thunderous Whispers",
-        "dicePool": "Wits + Occult + Forces Perception"
+        "dicePool": "Wits + Occult + Forces",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 166
@@ -1595,7 +2228,14 @@
       {
         "order": "Free Council",
         "name": "Mohammed’s",
-        "dicePool": "Intelligence + Science + Forces Good"
+        "dicePool": "Intelligence + Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 166
@@ -1614,7 +2254,15 @@
       {
         "order": "Mysterium",
         "name": "Subtle Ambience",
-        "dicePool": "Intelligence + Occult or Science + Forces The Mysterium"
+        "dicePool": "Intelligence + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 167
@@ -1633,7 +2281,15 @@
       {
         "order": "Guardians of the Veil",
         "name": "Dim",
-        "dicePool": "Intelligence + Occult or Science + Forces The Guardians of the Veil"
+        "dicePool": "Intelligence + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 167
@@ -1652,7 +2308,15 @@
       {
         "order": "Silver Ladder",
         "name": "Thunderous",
-        "dicePool": "Intelligence + Occult or Science + Forces It"
+        "dicePool": "Intelligence + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 167
@@ -1671,7 +2335,15 @@
       {
         "order": "Mysterium",
         "name": "Full Spectrum",
-        "dicePool": "Wits + Occult or Science + Forces Explorations"
+        "dicePool": "Wits + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 167
@@ -1690,7 +2362,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Shock",
-        "dicePool": "Dexterity + Athletics + Forces Occasionally"
+        "dicePool": "Dexterity + Athletics + Forces",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 167
@@ -1709,7 +2388,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Deliberate Arson",
-        "dicePool": "Strength + Athletics + Forces"
+        "dicePool": "Strength + Athletics + Forces",
+        "pool": {
+          "attribute": "Strength",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 168
@@ -1728,7 +2414,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Look",
-        "dicePool": "Manipulation + Subterfuge + Forces This"
+        "dicePool": "Manipulation + Subterfuge + Forces",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 168
@@ -1747,7 +2440,15 @@
       {
         "order": "Adamantine Arrow",
         "name": "Knife Fist",
-        "dicePool": "Strength + Brawl or Weaponry + Forces The"
+        "dicePool": "Strength + Brawl or Weaponry + Forces",
+        "pool": {
+          "attribute": "Strength",
+          "skills": [
+            "Brawl",
+            "Weaponry"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 168
@@ -1766,7 +2467,14 @@
       {
         "order": "Mysterium",
         "name": "Voices in the Ether",
-        "dicePool": "Manipulation + Expression + Forces Good"
+        "dicePool": "Manipulation + Expression + Forces",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Expression"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 169
@@ -1785,12 +2493,27 @@
       {
         "order": "Free Council",
         "name": "Force Field",
-        "dicePool": "Stamina + Occult or Science + Forces This Free Council"
+        "dicePool": "Stamina + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       },
       {
         "order": "Mysterium",
         "name": "Indispensable Aide",
-        "dicePool": "Intelligence + Investigation + Forces Mysterium"
+        "dicePool": "Intelligence + Investigation + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 169
@@ -1809,7 +2532,15 @@
       {
         "order": "Free Council",
         "name": "Force Shield",
-        "dicePool": "Intelligence + Occult or Science + Forces This"
+        "dicePool": "Intelligence + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 170
@@ -1828,7 +2559,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Lightning Rod",
-        "dicePool": "Dexterity + Athletics + Forces Sometimes the"
+        "dicePool": "Dexterity + Athletics + Forces",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 170
@@ -1847,7 +2585,14 @@
       {
         "order": "Mysterium",
         "name": "Switchbox",
-        "dicePool": "Wits + Science + Forces Mysterium"
+        "dicePool": "Wits + Science + Forces",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 170
@@ -1866,7 +2611,15 @@
       {
         "order": "Free Council",
         "name": "Dry Water",
-        "dicePool": "Presence + Occult or Science + Forces"
+        "dicePool": "Presence + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 170
@@ -1885,7 +2638,15 @@
       {
         "order": "Mysterium",
         "name": "Hand Torch",
-        "dicePool": "Composure + Occult or Science + Forces This"
+        "dicePool": "Composure + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 171
@@ -1917,7 +2678,15 @@
       {
         "order": "Guardians of the Veil",
         "name": "Ventriloquist’s Art",
-        "dicePool": "Resolve + Occult or Science + Forces Guardians"
+        "dicePool": "Resolve + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 172
@@ -1936,7 +2705,15 @@
       {
         "order": "Silver Ladder",
         "name": "Hand of the Mind",
-        "dicePool": "Wits + Athletics or Larceny + Forces"
+        "dicePool": "Wits + Athletics or Larceny + Forces",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Athletics",
+            "Larceny"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 172
@@ -1955,7 +2732,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Mind",
-        "dicePool": "Presence + Athletics + Forces Unarmed"
+        "dicePool": "Presence + Athletics + Forces",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 172
@@ -1974,7 +2758,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Arrow",
-        "dicePool": "Dexterity + Athletics + Forces The Adamantine Arrow"
+        "dicePool": "Dexterity + Athletics + Forces",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 173
@@ -1993,7 +2784,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Unseen Army",
-        "dicePool": "Manipulation + Stealth + Forces Guardians"
+        "dicePool": "Manipulation + Stealth + Forces",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Stealth"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 173
@@ -2012,7 +2810,14 @@
       {
         "order": "Mysterium",
         "name": "Hermes’ Sandals",
-        "dicePool": "Wits + Athletics + Forces There"
+        "dicePool": "Wits + Athletics + Forces",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 173
@@ -2031,7 +2836,15 @@
       {
         "order": "Free Council",
         "name": "Rainmaker",
-        "dicePool": "Intelligence + Occult or Science + Forces Long"
+        "dicePool": "Intelligence + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 174
@@ -2050,12 +2863,26 @@
       {
         "order": "Adamantine Arrow",
         "name": "Wrath",
-        "dicePool": "Stamina + Intimidation + Forces Arrow"
+        "dicePool": "Stamina + Intimidation + Forces",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Forces"
+        }
       },
       {
         "order": "Free Council",
         "name": "Speed Trap",
-        "dicePool": "Intelligence + Science + Forces Mages of the Free Council"
+        "dicePool": "Intelligence + Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 174
@@ -2074,7 +2901,19 @@
       {
         "order": "Adamantine Arrow",
         "name": "Sword",
-        "dicePool": "Intelligence + Occult or Science + Forces vs Stamina + Gnosis The"
+        "dicePool": "Intelligence + Occult or Science + Forces vs Stamina + Gnosis",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces",
+          "vs": [
+            "Stamina",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 175
@@ -2093,7 +2932,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Air",
-        "dicePool": "Intelligence + Athletics + Forces Guardian"
+        "dicePool": "Intelligence + Athletics + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 175
@@ -2112,7 +2958,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Lightning’s Vessel",
-        "dicePool": "Stamina + Athletics + Forces Perhaps"
+        "dicePool": "Stamina + Athletics + Forces",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 175
@@ -2131,7 +2984,15 @@
       {
         "order": "Free Council",
         "name": "Electromagnetic",
-        "dicePool": "Intelligence + Occult or Science + Forces By"
+        "dicePool": "Intelligence + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 175
@@ -2150,7 +3011,18 @@
       {
         "order": "Adamantine Arrow",
         "name": "Unyielding Grasp",
-        "dicePool": "Wits + Brawl + Forces vs Composure + Gnosis The Adamantine Arrow"
+        "dicePool": "Wits + Brawl + Forces vs Composure + Gnosis",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Brawl"
+          ],
+          "arcanum": "Forces",
+          "vs": [
+            "Composure",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 176
@@ -2169,7 +3041,14 @@
       {
         "order": "Silver Ladder",
         "name": "Flashpoint",
-        "dicePool": "Manipulation + Athletics + Forces Silver Ladder"
+        "dicePool": "Manipulation + Athletics + Forces",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 176
@@ -2201,7 +3080,15 @@
       {
         "order": "Mysterium",
         "name": "Disc of Levitation",
-        "dicePool": "Intelligence + Occult or Science + Forces"
+        "dicePool": "Intelligence + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 177
@@ -2220,7 +3107,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Cloak",
-        "dicePool": "Wits + Stealth + Forces Guardians"
+        "dicePool": "Wits + Stealth + Forces",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Stealth"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 177
@@ -2239,7 +3133,15 @@
       {
         "order": "Mysterium",
         "name": "Upending Expectations",
-        "dicePool": "Intelligence + Occult or Science + Forces With"
+        "dicePool": "Intelligence + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 178
@@ -2258,7 +3160,15 @@
       {
         "order": "Silver Ladder",
         "name": "Summoning",
-        "dicePool": "Intelligence + Occult or Science + Forces Some"
+        "dicePool": "Intelligence + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 178
@@ -2277,7 +3187,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Fist of",
-        "dicePool": "Resolve + Athletics + Forces The"
+        "dicePool": "Resolve + Athletics + Forces",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 178
@@ -2296,7 +3213,14 @@
       {
         "order": "Free Council",
         "name": "Short Circuit",
-        "dicePool": "Resolve + Science + Forces Free Council"
+        "dicePool": "Resolve + Science + Forces",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 179
@@ -2315,7 +3239,14 @@
       {
         "order": "Free Council",
         "name": "Cleansing",
-        "dicePool": "Resolve + Science + Forces While the"
+        "dicePool": "Resolve + Science + Forces",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 179
@@ -2334,7 +3265,14 @@
       {
         "order": "Mysterium",
         "name": "Witch’s Broom",
-        "dicePool": "Dexterity + Athletics + Forces This"
+        "dicePool": "Dexterity + Athletics + Forces",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 179
@@ -2353,7 +3291,15 @@
       {
         "order": "Guardians of the Veil",
         "name": "Slowing the Prey",
-        "dicePool": "Resolve + Occult or Science + Forces Quarry"
+        "dicePool": "Resolve + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 180
@@ -2372,7 +3318,15 @@
       {
         "order": "Mysterium",
         "name": "Moonwalking",
-        "dicePool": "Intelligence + Occult or Science + Forces Great"
+        "dicePool": "Intelligence + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 180
@@ -2391,7 +3345,15 @@
       {
         "order": "Adamantine Arrow",
         "name": "Door to",
-        "dicePool": "Stamina + Occult or Science + Forces Even the"
+        "dicePool": "Stamina + Occult or Science + Forces",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 180
@@ -2410,7 +3372,14 @@
       {
         "order": "Silver Ladder",
         "name": "Motion Control",
-        "dicePool": "Resolve + Athletics + Forces"
+        "dicePool": "Resolve + Athletics + Forces",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Forces"
+        }
       }
     ],
     "pageStart": 181
@@ -2429,7 +3398,16 @@
       {
         "order": "Silver Ladder",
         "name": "Classify Specimen",
-        "dicePool": "Intelligence + Survival"
+        "dicePool": "Intelligence + Survival or Animal Ken or Medicine + Life",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Survival",
+            "Animal Ken",
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 182
@@ -2448,7 +3426,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Purge",
-        "dicePool": "Stamina + Medicine + Life"
+        "dicePool": "Stamina + Medicine + Life",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 182
@@ -2467,7 +3452,15 @@
       {
         "order": "Free Council",
         "name": "Organic",
-        "dicePool": "Wits + Medicine or Science + Life Free Council"
+        "dicePool": "Wits + Medicine or Science + Life",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Medicine",
+            "Science"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 183
@@ -2486,7 +3479,14 @@
       {
         "order": "Mysterium",
         "name": "Listening to the",
-        "dicePool": "Wits + Animal Ken + Life Mysterium"
+        "dicePool": "Wits + Animal Ken + Life",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Animal Ken"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 183
@@ -2505,7 +3505,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Root",
-        "dicePool": "Intelligence + Medicine + Life Guardians"
+        "dicePool": "Intelligence + Medicine + Life",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 183
@@ -2524,7 +3531,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Body",
-        "dicePool": "Wits + Athletics + Life Adamantine Arrow"
+        "dicePool": "Wits + Athletics + Life",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 184
@@ -2543,7 +3557,17 @@
       {
         "order": "Silver Ladder",
         "name": "King of the",
-        "dicePool": "Manipulation + Animal Ken + Life vs Stamina While"
+        "dicePool": "Manipulation + Animal Ken + Life vs Stamina",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Animal Ken"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Stamina"
+          ]
+        }
       }
     ],
     "pageStart": 184
@@ -2562,7 +3586,14 @@
       {
         "order": "Free Council",
         "name": "Cellular Regeneration",
-        "dicePool": "Intelligence + Medicine + Life"
+        "dicePool": "Intelligence + Medicine + Life",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 184
@@ -2581,7 +3612,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Bones",
-        "dicePool": "Stamina + Athletics + Life When"
+        "dicePool": "Stamina + Athletics + Life",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 185
@@ -2600,7 +3638,14 @@
       {
         "order": "Mysterium",
         "name": "Antivenin",
-        "dicePool": "Intelligence + Medicine + Life Even"
+        "dicePool": "Intelligence + Medicine + Life",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 185
@@ -2619,7 +3664,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Salve the",
-        "dicePool": "Dexterity + Medicine + Life"
+        "dicePool": "Dexterity + Medicine + Life",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 185
@@ -2638,7 +3690,14 @@
       {
         "order": "Mysterium",
         "name": "Blood of the Lamb",
-        "dicePool": "Stamina + Medicine + Life With"
+        "dicePool": "Stamina + Medicine + Life",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 185
@@ -2657,7 +3716,18 @@
       {
         "order": "Free Council",
         "name": "DNA",
-        "dicePool": "Intelligence + Animal Ken or Survival + Life vs Stamina Free Council"
+        "dicePool": "Intelligence + Animal Ken or Survival + Life vs Stamina",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Animal Ken",
+            "Survival"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Stamina"
+          ]
+        }
       }
     ],
     "pageStart": 186
@@ -2689,7 +3759,15 @@
       {
         "order": "Adamantine Arrow",
         "name": "Detect",
-        "dicePool": "Intelligence + Animal Ken or Survival + Life This"
+        "dicePool": "Intelligence + Animal Ken or Survival + Life",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Animal Ken",
+            "Survival"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 187
@@ -2708,7 +3786,14 @@
       {
         "order": "Mysterium",
         "name": "Reseal the Tomb",
-        "dicePool": "Wits + Medicine + Life Sickness"
+        "dicePool": "Wits + Medicine + Life",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 187
@@ -2727,7 +3812,17 @@
       {
         "order": "Silver Ladder",
         "name": "Daniel’s Voice",
-        "dicePool": "Presence + Animal Ken + Life vs Resolve While"
+        "dicePool": "Presence + Animal Ken + Life vs Resolve",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Animal Ken"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Resolve"
+          ]
+        }
       }
     ],
     "pageStart": 187
@@ -2746,7 +3841,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Infirmity",
-        "dicePool": "Stamina + Athletics + Life"
+        "dicePool": "Stamina + Athletics + Life",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 188
@@ -2765,7 +3867,14 @@
       {
         "order": "Mysterium",
         "name": "Balm of Flesh",
-        "dicePool": "Composure + Medicine + Life Whether"
+        "dicePool": "Composure + Medicine + Life",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 188
@@ -2784,7 +3893,14 @@
       {
         "order": "Free Council",
         "name": "Actualizing",
-        "dicePool": "Resolve + Athletics + Life"
+        "dicePool": "Resolve + Athletics + Life",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 188
@@ -2803,7 +3919,14 @@
       {
         "order": "Free Council",
         "name": "Muscular Tension",
-        "dicePool": "Intelligence + Medicine + Life By"
+        "dicePool": "Intelligence + Medicine + Life",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 189
@@ -2822,7 +3945,17 @@
       {
         "order": "Silver Ladder",
         "name": "Tampering with",
-        "dicePool": "Intelligence + Medicine + Life vs Stamina When"
+        "dicePool": "Intelligence + Medicine + Life vs Stamina",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Stamina"
+          ]
+        }
       }
     ],
     "pageStart": 189
@@ -2841,7 +3974,17 @@
       {
         "order": "Free Council",
         "name": "Catalytic",
-        "dicePool": "Intelligence + Medicine + Life vs Stamina Many Free Council"
+        "dicePool": "Intelligence + Medicine + Life vs Stamina",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Stamina"
+          ]
+        }
       }
     ],
     "pageStart": 189
@@ -2860,7 +4003,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Harsh",
-        "dicePool": "Stamina + Athletics + Life The"
+        "dicePool": "Stamina + Athletics + Life",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 189
@@ -2879,7 +4029,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Incognito Exchange",
-        "dicePool": "Wits + Subterfuge + Life With"
+        "dicePool": "Wits + Subterfuge + Life",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 190
@@ -2898,7 +4055,17 @@
       {
         "order": "Adamantine Arrow",
         "name": "Beast Lord",
-        "dicePool": "Resolve + Animal Ken + Life vs Stamina Just"
+        "dicePool": "Resolve + Animal Ken + Life vs Stamina",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Animal Ken"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Stamina"
+          ]
+        }
       }
     ],
     "pageStart": 190
@@ -2917,7 +4084,17 @@
       {
         "order": "Silver Ladder",
         "name": "Loyal Hound",
-        "dicePool": "Presence + Persuasion + Life vs Resolve At"
+        "dicePool": "Presence + Persuasion + Life vs Resolve",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Resolve"
+          ]
+        }
       }
     ],
     "pageStart": 190
@@ -2936,7 +4113,14 @@
       {
         "order": "Silver Ladder",
         "name": "Perfect Poise",
-        "dicePool": "Resolve + Persuasion + Mind The Silver Ladder"
+        "dicePool": "Resolve + Persuasion + Mind",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 215
@@ -2955,7 +4139,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Interdiction",
-        "dicePool": "Resolve + Medicine + Life Guardians"
+        "dicePool": "Resolve + Medicine + Life",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 190
@@ -2974,7 +4165,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Another Man’s Shoes",
-        "dicePool": "Intelligence + Subterfuge + Life"
+        "dicePool": "Intelligence + Subterfuge + Life",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 190
@@ -2993,7 +4191,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Weaken the Foe",
-        "dicePool": "Strength + Intimidation + Life"
+        "dicePool": "Strength + Intimidation + Life",
+        "pool": {
+          "attribute": "Strength",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 191
@@ -3012,7 +4217,14 @@
       {
         "order": "Free Council",
         "name": "Performance",
-        "dicePool": "Intelligence + Medicine + Life Sometimes"
+        "dicePool": "Intelligence + Medicine + Life",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 191
@@ -3031,7 +4243,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Organic",
-        "dicePool": "Dexterity + Athletics + Life Adamantine Arrow"
+        "dicePool": "Dexterity + Athletics + Life",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 192
@@ -3050,7 +4269,14 @@
       {
         "order": "Mysterium",
         "name": "Perfected Disguise",
-        "dicePool": "Manipulation + Subterfuge + Life Mysterium"
+        "dicePool": "Manipulation + Subterfuge + Life",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 192
@@ -3069,7 +4295,14 @@
       {
         "order": "Mysterium",
         "name": "Wearing the",
-        "dicePool": "Stamina + Animal Ken + Life Mysterium"
+        "dicePool": "Stamina + Animal Ken + Life",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Animal Ken"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 192
@@ -3088,7 +4321,14 @@
       {
         "order": "Silver Ladder",
         "name": "Fulfillment",
-        "dicePool": "Resolve + Athletics + Life By"
+        "dicePool": "Resolve + Athletics + Life",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 192
@@ -3107,7 +4347,18 @@
       {
         "order": "Guardians of the Veil",
         "name": "Atavistic Brand",
-        "dicePool": "Presence + Animal Ken + Life vs Stamina + Gnosis Guardians"
+        "dicePool": "Presence + Animal Ken + Life vs Stamina + Gnosis",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Animal Ken"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Stamina",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 193
@@ -3126,7 +4377,18 @@
       {
         "order": "Adamantine Arrow",
         "name": "Pulling",
-        "dicePool": "Manipulation + Intimidation + Life vs Resolve + Gnosis Fear"
+        "dicePool": "Manipulation + Intimidation + Life vs Resolve + Gnosis",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Resolve",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 193
@@ -3145,7 +4407,17 @@
       {
         "order": "Free Council",
         "name": "Genetic Tampering",
-        "dicePool": "Intelligence + Medicine + Life vs Stamina Free Council"
+        "dicePool": "Intelligence + Medicine + Life vs Stamina",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Stamina"
+          ]
+        }
       }
     ],
     "pageStart": 193
@@ -3164,7 +4436,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "New Beginnings",
-        "dicePool": "Intelligence + Medicine + Life"
+        "dicePool": "Intelligence + Medicine + Life",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 193
@@ -3183,7 +4462,17 @@
       {
         "order": "Free Council",
         "name": "The Frog King",
-        "dicePool": "Intelligence + Animal Ken + Life vs Stamina Perhaps"
+        "dicePool": "Intelligence + Animal Ken + Life vs Stamina",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Animal Ken"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Stamina"
+          ]
+        }
       }
     ],
     "pageStart": 193
@@ -3202,7 +4491,17 @@
       {
         "order": "Silver Ladder",
         "name": "Bygone Menagerie",
-        "dicePool": "Intelligence + Academics + Life vs Stamina Silver Ladder"
+        "dicePool": "Intelligence + Academics + Life vs Stamina",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Academics"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Stamina"
+          ]
+        }
       }
     ],
     "pageStart": 194
@@ -3221,7 +4520,18 @@
       {
         "order": "Adamantine Arrow",
         "name": "Hour of",
-        "dicePool": "Stamina + Animal Ken + Life vs Stamina + Gnosis Without the"
+        "dicePool": "Stamina + Animal Ken + Life vs Stamina + Gnosis",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Animal Ken"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Stamina",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 194
@@ -3240,7 +4550,17 @@
       {
         "order": "Mysterium",
         "name": "The Dragon’s Egg",
-        "dicePool": "Intelligence + Medicine + Life vs Stamina In"
+        "dicePool": "Intelligence + Medicine + Life vs Stamina",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Stamina"
+          ]
+        }
       }
     ],
     "pageStart": 194
@@ -3259,7 +4579,18 @@
       {
         "order": "Silver Ladder",
         "name": "Flesh Puppet",
-        "dicePool": "Manipulation + Persuasion + Life vs Resolve + Gnosis With"
+        "dicePool": "Manipulation + Persuasion + Life vs Resolve + Gnosis",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Resolve",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 195
@@ -3278,7 +4609,14 @@
       {
         "order": "Free Council",
         "name": "Salamander’s Tail",
-        "dicePool": "Intelligence + Medicine + Life Free Council"
+        "dicePool": "Intelligence + Medicine + Life",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 195
@@ -3297,7 +4635,18 @@
       {
         "order": "Adamantine Arrow",
         "name": "Lay Him Low",
-        "dicePool": "Strength + Athletics + Life vs Resolve + Gnosis True"
+        "dicePool": "Strength + Athletics + Life vs Resolve + Gnosis",
+        "pool": {
+          "attribute": "Strength",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Life",
+          "vs": [
+            "Resolve",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 195
@@ -3316,7 +4665,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Perfection of Form",
-        "dicePool": "Presence + Medicine + Life This"
+        "dicePool": "Presence + Medicine + Life",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Medicine"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 195
@@ -3335,7 +4691,15 @@
       {
         "order": "Mysterium",
         "name": "Rube Goldberg’s",
-        "dicePool": "Intelligence + Investigation or Science + Matter Elaborate"
+        "dicePool": "Intelligence + Investigation or Science + Matter",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Investigation",
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 196
@@ -3354,7 +4718,15 @@
       {
         "order": "Guardians of the Veil",
         "name": "Seizing the Threads",
-        "dicePool": "Intelligence + Occult or Science + Matter Guardians"
+        "dicePool": "Intelligence + Occult or Science + Matter",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 196
@@ -3373,7 +4745,14 @@
       {
         "order": "Silver Ladder",
         "name": "Glimmer in",
-        "dicePool": "Wits + Composure + Matter This"
+        "dicePool": "Wits + Composure + Matter",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Composure"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 197
@@ -3392,7 +4771,15 @@
       {
         "order": "Free Council",
         "name": "Diagnostic Scan",
-        "dicePool": "Wits + Crafts or Science + Matter As"
+        "dicePool": "Wits + Crafts or Science + Matter",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Crafts",
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 197
@@ -3411,7 +4798,14 @@
       {
         "order": "Mysterium",
         "name": "Mapping the",
-        "dicePool": "Wits + Crafts + Matter With"
+        "dicePool": "Wits + Crafts + Matter",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Crafts"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 197
@@ -3430,7 +4824,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Extinguish the Invisible Fire",
-        "dicePool": "Intelligence + Science + Matter"
+        "dicePool": "Intelligence + Science + Matter",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 196
@@ -3449,7 +4850,15 @@
       {
         "order": "Adamantine Arrow",
         "name": "Sword",
-        "dicePool": "Composure + Crafts or Occult + Matter Adamantine Arrow"
+        "dicePool": "Composure + Crafts or Occult + Matter",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Crafts",
+            "Occult"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 198
@@ -3468,7 +4877,15 @@
       {
         "order": "Free Council",
         "name": "Imparting the",
-        "dicePool": "Wits + Occult or Science + Matter As"
+        "dicePool": "Wits + Occult or Science + Matter",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 198
@@ -3487,7 +4904,14 @@
       {
         "order": "Mysterium",
         "name": "Dredging the Bay",
-        "dicePool": "Dexterity + Occult + Matter Mysterium"
+        "dicePool": "Dexterity + Occult + Matter",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 198
@@ -3506,17 +4930,41 @@
       {
         "order": "Free Council",
         "name": "Hard Air",
-        "dicePool": "Intelligence + Occult or Science + Matter This"
+        "dicePool": "Intelligence + Occult or Science + Matter",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       },
       {
         "order": "Guardians of the Veil",
         "name": "Gaze",
-        "dicePool": "Intelligence + Crafts or Occult + Matter Sometimes"
+        "dicePool": "Intelligence + Crafts or Occult + Matter",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Crafts",
+            "Occult"
+          ],
+          "arcanum": "Matter"
+        }
       },
       {
         "order": "Guardians of the Veil",
         "name": "Lesser",
-        "dicePool": "Intelligence + Occult or Science + Matter Guardians of the Veil"
+        "dicePool": "Intelligence + Occult or Science + Matter",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 199
@@ -3561,7 +5009,14 @@
       {
         "order": "Silver Ladder",
         "name": "Sorcerer’s",
-        "dicePool": "Intelligence + Crafts + Matter Silver Ladder"
+        "dicePool": "Intelligence + Crafts + Matter",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Crafts"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 200
@@ -3580,7 +5035,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Sharpening the Blade",
-        "dicePool": "Resolve + Crafts + Matter Even the"
+        "dicePool": "Resolve + Crafts + Matter",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Crafts"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 200
@@ -3599,7 +5061,14 @@
       {
         "order": "Mysterium",
         "name": "Hybridized Device",
-        "dicePool": "Intelligence + Crafts + Matter Mysterium"
+        "dicePool": "Intelligence + Crafts + Matter",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Crafts"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 200
@@ -3618,7 +5087,14 @@
       {
         "order": "Mysterium",
         "name": "Sculpt the Material",
-        "dicePool": "Dexterity + Crafts + Matter This"
+        "dicePool": "Dexterity + Crafts + Matter",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Crafts"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 201
@@ -3650,12 +5126,27 @@
       {
         "order": "Free Council",
         "name": "Stinging Pestilence",
-        "dicePool": "Wits + Animal Ken + Life Council"
+        "dicePool": "Wits + Animal Ken + Life",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Animal Ken"
+          ],
+          "arcanum": "Life"
+        }
       },
       {
         "order": "Silver Ladder",
         "name": "Lesser Material Transfiguration",
-        "dicePool": "Intelligence + Occult or Science + Matter This"
+        "dicePool": "Intelligence + Occult or Science + Matter",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 202
@@ -3674,7 +5165,15 @@
       {
         "order": "Guardians of the Veil",
         "name": "Overdrive",
-        "dicePool": "Intelligence + Crafts or Science + Matter When the"
+        "dicePool": "Intelligence + Crafts or Science + Matter",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Crafts",
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 203
@@ -3693,7 +5192,15 @@
       {
         "order": "Adamantine Arrow",
         "name": "Disintegration",
-        "dicePool": "Resolve + Occult or Science + Matter On"
+        "dicePool": "Resolve + Occult or Science + Matter",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 203
@@ -3712,7 +5219,15 @@
       {
         "order": "Silver Ladder",
         "name": "Architect’s Touch",
-        "dicePool": "Intelligence + Occult or Science + Matter Mages of the Silver Ladder"
+        "dicePool": "Intelligence + Occult or Science + Matter",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 203
@@ -3731,7 +5246,14 @@
       {
         "order": "Silver Ladder",
         "name": "Ex Nihilo",
-        "dicePool": "Resolve + Science + Matter The"
+        "dicePool": "Resolve + Science + Matter",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 206
@@ -3750,7 +5272,14 @@
       {
         "order": "Silver Ladder",
         "name": "Artisan’s Hand",
-        "dicePool": "Dexterity + Crafts + Matter Silver Ladder"
+        "dicePool": "Dexterity + Crafts + Matter",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Crafts"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 203
@@ -3769,12 +5298,27 @@
       {
         "order": "Adamantine Arrow",
         "name": "Favorable Winds",
-        "dicePool": "Stamina + Occult + Matter"
+        "dicePool": "Stamina + Occult + Matter",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Matter"
+        }
       },
       {
         "order": "Mysterium",
         "name": "Fresh Air",
-        "dicePool": "Intelligence + Occult or Science + Matter The"
+        "dicePool": "Intelligence + Occult or Science + Matter",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 203
@@ -3819,7 +5363,15 @@
       {
         "order": "Free Council",
         "name": "Shrink Ray",
-        "dicePool": "Intelligence + Occult or Science + Matter By"
+        "dicePool": "Intelligence + Occult or Science + Matter",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 205
@@ -3838,12 +5390,26 @@
       {
         "order": "Adamantine Arrow",
         "name": "Unto",
-        "dicePool": "Strength + Athletics + Matter"
+        "dicePool": "Strength + Athletics + Matter",
+        "pool": {
+          "attribute": "Strength",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Matter"
+        }
       },
       {
         "order": "Silver Ladder",
         "name": "Hephaestus’",
-        "dicePool": "Dexterity + Occult + Matter Named"
+        "dicePool": "Dexterity + Occult + Matter",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 205
@@ -3862,7 +5428,14 @@
       {
         "order": "Free Council",
         "name": "Playing God",
-        "dicePool": "Intelligence + Science + Matter The Free Council"
+        "dicePool": "Intelligence + Science + Matter",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Science"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 206
@@ -3881,7 +5454,14 @@
       {
         "order": "Mysterium",
         "name": "Out of the Ashes",
-        "dicePool": "Composure + Crafts + Matter Even"
+        "dicePool": "Composure + Crafts + Matter",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Crafts"
+          ],
+          "arcanum": "Matter"
+        }
       }
     ],
     "pageStart": 206
@@ -3900,7 +5480,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Know",
-        "dicePool": "Wits + Empathy + Mind In"
+        "dicePool": "Wits + Empathy + Mind",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Empathy"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 207
@@ -3919,7 +5506,14 @@
       {
         "order": "Mysterium",
         "name": "Eye of the Mind",
-        "dicePool": "Wits + Empathy + Mind Mages of the Mysterium"
+        "dicePool": "Wits + Empathy + Mind",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Empathy"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 208
@@ -3938,7 +5532,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Scales",
-        "dicePool": "Wits + Empathy + Mind Perhaps"
+        "dicePool": "Wits + Empathy + Mind",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Empathy"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 208
@@ -3957,7 +5558,14 @@
       {
         "order": "Silver Ladder",
         "name": "Thinking for",
-        "dicePool": "Wits + Investigation + Mind Leaders"
+        "dicePool": "Wits + Investigation + Mind",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 208
@@ -3976,7 +5584,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Donning the Inner Mask",
-        "dicePool": "Manipulation + Subterfuge + Mind Perhaps"
+        "dicePool": "Manipulation + Subterfuge + Mind",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 209
@@ -3995,7 +5610,17 @@
       {
         "order": "Silver Ladder",
         "name": "Usurping the",
-        "dicePool": "Presence + Animal Ken + Mind vs Resolve Some Ladder"
+        "dicePool": "Presence + Animal Ken + Mind vs Resolve",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Animal Ken"
+          ],
+          "arcanum": "Mind",
+          "vs": [
+            "Resolve"
+          ]
+        }
       }
     ],
     "pageStart": 209
@@ -4014,7 +5639,18 @@
       {
         "order": "Mysterium",
         "name": "Sculpt the Heart",
-        "dicePool": "Manipulation + Empathy + Mind vs Composure + Gnosis Blatant"
+        "dicePool": "Manipulation + Empathy + Mind vs Composure + Gnosis",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Empathy"
+          ],
+          "arcanum": "Mind",
+          "vs": [
+            "Composure",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 209
@@ -4033,7 +5669,14 @@
       {
         "order": "Free Council",
         "name": "A Face You",
-        "dicePool": "Presence + Socialize + Mind It"
+        "dicePool": "Presence + Socialize + Mind",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Socialize"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 210
@@ -4052,7 +5695,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Forever Stranger",
-        "dicePool": "Wits + Subterfuge + Mind"
+        "dicePool": "Wits + Subterfuge + Mind",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 210
@@ -4071,7 +5721,14 @@
       {
         "order": "Free Council",
         "name": "Bastion of",
-        "dicePool": "Composure + Occult + Mind Advancing the"
+        "dicePool": "Composure + Occult + Mind",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 210
@@ -4090,7 +5747,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Steel Trap",
-        "dicePool": "Resolve + Occult + Mind Adamantine Arrow"
+        "dicePool": "Resolve + Occult + Mind",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 210
@@ -4109,7 +5773,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Whispering Shield",
-        "dicePool": "Manipulation + Stealth + Mind This"
+        "dicePool": "Manipulation + Stealth + Mind",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Stealth"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 211
@@ -4128,7 +5799,14 @@
       {
         "order": "Silver Ladder",
         "name": "See With My",
-        "dicePool": "Presence + Persuasion + Mind It"
+        "dicePool": "Presence + Persuasion + Mind",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 211
@@ -4147,7 +5825,14 @@
       {
         "order": "Mysterium",
         "name": "Words on the",
-        "dicePool": "Manipulation + Expression + Mind"
+        "dicePool": "Manipulation + Expression + Mind",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Expression"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 212
@@ -4166,7 +5851,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Illuminating the Inner Temple",
-        "dicePool": "Resolve + Academics + Mind Guardians"
+        "dicePool": "Resolve + Academics + Mind",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Academics"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 212
@@ -4185,7 +5877,14 @@
       {
         "order": "Mysterium",
         "name": "Gift of Masks",
-        "dicePool": "Manipulation + Subterfuge + Mind It"
+        "dicePool": "Manipulation + Subterfuge + Mind",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 213
@@ -4197,7 +5896,7 @@
     "practice": "Practice:Practice:Practice:Practice: Ruling",
     "action": "Action:Action:Action:Action: Instant",
     "duration": "Duration:Duration:Duration:Duration: Prolonged (one hour)",
-    "aspect": "Aspect:Aspect:Aspect:Aspect: Covert",
+    "aspect": "Covert",
     "cost": "Cost:Cost:Cost:Cost: None This spell “summons” an inner demon into a mage’s consciousness and binds it to his will. Then, whenever the mage’s Vice might come into play during the spell’s duration, he can mentally wrestle the demon (a contested roll between his Gnosis + Mind and his own Resolve + Composure). If he wins, he gains Willpower as if his action had reflected the Vice (even though he didn’t actually act upon it). The demon is put down and banished (this spell must be cast again to gain the same effect). If the demon wins the contest, however, the magemust act out the Vice — and he doesn’t get Willpower for it. Example:Example:Example:Example:Example: A mage whose Vice is Gluttony is offered expensive champagne and all the drinks he wants. He knows his enemies are near, so he wants to keep his head clear and not indulge. The alcohol is tempting, however (he could sure use a Willpower point!). He had cast the “Goetic Struggle” spell earlier that hour, so decides to wrestle with the Goetic demon bound to him in hopes of reaping the benefit of his Vice without having to actually indulge it (and risking the consequences of becoming drunk). His player rolls Gnosis 3 + Mind 3 in a contested roll against his character’s own Resolve 2 and Composure 3. His Gnosis + Mind roll yields two successes, while the Resolve + Composure roll gets one. He wins the contest, so the mage gains one Willpower as if he had indulged his Gluttony, and he doesn’t have to touch a drink. If the Resolve + Composure (representing the demon) roll had won, he would have been forced to drink the alcohol offered and would not have recovered Willpower for it. Casting this spell is an act of hubris, requiring a mage with a Wisdom higher than 4 dots to make a degeneration roll. At higher levels of power, the goetic mage can manifest these inner demons into ephemeral form. They are not spirits, as such. The mage gives physical shape and form to aspects of his psyche. Once given ephemeral form, the demon can bend others to the mage’s will, preying on the same weaknesses the goetic mage has mastered. The goetic mage can inflame others to act on their darkest impulses (indulging in the Vice or weakness they both share). By this art, goetic mages gain power, influence the weak, and control the soulless. Like many paths to power, this practice involves sacrifice… and considerable risk. When manifested, an inner demon only vaguely represents the mage who summons it, perhaps in a form that the mage would assume if he abandoned all morality. The demon might look like a mockery of a loved one — a lover or friend as seen through a mirror darkly — or simply appear as someone the mage would envy or lust after. Imagine a lustful sorcerer summoning a supernaturally beautiful succubus (or incubus) to enact his dark desires. In its ephemeral form, the inner demon is ready to perform the bidding of the mage who summoned it. From Twilight, it can actively escape the notice of ordinary people, clouding their minds and judgment with the dark emotions the summoner has conquered. When it chooses to reveal itself, it is an avatar of sin made flesh. Goetic Evocation (Spirit •••• + Mind ••••) The mage manifests a denizen of his own psyche, his repressed or unsavory urges given form as an ephemeral entity in Twilight.",
     "description": "Most treatises on goetic magic begin by teaching an initiate to master his own Vice. Practice:Practice:Practice:Practice:Practice: Ruling Action:Action:Action:Action:Action: Instant Duration:Duration:Duration:Duration:Duration: Prolonged (one hour) Aspect:Aspect:Aspect:Aspect:Aspect: Covert Cost:Cost:Cost:Cost:Cost: None This spell “summons” an inner demon into a mage’s consciousness and binds it to his will.",
     "rotes": [],
@@ -4217,7 +5916,17 @@
       {
         "order": "Adamantine Arrow",
         "name": "The Way",
-        "dicePool": "Presence + Animal Ken + Mind vs Resolve Human"
+        "dicePool": "Presence + Animal Ken + Mind vs Resolve",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Animal Ken"
+          ],
+          "arcanum": "Mind",
+          "vs": [
+            "Resolve"
+          ]
+        }
       }
     ],
     "pageStart": 213
@@ -4236,7 +5945,18 @@
       {
         "order": "Guardians of the Veil",
         "name": "Mask",
-        "dicePool": "Intelligence + Subterfuge + Mind vs Composure + Gnosis"
+        "dicePool": "Intelligence + Subterfuge + Mind vs Composure + Gnosis",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Mind",
+          "vs": [
+            "Composure",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 213
@@ -4255,7 +5975,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Extending the Wall of Thought",
-        "dicePool": "Presence + Occult + Mind"
+        "dicePool": "Presence + Occult + Mind",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 213
@@ -4274,7 +6001,14 @@
       {
         "order": "Silver Ladder",
         "name": "One Mouth,",
-        "dicePool": "Resolve + Academics + Mind"
+        "dicePool": "Resolve + Academics + Mind",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Academics"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 213
@@ -4293,7 +6027,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Psyche’s",
-        "dicePool": "Resolve + Intimidation + Mind"
+        "dicePool": "Resolve + Intimidation + Mind",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 214
@@ -4312,7 +6053,14 @@
       {
         "order": "Silver Ladder",
         "name": "Sands of",
-        "dicePool": "Composure + Occult + Mind"
+        "dicePool": "Composure + Occult + Mind",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 214
@@ -4331,7 +6079,18 @@
       {
         "order": "Free Council",
         "name": "Psychic Communion",
-        "dicePool": "Wits + Empathy + Mind vs Resolve + Gnosis Telepathy"
+        "dicePool": "Wits + Empathy + Mind vs Resolve + Gnosis",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Empathy"
+          ],
+          "arcanum": "Mind",
+          "vs": [
+            "Resolve",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 214
@@ -4350,7 +6109,14 @@
       {
         "order": "Mysterium",
         "name": "Bricks of Babel",
-        "dicePool": "Intelligence + Academics + Mind Mages of the Mysterium"
+        "dicePool": "Intelligence + Academics + Mind",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Academics"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 215
@@ -4369,7 +6135,14 @@
       {
         "order": "Silver Ladder",
         "name": "Belittle the",
-        "dicePool": "Manipulation + Persuasion + Mind The"
+        "dicePool": "Manipulation + Persuasion + Mind",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 215
@@ -4388,7 +6161,18 @@
       {
         "order": "Guardians of the Veil",
         "name": "Reshaping Yesterday",
-        "dicePool": "Manipulation + Subterfuge + Mind vs Resolve + Gnosis If"
+        "dicePool": "Manipulation + Subterfuge + Mind vs Resolve + Gnosis",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Mind",
+          "vs": [
+            "Resolve",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 216
@@ -4407,7 +6191,18 @@
       {
         "order": "Mysterium",
         "name": "Morpheus’ Road",
-        "dicePool": "Manipulation + Occult + Mind vs Composure + Gnosis Mages of the Mysterium"
+        "dicePool": "Manipulation + Occult + Mind vs Composure + Gnosis",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Mind",
+          "vs": [
+            "Composure",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 216
@@ -4426,7 +6221,18 @@
       {
         "order": "Free Council",
         "name": "Induced Delusion",
-        "dicePool": "Intelligence + Subterfuge + Mind vs Resolve + Gnosis Council"
+        "dicePool": "Intelligence + Subterfuge + Mind vs Resolve + Gnosis",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Mind",
+          "vs": [
+            "Resolve",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 217
@@ -4445,7 +6251,14 @@
       {
         "order": "Mysterium",
         "name": "Treading",
-        "dicePool": "Resolve + Occult + Mind Some"
+        "dicePool": "Resolve + Occult + Mind",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 217
@@ -4464,7 +6277,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Unseen Blade",
-        "dicePool": "Presence + Intimidation + Mind"
+        "dicePool": "Presence + Intimidation + Mind",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 218
@@ -4483,7 +6303,18 @@
       {
         "order": "Silver Ladder",
         "name": "Drawing",
-        "dicePool": "Manipulation + Empathy + Mind vs Composure + Gnosis By"
+        "dicePool": "Manipulation + Empathy + Mind vs Composure + Gnosis",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Empathy"
+          ],
+          "arcanum": "Mind",
+          "vs": [
+            "Composure",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 217
@@ -4502,7 +6333,14 @@
       {
         "order": "Mysterium",
         "name": "Acquired Genius",
-        "dicePool": "Resolve + Academics + Life Mages of the Mysterium"
+        "dicePool": "Resolve + Academics + Life",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Academics"
+          ],
+          "arcanum": "Life"
+        }
       }
     ],
     "pageStart": 218
@@ -4521,12 +6359,30 @@
       {
         "order": "Adamantine Arrow",
         "name": "Tactical",
-        "dicePool": "Presence + Empathy + Mind Arrow"
+        "dicePool": "Presence + Empathy + Mind",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Empathy"
+          ],
+          "arcanum": "Mind"
+        }
       },
       {
         "order": "Silver Ladder",
         "name": "Crown of Kings",
-        "dicePool": "Manipulation + Persuasion + Mind vs Resolve + Gnosis This"
+        "dicePool": "Manipulation + Persuasion + Mind vs Resolve + Gnosis",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Mind",
+          "vs": [
+            "Resolve",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 218
@@ -4545,7 +6401,18 @@
       {
         "order": "Silver Ladder",
         "name": "Driving the",
-        "dicePool": "Manipulation + Persuasion + Mind vs Resolve + Gnosis Using"
+        "dicePool": "Manipulation + Persuasion + Mind vs Resolve + Gnosis",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Mind",
+          "vs": [
+            "Resolve",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 219
@@ -4564,7 +6431,18 @@
       {
         "order": "Silver Ladder",
         "name": "Your Will Is",
-        "dicePool": "Presence + Intimidation + Mind vs Resolve + Gnosis"
+        "dicePool": "Presence + Intimidation + Mind vs Resolve + Gnosis",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Mind",
+          "vs": [
+            "Resolve",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 219
@@ -4583,7 +6461,14 @@
       {
         "order": "Free Council",
         "name": "Artificial Intelligence",
-        "dicePool": "Intelligence + Empathy + Mind"
+        "dicePool": "Intelligence + Empathy + Mind",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Empathy"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 220
@@ -4602,7 +6487,18 @@
       {
         "order": "Guardians of the Veil",
         "name": "Mindscaping",
-        "dicePool": "Manipulation + Persuasion + Mind vs Composure + Gnosis Guardians"
+        "dicePool": "Manipulation + Persuasion + Mind vs Composure + Gnosis",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Mind",
+          "vs": [
+            "Composure",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 220
@@ -4621,17 +6517,38 @@
       {
         "order": "Adamantine Arrow",
         "name": "Artifact",
-        "dicePool": "Intelligence + Occult + Prime No"
+        "dicePool": "Intelligence + Occult + Prime",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       },
       {
         "order": "Free Council",
         "name": "Castles of the Mind",
-        "dicePool": "Composure + Occult + Mind Mages of the Free Council"
+        "dicePool": "Composure + Occult + Mind",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Mind"
+        }
       },
       {
         "order": "Mysterium",
         "name": "Walking with Gods",
-        "dicePool": "Resolve + Occult + Mind"
+        "dicePool": "Resolve + Occult + Mind",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Mind"
+        }
       }
     ],
     "pageStart": 220
@@ -4676,7 +6593,14 @@
       {
         "order": "Silver Ladder",
         "name": "Inscribing the",
-        "dicePool": "Intelligence + Expression + Prime Great"
+        "dicePool": "Intelligence + Expression + Prime",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Expression"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 222
@@ -4695,12 +6619,26 @@
       {
         "order": "Mysterium",
         "name": "Eye of",
-        "dicePool": "Wits + Occult + Prime Uncovering the"
+        "dicePool": "Wits + Occult + Prime",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       },
       {
         "order": "Mysterium",
         "name": "Claiming the",
-        "dicePool": "Intelligence + Investigation + Prime It"
+        "dicePool": "Intelligence + Investigation + Prime",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 223
@@ -4719,7 +6657,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Rend",
-        "dicePool": "Composure + Occult + Prime This"
+        "dicePool": "Composure + Occult + Prime",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 224
@@ -4738,7 +6683,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Mass",
-        "dicePool": "Manipulation + Occult + Prime There"
+        "dicePool": "Manipulation + Occult + Prime",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 224
@@ -4757,7 +6709,14 @@
       {
         "order": "Silver Ladder",
         "name": "Aegis Magicus",
-        "dicePool": "Resolve + Occult + Prime Ladder"
+        "dicePool": "Resolve + Occult + Prime",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 224
@@ -4776,7 +6735,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Squaring the Circle",
-        "dicePool": "Resolve + Occult + Prime It"
+        "dicePool": "Resolve + Occult + Prime",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 225
@@ -4795,7 +6761,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Wolf",
-        "dicePool": "Intelligence + Occult + Prime Guardians"
+        "dicePool": "Intelligence + Occult + Prime",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 225
@@ -4814,7 +6787,14 @@
       {
         "order": "Free Council",
         "name": "Innocuous Presence",
-        "dicePool": "Composure + Subterfuge + Prime Free Council"
+        "dicePool": "Composure + Subterfuge + Prime",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 225
@@ -4826,14 +6806,21 @@
     "practice": "Veiling",
     "action": "Instant",
     "duration": "Prolonged (one scene)",
-    "aspect": "Covert ••• Disciple of Prime I enchant material objects in fantastic ways, bestowing great powers upon them. The illusions I spin of the prima materia deceive the eyes of the Sleeper and the imperceptive willworker alike. I give substance to Mana itself, making the immaterial physically real. I draw upon Mana in its myriad forms, adding its energy to my own. And, upon those who displease me, I unleash the cleansing wrath of the celestial flame.",
+    "aspect": "Covert",
     "cost": "None",
     "description": "The mage can weave a barrier around a soul, protecting it from being stolen by a spirit or severed by an adept of Death. Practice: Veiling Action: Instant Duration: Prolonged (one scene) Aspect: Covert ••• Disciple of Prime I enchant material objects in fantastic ways, bestowing great powers upon them. The illusions I spin of the prima materia deceive the eyes of the Sleeper and the imperceptive willworker alike. I give substance to Mana itself, making the immaterial physically real.",
     "rotes": [
       {
         "order": "Guardians of the Veil",
         "name": "Shield",
-        "dicePool": "Composure + Occult + Prime Some of the"
+        "dicePool": "Composure + Occult + Prime",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 225
@@ -4852,7 +6839,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Bolt of",
-        "dicePool": "Dexterity + Occult + Prime"
+        "dicePool": "Dexterity + Occult + Prime",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 226
@@ -4871,12 +6865,26 @@
       {
         "order": "Free Council",
         "name": "Feedback",
-        "dicePool": "Wits + Occult + Prime Free Council"
+        "dicePool": "Wits + Occult + Prime",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       },
       {
         "order": "Mysterium",
         "name": "Slipping the Bonds",
-        "dicePool": "Resolve + Occult + Prime Mysterium"
+        "dicePool": "Resolve + Occult + Prime",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 226
@@ -4895,7 +6903,15 @@
       {
         "order": "Free Council",
         "name": "Celestial Sediment",
-        "dicePool": "Resolve + Craft or Occult + Prime Just"
+        "dicePool": "Resolve + Crafts or Occult + Prime",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Crafts",
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 226
@@ -4914,7 +6930,14 @@
       {
         "order": "Mysterium",
         "name": "Mask of the Spirits",
-        "dicePool": "Composure + Subterfuge + Prime An"
+        "dicePool": "Composure + Subterfuge + Prime",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 227
@@ -4933,7 +6956,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Unstitch",
-        "dicePool": "Resolve + Occult + Prime Just"
+        "dicePool": "Resolve + Occult + Prime",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 227
@@ -4952,7 +6982,14 @@
       {
         "order": "Mysterium",
         "name": "Ghost Stick",
-        "dicePool": "Resolve + Occult + Prime Not"
+        "dicePool": "Resolve + Occult + Prime",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 227
@@ -4964,14 +7001,21 @@
     "practice": "Weaving",
     "action": "Extended",
     "duration": "Prolonged (one scene)",
-    "aspect": "Special",
+    "aspect": "Vulgar",
     "cost": "1 Mana per spell Imbued items are granted one or more magical powers. In effect, whoever wields the imbued item gains the benefits of its spells, even though he did not necessarily cast them. See the “Imbued Item” Merit, p. 84. The target number is equal to the successes required for all the spells imbued into the item. The mage must be able to cast each spell he wants to imbue, and each spell’s target number is determined as if he were casting that spell as an extended action. The target numbers of all spells to be imbued are combined to find the successes needed for the Imbue Item casting. Each spell remains imbued for as long as its Duration. Most imbued items are made with spells of indefinite Duration, and the caster usually relinquishes such an item from his control so it no longer applies to his maximum spell limit. Doing so costs one Willpower dot. See “Relinquishing Control of Spells,” p. 220. One",
     "description": "The mage can imbue an item with magical powers. Practice: Weaving Action: Extended Aspect: Special Cost: 1 Mana per spell Imbued items are granted one or more magical powers. In effect, whoever wields the imbued item gains the benefits of its spells, even though he did not necessarily cast them. See the “Imbued Item” Merit, p. 84. The target number is equal to the successes required for all the spells imbued into the item.",
     "rotes": [
       {
         "order": "Mysterium",
         "name": "Forge of Power",
-        "dicePool": "Composure + Crafts + Prime Just"
+        "dicePool": "Composure + Crafts + Prime",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Crafts"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 227
@@ -4990,7 +7034,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Succor",
-        "dicePool": "Presence + Persuasion + Prime Just"
+        "dicePool": "Presence + Persuasion + Prime",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 228
@@ -5009,7 +7060,15 @@
       {
         "order": "Free Council",
         "name": "Atlantean",
-        "dicePool": "Intelligence + Occult or Science + Prime While the Free Council"
+        "dicePool": "Intelligence + Occult or Science + Prime",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult",
+            "Science"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 228
@@ -5028,12 +7087,26 @@
       {
         "order": "Free Council",
         "name": "Running with",
-        "dicePool": "Intelligence + Occult + Prime"
+        "dicePool": "Intelligence + Occult + Prime",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       },
       {
         "order": "Silver Ladder",
         "name": "Loom of the Gods",
-        "dicePool": "Intelligence + Craft + Prime When"
+        "dicePool": "Intelligence + Crafts + Prime",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Crafts"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 229
@@ -5052,7 +7125,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Invisible Boon",
-        "dicePool": "Manipulation + Occult + Prime Guardians"
+        "dicePool": "Manipulation + Occult + Prime",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 229
@@ -5071,7 +7151,14 @@
       {
         "order": "Mysterium",
         "name": "Aligning the Stars",
-        "dicePool": "Composure + Survival + Prime On"
+        "dicePool": "Composure + Survival + Prime",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Survival"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 230
@@ -5090,7 +7177,14 @@
       {
         "order": "Silver Ladder",
         "name": "Fitful Sleep",
-        "dicePool": "Manipulation + Empathy + Prime One of the"
+        "dicePool": "Manipulation + Empathy + Prime",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Empathy"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 230
@@ -5109,7 +7203,14 @@
       {
         "order": "Silver Ladder",
         "name": "Unreal Servitor",
-        "dicePool": "Intelligence + Subterfuge + Prime When Ladder"
+        "dicePool": "Intelligence + Subterfuge + Prime",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 230
@@ -5128,7 +7229,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Forge of",
-        "dicePool": "Intelligence + Craft + Prime Adamantine Arrow"
+        "dicePool": "Intelligence + Crafts + Prime",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Crafts"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 230
@@ -5147,7 +7255,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Ehrlik’s Due",
-        "dicePool": "Resolve + Occult + Prime"
+        "dicePool": "Resolve + Occult + Prime",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 231
@@ -5166,12 +7281,29 @@
       {
         "order": "Free Council",
         "name": "Undo the Art",
-        "dicePool": "Resolve + Occult + Prime vs"
+        "dicePool": "Resolve + Occult + Prime vs Potency",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime",
+          "vs": [
+            "Potency"
+          ]
+        }
       },
       {
         "order": "Mysterium",
         "name": "Hidden Stores",
-        "dicePool": "Resolve + Occult + Prime For"
+        "dicePool": "Resolve + Occult + Prime",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 231
@@ -5190,10 +7322,44 @@
       {
         "order": "Guardians of the Veil",
         "name": "Shutting the Gate",
-        "dicePool": "Presence + Survival + Prime Given the"
+        "dicePool": "Presence + Survival + Prime",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Survival"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 231
+  },
+  {
+    "name": "Create Complex Phantasm",
+    "arcanum": "Prime",
+    "level": 5,
+    "practice": "Making",
+    "action": "Instant",
+    "duration": "Prolonged (one scene)",
+    "aspect": "Vulgar",
+    "cost": "None A phantasmal person appears to possess the same Mental and Social Attributes as the caster (or fewer, if he wishes it) and can speak if compelled to by the mage, but has no individual initiative and collapses into a lifeless heap if the willworker doesn’t actively pay attention to it.",
+    "description": "The mage creates a complex phantasm. These beings can mimic living people and complex objects (computers), and stand up to some degree of mundane scrutiny. Such a phantasm is subject to the same rules as a simple moving phantasm (see “Marionette,” p. 228). A mechanical or electronic device, however, doesn’t conduct electricity (and doesn’t work if plugged into a socket; only the mage’s concentration makes it seem to work normally).",
+    "rotes": [
+      {
+        "order": "Adamantine Arrow",
+        "name": "Tin Soldier",
+        "dicePool": "Intelligence + Crafts or Medicine + Prime",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Crafts",
+            "Medicine"
+          ],
+          "arcanum": "Prime"
+        }
+      }
+    ],
+    "pageStart": 232
   },
   {
     "name": "Create Hallow",
@@ -5209,7 +7375,14 @@
       {
         "order": "Mysterium",
         "name": "Sanctum Flow",
-        "dicePool": "Composure + Occult + Prime When"
+        "dicePool": "Composure + Occult + Prime",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 232
@@ -5228,31 +7401,26 @@
       {
         "order": "Free Council",
         "name": "Dream Warrior",
-        "dicePool": "Wits + Occult + Prime This Free Council"
+        "dicePool": "Wits + Occult + Prime",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       },
       {
         "order": "Guardians of the Veil",
         "name": "Banishing",
-        "dicePool": "Composure + Occult + Prime By"
-      }
-    ],
-    "pageStart": 232
-  },
-  {
-    "name": "MasterofPrime Create Complex Phantasm",
-    "arcanum": "Prime",
-    "level": 5,
-    "practice": "Making",
-    "action": "Instant",
-    "duration": "Prolonged (one scene)",
-    "aspect": "Vulgar",
-    "cost": "None A phantasmal person appears to possess the same Mental and Social Attributes as the caster (or fewer, if he wishes it) and can speak if compelled to by the mage, but has no individual initiative and collapses into a lifeless heap if the willworker doesn’t actively pay attention to it.",
-    "description": "The mage creates a complex phantasm. These beings can mimic living people and complex objects (computers), and stand up to some degree of mundane scrutiny. Such a phantasm is subject to the same rules as a simple moving phantasm (see “Marionette,” p. 228). A mechanical or electronic device, however, doesn’t conduct electricity (and doesn’t work if plugged into a socket; only the mage’s concentration makes it seem to work normally).",
-    "rotes": [
-      {
-        "order": "Adamantine Arrow",
-        "name": "Tin Soldier",
-        "dicePool": "Intelligence + Crafts"
+        "dicePool": "Composure + Occult + Prime",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 232
@@ -5271,7 +7439,14 @@
       {
         "order": "Silver Ladder",
         "name": "Press Gang",
-        "dicePool": "Resolve + Intimidation + Prime"
+        "dicePool": "Resolve + Intimidation + Prime",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Prime"
+        }
       }
     ],
     "pageStart": 233
@@ -5290,7 +7465,14 @@
       {
         "order": "Mysterium",
         "name": "Eyes on the Prize",
-        "dicePool": "Intelligence + Investigation + Space Mysterium"
+        "dicePool": "Intelligence + Investigation + Space",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 235
@@ -5309,7 +7491,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Revelation of the Unseen Thread",
-        "dicePool": "Wits + Occult + Space Protecting the Mysteries"
+        "dicePool": "Wits + Occult + Space",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 234
@@ -5328,7 +7517,14 @@
       {
         "order": "Free Council",
         "name": "Spatial Topography",
-        "dicePool": "Wits + Composure + Space Some Free Council"
+        "dicePool": "Wits + Composure + Space",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Composure"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 235
@@ -5347,7 +7543,14 @@
       {
         "order": "Silver Ladder",
         "name": "Trailing the",
-        "dicePool": "Intelligence + Occult + Space Silver Ladder"
+        "dicePool": "Intelligence + Occult + Space",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 235
@@ -5366,7 +7569,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Ballistic",
-        "dicePool": "Intelligence + Occult + Space Arrow"
+        "dicePool": "Intelligence + Occult + Space",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 235
@@ -5385,7 +7595,17 @@
       {
         "order": "Free Council",
         "name": "Nothing Up My Sleeve",
-        "dicePool": "Dexterity + Investigation + Space vs Composure In"
+        "dicePool": "Dexterity + Investigation + Space vs Composure",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space",
+          "vs": [
+            "Composure"
+          ]
+        }
       }
     ],
     "pageStart": 236
@@ -5404,7 +7624,14 @@
       {
         "order": "Mysterium",
         "name": "Derangement of",
-        "dicePool": "Manipulation + Investigation + Space Mysterium"
+        "dicePool": "Manipulation + Investigation + Space",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 236
@@ -5423,7 +7650,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Dispersing the Threads",
-        "dicePool": "Composure + Subterfuge + Space"
+        "dicePool": "Composure + Subterfuge + Space",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Subterfuge"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 236
@@ -5442,7 +7676,14 @@
       {
         "order": "Mysterium",
         "name": "Taking the Road",
-        "dicePool": "Wits + Investigation + Space It"
+        "dicePool": "Wits + Investigation + Space",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 236
@@ -5461,7 +7702,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Remote Viewing",
-        "dicePool": "Intelligence + Investigation + Space Guardians of the Veil"
+        "dicePool": "Intelligence + Investigation + Space",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 237
@@ -5480,7 +7728,14 @@
       {
         "order": "Silver Ladder",
         "name": "Twisting Threads",
-        "dicePool": "Wits + Occult + Space By"
+        "dicePool": "Wits + Occult + Space",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 237
@@ -5499,7 +7754,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Unseen",
-        "dicePool": "Resolve + Occult + Space Protecting"
+        "dicePool": "Resolve + Occult + Space",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 238
@@ -5518,7 +7780,14 @@
       {
         "order": "Free Council",
         "name": "Sideslip",
-        "dicePool": "Wits + Occult + Space"
+        "dicePool": "Wits + Occult + Space",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 238
@@ -5537,7 +7806,14 @@
       {
         "order": "Silver Ladder",
         "name": "Barring the",
-        "dicePool": "Resolve + Occult + Space"
+        "dicePool": "Resolve + Occult + Space",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 239
@@ -5556,7 +7832,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Shattering the Invisible Bonds",
-        "dicePool": "Strength + Investigation + Space As"
+        "dicePool": "Strength + Investigation + Space",
+        "pool": {
+          "attribute": "Strength",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 239
@@ -5575,7 +7858,14 @@
       {
         "order": "Free Council",
         "name": "Spatial Collage",
-        "dicePool": "Intelligence + Investigation + Space This"
+        "dicePool": "Intelligence + Investigation + Space",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 239
@@ -5594,7 +7884,14 @@
       {
         "order": "Free Council",
         "name": "Spinning the",
-        "dicePool": "Manipulation + Occult + Space"
+        "dicePool": "Manipulation + Occult + Space",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 239
@@ -5613,7 +7910,14 @@
       {
         "order": "Mysterium",
         "name": "Escape Hatch",
-        "dicePool": "Manipulation + Investigation + Space Mysterium"
+        "dicePool": "Manipulation + Investigation + Space",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 240
@@ -5632,7 +7936,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Far",
-        "dicePool": "Strength + Investigation + Space Rare"
+        "dicePool": "Strength + Investigation + Space",
+        "pool": {
+          "attribute": "Strength",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 240
@@ -5651,7 +7962,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Cleanup Crew",
-        "dicePool": "Intelligence + Investigation + Space With"
+        "dicePool": "Intelligence + Investigation + Space",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 241
@@ -5670,7 +7988,14 @@
       {
         "order": "Free Council",
         "name": "Non-space",
-        "dicePool": "Dexterity + Investigation + Space Some Free Council"
+        "dicePool": "Dexterity + Investigation + Space",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 241
@@ -5689,7 +8014,14 @@
       {
         "order": "Silver Ladder",
         "name": "Attuning the",
-        "dicePool": "Resolve + Occult + Space Silver Ladder"
+        "dicePool": "Resolve + Occult + Space",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 242
@@ -5708,7 +8040,14 @@
       {
         "order": "Free Council",
         "name": "Storage Space",
-        "dicePool": "Dexterity + Investigation + Space Over"
+        "dicePool": "Dexterity + Investigation + Space",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 242
@@ -5727,7 +8066,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Spider",
-        "dicePool": "Wits + Investigation + Space Like"
+        "dicePool": "Wits + Investigation + Space",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 242
@@ -5746,7 +8092,14 @@
       {
         "order": "Mysterium",
         "name": "Wormhole",
-        "dicePool": "Intelligence + Occult + Space Sometimes"
+        "dicePool": "Intelligence + Occult + Space",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 243
@@ -5765,7 +8118,14 @@
       {
         "order": "Mysterium",
         "name": "The House in the",
-        "dicePool": "Intelligence + Investigation + Space Mages of the Mysterium"
+        "dicePool": "Intelligence + Investigation + Space",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 244
@@ -5784,22 +8144,52 @@
       {
         "order": "Adamantine Arrow",
         "name": "Walking",
-        "dicePool": "Intelligence + Occult + Space An Arrow"
+        "dicePool": "Intelligence + Occult + Space",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Space"
+        }
       },
       {
         "order": "Guardians of the Veil",
         "name": "Sundered Path",
-        "dicePool": "Intelligence + Occult + Space Guaranteed"
+        "dicePool": "Intelligence + Occult + Space",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Space"
+        }
       },
       {
         "order": "Mysterium",
         "name": "Hell of Many",
-        "dicePool": "Intelligence + Occult + Space Sometimes"
+        "dicePool": "Intelligence + Occult + Space",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Space"
+        }
       },
       {
         "order": "Silver Ladder",
         "name": "Loom of Space",
-        "dicePool": "Intelligence + Medicine"
+        "dicePool": "Intelligence + Medicine or Crafts or Science + Space",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Medicine",
+            "Crafts",
+            "Science"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 244
@@ -5818,7 +8208,14 @@
       {
         "order": "Free Council",
         "name": "Many-Roomed",
-        "dicePool": "Intelligence + Investigation + Space"
+        "dicePool": "Intelligence + Investigation + Space",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space"
+        }
       }
     ],
     "pageStart": 243
@@ -5837,7 +8234,18 @@
       {
         "order": "Adamantine Arrow",
         "name": "Shattered",
-        "dicePool": "Resolve + Investigation + Space vs Stamina + Gnosis By"
+        "dicePool": "Resolve + Investigation + Space vs Stamina + Gnosis",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Space",
+          "vs": [
+            "Stamina",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 246
@@ -5856,7 +8264,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Parting the Shadow",
-        "dicePool": "Wits + Occult + Spirit The Guardians of the Veil"
+        "dicePool": "Wits + Occult + Spirit",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 247
@@ -5875,7 +8290,14 @@
       {
         "order": "Free Council",
         "name": "Helping Hand",
-        "dicePool": "Manipulation + Socialize + Spirit Some Free Council"
+        "dicePool": "Manipulation + Socialize + Spirit",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Socialize"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 247
@@ -5894,7 +8316,14 @@
       {
         "order": "Silver Ladder",
         "name": "Solomon’s Sight",
-        "dicePool": "Intelligence + Occult + Spirit King Solomon"
+        "dicePool": "Intelligence + Occult + Spirit",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 248
@@ -5913,7 +8342,14 @@
       {
         "order": "Mysterium",
         "name": "Fleshless Speech",
-        "dicePool": "Presence + Socialize + Spirit Mages of the Mysterium"
+        "dicePool": "Presence + Socialize + Spirit",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Socialize"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 248
@@ -5932,7 +8368,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Ghost Shirt",
-        "dicePool": "Stamina + Occult + Spirit Not"
+        "dicePool": "Stamina + Occult + Spirit",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 248
@@ -5951,7 +8394,14 @@
       {
         "order": "Free Council",
         "name": "Grasp the Otherworld",
-        "dicePool": "Dexterity + Athletics + Spirit Free Council"
+        "dicePool": "Dexterity + Athletics + Spirit",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 249
@@ -5970,7 +8420,14 @@
       {
         "order": "Silver Ladder",
         "name": "Imparting the",
-        "dicePool": "Manipulation + Persuasion + Spirit Members of the Silver Ladder"
+        "dicePool": "Manipulation + Persuasion + Spirit",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 249
@@ -5989,7 +8446,17 @@
       {
         "order": "Silver Ladder",
         "name": "Gather the",
-        "dicePool": "Presence + Persuasion + Spirit vs Resistance Silver Ladder"
+        "dicePool": "Presence + Persuasion + Spirit vs Resistance",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Spirit",
+          "vs": [
+            "Resistance"
+          ]
+        }
       }
     ],
     "pageStart": 249
@@ -6008,7 +8475,14 @@
       {
         "order": "Mysterium",
         "name": "Otherworldly",
-        "dicePool": "Wits + Occult + Spirit The"
+        "dicePool": "Wits + Occult + Spirit",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 249
@@ -6027,7 +8501,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Closing the Ways",
-        "dicePool": "Resolve + Survival + Spirit Most"
+        "dicePool": "Resolve + Survival + Spirit",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Survival"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 249
@@ -6059,7 +8540,17 @@
       {
         "order": "Adamantine Arrow",
         "name": "Crown",
-        "dicePool": "Presence + Intimidation + Death vs Resistance The Adamantine"
+        "dicePool": "Presence + Intimidation + Death vs Resistance",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Death",
+          "vs": [
+            "Resistance"
+          ]
+        }
       }
     ],
     "pageStart": 250
@@ -6078,7 +8569,18 @@
       {
         "order": "Guardians of the Veil",
         "name": "Exiled",
-        "dicePool": "Presence + Intimidation + Spirit vs Power + Resistance Often"
+        "dicePool": "Presence + Intimidation + Spirit vs Power + Resistance",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Spirit",
+          "vs": [
+            "Power",
+            "Resistance"
+          ]
+        }
       }
     ],
     "pageStart": 250
@@ -6097,7 +8599,14 @@
       {
         "order": "Mysterium",
         "name": "Soul-Bonding",
-        "dicePool": "Manipulation + Socialize + Spirit Supplemented"
+        "dicePool": "Manipulation + Socialize + Spirit",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Socialize"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 251
@@ -6116,7 +8625,17 @@
       {
         "order": "Silver Ladder",
         "name": "Whisper to the",
-        "dicePool": "Presence + Persuasion + Spirit vs Resistance"
+        "dicePool": "Presence + Persuasion + Spirit vs Resistance",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Spirit",
+          "vs": [
+            "Resistance"
+          ]
+        }
       }
     ],
     "pageStart": 251
@@ -6135,12 +8654,26 @@
       {
         "order": "Adamantine Arrow",
         "name": "Strike",
-        "dicePool": "Strength + Athletics + Spirit"
+        "dicePool": "Strength + Athletics + Spirit",
+        "pool": {
+          "attribute": "Strength",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Spirit"
+        }
       },
       {
         "order": "Adamantine Arrow",
         "name": "Ephemeral Ward",
-        "dicePool": "Stamina + Occult + Spirit An"
+        "dicePool": "Stamina + Occult + Spirit",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 251
@@ -6159,7 +8692,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Shadow",
-        "dicePool": "Dexterity + Athletics + Spirit Reaching"
+        "dicePool": "Dexterity + Athletics + Spirit",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 252
@@ -6178,7 +8718,14 @@
       {
         "order": "Free Council",
         "name": "Spirit Mending",
-        "dicePool": "Composure + Empathy + Spirit Free Council"
+        "dicePool": "Composure + Empathy + Spirit",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Empathy"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 252
@@ -6197,7 +8744,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Restoring the Stolen Light",
-        "dicePool": "Presence + Empathy + Spirit Not"
+        "dicePool": "Presence + Empathy + Spirit",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Empathy"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 252
@@ -6216,7 +8770,14 @@
       {
         "order": "Free Council",
         "name": "Stirred from Sleep",
-        "dicePool": "Manipulation + Persuasion + Spirit Mages of the Free Council"
+        "dicePool": "Manipulation + Persuasion + Spirit",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 252
@@ -6235,7 +8796,14 @@
       {
         "order": "Mysterium",
         "name": "I n t o",
-        "dicePool": "Resolve + Survival + Spirit While"
+        "dicePool": "Resolve + Survival + Spirit",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Survival"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 253
@@ -6254,7 +8822,17 @@
       {
         "order": "Silver Ladder",
         "name": "Chains",
-        "dicePool": "Presence + Intimidation + Spirit vs Resistance Sometimes"
+        "dicePool": "Presence + Intimidation + Spirit vs Resistance",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Spirit",
+          "vs": [
+            "Resistance"
+          ]
+        }
       }
     ],
     "pageStart": 253
@@ -6273,12 +8851,29 @@
       {
         "order": "Adamantine Arrow",
         "name": "Blade of",
-        "dicePool": "Resolve + Persuasion + Spirit vs Resistance With"
+        "dicePool": "Resolve + Persuasion + Spirit vs Resistance",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Spirit",
+          "vs": [
+            "Resistance"
+          ]
+        }
       },
       {
         "order": "Mysterium",
         "name": "Word of Honor",
-        "dicePool": "Presence + Socialize + Spirit The"
+        "dicePool": "Presence + Socialize + Spirit",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Socialize"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 254
@@ -6297,7 +8892,14 @@
       {
         "order": "Silver Ladder",
         "name": "Mentor’s Gift",
-        "dicePool": "Presence + Persuasion + Spirit By"
+        "dicePool": "Presence + Persuasion + Spirit",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 255
@@ -6316,7 +8918,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Palm",
-        "dicePool": "Intelligence + Crafts + Spirit Guardians"
+        "dicePool": "Intelligence + Crafts + Spirit",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Crafts"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 255
@@ -6335,7 +8944,14 @@
       {
         "order": "Mysterium",
         "name": "Shadow Gate",
-        "dicePool": "Wits + Occult + Spirit With"
+        "dicePool": "Wits + Occult + Spirit",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 256
@@ -6354,7 +8970,14 @@
       {
         "order": "Mysterium",
         "name": "Spirit Gold",
-        "dicePool": "Manipulation + Occult + Spirit"
+        "dicePool": "Manipulation + Occult + Spirit",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 255
@@ -6373,7 +8996,17 @@
       {
         "order": "Mysterium",
         "name": "Watch Over My",
-        "dicePool": "Presence + Persuasion + Spirit vs Resistance Through"
+        "dicePool": "Presence + Persuasion + Spirit vs Resistance",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Spirit",
+          "vs": [
+            "Resistance"
+          ]
+        }
       }
     ],
     "pageStart": 255
@@ -6392,7 +9025,17 @@
       {
         "order": "Silver Ladder",
         "name": "Breaking the",
-        "dicePool": "Presence + Persuasion + Spirit vs Resistance Ladder"
+        "dicePool": "Presence + Persuasion + Spirit vs Resistance",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Spirit",
+          "vs": [
+            "Resistance"
+          ]
+        }
       }
     ],
     "pageStart": 255
@@ -6411,7 +9054,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Watchman Between Worlds",
-        "dicePool": "Resolve + Survival + Spirit"
+        "dicePool": "Resolve + Survival + Spirit",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Survival"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 256
@@ -6430,12 +9080,26 @@
       {
         "order": "Adamantine Arrow",
         "name": "Descending from Heaven",
-        "dicePool": "Presence + Intimidation + Spirit Despite the"
+        "dicePool": "Presence + Intimidation + Spirit",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Spirit"
+        }
       },
       {
         "order": "Silver Ladder",
         "name": "Call to Darkness",
-        "dicePool": "Presence + Intimidation + Spirit Unthinking"
+        "dicePool": "Presence + Intimidation + Spirit",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Intimidation"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 256
@@ -6454,7 +9118,17 @@
       {
         "order": "Free Council",
         "name": "Transformation of the Timeless",
-        "dicePool": "Intelligence + Occult + Spirit vs Resistance By"
+        "dicePool": "Intelligence + Occult + Spirit vs Resistance",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Spirit",
+          "vs": [
+            "Resistance"
+          ]
+        }
       }
     ],
     "pageStart": 257
@@ -6473,7 +9147,14 @@
       {
         "order": "Silver Ladder",
         "name": "Throne of the",
-        "dicePool": "Intelligence + Occult + Spirit By"
+        "dicePool": "Intelligence + Occult + Spirit",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 257
@@ -6492,7 +9173,14 @@
       {
         "order": "Mysterium",
         "name": "Spirit Sanctum",
-        "dicePool": "Composure + Occult + Spirit With"
+        "dicePool": "Composure + Occult + Spirit",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Spirit"
+        }
       }
     ],
     "pageStart": 258
@@ -6511,7 +9199,14 @@
       {
         "order": "Silver Ladder",
         "name": "Seizing",
-        "dicePool": "Wits + Investigation + Time To"
+        "dicePool": "Wits + Investigation + Time",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 259
@@ -6530,7 +9225,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Strike",
-        "dicePool": "Intelligence + Composure + Time Mages of the Adamantine Arrow"
+        "dicePool": "Intelligence + Composure + Time",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Composure"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 260
@@ -6549,7 +9251,14 @@
       {
         "order": "Free Council",
         "name": "The Gravity of",
-        "dicePool": "Wits + Investigation + Time Free Council"
+        "dicePool": "Wits + Investigation + Time",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 260
@@ -6568,7 +9277,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Espying the Graven Hour",
-        "dicePool": "Wits + Occult + Time With"
+        "dicePool": "Wits + Occult + Time",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 260
@@ -6587,7 +9303,14 @@
       {
         "order": "Silver Ladder",
         "name": "Seer’s Song",
-        "dicePool": "Intelligence + Occult + Time Leadership"
+        "dicePool": "Intelligence + Occult + Time",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 260
@@ -6606,7 +9329,14 @@
       {
         "order": "Free Council",
         "name": "Instant Gratification",
-        "dicePool": "Wits + Investigation + Time Mages of the Free Council"
+        "dicePool": "Wits + Investigation + Time",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 261
@@ -6625,7 +9355,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Failure",
-        "dicePool": "Wits + Investigation + Time The Adamantine Arrow"
+        "dicePool": "Wits + Investigation + Time",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 261
@@ -6644,7 +9381,14 @@
       {
         "order": "Mysterium",
         "name": "Gazing Through",
-        "dicePool": "Intelligence + Investigation + Time With"
+        "dicePool": "Intelligence + Investigation + Time",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 262
@@ -6663,7 +9407,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Breaking the Trail of Days",
-        "dicePool": "Composure + Stealth + Time For"
+        "dicePool": "Composure + Stealth + Time",
+        "pool": {
+          "attribute": "Composure",
+          "skills": [
+            "Stealth"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 263
@@ -6682,7 +9433,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Dancing",
-        "dicePool": "Dexterity + Athletics + Time The River of Time"
+        "dicePool": "Dexterity + Athletics + Time",
+        "pool": {
+          "attribute": "Dexterity",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 263
@@ -6701,7 +9459,14 @@
       {
         "order": "Silver Ladder",
         "name": "A Glance",
-        "dicePool": "Presence + Persuasion + Time Sometimes"
+        "dicePool": "Presence + Persuasion + Time",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Persuasion"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 264
@@ -6720,7 +9485,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Swift as",
-        "dicePool": "Stamina + Athletics + Time Mages of the Adamantine Arrow"
+        "dicePool": "Stamina + Athletics + Time",
+        "pool": {
+          "attribute": "Stamina",
+          "skills": [
+            "Athletics"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 264
@@ -6739,7 +9511,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Speaking the Name of Tomorrow",
-        "dicePool": "Intelligence + Investigation + Time Time"
+        "dicePool": "Intelligence + Investigation + Time",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 265
@@ -6758,7 +9537,14 @@
       {
         "order": "Silver Ladder",
         "name": "Turn Back the",
-        "dicePool": "Resolve + Occult + Time"
+        "dicePool": "Resolve + Occult + Time",
+        "pool": {
+          "attribute": "Resolve",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 265
@@ -6777,7 +9563,14 @@
       {
         "order": "Adamantine Arrow",
         "name": "Bending the River’s Flow",
-        "dicePool": "Manipulation + Investigation + Time Often"
+        "dicePool": "Manipulation + Investigation + Time",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 265
@@ -6796,7 +9589,14 @@
       {
         "order": "Silver Ladder",
         "name": "Crushed Beneath the Sands",
-        "dicePool": "Manipulation + Occult + Time"
+        "dicePool": "Manipulation + Occult + Time",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 266
@@ -6815,7 +9615,18 @@
       {
         "order": "Adamantine Arrow",
         "name": "Measure",
-        "dicePool": "Intelligence + Occult + Time vs Composure + Gnosis Ultimately"
+        "dicePool": "Intelligence + Occult + Time vs Composure + Gnosis",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Time",
+          "vs": [
+            "Composure",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 266
@@ -6834,7 +9645,14 @@
       {
         "order": "Guardians of the Veil",
         "name": "Merlin’s Foresight",
-        "dicePool": "Intelligence + Occult + Time Protecting the Mysteries"
+        "dicePool": "Intelligence + Occult + Time",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 266
@@ -6853,7 +9671,14 @@
       {
         "order": "Free Council",
         "name": "Seven Breaths",
-        "dicePool": "Wits + Occult + Time This"
+        "dicePool": "Wits + Occult + Time",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 267
@@ -6872,7 +9697,14 @@
       {
         "order": "Mysterium",
         "name": "Cresting the",
-        "dicePool": "Wits + Occult + Time Sometimes the"
+        "dicePool": "Wits + Occult + Time",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 267
@@ -6891,7 +9723,14 @@
       {
         "order": "Mysterium",
         "name": "Temporal Bastion",
-        "dicePool": "Wits + Occult + Time Mages of the Mysterium"
+        "dicePool": "Wits + Occult + Time",
+        "pool": {
+          "attribute": "Wits",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 267
@@ -6910,7 +9749,14 @@
       {
         "order": "Free Council",
         "name": "Archeologist’s",
-        "dicePool": "Presence + Investigation + Time"
+        "dicePool": "Presence + Investigation + Time",
+        "pool": {
+          "attribute": "Presence",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 269
@@ -6929,7 +9775,14 @@
       {
         "order": "Silver Ladder",
         "name": "Thief of Years",
-        "dicePool": "Manipulation + Investigation + Time The Silver"
+        "dicePool": "Manipulation + Investigation + Time",
+        "pool": {
+          "attribute": "Manipulation",
+          "skills": [
+            "Investigation"
+          ],
+          "arcanum": "Time"
+        }
       }
     ],
     "pageStart": 269
@@ -6948,7 +9801,18 @@
       {
         "order": "Free Council",
         "name": "Hand of Glory",
-        "dicePool": "Intelligence + Occult + Time vs Composure + Gnosis Willworkers of the Free Council"
+        "dicePool": "Intelligence + Occult + Time vs Composure + Gnosis",
+        "pool": {
+          "attribute": "Intelligence",
+          "skills": [
+            "Occult"
+          ],
+          "arcanum": "Time",
+          "vs": [
+            "Composure",
+            "Gnosis"
+          ]
+        }
       }
     ],
     "pageStart": 269
