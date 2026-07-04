@@ -5,7 +5,6 @@ import usePresence from "@convex-dev/presence/react"
 import { api } from "../../../convex/_generated/api"
 import { useDicePool } from "#/hooks/use-dice-pool"
 import { SessionLayout } from "#/components/game/SessionLayout"
-import { VideoPlaceholder } from "#/components/game/VideoPlaceholder"
 import { ActivityLog } from "#/components/game/ActivityLog"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { ChatInput } from "#/components/game/ChatInput"
@@ -124,7 +123,6 @@ function SessionPage() {
           members={session.members}
         />
       }
-      videoStrip={<VideoPlaceholder />}
       characterSheet={characterSheet}
       activityLog={
         <ActivityLog

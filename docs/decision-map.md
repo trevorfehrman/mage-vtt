@@ -41,7 +41,92 @@ don't inline them.
     `docs/component-polish.md`.
   - Video chat is committed; only its technology is open.
   - effect-solutions advice is to be applied *in full* when its ticket resolves.
+- **Phase framing (2026-07-03): drop "v1" / version language.** Phases are
+    scoped by **enforcement**: a phase is a design-coherent slice of the
+    *rules-enforced play surface*. **Whiteboard and video are separable,
+    unenforced tracks** — no rules flow through them, that's the point.
+    **"Playable" is a milestone, not a phase**: the table plays when
+    `enforced-play-scope`, `combat-tracker-design`, and `vulgar-paradox-design`
+    have all been resolved *and implemented*. Until the Paradox phase, don't
+    invent ad-hoc Scene/time state (ADR-0012).
 - **One ticket per session. Every session ends with a handoff.**
+
+## enforced-play-scope: Scope the covert-tier enforced play surface (this phase's PRD)
+
+Blocked by: —
+Status: resolved
+Type: Grilling
+
+### Question
+
+The first enforced phase. An in/out call per capability for the covert-tier
+play surface, recorded as a PRD whose acceptance section is the durable
+definition of done. Settled so far (session of 2026-07-03): live sheet mutation
+is in — players write only via **action-mediated writes**, **hand edits** are
+ST/Dev-only with Override (see CONTEXT.md); character creation is **out**
+(Dev-side ingestion path instead, no UI); combat, Vulgar/Paradox, whiteboard,
+video, rules tab urgency all resolved per this grill → `/to-prd` → `/to-issues`.
+
+### Answer
+
+**PRD: [#11](https://github.com/trevorfehrman/mage-vtt/issues/11)** — the
+acceptance section is the phase's durable definition of done. In: rote casting
+(+ data tasks: structured pool parsing, aspect cleanup), vulgar rejected at the
+seam, real casting UX (sheet-as-controller, replaces the disposable form),
+willpower spend on both flows, ST sheet-less casting (Hidden default), ST/Dev
+hand edits (owner rejected, Override-stamped), roster (read-all,
+edit-ST/Dev-only), Dev-side character ingestion, visual identity + reduced grid
+applied, prototypes committed as reference assets. Out: combat (phase 2),
+Vulgar/Paradox + Scene state (phase 3), whiteboard/video/rules-tab tracks,
+creation UI, NPC persistence. **Issues #12–#20** (all `ready-for-agent`):
+#12 willpower · #13 identity/grid · #14 rote data · #15 ST sheet-less cast ·
+#16 ingestion (⇐14) · #17 roster (⇐13) · #18 rote cast (⇐14,16) ·
+#19 hand edits (⇐17) · #20 casting UX (⇐13,18).
+
+## combat-tracker-design: Design the combat phase — tick tracker feel + combat flows
+
+Blocked by: enforced-play-scope
+Status: open
+Type: Prototype
+
+### Question
+
+The second enforced phase and the owner's centerpiece (ADR-0001). Prototype the
+FFX-style tick tracker's *feel* (bottom band, collapse behavior, portraits,
+tick reordering), then grill the combat slice: attack→defense→damage through
+the seam, action costs, NPC stat blocks (§16), weapons/armor. Machine pattern
+already settled in `docs/effect-xstate-bridge.md`; domain math exists
+(`initiative.ts`, `combat.ts`, `damage.ts`). Output: prototype + slice design →
+its own `/to-prd`.
+
+## vulgar-paradox-design: Design the Vulgar casting + Paradox subsystem
+
+Blocked by: combat-tracker-design
+Status: open
+Type: Grilling
+
+### Question
+
+The third enforced phase — sequenced after combat (owner call 2026-07-03:
+combat drags NPC representation that paradox-era play also wants; fights are
+where vulgar erupts). Paradox is an interactive subsystem, not a flow variant
+(ADR-0008): ST pre-roll, backlash as post-roll player decision, containment.
+Requires the **Scene state model** (ADR-0012) — design it here, not before.
+Domain math exists (`paradox.ts`, `paradox-effects.ts`).
+
+## st-only-ui: Where does Storyteller-only UI live?
+
+Blocked by: enforced-play-scope
+Status: open
+Type: Prototype
+
+### Question
+
+The ST needs controls relegated to just them (hand edits, overrides,
+hidden-roll views, later reveals) — flagged during `enforced-play-scope`. Where
+does that surface live: dedicated rail? an ST mode toggle? per-component
+gating? Prototype in the locked identity. May resolve partially inside the
+enforced-play PRD if the grill lands a minimal answer first.
 
 ## effect-v4-bump: Bump within Effect v4 beta (33 → latest)?
 

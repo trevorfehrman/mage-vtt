@@ -88,9 +88,10 @@ export function ImprovisedCastForm({
 
   return (
     <section>
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--kicker)] mb-2">
-        Improvised Cast
-      </h3>
+      <div className="mb-2 flex items-center gap-2">
+        <h3 className="mv-eyebrow">Improvised Cast</h3>
+        <span className="mv-rule flex-1" />
+      </div>
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <select
           value={arcanum}
@@ -176,12 +177,16 @@ export function ImprovisedCastForm({
           type="button"
           onClick={submit}
           disabled={busy || !arcanum}
-          className="rounded border border-[var(--line)] px-3 py-1 hover:bg-accent disabled:opacity-50"
+          className="mv-btn rounded-[3px] px-3 py-1 disabled:opacity-50"
         >
           {busy ? "Casting…" : "Cast"}
         </button>
       </div>
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {error && (
+        <p className="mt-1 text-xs" style={{ color: "var(--bad)" }}>
+          {error}
+        </p>
+      )}
     </section>
   )
 }

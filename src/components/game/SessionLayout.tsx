@@ -4,13 +4,12 @@ import {
   usePanelRef,
   useDefaultLayout,
 } from "react-resizable-panels"
-import { PanelLeftClose, PanelRightClose } from "lucide-react"
+import { PanelRightClose } from "lucide-react"
 import {
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
 } from "#/components/ui/resizable"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "#/components/ui/tabs"
 import {
   Tooltip,
   TooltipContent,
@@ -20,11 +19,17 @@ import {
 import { Button } from "#/components/ui/button"
 import { useSessionShortcuts } from "#/hooks/use-session-shortcuts"
 
+/**
+ * The settled 4-section grid (docs/ui-direction.md), rendered in reduced form
+ * for the covert-tier phase (PRD #11, issue #13): center = Character; right
+ * rail = Activity Log + dice pool + chat. The left rail (video) and bottom
+ * band (FFX-style initiative tracker) keep their slots in the design but are
+ * not rendered until their tracks land — no placeholder surfaces.
+ */
 interface SessionLayoutProps {
   sessionName: string
   inviteCode: string
   presence?: ReactNode
-  videoStrip: ReactNode
   characterSheet?: ReactNode
   activityLog: ReactNode
   dicePoolBuilder: ReactNode
@@ -36,48 +41,28 @@ export function SessionLayout({
   sessionName,
   inviteCode,
   presence,
-  videoStrip,
   characterSheet,
   activityLog,
   dicePoolBuilder,
   chatInput,
   onClearPool,
 }: SessionLayoutProps) {
-  const leftPanelRef = usePanelRef()
   const rightPanelRef = usePanelRef()
-  const [activeTab, setActiveTab] = useState("map")
   const [isAnimating, setIsAnimating] = useState(false)
 
-  const animatedToggle = useCallback(
-    (ref: React.RefObject<PanelImperativeHandle | null>) => {
-      setIsAnimating(true)
-      togglePanel(ref)
-      setTimeout(() => setIsAnimating(false), 250)
-    },
-    [],
-  )
-
-  // Wrap the shortcuts to also trigger animation
-  const animatedToggleLeft = useCallback(
-    () => animatedToggle(leftPanelRef),
-    [animatedToggle, leftPanelRef],
-  )
-  const animatedToggleRight = useCallback(
-    () => animatedToggle(rightPanelRef),
-    [animatedToggle, rightPanelRef],
-  )
+  const animatedToggleRight = useCallback(() => {
+    setIsAnimating(true)
+    togglePanel(rightPanelRef)
+    setTimeout(() => setIsAnimating(false), 250)
+  }, [rightPanelRef])
 
   useSessionShortcuts({
-    leftPanelRef,
-    rightPanelRef,
-    onTabChange: setActiveTab,
     onClearPool,
-    onToggleLeft: animatedToggleLeft,
     onToggleRight: animatedToggleRight,
   })
 
   const mainLayout = useDefaultLayout({
-    id: "session-layout-v2",
+    id: "session-layout-v3",
     storage: localStorage,
   })
 
@@ -88,28 +73,13 @@ export function SessionLayout({
   return (
     <div className="flex h-screen flex-col">
       {/* Header */}
-      <header className="session-panel flex items-center justify-between rounded-none border-x-0 border-t-0 px-4 py-2">
+      <header className="mv-panel flex items-center justify-between border-x-0 border-t-0 px-4 py-2">
         <div className="flex items-center gap-3">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => animatedToggle(leftPanelRef)}
-                  className="cursor-pointer"
-                >
-                  <PanelLeftClose className="size-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Toggle video [ </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <h1 className="text-lg font-semibold">{sessionName}</h1>
+          <h1 className="mv-h text-[15px] leading-none">{sessionName}</h1>
           {presence}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-muted-foreground text-xs font-mono">
+          <span className="mv-data text-[11px]" style={{ color: "var(--dim)" }}>
             {inviteCode}
           </span>
           <TooltipProvider>
@@ -118,99 +88,53 @@ export function SessionLayout({
                 <Button
                   variant="ghost"
                   size="icon-xs"
-                  onClick={() => animatedToggle(rightPanelRef)}
+                  onClick={animatedToggleRight}
                   className="cursor-pointer"
                 >
                   <PanelRightClose className="size-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Toggle activity ]</TooltipContent>
+              <TooltipContent side="bottom">Toggle rail ]</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
       </header>
 
-      {/* Main content area */}
+      {/* Main content — Character center · Activity/pool/chat right rail */}
       <ResizablePanelGroup
         orientation="horizontal"
         defaultLayout={mainLayout.defaultLayout}
         onLayoutChanged={mainLayout.onLayoutChanged}
         className={`flex-1 ${animClass}`}
       >
-        {/* Left panel — Video strip */}
-        <ResizablePanel
-          id="left"
-          panelRef={leftPanelRef}
-          defaultSize={15}
-          minSize={10}
-          collapsedSize={0}
-          collapsible
-          className="session-panel rounded-none border-t-0 border-b-0 border-l-0"
-        >
-          <div className="h-full overflow-y-auto p-3">
-            {videoStrip}
+        <ResizablePanel id="center" defaultSize={70} minSize={40}>
+          <div className="h-full overflow-y-auto p-4">
+            {characterSheet ?? (
+              <div className="flex h-full items-center justify-center" style={{ color: "var(--dim)" }}>
+                <p className="text-sm">No character in this session yet.</p>
+              </div>
+            )}
           </div>
         </ResizablePanel>
 
         <ResizableHandle />
 
-        {/* Center panel — Tabs: Map / Character Sheet */}
-        <ResizablePanel id="center" defaultSize={55} minSize={30}>
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="flex h-full flex-col"
-          >
-            <div className="shrink-0 border-b border-[var(--line)] px-4 pt-2">
-              <TabsList variant="line">
-                <TabsTrigger value="map" className="cursor-pointer">
-                  Map
-                </TabsTrigger>
-                <TabsTrigger value="sheet" className="cursor-pointer">
-                  Character Sheet
-                </TabsTrigger>
-              </TabsList>
-            </div>
-            <TabsContent value="map" className="flex-1 overflow-y-auto p-4">
-              <div className="flex h-full items-center justify-center text-muted-foreground">
-                <p className="text-sm">Map canvas — coming soon</p>
-              </div>
-            </TabsContent>
-            <TabsContent value="sheet" className="flex-1 overflow-y-auto p-4">
-              {characterSheet ?? (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
-                  <p className="text-sm">Character sheet — coming soon</p>
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-        </ResizablePanel>
-
-        <ResizableHandle />
-
-        {/* Right panel — Activity Log + Dice Pool + Chat Input */}
         <ResizablePanel
           id="right"
           panelRef={rightPanelRef}
           defaultSize={30}
-          minSize={15}
+          minSize={20}
           collapsedSize={0}
           collapsible
-          className="session-panel rounded-none border-t-0 border-b-0 border-r-0"
+          className="mv-panel border-y-0 border-r-0"
         >
           <div className="flex h-full flex-col">
             {/* Activity log — fills available space */}
-            <div className="flex-1 overflow-hidden">
-              {activityLog}
-            </div>
-            {/* Dice pool builder — collapsible, above chat */}
-            <div className="shrink-0">
-              {dicePoolBuilder}
-            </div>
+            <div className="flex-1 overflow-hidden">{activityLog}</div>
+            {/* Dice pool — foot of the rail, above chat */}
+            <div className="shrink-0">{dicePoolBuilder}</div>
             {/* Chat input — pinned to bottom */}
-            <div className="shrink-0">
-              {chatInput}
-            </div>
+            <div className="shrink-0">{chatInput}</div>
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>

@@ -42,6 +42,9 @@ export function useDicePool(
           : {}),
       })
       send({ type: "ROLL_COMPLETE" })
+      // The settled interaction model: a roll consumes the pool and resets it
+      // (docs/component-polish.md).
+      send({ type: "RESET" })
     } catch (err) {
       send({
         type: "ROLL_ERROR",

@@ -1,8 +1,8 @@
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, type ReactNode } from "react"
 import { useQuery } from "convex/react"
 import { api } from "../../../convex/_generated/api"
-import { Badge } from "#/components/ui/badge"
 import { ScrollArea } from "#/components/ui/scroll-area"
+import { ArcanaGlyph } from "./ArcanaGlyph"
 import type { Id } from "../../../convex/_generated/dataModel"
 
 interface ActivityLogProps {
@@ -10,6 +10,11 @@ interface ActivityLogProps {
   isRolling?: boolean
 }
 
+/**
+ * The Chronicle — the log is the record (docs/component-polish.md). Roll cards
+ * carry the corner-tick framing; system lines read as narration; the first
+ * system line gets the single illuminated drop-cap.
+ */
 export function ActivityLog({ sessionId, isRolling }: ActivityLogProps) {
   const activity = useQuery(api.activity.list, { sessionId })
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -24,17 +29,21 @@ export function ActivityLog({ sessionId, isRolling }: ActivityLogProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-[var(--line)] px-3 py-2 shrink-0">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--kicker)]">
-          Activity
-        </h2>
+      <div className="flex shrink-0 items-center gap-2 border-b px-3 py-2" style={{ borderColor: "var(--line)" }}>
+        <h2 className="mv-eyebrow">Chronicle</h2>
       </div>
 
       <ScrollArea className="flex-1 px-3 py-2">
-        <div className="grid gap-1.5">
-          {sorted.map((item) => {
+        <div className="grid gap-2">
+          {sorted.map((item, i) => {
             if (item.kind === "message") {
-              return <MessageItem key={item._id} message={item} />
+              return (
+                <MessageItem
+                  key={item._id}
+                  message={item}
+                  dropCap={i === 0 && item.visibilityType === "system"}
+                />
+              )
             }
             return <RollItem key={item._id} roll={item} />
           })}
@@ -53,13 +62,9 @@ export function ActivityLog({ sessionId, isRolling }: ActivityLogProps) {
 
 function RollingIndicator() {
   return (
-    <div className="rounded-lg border border-[var(--lagoon)]/30 bg-[var(--lagoon)]/5 p-2.5 my-0.5 animate-pulse">
-      <div className="flex items-center gap-2">
-        <span className="inline-flex size-2 rounded-full bg-[var(--lagoon)] animate-ping" />
-        <span className="text-sm text-[var(--lagoon)] font-medium">
-          Rolling dice...
-        </span>
-      </div>
+    <div className="mv-panel flex items-center gap-2 rounded-[3px] px-2.5 py-2 text-[12px]">
+      <span className="inline-flex size-2 animate-ping rounded-full" style={{ background: "var(--accent)" }} />
+      <span className="mv-accent">casting the dice…</span>
     </div>
   )
 }
@@ -72,29 +77,37 @@ type MessageEntry = {
   visibilityType: string
 }
 
-function MessageItem({ message }: { message: MessageEntry }) {
+function MessageItem({ message, dropCap }: { message: MessageEntry; dropCap?: boolean }) {
   if (message.visibilityType === "system") {
+    if (dropCap && message.text.length > 1) {
+      return (
+        <div className="flex gap-2 py-0.5" style={{ color: "var(--dim)" }}>
+          <span className="mv-h mv-accent shrink-0 text-[32px] leading-[0.8]">
+            {message.text.charAt(0)}
+          </span>
+          <span className="text-[12px] italic">{message.text.slice(1)}</span>
+        </div>
+      )
+    }
     return (
-      <p className="text-muted-foreground text-center text-xs italic">
-        {message.text}
-      </p>
+      <div className="text-center text-[11px] italic" style={{ color: "var(--dim)" }}>
+        — {message.text} —
+      </div>
     )
   }
 
   return (
-    <div
-      className={`text-sm ${
-        message.visibilityType === "whisper"
-          ? "italic text-[var(--lagoon-deep)]"
-          : ""
-      }`}
-    >
-      <span className="font-semibold">{message.senderName}</span>
+    <div className="text-[13px]" style={{ color: "var(--ink)" }}>
+      <b className="mv-accent">{message.senderName}</b>
       {message.visibilityType === "whisper" && (
-        <span className="text-muted-foreground text-xs"> (whisper)</span>
-      )}
-      <span className="text-muted-foreground">: </span>
-      {message.text}
+        <span className="text-[11px] italic" style={{ color: "var(--dim)" }}>
+          {" "}
+          (whisper)
+        </span>
+      )}{" "}
+      <span style={{ color: message.visibilityType === "whisper" ? "var(--dim)" : "var(--ink)" }}>
+        {message.text}
+      </span>
     </div>
   )
 }
@@ -124,93 +137,118 @@ type RollEntry = {
 }
 
 function RollItem({ roll }: { roll: RollEntry }) {
+  const arcana = roll.components.filter((c) => c.type === "arcanum")
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-2.5 my-0.5">
+    <div className="mv-cornered mv-panel rounded-[3px] p-2.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium">{roll.displayName}</span>
+        <div className="flex items-center gap-1.5">
+          {arcana.map((c) => (
+            <ArcanaGlyph key={c.name} arcanum={c.name} size={14} className="mv-accent" />
+          ))}
+          <span className="text-[13px] font-medium" style={{ color: "var(--ink)" }}>
+            {roll.displayName}
+          </span>
+        </div>
         <div className="flex gap-1">
-          {roll.isDramaticFailure && (
-            <Badge variant="destructive" className="text-[10px]">
-              Dramatic Failure
-            </Badge>
-          )}
-          {roll.isExceptionalSuccess && (
-            <Badge className="bg-[var(--lagoon)] text-[10px] text-white">
-              Exceptional
-            </Badge>
-          )}
-          {roll.visibility === "hidden" && (
-            <Badge variant="outline" className="text-[10px]">
-              Hidden
-            </Badge>
-          )}
+          {roll.isDramaticFailure && <Tag kind="bad">Dramatic Failure</Tag>}
+          {roll.isExceptionalSuccess && <Tag kind="good">Exceptional</Tag>}
+          {roll.visibility === "hidden" && <Tag>Hidden</Tag>}
           {roll.override && (
-            <Badge variant="outline" className="text-[10px]" title={`Invoked by ${roll.override.invokedByName}`}>
-              {roll.override.kind === "repair" ? "Repair" : "God-mode"}
-            </Badge>
+            <Tag title={`Invoked by ${roll.override.invokedByName}`}>
+              {roll.override.kind === "storyteller-action"
+                ? "Storyteller"
+                : roll.override.kind === "repair"
+                  ? "Repair"
+                  : "God-mode"}
+            </Tag>
           )}
         </div>
       </div>
-      {roll.summary && (
-        <p className="mt-1 text-xs text-muted-foreground italic">{roll.summary}</p>
-      )}
+
       <div className="mt-1 flex items-baseline gap-2">
-        <span className="text-xl font-bold tabular-nums">
+        <span
+          className="mv-data text-[24px] font-bold leading-none"
+          style={{ color: roll.successes > 0 ? "var(--accent)" : "var(--dim)" }}
+        >
           {roll.successes}
         </span>
-        <span className="text-muted-foreground text-xs">
-          {roll.successes === 1 ? "success" : "successes"} from {roll.poolSize}{" "}
-          {roll.isChanceDie ? "chance die" : "dice"}
+        <span className="text-[11px]" style={{ color: "var(--dim)" }}>
+          {roll.successes === 1 ? "success" : "successes"} ·{" "}
+          {roll.isChanceDie ? "chance die" : `${roll.poolSize} dice`}
+          {roll.isRoteAction ? " · rote" : ""}
         </span>
       </div>
-      <div className="mt-1 flex flex-wrap gap-0.5">
-        {roll.rolls.map((r, i) => (
-          <DieResult key={`r-${i}`} value={r} isChanceDie={roll.isChanceDie} />
+
+      {roll.summary && (
+        <p className="mt-1 text-[11px] italic" style={{ color: "var(--dim)" }}>
+          {roll.summary}
+        </p>
+      )}
+
+      <div className="mt-1.5 flex flex-wrap gap-1">
+        {roll.rolls.map((v, i) => (
+          <Die key={`b${i}`} v={v} again={roll.againThreshold} chance={roll.isChanceDie} />
         ))}
-        {roll.roteRerolls.map((r, i) => (
-          <DieResult key={`rr-${i}`} value={r} isRoteReroll />
+        {roll.roteRerolls.map((v, i) => (
+          <Die key={`r${i}`} v={v} again={roll.againThreshold} ring="rote" />
         ))}
-        {roll.explosions.map((r, i) => (
-          <DieResult key={`e-${i}`} value={r} isExplosion />
+        {roll.explosions.map((v, i) => (
+          <Die key={`e${i}`} v={v} again={roll.againThreshold} ring="exp" />
         ))}
       </div>
-      <div className="mt-1 flex flex-wrap gap-1">
-        {roll.components.map((c, i) => (
-          <span key={i} className="text-muted-foreground text-[10px]">
-            {c.name} {c.dots > 0 ? `+${c.dots}` : c.dots}
-            {i < roll.components.length - 1 ? " +" : ""}
-          </span>
-        ))}
+
+      <div className="mv-data mt-1.5 text-[10px]" style={{ color: "var(--dim)" }}>
+        {roll.components
+          .map((c) => `${c.name} ${c.dots > 0 && c.type === "modifier" ? `+${c.dots}` : c.dots}`)
+          .join(" + ")}
       </div>
     </div>
   )
 }
 
-function DieResult({
-  value,
-  isChanceDie,
-  isRoteReroll,
-  isExplosion,
+function Die({
+  v,
+  again,
+  ring,
+  chance,
 }: {
-  value: number
-  isChanceDie?: boolean
-  isRoteReroll?: boolean
-  isExplosion?: boolean
+  v: number
+  again: number
+  ring?: "rote" | "exp"
+  chance?: boolean
 }) {
-  const isSuccess = isChanceDie ? value === 10 : value >= 8
-  const isDramatic = isChanceDie && value === 1
-
+  const success = chance ? v === 10 : v >= 8
+  const dramatic = chance && v === 1
   return (
     <span
-      className={`inline-flex size-5 items-center justify-center rounded text-[10px] font-bold tabular-nums ${
-        isDramatic
-          ? "bg-destructive text-destructive-foreground"
-          : isSuccess
-            ? "bg-[var(--lagoon)] text-white"
-            : "bg-muted text-muted-foreground"
-      } ${isRoteReroll ? "ring-1 ring-amber-400" : ""} ${isExplosion ? "ring-1 ring-[var(--lagoon-deep)]" : ""}`}
+      className="mv-data grid size-5 place-items-center rounded-[2px] text-[10px] font-bold"
+      style={{
+        background: dramatic ? "var(--bad)" : success ? "var(--accent)" : "var(--raise)",
+        color: dramatic || success ? "#0a0a0c" : "var(--dim)",
+        boxShadow:
+          ring === "rote"
+            ? "0 0 0 1px var(--dim2)"
+            : ring === "exp"
+              ? "0 0 0 1px var(--accent)"
+              : v >= again && !chance
+                ? "0 0 0 1px var(--accent)"
+                : undefined,
+      }}
     >
-      {value}
+      {v}
+    </span>
+  )
+}
+
+function Tag({ kind, title, children }: { kind?: "good" | "bad"; title?: string; children: ReactNode }) {
+  const c = kind === "good" ? "var(--accent)" : kind === "bad" ? "var(--bad)" : "var(--dim)"
+  return (
+    <span
+      title={title}
+      className="mv-data rounded-[2px] px-1 py-0.5 text-[9px] uppercase tracking-wide"
+      style={{ border: `1px solid ${c}`, color: c }}
+    >
+      {children}
     </span>
   )
 }

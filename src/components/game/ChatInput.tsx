@@ -46,28 +46,22 @@ export function ChatInput({
     <div className="border-t border-[var(--line)] p-2 shrink-0">
       {otherMembers.length > 0 && (
         <div className="mb-1.5 flex flex-wrap gap-1">
-          <Button
-            size="xs"
-            variant={!whisperTarget ? "default" : "ghost"}
+          <button
+            type="button"
             onClick={() => setWhisperTarget(null)}
-            className="cursor-pointer text-xs"
+            className={`mv-mini ${!whisperTarget ? "mv-mini-on" : ""}`}
           >
             Public
-          </Button>
+          </button>
           {otherMembers.map((m) => (
-            <Button
+            <button
               key={m.userId}
-              size="xs"
-              variant={whisperTarget === m.userId ? "default" : "ghost"}
+              type="button"
               onClick={() => setWhisperTarget(m.userId)}
-              className={`cursor-pointer text-xs ${
-                whisperTarget === m.userId
-                  ? "bg-[var(--lagoon)] text-white hover:bg-[var(--lagoon)]/90"
-                  : ""
-              }`}
+              className={`mv-mini ${whisperTarget === m.userId ? "mv-mini-on" : ""}`}
             >
               @ {m.displayName}
-            </Button>
+            </button>
           ))}
         </div>
       )}

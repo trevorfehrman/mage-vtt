@@ -206,3 +206,7 @@ Starting set — **not a closed list**:
   shared drawing (§11).
 - **Multiple sittings / campaign continuity** — revisit ADR-0002 if long
   campaigns need distinct sittings.
+- **Storyteller-only UI surface** — the ST will almost certainly need controls
+  relegated to just them (hand edits, overrides, hidden-roll views, reveals);
+  *where* that lives (dedicated rail? ST mode? per-component gating?) is open
+  and deserves its own exploration session.

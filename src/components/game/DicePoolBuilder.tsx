@@ -1,34 +1,27 @@
 import { useState } from "react"
-import { ChevronDown, ChevronUp, Minus, Plus, X } from "lucide-react"
-import { Button } from "#/components/ui/button"
-import { Badge } from "#/components/ui/badge"
-import { Switch } from "#/components/ui/switch"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "#/components/ui/select"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "#/components/ui/collapsible"
 import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy"
+import { ArcanaGlyph } from "./ArcanaGlyph"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
 type DicePoolAPI = ReturnType<typeof useDicePool>
 
+/**
+ * The pool is the readout (docs/component-polish.md): the sheet toggles traits
+ * in, this panel shows the live pool big + mono, the assembled chips, the roll
+ * options, and one accent Roll button. Pool of ≤0 rolls a chance die (◈).
+ * Clears itself after a roll.
+ */
 export function DicePoolBuilder({ pool }: { pool: DicePoolAPI }) {
   const [modifier, setModifier] = useState(0)
-  const [isExpanded, setIsExpanded] = useState(false)
-  const hasComponents = pool.context.components.length > 0
-  const canInteract = pool.state === "idle" || pool.state === "building"
-  // The bonus is server-added on roll; mirror it in the displayed size.
+  const building = pool.state === "building"
+  const rolling = pool.state === "rolling"
+  const canInteract = pool.state === "idle" || building
+
+  // The Willpower bonus is server-added on roll; mirror it in the readout.
   const displaySize =
     pool.context.poolSize +
     (pool.context.spendWillpower ? WILLPOWER_BONUS_DICE : 0)
+  const chance = building && displaySize <= 0
 
   const handleAddModifier = () => {
     if (modifier === 0) return
@@ -36,209 +29,146 @@ export function DicePoolBuilder({ pool }: { pool: DicePoolAPI }) {
     setModifier(0)
   }
 
-  // Auto-expand when components are added, auto-collapse when empty
-  const showExpanded = isExpanded || pool.state === "building"
-
   return (
-    <Collapsible
-      open={showExpanded}
-      onOpenChange={setIsExpanded}
-      className="border-t border-[var(--line)]"
-    >
-      {/* Always-visible header: pool size + component badges */}
-      <div className="flex items-center gap-2 px-3 py-2.5">
-        <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            className="cursor-pointer shrink-0"
+    <div className="border-t" style={{ borderColor: "var(--line)" }}>
+      {/* readout */}
+      <div className="flex items-center gap-2 px-3 pt-2.5">
+        <span className="mv-eyebrow">Dice pool</span>
+        <span
+          className="mv-data ml-auto text-[22px] font-bold leading-none"
+          style={{ color: building ? "var(--accent)" : "var(--dim)" }}
+        >
+          {chance ? "◈" : displaySize}
+        </span>
+        <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
+          {chance ? "chance" : "dice"}
+        </span>
+      </div>
+
+      {/* assembled components */}
+      <div className="flex min-h-[30px] flex-wrap gap-1 px-3 pt-2">
+        {pool.context.components.length === 0 && (
+          <span className="mv-data text-[11px] italic" style={{ color: "var(--dim)" }}>
+            toggle traits on the sheet…
+          </span>
+        )}
+        {pool.context.components.map((c, i) => (
+          <button
+            key={`${c.type}:${c.name}:${i}`}
+            onClick={() => canInteract && pool.removeComponent(i)}
+            disabled={!canInteract}
+            className="mv-chip group flex items-center gap-1 rounded-full py-0.5 pl-1.5 pr-1 text-[11px]"
           >
-            {showExpanded ? (
-              <ChevronDown className="size-3.5" />
-            ) : (
-              <ChevronUp className="size-3.5" />
+            {c.type === "arcanum" && (
+              <ArcanaGlyph arcanum={c.name} size={12} className="mv-accent" />
             )}
-          </Button>
-        </CollapsibleTrigger>
-
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--kicker)] shrink-0">
-          Dice Pool
-        </h2>
-
-        {hasComponents && (
-          <>
-            <span className="text-lg font-bold tabular-nums ml-1">
-              {displaySize}
+            <span>{c.name}</span>
+            <span className="mv-data" style={{ color: "var(--dim)" }}>
+              {c.dots > 0 && c.type === "modifier" ? `+${c.dots}` : c.dots}
             </span>
-
-            {/* Inline component badges in collapsed mode */}
-            <div className="flex flex-wrap gap-1 flex-1 min-w-0">
-              {pool.context.components.map((c, i) => (
-                <Badge
-                  key={i}
-                  variant="secondary"
-                  className="cursor-pointer gap-0.5 text-[10px] pr-1"
-                  onClick={() => canInteract && pool.removeComponent(i)}
-                >
-                  {c.name}
-                  {canInteract && (
-                    <X className="size-2.5 text-muted-foreground" />
-                  )}
-                </Badge>
-              ))}
-            </div>
-
-            {/* Always-visible clear */}
-            {canInteract && (
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={pool.reset}
-                className="cursor-pointer shrink-0 text-muted-foreground hover:text-foreground"
-                title="Clear pool (Esc)"
-              >
-                <X className="size-3.5" />
-              </Button>
-            )}
-          </>
+            <span className="opacity-40 group-hover:opacity-100">✕</span>
+          </button>
+        ))}
+        {pool.context.spendWillpower && (
+          <span className="mv-chip flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]">
+            <span>Willpower</span>
+            <span className="mv-data mv-accent">+{WILLPOWER_BONUS_DICE}</span>
+          </span>
         )}
       </div>
 
-      {/* Expandable section: modifier, options, actions */}
-      <CollapsibleContent>
-        <div className="grid gap-4 px-3 pb-3">
-          {/* Modifier stepper */}
-          {canInteract && (
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground shrink-0">
-                Modifier
-              </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={() => setModifier((m) => m - 1)}
-                  className="cursor-pointer"
-                >
-                  <Minus className="size-3.5" />
-                </Button>
-                <span className="w-8 text-center text-sm font-bold tabular-nums">
-                  {modifier >= 0 ? `+${modifier}` : modifier}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={() => setModifier((m) => m + 1)}
-                  className="cursor-pointer"
-                >
-                  <Plus className="size-3.5" />
-                </Button>
-              </div>
-              <Button
-                size="xs"
-                variant="outline"
-                onClick={handleAddModifier}
-                disabled={modifier === 0}
-                className="cursor-pointer text-xs"
-              >
-                Add
-              </Button>
-            </div>
-          )}
-
-          {/* Options row */}
-          {pool.state === "building" && (
-            <div className="flex flex-wrap items-center gap-4 text-xs">
-              <Select
-                value={String(pool.context.againThreshold)}
-                onValueChange={(v) => pool.setAgainThreshold(Number(v))}
-              >
-                <SelectTrigger
-                  size="sm"
-                  className="h-8 text-xs w-auto cursor-pointer"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10-again</SelectItem>
-                  <SelectItem value="9">9-again</SelectItem>
-                  <SelectItem value="8">8-again</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <Switch
-                  size="sm"
-                  checked={pool.context.isRoteAction}
-                  onCheckedChange={(v) => pool.setRoteAction(v)}
-                />
-                <span>Rote</span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <Switch
-                  size="sm"
-                  checked={pool.context.visibility === "hidden"}
-                  onCheckedChange={(v) =>
-                    pool.setVisibility(v ? "hidden" : "public")
-                  }
-                />
-                <span>Hidden</span>
-              </label>
-
-              {pool.canSpendWillpower && (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Switch
-                    size="sm"
-                    checked={pool.context.spendWillpower}
-                    onCheckedChange={(v) => pool.setSpendWillpower(v)}
-                  />
-                  <span>Willpower +{WILLPOWER_BONUS_DICE}</span>
-                </label>
-              )}
-            </div>
-          )}
-
-          {/* Action buttons */}
-          <div className="flex gap-2">
-            {pool.state === "building" && (
-              <>
-                <Button
-                  onClick={pool.roll}
-                  className="flex-1 cursor-pointer h-9"
-                >
-                  Roll {displaySize} dice
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={pool.reset}
-                  className="cursor-pointer"
-                >
-                  Clear
-                </Button>
-              </>
-            )}
-            {pool.state === "rolling" && (
-              <Button disabled className="flex-1 h-9 animate-pulse">
-                Rolling...
-              </Button>
-            )}
-            {pool.state === "complete" && (
-              <Button
-                onClick={pool.reset}
-                className="flex-1 cursor-pointer h-9"
-              >
-                New Roll
-              </Button>
-            )}
+      {/* modifier — ADD_COMPONENT is legal from idle too (it starts the pool) */}
+      {canInteract && (
+        <div className="mt-2 flex items-center gap-3 px-3">
+          <span className="mv-data text-[10px] uppercase tracking-wider" style={{ color: "var(--dim)" }}>
+            mod
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setModifier((m) => m - 1)}
+              className="mv-btn grid size-6 place-items-center rounded-[3px] text-[13px] leading-none"
+            >
+              −
+            </button>
+            <span className="mv-data w-7 text-center text-[13px] font-bold">
+              {modifier > 0 ? `+${modifier}` : modifier}
+            </span>
+            <button
+              onClick={() => setModifier((m) => m + 1)}
+              className="mv-btn grid size-6 place-items-center rounded-[3px] text-[13px] leading-none"
+            >
+              +
+            </button>
+            <button
+              onClick={handleAddModifier}
+              disabled={modifier === 0}
+              className="mv-mini ml-1 disabled:opacity-40"
+            >
+              Add
+            </button>
           </div>
+        </div>
+      )}
 
-          {/* Error */}
-          {pool.context.error && (
-            <p className="text-destructive text-sm">{pool.context.error}</p>
+      {/* roll options — the machine only accepts SET_* while building */}
+      {building && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 px-3">
+          <div className="flex items-center gap-1">
+            {[10, 9, 8].map((n) => (
+              <button
+                key={n}
+                onClick={() => pool.setAgainThreshold(n)}
+                className={`mv-mini ${pool.context.againThreshold === n ? "mv-mini-on" : ""}`}
+              >
+                {n}-ag
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => pool.setRoteAction(!pool.context.isRoteAction)}
+            className={`mv-mini ${pool.context.isRoteAction ? "mv-mini-on" : ""}`}
+          >
+            Rote
+          </button>
+          <button
+            onClick={() => pool.setVisibility(pool.context.visibility === "hidden" ? "public" : "hidden")}
+            className={`mv-mini ${pool.context.visibility === "hidden" ? "mv-mini-on" : ""}`}
+          >
+            Hidden
+          </button>
+          {pool.canSpendWillpower && (
+            <button
+              onClick={() => pool.setSpendWillpower(!pool.context.spendWillpower)}
+              className={`mv-mini ${pool.context.spendWillpower ? "mv-mini-on" : ""}`}
+            >
+              Willpower +{WILLPOWER_BONUS_DICE}
+            </button>
           )}
         </div>
-      </CollapsibleContent>
-    </Collapsible>
+      )}
+
+      {/* action */}
+      <div className="flex gap-2 p-3">
+        <button
+          onClick={pool.roll}
+          disabled={!building || rolling}
+          className="mv-roll flex-1 rounded-[3px] py-2 text-[13px] disabled:opacity-40"
+        >
+          {rolling ? "Rolling…" : chance ? "Roll chance die" : `Roll ${displaySize} dice`}
+        </button>
+        {building && (
+          <button onClick={pool.reset} className="mv-btn rounded-[3px] px-3 text-[12px]">
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* error */}
+      {pool.context.error && (
+        <p className="px-3 pb-2 text-[12px]" style={{ color: "var(--bad)" }}>
+          {pool.context.error}
+        </p>
+      )}
+    </div>
   )
 }
