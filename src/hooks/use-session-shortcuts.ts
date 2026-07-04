@@ -2,16 +2,18 @@ import { useEffect } from "react"
 
 interface SessionShortcutsOptions {
   onClearPool: () => void
+  onToggleLeft?: () => void
   onToggleRight: () => void
 }
 
 /**
- * Session-page keyboard shortcuts for the reduced grid: `]` toggles the right
- * rail, Escape clears the dice pool. (`[` returns with the video rail; tab
- * switching returns when the center grows tabs again.)
+ * Session-page keyboard shortcuts: `[` toggles the video rail, `]` the right
+ * rail, Escape clears the dice pool. Rail toggles are suppressed while typing
+ * (tab switching returns when the center grows tabs again).
  */
 export function useSessionShortcuts({
   onClearPool,
+  onToggleLeft,
   onToggleRight,
 }: SessionShortcutsOptions) {
   useEffect(() => {
@@ -19,6 +21,10 @@ export function useSessionShortcuts({
       const tag = (e.target as HTMLElement).tagName
       const isTyping = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT"
 
+      if (!isTyping && e.key === "[" && onToggleLeft) {
+        onToggleLeft()
+        return
+      }
       if (!isTyping && e.key === "]") {
         onToggleRight()
         return
@@ -32,5 +38,5 @@ export function useSessionShortcuts({
 
     document.addEventListener("keydown", handler)
     return () => document.removeEventListener("keydown", handler)
-  }, [onClearPool, onToggleRight])
+  }, [onClearPool, onToggleLeft, onToggleRight])
 }

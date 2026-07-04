@@ -4,7 +4,7 @@ import {
   usePanelRef,
   useDefaultLayout,
 } from "react-resizable-panels"
-import { PanelRightClose } from "lucide-react"
+import { PanelLeftClose, PanelRightClose } from "lucide-react"
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -22,14 +22,16 @@ import { useSessionShortcuts } from "#/hooks/use-session-shortcuts"
 /**
  * The settled 4-section grid (docs/ui-direction.md), rendered in reduced form
  * for the covert-tier phase (PRD #11, issue #13): center = Character; right
- * rail = Activity Log + dice pool + chat. The left rail (video) and bottom
- * band (FFX-style initiative tracker) keep their slots in the design but are
- * not rendered until their tracks land — no placeholder surfaces.
+ * rail = Activity Log + dice pool + chat. The left rail renders a cosmetic
+ * video placeholder (owner call 2026-07-04 — the grid can't be judged without
+ * its fourth wall); the bottom band (FFX-style initiative tracker) stays
+ * unrendered until the combat phase.
  */
 interface SessionLayoutProps {
   sessionName: string
   inviteCode: string
   presence?: ReactNode
+  videoRail?: ReactNode
   characterSheet?: ReactNode
   activityLog: ReactNode
   dicePoolBuilder: ReactNode
@@ -43,6 +45,7 @@ export function SessionLayout({
   sessionName,
   inviteCode,
   presence,
+  videoRail,
   characterSheet,
   activityLog,
   dicePoolBuilder,
@@ -50,22 +53,35 @@ export function SessionLayout({
   chatInput,
   onClearPool,
 }: SessionLayoutProps) {
+  const leftPanelRef = usePanelRef()
   const rightPanelRef = usePanelRef()
   const [isAnimating, setIsAnimating] = useState(false)
 
-  const animatedToggleRight = useCallback(() => {
-    setIsAnimating(true)
-    togglePanel(rightPanelRef)
-    setTimeout(() => setIsAnimating(false), 250)
-  }, [rightPanelRef])
+  const animatedToggle = useCallback(
+    (ref: React.RefObject<PanelImperativeHandle | null>) => {
+      setIsAnimating(true)
+      togglePanel(ref)
+      setTimeout(() => setIsAnimating(false), 250)
+    },
+    [],
+  )
+  const animatedToggleLeft = useCallback(
+    () => animatedToggle(leftPanelRef),
+    [animatedToggle, leftPanelRef],
+  )
+  const animatedToggleRight = useCallback(
+    () => animatedToggle(rightPanelRef),
+    [animatedToggle, rightPanelRef],
+  )
 
   useSessionShortcuts({
     onClearPool,
+    onToggleLeft: animatedToggleLeft,
     onToggleRight: animatedToggleRight,
   })
 
   const mainLayout = useDefaultLayout({
-    id: "session-layout-v3",
+    id: "session-layout-v4",
     storage: localStorage,
   })
 
@@ -78,6 +94,23 @@ export function SessionLayout({
       {/* Header */}
       <header className="mv-panel flex items-center justify-between border-x-0 border-t-0 px-4 py-2">
         <div className="flex items-center gap-3">
+          {videoRail && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={animatedToggleLeft}
+                    className="cursor-pointer"
+                  >
+                    <PanelLeftClose className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Toggle video [</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <h1 className="mv-h text-[15px] leading-none">{sessionName}</h1>
           {presence}
         </div>
@@ -110,7 +143,24 @@ export function SessionLayout({
         onLayoutChanged={mainLayout.onLayoutChanged}
         className={`flex-1 ${animClass}`}
       >
-        <ResizablePanel id="center" defaultSize={70} minSize={40}>
+        {videoRail && (
+          <>
+            <ResizablePanel
+              id="left"
+              panelRef={leftPanelRef}
+              defaultSize={13}
+              minSize={9}
+              collapsedSize={0}
+              collapsible
+              className="mv-panel border-y-0 border-l-0"
+            >
+              <div className="h-full overflow-y-auto">{videoRail}</div>
+            </ResizablePanel>
+            <ResizableHandle />
+          </>
+        )}
+
+        <ResizablePanel id="center" defaultSize={57} minSize={40}>
           <div className="h-full overflow-y-auto p-4">
             {characterSheet ?? (
               <div className="flex h-full items-center justify-center" style={{ color: "var(--dim)" }}>

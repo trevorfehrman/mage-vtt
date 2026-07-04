@@ -11,6 +11,7 @@ import { ChatInput } from "#/components/game/ChatInput"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { ImprovisedCastForm } from "#/components/game/ImprovisedCastForm"
 import { SheetlessCastForm } from "#/components/game/SheetlessCastForm"
+import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { Schema } from "effect"
 import { CharacterSheet as CharacterSheetData } from "#/domain/character"
@@ -124,6 +125,7 @@ function SessionPage() {
     <SessionLayout
       sessionName={session.name}
       inviteCode={session.inviteCode}
+      videoRail={<VideoRailPlaceholder />}
       presence={
         <PresenceIndicator
           presenceState={presenceState}
