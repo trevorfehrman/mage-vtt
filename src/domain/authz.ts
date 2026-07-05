@@ -120,6 +120,53 @@ export class NotStoryteller extends Schema.TaggedErrorClass<NotStoryteller>()(
 ) {}
 
 /**
+ * The hand-edit door (issue #19): an **inverted** authority ladder —
+ * ownership grants nothing. Only the session's Storyteller and a Dev pass,
+ * and *every* pass records a `repair` Override (ADR-0006: a repair is
+ * "direct-setting state outside the rules" — the rule bent is that state
+ * changes only through game actions, so the marker always fires). A plain
+ * member — the owning Player included — fails `NotStoryteller`.
+ *
+ * Returns the editor's identity: a hand edit is the editor's own act and is
+ * attributed to them, unlike casts, where attribution follows the owner.
+ */
+export const requireRepairAuthority = Effect.fn("Authz.requireRepairAuthority")(
+  function* (sessionId: SessionId) {
+    const actor = yield* CurrentActor
+    const store = yield* GameStore
+    const membership = yield* store
+      .getMembership(sessionId, actor.userId)
+      .pipe(Effect.option)
+
+    const editor = (displayName: string) =>
+      recordBypass(
+        new OverrideMarker({
+          invokedByUserId: actor.userId,
+          invokedByName: displayName,
+          kind: "repair",
+        }),
+      ).pipe(Effect.as({ userId: actor.userId, displayName }))
+
+    if (
+      Option.isSome(membership) &&
+      membership.value.role === "storyteller"
+    ) {
+      return yield* editor(membership.value.displayName)
+    }
+
+    if (actor.isDev) {
+      // A Dev may not be a member at all; fall back to the id (as the
+      // god-mode rung of `requireOwnedCharacter` does).
+      return yield* editor(
+        Option.isSome(membership) ? membership.value.displayName : actor.userId,
+      )
+    }
+
+    return yield* new NotStoryteller({ sessionId, userId: actor.userId })
+  },
+)
+
+/**
  * Resolve a character sheet as this session's flows see it, and walk the
  * authority ladder over it: the sheet is fetched, scoped to the session (a
  * character outside this session isn't there, as far as this session's flows
@@ -129,14 +176,27 @@ export class NotStoryteller extends Schema.TaggedErrorClass<NotStoryteller>()(
  */
 export const requireSessionCharacter = Effect.fn("Authz.requireSessionCharacter")(
   function* (sessionId: SessionId, characterId: CharacterId) {
+    const sheet = yield* getSessionScopedSheet(sessionId, characterId)
+    yield* requireOwnedCharacter(sheet)
+    return sheet
+  },
+)
+
+/**
+ * The session-scoped sheet read on its own: a character outside this session
+ * isn't there, as far as this session's flows are concerned —
+ * `DocumentNotFound`, not a leak. For flows whose authority isn't the
+ * ownership ladder (the hand edit's inverted door), which compose their own
+ * guard on top.
+ */
+export const getSessionScopedSheet = Effect.fn("Authz.getSessionScopedSheet")(
+  function* (sessionId: SessionId, characterId: CharacterId) {
     const store = yield* GameStore
     const sheet = yield* store.getSheet(characterId)
 
     if (sheet.sessionId !== sessionId) {
       return yield* new DocumentNotFound({ table: "characters", id: characterId })
     }
-
-    yield* requireOwnedCharacter(sheet)
     return sheet
   },
 )

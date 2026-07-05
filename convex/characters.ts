@@ -4,6 +4,7 @@ import { memberOf, requireUser } from "./lib/auth"
 import { enforcedMutation } from "./lib/enforce"
 import { castSpell as castSpellFlow } from "../src/domain/flows/casting"
 import { castRote as castRoteFlow } from "../src/domain/flows/rote-cast"
+import { handEditSheet as handEditSheetFlow } from "../src/domain/flows/hand-edit"
 
 // A Covert improvised cast through the enforcement seam (ADR-0004, PRD #4).
 // Auth, authority over the sheet, the Mana economy, the dice, the sheet patch,
@@ -42,6 +43,30 @@ export const castRote = enforcedMutation({
     visibility: v.optional(v.union(v.literal("public"), v.literal("hidden"))),
   },
   flow: castRoteFlow,
+})
+
+// The fudge/repair path (PRD #11, issue #19): a hand edit to a sheet's
+// current-state values. The inverted authority ladder (owner rejected; only
+// ST/Dev pass), the repair Override, and the system Activity entry all live
+// in the domain flow; this file supplies only the args.
+export const handEdit = enforcedMutation({
+  args: {
+    sessionId: v.id("sessions"),
+    characterId: v.id("characters"),
+    manaCurrent: v.optional(v.number()),
+    willpowerCurrent: v.optional(v.number()),
+    healthTrack: v.optional(
+      v.array(
+        v.union(
+          v.literal("empty"),
+          v.literal("bashing"),
+          v.literal("lethal"),
+          v.literal("aggravated"),
+        ),
+      ),
+    ),
+  },
+  flow: handEditSheetFlow,
 })
 
 export const getForSession = query({

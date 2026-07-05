@@ -13,6 +13,7 @@ import { ImprovisedCastForm } from "#/components/game/ImprovisedCastForm"
 import { RoteCastForm } from "#/components/game/RoteCastForm"
 import { SheetlessCastForm } from "#/components/game/SheetlessCastForm"
 import { Roster } from "#/components/game/Roster"
+import { HandEditForm } from "#/components/game/HandEditForm"
 import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { Schema } from "effect"
@@ -89,6 +90,13 @@ function SessionPage() {
     )
   }
 
+  // The affordances gated on this render only for the Storyteller (a Dev who
+  // is also ST sees them too); the server refuses everyone else regardless
+  // (issues #15, #19).
+  const isStoryteller = session.members.some(
+    (m) => m.userId === user._id && m.role === "storyteller",
+  )
+
   // The viewed sheet is the roster selection, defaulting to your own
   // character (issue #17). A selection that no longer resolves — or a roster
   // still loading — falls back to your own sheet rather than a blank panel.
@@ -121,6 +129,16 @@ function SessionPage() {
     sheetContent = sheet ? (
       <div className="grid gap-6">
         <CharacterSheet character={sheet} pool={isMine ? pool : undefined} />
+        {/* The hand-edit panel (issue #19): ST-only, on any sheet — the one
+            edit affordance in the app; players never see edit controls. */}
+        {isStoryteller && (
+          <HandEditForm
+            key={`${sheet.id}:${sheet.manaCurrent}:${sheet.willpowerCurrent}:${sheet.healthTrack.join(",")}`}
+            sessionId={sessionId as Id<"sessions">}
+            characterId={viewed._id}
+            character={sheet}
+          />
+        )}
         {isMine && (
           <>
             <RoteCastForm
@@ -169,12 +187,6 @@ function SessionPage() {
       )}
       {sheetContent}
     </>
-  )
-
-  // The affordance renders only for the Storyteller (a Dev who is also ST
-  // sees it too); the server refuses everyone else regardless (issue #15).
-  const isStoryteller = session.members.some(
-    (m) => m.userId === user._id && m.role === "storyteller",
   )
 
   return (

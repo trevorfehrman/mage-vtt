@@ -217,6 +217,9 @@ export const convexLive = (
     insertMessage: (draft: MessageDraft) =>
       Effect.gen(function* () {
         const timestamp = yield* Clock.currentTimeMillis
+        // Stamped like insertRoll (ADR-0006): every record the mutation
+        // writes carries the marker — InMemory already did; parity restored.
+        const marker = overrideToDoc(override.current())
         const id = yield* Effect.promise(() =>
           ctx.db.insert("messages", {
             sessionId: sessionRef(draft.sessionId),
@@ -227,6 +230,7 @@ export const convexLive = (
             ...(draft.whisperTargetId
               ? { whisperTargetId: draft.whisperTargetId }
               : {}),
+            ...(marker ? { override: marker } : {}),
             timestamp,
           }),
         )

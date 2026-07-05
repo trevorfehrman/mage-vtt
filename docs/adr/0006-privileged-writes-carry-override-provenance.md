@@ -42,3 +42,15 @@ provenance marker records *who invoked it* on top of *whose action it is*.
 - **Erosion risk this ADR guards against.** The field is `null` on the vast
   majority of writes; a future reader may be tempted to "simplify it away." It is
   a deliberate transparency guarantee, not dead weight — do not remove it.
+
+## Amendment (issue #19, hand edits)
+
+`repair` covers the **Storyteller as well as the Dev**: a hand edit — a direct,
+free-form change to sheet state outside any game action — stamps
+`kind: "repair"` whoever performs it, with `invokedBy*` naming the editor.
+"Fires on bypass, not identity" still holds: the rule bent by every hand edit is
+that sheet state changes only through action-mediated writes, so the marker
+fires on every accepted hand edit, including the Storyteller's edit of their
+own sheet. `godmode-action` / `storyteller-action` remain the kinds for
+invoking *flows* in another's stead; `repair` is the kind for direct-setting
+state.

@@ -75,6 +75,7 @@ type MessageEntry = {
   senderName: string
   text: string
   visibilityType: string
+  override?: OverrideDoc | undefined
 }
 
 function MessageItem({ message, dropCap }: { message: MessageEntry; dropCap?: boolean }) {
@@ -85,13 +86,21 @@ function MessageItem({ message, dropCap }: { message: MessageEntry; dropCap?: bo
           <span className="mv-h mv-accent shrink-0 text-[32px] leading-[0.8]">
             {message.text.charAt(0)}
           </span>
-          <span className="text-[12px] italic">{message.text.slice(1)}</span>
+          <span className="text-[12px] italic">
+            {message.text.slice(1)}
+            {message.override && (
+              <span className="ml-1.5 not-italic">
+                <OverrideTag override={message.override} />
+              </span>
+            )}
+          </span>
         </div>
       )
     }
     return (
       <div className="text-center text-[11px] italic" style={{ color: "var(--dim)" }}>
-        — {message.text} —
+        — {message.text} —{" "}
+        {message.override && <OverrideTag override={message.override} />}
       </div>
     )
   }
@@ -112,6 +121,25 @@ function MessageItem({ message, dropCap }: { message: MessageEntry; dropCap?: bo
   )
 }
 
+type OverrideDoc = {
+  invokedByUserId: string
+  invokedByName: string
+  kind: "godmode-action" | "storyteller-action" | "repair"
+}
+
+/** The rule-was-bent badge (ADR-0006), shared by Roll and Message entries. */
+function OverrideTag({ override }: { override: OverrideDoc }) {
+  return (
+    <Tag title={`Invoked by ${override.invokedByName}`}>
+      {override.kind === "storyteller-action"
+        ? "Storyteller"
+        : override.kind === "repair"
+          ? "Repair"
+          : "God-mode"}
+    </Tag>
+  )
+}
+
 type RollEntry = {
   kind: "roll"
   _id: string
@@ -129,11 +157,7 @@ type RollEntry = {
   againThreshold: number
   isRoteAction: boolean
   summary: string
-  override?: {
-    invokedByUserId: string
-    invokedByName: string
-    kind: "godmode-action" | "storyteller-action" | "repair"
-  } | undefined
+  override?: OverrideDoc | undefined
 }
 
 function RollItem({ roll }: { roll: RollEntry }) {
@@ -153,15 +177,7 @@ function RollItem({ roll }: { roll: RollEntry }) {
           {roll.isDramaticFailure && <Tag kind="bad">Dramatic Failure</Tag>}
           {roll.isExceptionalSuccess && <Tag kind="good">Exceptional</Tag>}
           {roll.visibility === "hidden" && <Tag>Hidden</Tag>}
-          {roll.override && (
-            <Tag title={`Invoked by ${roll.override.invokedByName}`}>
-              {roll.override.kind === "storyteller-action"
-                ? "Storyteller"
-                : roll.override.kind === "repair"
-                  ? "Repair"
-                  : "God-mode"}
-            </Tag>
-          )}
+          {roll.override && <OverrideTag override={roll.override} />}
         </div>
       </div>
 

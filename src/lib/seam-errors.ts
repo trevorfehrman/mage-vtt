@@ -41,6 +41,10 @@ export function seamErrorMessage(
         return "That declaration isn't castable."
       case "InvalidSheetlessCast":
         return `That pool isn't castable (0–${MAX_DECLARED_POOL} dice).`
+      case "InvalidHandEdit":
+        return typeof data.message === "string"
+          ? data.message
+          : "That edit doesn't fit the sheet."
       case "VulgarCastingNotYetSupported":
         return `${data.spellName} is Vulgar — Vulgar casting awaits the Paradox phase.`
       case "RoteNotKnown":

@@ -197,5 +197,8 @@ export const MessageDoc = Schema.Struct({
   text: Schema.String,
   visibilityType: Schema.Literals(["public", "whisper", "system"]),
   whisperTargetId: Schema.optionalKey(Schema.String),
+  // Override provenance (ADR-0006): present only when a rule was bent — the
+  // hand-edit flow's system entries carry it (issue #19). Absent on chat.
+  override: Schema.optionalKey(OverrideMarkerDoc),
   timestamp: Schema.Number,
 })

@@ -60,6 +60,7 @@ export const list = query({
       text: m.text,
       visibilityType: m.visibilityType,
       whisperTargetId: m.whisperTargetId,
+      override: m.override,
     }))
 
     const rollItems = visibleRolls.map((r) => ({

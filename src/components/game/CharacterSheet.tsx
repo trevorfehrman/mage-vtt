@@ -6,6 +6,10 @@ import type { useDicePool } from "#/hooks/use-dice-pool"
 
 type DicePoolAPI = ReturnType<typeof useDicePool>
 
+/** One glyph per health box state — shared with the hand-edit panel. */
+export const healthBoxGlyph = (box: string): string =>
+  box === "bashing" ? "╱" : box === "lethal" ? "✕" : box === "aggravated" ? "✳" : ""
+
 // Path ruling arcana lookup
 const PATH_RULING_ARCANA: Record<string, readonly string[]> = {
   Acanthus: ["time", "fate"],
@@ -193,7 +197,7 @@ export function CharacterSheet({ character, pool }: CharacterSheetProps) {
                     color: "var(--accent)",
                   }}
                 >
-                  {box === "bashing" ? "╱" : box === "lethal" ? "✕" : box === "aggravated" ? "✳" : ""}
+                  {healthBoxGlyph(box)}
                 </span>
               ))}
             </div>
