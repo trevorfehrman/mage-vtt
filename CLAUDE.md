@@ -85,6 +85,7 @@ scripts/           — Bun scripts for data pipeline
 ├── extract-rules.ts, chunk-text.ts, chunk-wod.ts
 ├── generate-rule-chunks.ts, embed-and-upload.ts, embed-all.ts
 ├── ingest-character.ts — Dev-side character upsert into a Session (issue #16)
+├── add-phantom-member.ts — Dev-side fake session member ("dev:" userId) for solo playtesting
 
 data/              — Extracted game data (committed)
 ├── pages/         — 402 Mage pages (JSON)

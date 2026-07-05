@@ -107,6 +107,42 @@ export const insertOrder = mutation({
 })
 
 /**
+ * Dev-side phantom member: a sessionMembers row whose userId is a fabricated
+ * "dev:" string instead of a real sign-in. Lets a second PC exist in a
+ * Session for solo playtesting (roster browsing, issue #17) without juggling
+ * a second account — ingest a character for the phantom's userId afterwards.
+ * `sessionMembers.userId` is a plain string, so nothing downstream needs a
+ * real auth user; the phantom simply never shows as present or signs in.
+ * An `internalMutation` like `upsertCharacter`: CLI admin auth only, via
+ * `scripts/add-phantom-member.ts`. Idempotent per (session, displayName).
+ */
+export const addPhantomMember = internalMutation({
+  args: {
+    sessionId: v.id("sessions"),
+    displayName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = `dev:${args.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
+
+    const members = await ctx.db
+      .query("sessionMembers")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .collect()
+
+    const existing = members.find((m) => m.userId === userId)
+    if (existing) return { memberId: existing._id, userId }
+
+    const memberId = await ctx.db.insert("sessionMembers", {
+      sessionId: args.sessionId,
+      userId,
+      role: "player",
+      displayName: args.displayName,
+    })
+    return { memberId, userId }
+  },
+})
+
+/**
  * Dev-side character ingestion (issue #16): upsert a complete character —
  * identity, rated Traits, current state, known Rotes — for a session member.
  * An `internalMutation`, so it is unreachable from clients; the only caller is
