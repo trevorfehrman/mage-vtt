@@ -79,9 +79,9 @@ function SessionPage() {
       pool.reset()
       rawCast.armRote(rote)
     },
-    armImprovised: (arcanum: string, dots: number) => {
+    armImprovised: (...args: Parameters<typeof rawCast.armImprovised>) => {
       pool.reset()
-      rawCast.armImprovised(arcanum, dots)
+      rawCast.armImprovised(...args)
     },
   }
   const poolForSheet = {

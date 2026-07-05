@@ -1,5 +1,5 @@
 import { assertEvent, assign, fromPromise, setup } from "xstate"
-import type { KnownRote } from "#/domain/character"
+import type { ArcanumName, KnownRote } from "#/domain/character"
 
 /**
  * The casting machine (PRD #11, issue #20): sheet-as-controller orchestration
@@ -11,7 +11,7 @@ import type { KnownRote } from "#/domain/character"
  */
 
 export type CastSelection =
-  | { method: "improvised"; arcanum: string; dots: number }
+  | { method: "improvised"; arcanum: ArcanumName; dots: number }
   | { method: "rote"; rote: KnownRote }
 
 export interface CastContext {
@@ -30,7 +30,7 @@ export interface CastContext {
 }
 
 type CastEvent =
-  | { type: "ARM_IMPROVISED"; arcanum: string; dots: number }
+  | { type: "ARM_IMPROVISED"; arcanum: ArcanumName; dots: number }
   | { type: "ARM_ROTE"; rote: KnownRote }
   | { type: "SET_LEVEL"; value: number }
   | { type: "SET_SKILL_CHOICE"; value: string }
@@ -47,7 +47,7 @@ type CastEvent =
 export type CastSubmission =
   | {
       method: "improvised"
-      arcanum: string
+      arcanum: ArcanumName
       level: number
       potency?: number
       targets?: number
@@ -190,17 +190,33 @@ export const castMachine = setup({
   },
 })
 
+/**
+ * The declared spell factors, present only when they act — one shape shared
+ * by the wire submission and the panel's pool preview.
+ */
+export function declaredFactors(context: CastContext): {
+  potency?: number
+  targets?: number
+  highSpeech?: boolean
+  extraManaCost?: number
+  spendWillpower?: boolean
+} {
+  return {
+    ...(context.potency > 1 ? { potency: context.potency } : {}),
+    ...(context.targets > 1 ? { targets: context.targets } : {}),
+    ...(context.highSpeech ? { highSpeech: true } : {}),
+    ...(context.extraMana > 0 ? { extraManaCost: context.extraMana } : {}),
+    ...(context.spendWillpower ? { spendWillpower: true } : {}),
+  }
+}
+
 /** The wire shape of the declaration — optional factors only when they act. */
 export function buildSubmission(context: CastContext): CastSubmission {
   if (context.selection === null) {
     throw new Error("Cannot build a cast submission with nothing armed")
   }
   const factors = {
-    ...(context.potency > 1 ? { potency: context.potency } : {}),
-    ...(context.targets > 1 ? { targets: context.targets } : {}),
-    ...(context.highSpeech ? { highSpeech: true } : {}),
-    ...(context.extraMana > 0 ? { extraManaCost: context.extraMana } : {}),
-    ...(context.spendWillpower ? { spendWillpower: true } : {}),
+    ...declaredFactors(context),
     ...(context.visibility === "hidden" ? { visibility: "hidden" as const } : {}),
   }
   if (context.selection.method === "improvised") {

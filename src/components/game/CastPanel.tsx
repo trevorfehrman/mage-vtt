@@ -1,12 +1,13 @@
 import { useMemo, type ReactNode } from "react"
-import { Effect } from "effect"
+import { Effect, Exit } from "effect"
 import {
   previewImprovisedCast,
   previewRoteCast,
   type CastPreview,
 } from "#/domain/cast-preview"
-import type { ArcanumName, CharacterSheet } from "#/domain/character"
+import type { CharacterSheet } from "#/domain/character"
 import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy"
+import { declaredFactors } from "#/machines/cast"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import type { useCast } from "#/hooks/use-cast"
 
@@ -32,34 +33,29 @@ export function CastPanel({
 
   const preview = useMemo((): CastPreview | null => {
     if (!selection) return null
-    const factors = {
-      ...(cast.context.potency > 1 ? { potency: cast.context.potency } : {}),
-      ...(cast.context.targets > 1 ? { targets: cast.context.targets } : {}),
-      ...(cast.context.highSpeech ? { highSpeech: true } : {}),
-      ...(cast.context.extraMana > 0
-        ? { extraManaCost: cast.context.extraMana }
-        : {}),
-      ...(cast.context.spendWillpower ? { spendWillpower: true } : {}),
-    }
-    if (selection.method === "improvised") {
-      return Effect.runSync(
-        previewImprovisedCast({
-          sheet: character,
-          arcanum: selection.arcanum as ArcanumName,
-          ...factors,
-        }),
-      )
-    }
+    const factors = declaredFactors(cast.context)
     // An "or" pool with no pick has no pool yet — the caster decides first.
-    if (skillChoice === null) return null
-    return Effect.runSync(
-      previewRoteCast({
-        sheet: character,
-        rote: selection.rote,
-        skillChoice,
-        ...factors,
-      }),
-    )
+    if (selection.method === "rote" && skillChoice === null) return null
+    const exit: Exit.Exit<CastPreview, unknown> =
+      selection.method === "improvised"
+        ? Effect.runSyncExit(
+            previewImprovisedCast({
+              sheet: character,
+              arcanum: selection.arcanum,
+              ...factors,
+            }),
+          )
+        : Effect.runSyncExit(
+            previewRoteCast({
+              sheet: character,
+              rote: selection.rote,
+              ...(skillChoice !== null ? { skillChoice } : {}),
+              ...factors,
+            }),
+          )
+    // A failed preview degrades to no readout — the server recomputes and
+    // refuses with its typed tag; a readout must never crash the panel.
+    return Exit.isSuccess(exit) ? exit.value : null
   }, [cast.context, selection, skillChoice, character])
 
   if (!selection) return null

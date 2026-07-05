@@ -1,5 +1,9 @@
 import type { ReactNode } from "react"
-import type { CharacterSheet as CharacterSheetData, KnownRote } from "#/domain/character"
+import type {
+  ArcanumName,
+  CharacterSheet as CharacterSheetData,
+  KnownRote,
+} from "#/domain/character"
 import { formatRotePool } from "#/domain/rote-pool"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import { DotRating } from "./DotRating"
@@ -426,7 +430,7 @@ function ArcanaList({
 }) {
   const entries = Object.entries(arcana)
     .filter(([, dots]) => dots != null && dots > 0)
-    .sort(([, a], [, b]) => (b as number) - (a as number)) as [string, number][]
+    .sort(([, a], [, b]) => (b as number) - (a as number)) as [ArcanumName, number][]
 
   if (entries.length === 0) return null
 
@@ -492,7 +496,7 @@ function RoteRow({ rote, cast }: { rote: KnownRote; cast?: CastAPI | undefined }
     <TraitRow
       interactive={cast !== undefined}
       canToggle={cast !== undefined && cast.state !== "casting"}
-      active={armed ?? false}
+      active={armed}
       onToggle={() => cast?.armRote(rote)}
       className="flex items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-left"
     >

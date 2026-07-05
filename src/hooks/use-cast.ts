@@ -5,7 +5,7 @@ import { fromPromise } from "xstate"
 import { api } from "../../convex/_generated/api"
 import { castMachine, type CastSubmission } from "#/machines/cast"
 import { seamErrorMessage } from "#/lib/seam-errors"
-import type { KnownRote } from "#/domain/character"
+import type { ArcanumName, KnownRote } from "#/domain/character"
 import type { Id } from "../../convex/_generated/dataModel"
 
 const castErrorMessage = (err: unknown): string =>
@@ -59,7 +59,7 @@ export function useCast(
     state: snapshot.value as "idle" | "declaring" | "casting",
     context: snapshot.context,
     armRote: (rote: KnownRote) => send({ type: "ARM_ROTE", rote }),
-    armImprovised: (arcanum: string, dots: number) =>
+    armImprovised: (arcanum: ArcanumName, dots: number) =>
       send({ type: "ARM_IMPROVISED", arcanum, dots }),
     setLevel: (value: number) => send({ type: "SET_LEVEL", value }),
     setSkillChoice: (value: string) => send({ type: "SET_SKILL_CHOICE", value }),
