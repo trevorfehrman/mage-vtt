@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { useMutation, useQuery } from "convex/react"
 import usePresence from "@convex-dev/presence/react"
 import { api } from "../../../convex/_generated/api"
+import { useCast } from "#/hooks/use-cast"
 import { useDicePool } from "#/hooks/use-dice-pool"
 import { SessionLayout } from "#/components/game/SessionLayout"
 import { ActivityLog } from "#/components/game/ActivityLog"
+import { CastPanel } from "#/components/game/CastPanel"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { ChatInput } from "#/components/game/ChatInput"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
-import { ImprovisedCastForm } from "#/components/game/ImprovisedCastForm"
-import { RoteCastForm } from "#/components/game/RoteCastForm"
 import { SheetlessCastForm } from "#/components/game/SheetlessCastForm"
 import { Roster } from "#/components/game/Roster"
 import { HandEditForm } from "#/components/game/HandEditForm"
@@ -66,8 +66,39 @@ function SessionPage() {
   // it survives the own-character id arriving late and never dangles.
   const [selectedId, setSelectedId] = useState<Id<"characters"> | null>(null)
   const pool = useDicePool(sessionId as Id<"sessions">, character?._id)
+  const rawCast = useCast(sessionId as Id<"sessions">, character?._id)
   const seedCharacter = useMutation(api.characters.seed)
   const seededRef = useRef(false)
+
+  // One readout at a time: arming a cast clears the plain pool, and toggling
+  // a plain trait stands a declared cast down — the foot of the rail always
+  // shows the thing you touched last.
+  const cast = {
+    ...rawCast,
+    armRote: (rote: Parameters<typeof rawCast.armRote>[0]) => {
+      pool.reset()
+      rawCast.armRote(rote)
+    },
+    armImprovised: (arcanum: string, dots: number) => {
+      pool.reset()
+      rawCast.armImprovised(arcanum, dots)
+    },
+  }
+  const poolForSheet = {
+    ...pool,
+    toggleComponent: (component: { type: string; name: string; dots: number }) => {
+      if (rawCast.state === "declaring") rawCast.cancel()
+      pool.toggleComponent(component)
+    },
+  }
+
+  // The caster's own decoded sheet — the cast panel's readout needs the real
+  // ratings whichever roster sheet is being viewed.
+  const mySheet = useMemo(() => {
+    if (!character) return null
+    const { _id, _creationTime, ...fields } = character
+    return decodeSheet({ id: _id, ...fields })
+  }, [character])
 
   // Lazy seed: if no character exists, seed Arctus once
   useEffect(() => {
@@ -128,7 +159,11 @@ function SessionPage() {
 
     sheetContent = sheet ? (
       <div className="grid gap-6">
-        <CharacterSheet character={sheet} pool={isMine ? pool : undefined} />
+        <CharacterSheet
+          character={sheet}
+          pool={isMine ? poolForSheet : undefined}
+          cast={isMine ? cast : undefined}
+        />
         {/* The hand-edit panel (issue #19): ST-only, on any sheet — the one
             edit affordance in the app; players never see edit controls. */}
         {isStoryteller && (
@@ -138,20 +173,6 @@ function SessionPage() {
             characterId={viewed._id}
             character={sheet}
           />
-        )}
-        {isMine && (
-          <>
-            <RoteCastForm
-              sessionId={sessionId as Id<"sessions">}
-              characterId={viewed._id}
-              rotes={sheet.rotes}
-            />
-            <ImprovisedCastForm
-              sessionId={sessionId as Id<"sessions">}
-              characterId={viewed._id}
-              arcana={viewed.arcana}
-            />
-          </>
         )}
       </div>
     ) : (
@@ -204,10 +225,18 @@ function SessionPage() {
       activityLog={
         <ActivityLog
           sessionId={sessionId as Id<"sessions">}
-          isRolling={pool.state === "rolling"}
+          isRolling={pool.state === "rolling" || rawCast.state === "casting"}
         />
       }
-      dicePoolBuilder={<DicePoolBuilder pool={pool} />}
+      dicePoolBuilder={
+        // The foot of the rail is the readout: the pre-roll factor panel
+        // while a cast is armed, the plain dice pool otherwise (issue #20).
+        rawCast.state !== "idle" && mySheet ? (
+          <CastPanel cast={cast} character={mySheet} />
+        ) : (
+          <DicePoolBuilder pool={pool} />
+        )
+      }
       storytellerTools={
         isStoryteller ? (
           <SheetlessCastForm sessionId={sessionId as Id<"sessions">} />
@@ -220,7 +249,10 @@ function SessionPage() {
           currentUserId={user._id}
         />
       }
-      onClearPool={pool.reset}
+      onClearPool={() => {
+        pool.reset()
+        if (rawCast.state === "declaring") rawCast.cancel()
+      }}
     />
   )
 }

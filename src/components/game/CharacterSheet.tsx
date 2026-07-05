@@ -1,10 +1,13 @@
 import type { ReactNode } from "react"
-import type { CharacterSheet as CharacterSheetData } from "#/domain/character"
+import type { CharacterSheet as CharacterSheetData, KnownRote } from "#/domain/character"
+import { formatRotePool } from "#/domain/rote-pool"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import { DotRating } from "./DotRating"
+import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
 type DicePoolAPI = ReturnType<typeof useDicePool>
+type CastAPI = ReturnType<typeof useCast>
 
 /** One glyph per health box state — shared with the hand-edit panel. */
 export const healthBoxGlyph = (box: string): string =>
@@ -27,13 +30,18 @@ interface CharacterSheetProps {
    * sheet is a controller.
    */
   pool?: DicePoolAPI | undefined
+  /**
+   * The casting controller (issue #20): arms Rote entries and Arcanum cast
+   * triggers. Absent on read-only sheets — Rotes render as inert rows.
+   */
+  cast?: CastAPI | undefined
 }
 
 /**
  * The sheet is the dice-pool input surface (docs/component-polish.md): every
  * rated Attribute / Skill / Arcanum is a toggle button feeding the pool.
  */
-export function CharacterSheet({ character, pool }: CharacterSheetProps) {
+export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
   const { healthTrack, willpowerCurrent, manaCurrent } = character
   const canToggle =
     pool !== undefined && (pool.state === "idle" || pool.state === "building")
@@ -178,8 +186,20 @@ export function CharacterSheet({ character, pool }: CharacterSheetProps) {
           isActive={isActive}
           canToggle={canToggle}
           interactive={interactive}
+          cast={cast}
         />
       </Section>
+
+      {/* Rotes — castable entries (issue #20); inert rows on read-only sheets */}
+      {character.rotes.length > 0 && (
+        <Section title="Rotes">
+          <div className="grid gap-1">
+            {character.rotes.map((rote) => (
+              <RoteRow key={rote.name} rote={rote} cast={cast} />
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/* Vitals */}
       <Section title="Vitals">
@@ -394,6 +414,7 @@ function ArcanaList({
   isActive,
   canToggle,
   interactive,
+  cast,
 }: {
   arcana: Record<string, number | undefined>
   ruling: readonly string[]
@@ -401,6 +422,7 @@ function ArcanaList({
   isActive: (type: string, name: string) => boolean
   canToggle: boolean
   interactive: boolean
+  cast?: CastAPI | undefined
 }) {
   const entries = Object.entries(arcana)
     .filter(([, dots]) => dots != null && dots > 0)
@@ -414,29 +436,81 @@ function ArcanaList({
         const isRuling = ruling.includes(name)
         const displayName = name.charAt(0).toUpperCase() + name.slice(1)
         const active = isActive("arcanum", displayName)
+        const armed =
+          cast?.context.selection?.method === "improvised" &&
+          cast.context.selection.arcanum === name
         return (
-          <TraitRow
-            key={name}
-            interactive={interactive}
-            canToggle={canToggle}
-            active={active}
-            onToggle={() => onToggle("arcanum", displayName, dots)}
-            className="flex items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-left"
-          >
-            <ArcanaGlyph arcanum={name} size={19} className={active ? "mv-accent" : ""} />
-            <span className="flex-1 text-[13px]">
-              {displayName}
-              {isRuling && (
-                <span className="mv-accent ml-1" title="Ruling Arcanum">
-                  ◆
-                </span>
-              )}
-            </span>
-            <DotRating current={dots} active={active} />
-          </TraitRow>
+          <div key={name} className="flex items-center gap-1">
+            <TraitRow
+              interactive={interactive}
+              canToggle={canToggle}
+              active={active}
+              onToggle={() => onToggle("arcanum", displayName, dots)}
+              className="flex flex-1 items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-left"
+            >
+              <ArcanaGlyph arcanum={name} size={19} className={active ? "mv-accent" : ""} />
+              <span className="flex-1 text-[13px]">
+                {displayName}
+                {isRuling && (
+                  <span className="mv-accent ml-1" title="Ruling Arcanum">
+                    ◆
+                  </span>
+                )}
+              </span>
+              <DotRating current={dots} active={active} />
+            </TraitRow>
+            {/* The improvised-cast trigger (issue #20): row toggles the pool,
+                this arms a cast — two controls, one surface. */}
+            {cast && (
+              <button
+                type="button"
+                onClick={() => cast.armImprovised(name, dots)}
+                disabled={cast.state === "casting"}
+                title={`Cast improvised ${displayName}`}
+                className={`mv-mini shrink-0 ${armed ? "mv-mini-on" : ""}`}
+              >
+                ✦
+              </button>
+            )}
+          </div>
         )
       })}
     </div>
+  )
+}
+
+/**
+ * One known Rote as a castable entry (issue #20): glyph, name, the spell it
+ * fixes, and its pool prose. Clicking arms the cast in the shared pre-roll
+ * panel; read-only sheets (no cast controller) render the same layout inert.
+ */
+function RoteRow({ rote, cast }: { rote: KnownRote; cast?: CastAPI | undefined }) {
+  const armed =
+    cast?.context.selection?.method === "rote" &&
+    cast.context.selection.rote.name === rote.name
+  return (
+    <TraitRow
+      interactive={cast !== undefined}
+      canToggle={cast !== undefined && cast.state !== "casting"}
+      active={armed ?? false}
+      onToggle={() => cast?.armRote(rote)}
+      className="flex items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-left"
+    >
+      <ArcanaGlyph
+        arcanum={rote.spellArcanum.toLowerCase()}
+        size={19}
+        className={armed ? "mv-accent" : ""}
+      />
+      <span className="flex-1 text-[13px]">
+        {rote.name}
+        <span className="ml-1.5 text-[11px]" style={{ color: "var(--dim)" }}>
+          {rote.spellName} · {rote.spellArcanum} {rote.spellLevel}
+        </span>
+      </span>
+      <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
+        {formatRotePool(rote.pool)}
+      </span>
+    </TraitRow>
   )
 }
 
