@@ -143,7 +143,10 @@ _Avoid_: Stat block, character record.
 **Hand edit**:
 A direct, free-form change to a Character Sheet value made outside any game
 action — the fudge/repair path. Storyteller- or Dev-only, and always carries an
-Override. Contrast an **action-mediated write**, where the engine computes and
+Override. Bounded by the sheet's printed capacities (pools fill to their
+derived maxima, the health track keeps its box count): **capacity is shape,
+not state** — exceeding a cap means hand-editing the stat that prints it, when
+such a door exists. Contrast an **action-mediated write**, where the engine computes and
 applies sheet changes as the consequence of a declared action (a cast spending
 Mana); players change their own sheet only through actions, never by hand.
 _Avoid_: Manual edit meaning "player self-service" — players do not hand-edit,

@@ -151,10 +151,10 @@ describe("Flows.handEdit.handEditSheet (issue #19)", () => {
       yield* handEditSheet({
         sessionId: SESSION,
         characterId: CHARACTER,
-        willpowerCurrent: 7,
+        willpowerCurrent: 5,
       }).pipe(Effect.provide(store.layer))
 
-      expect(store.sheets.get(CHARACTER)!.willpowerCurrent).toBe(7)
+      expect(store.sheets.get(CHARACTER)!.willpowerCurrent).toBe(5)
       const entry = store.messages[0]!
       expect(entry.override!.kind).toBe("repair")
       expect(entry.override!.invokedByUserId).toBe(DEV_USER)
@@ -163,19 +163,55 @@ describe("Flows.handEdit.handEditSheet (issue #19)", () => {
     }),
   )
 
-  it.effect("representability, not game legality: Willpower may exceed the rated maximum", () =>
+  it.effect("capacity is shape: Willpower above its printed rating is refused", () =>
     Effect.gen(function* () {
       const store = seed({ userId: ST_USER })
 
-      // Aldous's Willpower rating is 6; fudging past it is the point
-      // (ADR-0011) — the box holds any non-negative integer.
-      yield* handEditSheet({
+      // Aldous's Willpower rating is 6 (effective Resolve + Composure). The
+      // pool's size is the form, not its state — overfill doesn't fit the
+      // boxes. Raising the cap means editing the stats that print it, when
+      // such a door exists.
+      const exit = yield* handEditSheet({
         sessionId: SESSION,
         characterId: CHARACTER,
         willpowerCurrent: 9,
+      }).pipe(Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("InvalidHandEdit")
+      expect(store.sheetPatches).toHaveLength(0)
+      expect(store.sheets.get(CHARACTER)!.willpowerCurrent).toBe(6)
+    }),
+  )
+
+  it.effect("capacity is shape: Mana above the Gnosis-printed pool is refused", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: ST_USER })
+
+      // Gnosis 1 prints a 10-Mana pool.
+      const exit = yield* handEditSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        manaCurrent: 11,
+      }).pipe(Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("InvalidHandEdit")
+      expect(store.sheetPatches).toHaveLength(0)
+      expect(store.sheets.get(CHARACTER)!.manaCurrent).toBe(10)
+    }),
+  )
+
+  it.effect("a pool filled to exactly its capacity is a legal fudge", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: ST_USER })
+
+      yield* handEditSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        willpowerCurrent: 6, // the printed rating, restored to full
       }).pipe(Effect.provide(store.layer))
 
-      expect(store.sheets.get(CHARACTER)!.willpowerCurrent).toBe(9)
+      expect(store.sheets.get(CHARACTER)!.willpowerCurrent).toBe(6)
+      expect(store.messages).toHaveLength(1)
     }),
   )
 

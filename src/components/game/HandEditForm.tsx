@@ -103,10 +103,18 @@ export function HandEditForm({
       </div>
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-        <Stepper label="Mana" value={mana} onChange={setMana} dirty={manaDirty} />
+        {/* Capacity is shape: pools fill to their printed size, never past. */}
+        <Stepper
+          label="Mana"
+          value={mana}
+          max={character.maxMana}
+          onChange={setMana}
+          dirty={manaDirty}
+        />
         <Stepper
           label="Will"
           value={willpower}
+          max={character.willpower}
           onChange={setWillpower}
           dirty={willpowerDirty}
         />
@@ -157,11 +165,13 @@ export function HandEditForm({
 function Stepper({
   label,
   value,
+  max,
   onChange,
   dirty,
 }: {
   label: string
   value: number
+  max: number
   onChange: (n: number) => void
   dirty: boolean
 }) {
@@ -181,7 +191,7 @@ function Stepper({
         {value}
       </span>
       <button
-        onClick={() => onChange(value + 1)}
+        onClick={() => onChange(Math.min(max, value + 1))}
         className="mv-btn grid size-6 place-items-center rounded-[3px] text-[13px] leading-none"
       >
         +

@@ -15,8 +15,14 @@ import { GameStore, type SheetPatch } from "../ports/game-store"
  * with a `repair` Override (ADR-0006) and narrated as one system Activity
  * entry (ADR-0003/0009). The editable surface is exactly the narrow
  * `SheetPatch` port admits (ADR-0011's compensating control); its checks
- * encode representability, not game legality — fudging is the point, so a
- * value past the rated maximum is accepted while a negative one is not.
+ * encode representability, not game legality — fudging is the point.
+ *
+ * Capacity is shape (owner call 2026-07-05): a pool's printed size — Mana's
+ * Gnosis cap, Willpower's rating, the health track's box count — is the form
+ * itself, derived from other stats, so a hand edit fills the form and never
+ * resizes it. `current ≤ max` is representability, not a game rule; raising a
+ * cap means editing the stat that prints it, when such a door exists. Encoded
+ * here as layer-3 move rules per ADR-0011's tightening prescription.
  */
 
 export interface HandEditArgs {
@@ -106,8 +112,21 @@ export const handEditSheet = Effect.fn("Flows.handEdit.handEditSheet")(function*
   // The inverted ladder: owner rejected, ST/Dev pass, repair Override recorded.
   const editor = yield* requireRepairAuthority(SessionId.make(args.sessionId))
 
-  // The track's box count is the sheet's shape (Stamina-derived), not its
-  // state — a hand edit fills boxes, it doesn't add or remove them.
+  // Capacity is shape: pools fill to their printed size, the track keeps its
+  // box count — a hand edit fills the form, it doesn't resize it.
+  if (patch.manaCurrent !== undefined && patch.manaCurrent > sheet.maxMana) {
+    return yield* new InvalidHandEdit({
+      message: `Mana holds at most ${sheet.maxMana} at Gnosis ${sheet.gnosis}.`,
+    })
+  }
+  if (
+    patch.willpowerCurrent !== undefined &&
+    patch.willpowerCurrent > sheet.willpower
+  ) {
+    return yield* new InvalidHandEdit({
+      message: `Willpower holds at most ${sheet.willpower}.`,
+    })
+  }
   if (
     patch.healthTrack !== undefined &&
     patch.healthTrack.length !== sheet.healthTrack.length
