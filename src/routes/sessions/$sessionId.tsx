@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { useMutation, useQuery } from "convex/react"
 import usePresence from "@convex-dev/presence/react"
@@ -12,6 +12,7 @@ import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { ImprovisedCastForm } from "#/components/game/ImprovisedCastForm"
 import { RoteCastForm } from "#/components/game/RoteCastForm"
 import { SheetlessCastForm } from "#/components/game/SheetlessCastForm"
+import { Roster } from "#/components/game/Roster"
 import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { Schema } from "effect"
@@ -57,6 +58,12 @@ function SessionPage() {
   const character = useQuery(api.characters.getForSession, {
     sessionId: sessionId as Id<"sessions">,
   })
+  const roster = useQuery(api.characters.listForSession, {
+    sessionId: sessionId as Id<"sessions">,
+  })
+  // The roster selection (issue #17). null = "my own character", the default —
+  // it survives the own-character id arriving late and never dangles.
+  const [selectedId, setSelectedId] = useState<Id<"characters"> | null>(null)
   const pool = useDicePool(sessionId as Id<"sessions">, character?._id)
   const seedCharacter = useMutation(api.characters.seed)
   const seededRef = useRef(false)
@@ -82,37 +89,52 @@ function SessionPage() {
     )
   }
 
+  // The viewed sheet is the roster selection, defaulting to your own
+  // character (issue #17). A selection that no longer resolves — or a roster
+  // still loading — falls back to your own sheet rather than a blank panel.
+  const viewed =
+    (selectedId != null
+      ? roster?.find((c) => c._id === selectedId)
+      : undefined) ?? character
+
   // Build character sheet content
-  let characterSheet: React.ReactNode = undefined
-  if (character === undefined) {
-    characterSheet = (
+  let sheetContent: React.ReactNode = undefined
+  if (viewed === undefined) {
+    sheetContent = (
       <div className="flex h-full items-center justify-center text-muted-foreground">
         <p className="text-sm">Loading character...</p>
       </div>
     )
-  } else if (character === null) {
-    characterSheet = (
+  } else if (viewed === null) {
+    sheetContent = (
       <div className="flex h-full items-center justify-center text-muted-foreground">
         <p className="text-sm">Creating character...</p>
       </div>
     )
   } else {
-    const { _id, _creationTime, ...fields } = character
+    // Only your own sheet is a controller: cabal-mates' sheets render
+    // read-only — no pool toggles, no cast forms (issue #17).
+    const isMine = viewed._id === character?._id
+    const { _id, _creationTime, ...fields } = viewed
     const sheet = decodeSheet({ id: _id, ...fields })
 
-    characterSheet = sheet ? (
+    sheetContent = sheet ? (
       <div className="grid gap-6">
-        <CharacterSheet character={sheet} pool={pool} />
-        <RoteCastForm
-          sessionId={sessionId as Id<"sessions">}
-          characterId={character._id}
-          rotes={sheet.rotes}
-        />
-        <ImprovisedCastForm
-          sessionId={sessionId as Id<"sessions">}
-          characterId={character._id}
-          arcana={character.arcana}
-        />
+        <CharacterSheet character={sheet} pool={isMine ? pool : undefined} />
+        {isMine && (
+          <>
+            <RoteCastForm
+              sessionId={sessionId as Id<"sessions">}
+              characterId={viewed._id}
+              rotes={sheet.rotes}
+            />
+            <ImprovisedCastForm
+              sessionId={sessionId as Id<"sessions">}
+              characterId={viewed._id}
+              arcana={viewed.arcana}
+            />
+          </>
+        )}
       </div>
     ) : (
       <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -120,6 +142,34 @@ function SessionPage() {
       </div>
     )
   }
+
+  // The roster strip — your own PC first, then cabal-mates by name.
+  const rosterEntries = (roster ?? [])
+    .map((c) => ({
+      id: c._id,
+      name: c.name,
+      isMine: c._id === character?._id,
+    }))
+    .sort(
+      (a, b) => Number(b.isMine) - Number(a.isMine) || a.name.localeCompare(b.name),
+    )
+
+  const characterSheet = (
+    <>
+      {rosterEntries.length > 0 && (
+        <Roster
+          entries={rosterEntries}
+          selectedId={viewed?._id}
+          onSelect={(id) =>
+            // Picking your own character returns to the default (null), so
+            // the selection keeps tracking your sheet across re-loads.
+            setSelectedId(id === character?._id ? null : id)
+          }
+        />
+      )}
+      {sheetContent}
+    </>
+  )
 
   // The affordance renders only for the Storyteller (a Dev who is also ST
   // sees it too); the server refuses everyone else regardless (issue #15).

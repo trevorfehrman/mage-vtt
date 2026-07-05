@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { requireUser } from "./lib/auth"
+import { memberOf, requireUser } from "./lib/auth"
 import { enforcedMutation } from "./lib/enforce"
 import { castSpell as castSpellFlow } from "../src/domain/flows/casting"
 import { castRote as castRoteFlow } from "../src/domain/flows/rote-cast"
@@ -47,14 +47,7 @@ export const castRote = enforcedMutation({
 export const getForSession = query({
   args: { sessionId: v.id("sessions") },
   handler: async (ctx, args) => {
-    const user = await requireUser(ctx)
-
-    const members = await ctx.db
-      .query("sessionMembers")
-      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
-      .collect()
-
-    const member = members.find((m) => m.userId === user._id)
+    const member = await memberOf(ctx, args.sessionId)
     if (!member) return null
 
     const character = await ctx.db
@@ -65,6 +58,24 @@ export const getForSession = query({
       .unique()
 
     return character
+  },
+})
+
+// The Session roster (PRD #11, issue #17): every PC in the Session, readable
+// by every session member. Scoping is server-side — a non-member gets null,
+// never an empty roster they could confuse for a real one. Sheets carry no
+// secrets by table norm (hidden things live in the feed, which already
+// filters server-side), so the full documents go to every member.
+export const listForSession = query({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    const member = await memberOf(ctx, args.sessionId)
+    if (!member) return null
+
+    return await ctx.db
+      .query("characters")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .collect()
   },
 })
 

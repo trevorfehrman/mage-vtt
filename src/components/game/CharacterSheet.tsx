@@ -17,7 +17,12 @@ const PATH_RULING_ARCANA: Record<string, readonly string[]> = {
 
 interface CharacterSheetProps {
   character: CharacterSheetData
-  pool: DicePoolAPI
+  /**
+   * The dice-pool controller. Absent = a read-only sheet (roster browsing,
+   * issue #17): traits render as plain rows, not pool toggles — only your own
+   * sheet is a controller.
+   */
+  pool?: DicePoolAPI | undefined
 }
 
 /**
@@ -26,16 +31,19 @@ interface CharacterSheetProps {
  */
 export function CharacterSheet({ character, pool }: CharacterSheetProps) {
   const { healthTrack, willpowerCurrent, manaCurrent } = character
-  const canToggle = pool.state === "idle" || pool.state === "building"
+  const canToggle =
+    pool !== undefined && (pool.state === "idle" || pool.state === "building")
   const ruling = PATH_RULING_ARCANA[character.path] ?? []
 
   const toggle = (type: string, name: string, dots: number) => {
-    if (!canToggle) return
+    if (!pool || !canToggle) return
     pool.toggleComponent({ type, name, dots })
   }
 
   const isActive = (type: string, name: string) =>
-    pool.isComponentActive(type, name)
+    pool?.isComponentActive(type, name) ?? false
+
+  const interactive = pool !== undefined
 
   return (
     <div className="mx-auto grid max-w-3xl gap-6">
@@ -95,6 +103,7 @@ export function CharacterSheet({ character, pool }: CharacterSheetProps) {
               onToggle={toggle}
               isActive={isActive}
               canToggle={canToggle}
+              interactive={interactive}
             />
             <StatColumn
               label="Physical"
@@ -107,6 +116,7 @@ export function CharacterSheet({ character, pool }: CharacterSheetProps) {
               onToggle={toggle}
               isActive={isActive}
               canToggle={canToggle}
+              interactive={interactive}
             />
             <StatColumn
               label="Social"
@@ -119,6 +129,7 @@ export function CharacterSheet({ character, pool }: CharacterSheetProps) {
               onToggle={toggle}
               isActive={isActive}
               canToggle={canToggle}
+              interactive={interactive}
             />
           </div>
         </Section>
@@ -132,6 +143,7 @@ export function CharacterSheet({ character, pool }: CharacterSheetProps) {
               onToggle={toggle}
               isActive={isActive}
               canToggle={canToggle}
+              interactive={interactive}
             />
             <SkillColumn
               label="Physical"
@@ -139,6 +151,7 @@ export function CharacterSheet({ character, pool }: CharacterSheetProps) {
               onToggle={toggle}
               isActive={isActive}
               canToggle={canToggle}
+              interactive={interactive}
             />
             <SkillColumn
               label="Social"
@@ -146,6 +159,7 @@ export function CharacterSheet({ character, pool }: CharacterSheetProps) {
               onToggle={toggle}
               isActive={isActive}
               canToggle={canToggle}
+              interactive={interactive}
             />
           </div>
         </Section>
@@ -159,6 +173,7 @@ export function CharacterSheet({ character, pool }: CharacterSheetProps) {
           onToggle={toggle}
           isActive={isActive}
           canToggle={canToggle}
+          interactive={interactive}
         />
       </Section>
 
@@ -247,6 +262,41 @@ function Stat({ label, value }: { label: string; value: number }) {
   )
 }
 
+/**
+ * One trait line. Interactive sheets render it as a pool-toggle button
+ * (docs/component-polish.md); read-only sheets (issue #17) render the same
+ * layout as an inert row — visibly not a control, rather than a disabled one.
+ */
+function TraitRow({
+  interactive,
+  canToggle,
+  active,
+  onToggle,
+  className,
+  children,
+}: {
+  interactive: boolean
+  canToggle: boolean
+  active: boolean
+  onToggle: () => void
+  className: string
+  children: ReactNode
+}) {
+  if (!interactive) {
+    return <div className={className}>{children}</div>
+  }
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={!canToggle}
+      className={`mv-trait ${active ? "mv-trait-on" : ""} ${className}`}
+    >
+      {children}
+    </button>
+  )
+}
+
 function StatColumn({
   label,
   stats,
@@ -254,6 +304,7 @@ function StatColumn({
   onToggle,
   isActive,
   canToggle,
+  interactive,
 }: {
   label: string
   stats: [string, number][]
@@ -261,6 +312,7 @@ function StatColumn({
   onToggle: (type: string, name: string, dots: number) => void
   isActive: (type: string, name: string) => boolean
   canToggle: boolean
+  interactive: boolean
 }) {
   return (
     <div className="grid gap-1">
@@ -270,18 +322,17 @@ function StatColumn({
       {stats.map(([name, dots]) => {
         const active = isActive(type, name)
         return (
-          <button
+          <TraitRow
             key={name}
-            type="button"
-            onClick={() => onToggle(type, name, dots)}
-            disabled={!canToggle}
-            className={`mv-trait flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left ${
-              active ? "mv-trait-on" : ""
-            }`}
+            interactive={interactive}
+            canToggle={canToggle}
+            active={active}
+            onToggle={() => onToggle(type, name, dots)}
+            className="flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
           >
             <span className="text-[12px]">{name}</span>
             <DotRating current={dots} active={active} />
-          </button>
+          </TraitRow>
         )
       })}
     </div>
@@ -294,12 +345,14 @@ function SkillColumn({
   onToggle,
   isActive,
   canToggle,
+  interactive,
 }: {
   label: string
   skills: [string, number][]
   onToggle: (type: string, name: string, dots: number) => void
   isActive: (type: string, name: string) => boolean
   canToggle: boolean
+  interactive: boolean
 }) {
   const nonZero = skills.filter(([, dots]) => dots > 0)
   if (nonZero.length === 0) return null
@@ -313,18 +366,17 @@ function SkillColumn({
         const displayName = formatSkillName(key)
         const active = isActive("skill", displayName)
         return (
-          <button
+          <TraitRow
             key={key}
-            type="button"
-            onClick={() => onToggle("skill", displayName, dots)}
-            disabled={!canToggle}
-            className={`mv-trait flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left ${
-              active ? "mv-trait-on" : ""
-            }`}
+            interactive={interactive}
+            canToggle={canToggle}
+            active={active}
+            onToggle={() => onToggle("skill", displayName, dots)}
+            className="flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
           >
             <span className="text-[12px]">{displayName}</span>
             <DotRating current={dots} active={active} />
-          </button>
+          </TraitRow>
         )
       })}
     </div>
@@ -337,12 +389,14 @@ function ArcanaList({
   onToggle,
   isActive,
   canToggle,
+  interactive,
 }: {
   arcana: Record<string, number | undefined>
   ruling: readonly string[]
   onToggle: (type: string, name: string, dots: number) => void
   isActive: (type: string, name: string) => boolean
   canToggle: boolean
+  interactive: boolean
 }) {
   const entries = Object.entries(arcana)
     .filter(([, dots]) => dots != null && dots > 0)
@@ -357,14 +411,13 @@ function ArcanaList({
         const displayName = name.charAt(0).toUpperCase() + name.slice(1)
         const active = isActive("arcanum", displayName)
         return (
-          <button
+          <TraitRow
             key={name}
-            type="button"
-            onClick={() => onToggle("arcanum", displayName, dots)}
-            disabled={!canToggle}
-            className={`mv-trait flex items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-left ${
-              active ? "mv-trait-on" : ""
-            }`}
+            interactive={interactive}
+            canToggle={canToggle}
+            active={active}
+            onToggle={() => onToggle("arcanum", displayName, dots)}
+            className="flex items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-left"
           >
             <ArcanaGlyph arcanum={name} size={19} className={active ? "mv-accent" : ""} />
             <span className="flex-1 text-[13px]">
@@ -376,7 +429,7 @@ function ArcanaList({
               )}
             </span>
             <DotRating current={dots} active={active} />
-          </button>
+          </TraitRow>
         )
       })}
     </div>
