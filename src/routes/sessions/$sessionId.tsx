@@ -90,8 +90,32 @@ function SessionPage() {
   // The roster selection (issue #17). null = "my own character", the default —
   // it survives the own-character id arriving late and never dangles.
   const [selectedId, setSelectedId] = useState<Id<"characters"> | null>(null)
-  const pool = useDicePool(sessionId as Id<"sessions">, character?._id)
+
+  // The viewed sheet is the roster selection, defaulting to your own
+  // character (issue #17). A selection that no longer resolves — or a roster
+  // still loading — falls back to your own sheet rather than a blank panel.
+  const viewed =
+    (selectedId != null
+      ? roster?.find((c) => c._id === selectedId)
+      : undefined) ?? character
+
+  // The pool anchors to the viewed sheet, not your own: a roll built from a
+  // sheet lands as that sheet's owner, Override-marked when the roller isn't
+  // them (ADR-0006) — the "help my players" flow. Casting stays bound to
+  // your own (or seat's) character.
+  const pool = useDicePool(sessionId as Id<"sessions">, viewed?._id)
   const rawCast = useCast(sessionId as Id<"sessions">, character?._id)
+
+  // Switching sheets clears the pool: its components carry the previous
+  // sheet's dots while the roll would anchor to the new one — a stale mix
+  // must never travel. Ref-guarded so it fires only on an actual change.
+  const pooledSheetRef = useRef(viewed?._id)
+  useEffect(() => {
+    if (pooledSheetRef.current !== viewed?._id) {
+      pooledSheetRef.current = viewed?._id
+      pool.reset()
+    }
+  })
   const seedCharacter = useMutation(api.characters.seed)
   const seededRef = useRef(false)
 
@@ -159,14 +183,6 @@ function SessionPage() {
   // (issues #15, #19).
   const isStoryteller = effectiveMember?.role === "storyteller"
 
-  // The viewed sheet is the roster selection, defaulting to your own
-  // character (issue #17). A selection that no longer resolves — or a roster
-  // still loading — falls back to your own sheet rather than a blank panel.
-  const viewed =
-    (selectedId != null
-      ? roster?.find((c) => c._id === selectedId)
-      : undefined) ?? character
-
   // Build character sheet content
   let sheetContent: React.ReactNode = undefined
   if (viewed === undefined) {
@@ -182,9 +198,13 @@ function SessionPage() {
       </div>
     )
   } else {
-    // Only your own sheet is a controller: cabal-mates' sheets render
-    // read-only — no pool toggles, no cast forms (issue #17).
+    // Your own sheet is a full controller; an ST/Dev may also drive a
+    // player's sheet with the plain pool (the "help my players" flow — the
+    // server ladder decides, this gate only mirrors it). Cast controls stay
+    // your own sheet's. A seated Dev's raw isDev is masked: dev sight is
+    // lost while seated (ADR-0013), so only the seat's own sheet drives.
     const isMine = viewed._id === character?._id
+    const mayDrivePool = isMine || isStoryteller || (user.isDev && !seatMember)
     const { _id, _creationTime, ...fields } = viewed
     const sheet = decodeSheet({ id: _id, ...fields })
 
@@ -192,7 +212,7 @@ function SessionPage() {
       <div className="grid gap-6">
         <CharacterSheet
           character={sheet}
-          pool={isMine ? poolForSheet : undefined}
+          pool={mayDrivePool ? poolForSheet : undefined}
           cast={isMine ? cast : undefined}
         />
         {/* The hand-edit panel (issue #19): ST-only, on any sheet — the one

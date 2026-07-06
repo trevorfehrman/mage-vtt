@@ -23,6 +23,9 @@ export function useDicePool(
     try {
       await createRoll({
         sessionId,
+        // Anchor the roll to the sheet the pool was built from: attribution
+        // follows its owner, Override-marked when that isn't the roller.
+        ...(characterId ? { characterId } : {}),
         components: snapshot.context.components,
         againThreshold: snapshot.context.againThreshold,
         roteAction: snapshot.context.isRoteAction,

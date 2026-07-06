@@ -246,6 +246,119 @@ describe("Flows.rolls.create (enforcement seam tracer bullet)", () => {
     }),
   )
 
+  it.effect("a pool anchored to your own sheet stays your own act, unmarked", () =>
+    Effect.gen(function* () {
+      const store = makeInMemory({
+        members: [member],
+        actor: { userId: PLAYER, isDev: false },
+        sheets: [makeSheet()],
+      })
+
+      yield* createRoll({
+        sessionId: SESSION,
+        components,
+        characterId: CHARACTER,
+      }).pipe(Effect.provide(store.layer), Random.withSeed("anchor-seed"))
+
+      const entry = store.rolls[0]!
+      expect(entry.userId).toBe(PLAYER)
+      expect(entry.displayName).toBe("Aldous")
+      expect(entry.override).toBeNull()
+    }),
+  )
+
+  it.effect(
+    "the Storyteller rolling from a player's sheet lands as the player, Override-marked",
+    () =>
+      Effect.gen(function* () {
+        const STORYTELLER = PlayerId.make("user-morgan")
+        const morgan = new Membership({
+          userId: STORYTELLER,
+          sessionId: SESSION,
+          role: "storyteller",
+          displayName: "Morgan",
+        })
+        const store = makeInMemory({
+          members: [member, morgan],
+          actor: { userId: STORYTELLER, isDev: false },
+          sheets: [makeSheet()],
+        })
+
+        yield* createRoll({
+          sessionId: SESSION,
+          components,
+          characterId: CHARACTER,
+        }).pipe(Effect.provide(store.layer), Random.withSeed("anchor-seed"))
+
+        const entry = store.rolls[0]!
+        // Attribution follows the sheet's owner (ADR-0006), like casting.
+        expect(entry.userId).toBe(PLAYER)
+        expect(entry.displayName).toBe("Aldous")
+        expect(entry.summary).toContain("Aldous")
+        // ...and the provenance names who actually rolled.
+        expect(entry.override).toEqual({
+          invokedByUserId: STORYTELLER,
+          invokedByName: "Morgan",
+          kind: "storyteller-action",
+        })
+      }),
+  )
+
+  it.effect(
+    "a Dev rolling from a player's sheet lands as the player with the god-mode marker",
+    () =>
+      Effect.gen(function* () {
+        const DEV = PlayerId.make("user-dev")
+        const store = makeInMemory({
+          members: [member],
+          actor: { userId: DEV, isDev: true },
+          sheets: [makeSheet()],
+        })
+
+        yield* createRoll({
+          sessionId: SESSION,
+          components,
+          characterId: CHARACTER,
+        }).pipe(Effect.provide(store.layer), Random.withSeed("anchor-seed"))
+
+        const entry = store.rolls[0]!
+        expect(entry.userId).toBe(PLAYER)
+        expect(entry.displayName).toBe("Aldous")
+        expect(entry.override).toEqual({
+          invokedByUserId: DEV,
+          // Not a member of the session at all — name falls back to the id.
+          invokedByName: DEV,
+          kind: "godmode-action",
+        })
+      }),
+  )
+
+  it.effect("another player rolling from a sheet they don't own is refused", () =>
+    Effect.gen(function* () {
+      const INTRUDER = PlayerId.make("user-briar")
+      const briar = new Membership({
+        userId: INTRUDER,
+        sessionId: SESSION,
+        role: "player",
+        displayName: "Briar",
+      })
+      const store = makeInMemory({
+        members: [member, briar],
+        actor: { userId: INTRUDER, isDev: false },
+        sheets: [makeSheet()],
+      })
+
+      const exit = yield* createRoll({
+        sessionId: SESSION,
+        components,
+        characterId: CHARACTER,
+      }).pipe(Effect.provide(store.layer), Random.withSeed("anchor-seed"), Effect.exit)
+
+      expect(failureTag(exit)).toBe("NotYourCharacter")
+      expect(store.rolls).toHaveLength(0)
+    }),
+  )
+
   it.effect("a non-member's roll attempt fails NotAMember", () =>
     Effect.gen(function* () {
       const store = makeInMemory({

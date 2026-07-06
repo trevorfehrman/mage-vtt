@@ -21,6 +21,9 @@ export const create = enforcedMutation({
     againThreshold: v.optional(v.number()),
     roteAction: v.optional(v.boolean()),
     visibility: v.optional(v.union(v.literal("public"), v.literal("hidden"))),
+    // The sheet the pool was built from: attribution follows its owner, with
+    // the ST/Dev Override from the authority ladder (ADR-0006).
+    characterId: v.optional(v.id("characters")),
     willpower: v.optional(v.object({ characterId: v.id("characters") })),
   },
   flow: createRoll,

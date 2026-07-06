@@ -31,6 +31,13 @@ export interface CreateRollArgs {
   readonly againThreshold?: number
   readonly roteAction?: boolean
   readonly visibility?: RollVisibility
+  /**
+   * The sheet this pool was built from. Anchoring a roll walks the authority
+   * ladder over that sheet (ADR-0006: owner unmarked, ST/Dev Override-marked)
+   * and attribution follows the sheet's owner, exactly as casting does.
+   * Absent = a free pool, the roller's own act.
+   */
+  readonly characterId?: string
   /** Declared Willpower spend: +3 dice, funded by this character's sheet. */
   readonly willpower?: { readonly characterId: string }
 }
@@ -48,8 +55,23 @@ const rollSummary = (displayName: string, result: DiceRollResult): string => {
 export const createRoll = Effect.fn("Flows.rolls.create")(function* (
   args: CreateRollArgs,
 ) {
-  const member = yield* requireMember(SessionId.make(args.sessionId))
+  const sessionId = SessionId.make(args.sessionId)
   const store = yield* GameStore
+
+  // A sheet-anchored pool is that character's roll: walk the authority ladder
+  // over the sheet (owner unmarked, ST/Dev with Override — ADR-0006) and
+  // attribute to its owner, whoever invoked it — the same shape as casting.
+  // A free pool stays the roller's own act, attributed to their membership.
+  let member
+  if (args.characterId) {
+    const sheet = yield* requireSessionCharacter(
+      sessionId,
+      CharacterId.make(args.characterId),
+    )
+    member = yield* store.getMembership(sheet.sessionId, sheet.userId)
+  } else {
+    member = yield* requireMember(sessionId)
+  }
 
   // A declared Willpower spend: resolve the funding sheet, walk the authority
   // ladder, and check the pool before anything rolls or writes.
