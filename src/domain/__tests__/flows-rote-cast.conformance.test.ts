@@ -1,15 +1,15 @@
-import { Effect, Random, Schema } from "effect"
+import { Effect, Random } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import type { MutationCtx } from "../../../convex/_generated/server"
 import { convexLive } from "../../../convex/lib/convexLive"
-import { CharacterSheet, KnownRote } from "../character"
+import { KnownRote } from "../character"
 import { castRote } from "../flows/rote-cast"
 import { CharacterId, PlayerId, SessionId } from "../ids"
 import { Membership } from "../membership"
 import { GameStore } from "../ports/game-store"
 import { RotePool } from "../rote-pool"
 import { SpellRef } from "../rote-cast"
-import { failureTag } from "../testing/fixtures"
+import { failureTag, sheetFromDoc } from "../testing/fixtures"
 import { makeInMemory } from "../testing/in-memory"
 
 /**
@@ -176,42 +176,12 @@ const makeInMemoryStore = (opts: { extraRotes?: ReadonlyArray<KnownRote> } = {})
     members,
     actor: { userId: PlayerId.make(USER), isDev: false },
     sheets: [
-      Schema.decodeUnknownSync(CharacterSheet)({
-        // Decoded, not constructed: the boundary translation mints the
-        // branded quantities (issue #35) from the doc's plain numbers.
-        id: doc._id,
-        sessionId: doc.sessionId,
-        userId: doc.userId,
-        sessionMemberId: doc.sessionMemberId,
-        name: doc.name,
-        concept: doc.concept,
-        virtue: "Justice",
-        vice: "Pride",
-        path: "Moros",
-        order: "Mysterium",
-        gnosis: doc.gnosis,
-        attributes: doc.attributes,
-        skills: doc.skills,
-        arcana: doc.arcana,
-        healthTrack: doc.healthTrack.map(() => "empty" as const),
-        willpowerCurrent: doc.willpowerCurrent,
-        manaCurrent: doc.manaCurrent,
+      // Decoded, not constructed: the boundary translation mints the branded
+      // quantities (issue #35) from the doc's plain numbers.
+      sheetFromDoc({
+        ...doc,
         knownRotes: [
-          ...knownRotes.map(
-            (r) =>
-              new KnownRote({
-                name: r.name,
-                spellName: r.spellName,
-                spellArcanum: "Death",
-                spellLevel: r.spellLevel,
-                order: "Mysterium",
-                pool: new RotePool({
-                  attribute: "Presence",
-                  skills: ["Occult"],
-                  arcanum: "Death",
-                }),
-              }),
-          ),
+          ...knownRotes,
           ...(opts.extraRotes ?? []),
         ],
       }),

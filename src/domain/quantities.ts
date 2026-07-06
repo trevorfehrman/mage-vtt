@@ -10,7 +10,9 @@ import { Schema } from "effect"
  * fudged sheet must never brick on decode. Creation-strict ranges (1–5 dots
  * and kin) stay with the creation rules in `character.ts`. Gnosis as a
  * rules-legal rank already has a vocabulary home (`GnosisRank` in
- * `spellcasting.ts`, sweep ②); on the sheet it is `Dots` like any rating.
+ * `mana-economy.ts`, sweep ②); on the sheet it is `Dots` like any rating.
+ * Dice *counts* stay plain numbers on purpose: they never leave `dice.ts`'s
+ * internals, and brands earn their keep at module boundaries.
  */
 
 /** A rated trait as the sheet represents it: 0–10 (Gnosis 6+ raises caps). */
@@ -20,7 +22,7 @@ export const Dots = Schema.Number.check(
 ).pipe(Schema.brand("Dots"))
 export type Dots = typeof Dots.Type
 
-/** Mana points in the sheet's pool box: never negative, capped by Gnosis at layer 3. */
+/** Mana points — a sheet's pool box or a cast's cost: never negative; the box is capped by Gnosis at layer 3. */
 export const Mana = Schema.Number.check(
   Schema.isInt(),
   Schema.isGreaterThanOrEqualTo(0),

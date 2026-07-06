@@ -13,12 +13,7 @@ import { Cause, Config, Effect, Exit, Schedule, Schema } from "effect"
 
 // --- Env (validated before any work starts) ---
 
-/** The Convex deployment every uploading script talks to. */
-export const convexEnv = Config.all({
-  convexUrl: Config.string("VITE_CONVEX_URL"),
-})
-
-/** The embedding scripts additionally hold the OpenAI key — redacted. */
+/** The embedding scripts' environment: the Convex deployment and the OpenAI key, redacted. */
 export const embeddingEnv = Config.all({
   convexUrl: Config.string("VITE_CONVEX_URL"),
   openaiKey: Config.redacted("OPENAI_API_KEY"),
@@ -53,8 +48,11 @@ const transientRetry = Schedule.both(
 )
 
 /** A network call under the retry policy, failing typed once retries are spent. */
-export const tryApi = <A>(call: string, run: () => Promise<A>) =>
-  Effect.tryPromise(run).pipe(
+export const tryApi = Effect.fn("Scripts.tryApi")(function* <A>(
+  call: string,
+  run: () => Promise<A>,
+) {
+  return yield* Effect.tryPromise(run).pipe(
     Effect.retry(transientRetry),
     Effect.mapError(
       (error) =>
@@ -64,15 +62,20 @@ export const tryApi = <A>(call: string, run: () => Promise<A>) =>
         }),
     ),
   )
+})
 
 // --- Inputs ---
 
 /** A JSON file decoded through its schema — no `any` enters the pipeline. */
-export const loadJson = <S extends Schema.Top>(path: string, schema: S) =>
-  Effect.tryPromise(() => Bun.file(path).json() as Promise<unknown>).pipe(
-    Effect.mapError(() => new UsageError({ message: `Cannot read JSON: ${path}` })),
-    Effect.flatMap((raw) => Schema.decodeUnknownEffect(schema)(raw)),
-  )
+export const loadJson = Effect.fn("Scripts.loadJson")(function* <S extends Schema.Top>(
+  path: string,
+  schema: S,
+) {
+  const raw = yield* Effect.tryPromise(
+    () => Bun.file(path).json() as Promise<unknown>,
+  ).pipe(Effect.mapError(() => new UsageError({ message: `Cannot read JSON: ${path}` })))
+  return yield* Schema.decodeUnknownEffect(schema)(raw)
+})
 
 /** The rule-chunk shape both embedding scripts feed to `insertRuleChunk`. */
 export const RuleChunk = Schema.Struct({

@@ -43,6 +43,14 @@ export const makeAldousSheet = (
     ...overrides,
   })
 
+/**
+ * A raw characters-table doc decoded to the sheet artifact — the adapters'
+ * boundary translation, for seeding test stores. Extra doc keys
+ * (`_creationTime`) are ignored by the decode; `_id` maps to `id`.
+ */
+export const sheetFromDoc = (doc: Record<string, unknown> & { _id: string }) =>
+  Schema.decodeUnknownSync(CharacterSheet)({ ...doc, id: doc._id })
+
 /** The `_tag` of a flow's typed failure, or null on success / defect. */
 export const failureTag = (exit: Exit.Exit<unknown, unknown>) => {
   if (!Exit.isFailure(exit)) return null

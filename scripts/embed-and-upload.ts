@@ -122,8 +122,10 @@ const embedChunks = Effect.fn("EmbedUpload.embedChunks")(function* (
   // a Ref and the file write is serialized through a one-permit semaphore.
   const progress = yield* Ref.make(initial)
   const fileLock = yield* Semaphore.make(1)
-  const recordBatch = (batch: ReadonlyArray<RuleChunk>) =>
-    Semaphore.withPermits(
+  const recordBatch = Effect.fn("EmbedUpload.recordBatch")(function* (
+    batch: ReadonlyArray<RuleChunk>,
+  ) {
+    yield* Semaphore.withPermits(
       fileLock,
       1,
     )(
@@ -138,6 +140,7 @@ const embedChunks = Effect.fn("EmbedUpload.embedChunks")(function* (
         )
       }),
     )
+  })
 
   yield* embedAndUploadChunks({
     openai,

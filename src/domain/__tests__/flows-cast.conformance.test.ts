@@ -1,4 +1,4 @@
-import { Effect, Exit, Random, Schema } from "effect"
+import { Effect, Exit, Random } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import type { MutationCtx } from "../../../convex/_generated/server"
 import { convexLive } from "../../../convex/lib/convexLive"
@@ -8,6 +8,7 @@ import { CharacterId, PlayerId, SessionId } from "../ids"
 import { Mana, Willpower } from "../quantities"
 import { Membership } from "../membership"
 import { GameStore } from "../ports/game-store"
+import { sheetFromDoc } from "../testing/fixtures"
 import { makeInMemory } from "../testing/in-memory"
 
 /**
@@ -60,30 +61,7 @@ const characterDoc = (manaCurrent: number) => ({
 })
 
 /** The same character as the decoded domain artifact, for seeding `InMemory`. */
-const characterSheet = (manaCurrent: number) => {
-  const doc = characterDoc(manaCurrent)
-  // Decoded, not constructed: the adapter's boundary translation mints the
-  // branded quantities (issue #35) from the doc's plain numbers.
-  return Schema.decodeUnknownSync(CharacterSheet)({
-    id: doc._id,
-    sessionId: doc.sessionId,
-    userId: doc.userId,
-    sessionMemberId: doc.sessionMemberId,
-    name: doc.name,
-    concept: doc.concept,
-    virtue: "Justice",
-    vice: "Pride",
-    path: "Moros",
-    order: "Mysterium",
-    gnosis: doc.gnosis,
-    attributes: doc.attributes,
-    skills: doc.skills,
-    arcana: doc.arcana,
-    healthTrack: doc.healthTrack.map(() => "empty" as const),
-    willpowerCurrent: doc.willpowerCurrent,
-    manaCurrent: doc.manaCurrent,
-  })
-}
+const characterSheet = (manaCurrent: number) => sheetFromDoc(characterDoc(manaCurrent))
 
 // --- Minimal fake Convex ctx with a characters table ---
 
