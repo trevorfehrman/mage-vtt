@@ -1,5 +1,6 @@
 import { assertEvent, assign, fromPromise, setup } from "xstate"
 import type { ArcanumName, KnownRote } from "#/domain/character"
+import type { SeamFailure } from "#/lib/seam-errors"
 
 /**
  * The casting machine (PRD #11, issue #20): sheet-as-controller orchestration
@@ -14,6 +15,16 @@ export type CastSelection =
   | { method: "improvised"; arcanum: ArcanumName; dots: number }
   | { method: "rote"; rote: KnownRote }
 
+/**
+ * A failed cast, typed (issue #36): the seam's tag rides along so downstream
+ * UI can dispatch on the refusal, not just print it; `tag: null` marks a
+ * non-seam failure (defect, network) carrying only prose.
+ */
+export interface CastError {
+  readonly tag: SeamFailure["tag"] | null
+  readonly message: string
+}
+
 export interface CastContext {
   selection: CastSelection | null
   /** Improvised only: the declared effect level (its Practice), 1..dots. */
@@ -26,7 +37,7 @@ export interface CastContext {
   extraMana: number
   spendWillpower: boolean
   visibility: "public" | "hidden"
-  error: string | null
+  error: CastError | null
 }
 
 type CastEvent =
@@ -181,8 +192,21 @@ export const castMachine = setup({
         onError: {
           target: "declaring",
           actions: assign({
-            error: ({ event }) =>
-              event.error instanceof Error ? event.error.message : String(event.error),
+            // The submit actor throws a CastError (see use-cast.ts); anything
+            // else — e.g. the unprovided-actor guard — is prose without a tag.
+            error: ({ event }): CastError =>
+              typeof event.error === "object" &&
+              event.error !== null &&
+              "tag" in event.error &&
+              "message" in event.error
+                ? (event.error as CastError)
+                : {
+                    tag: null,
+                    message:
+                      event.error instanceof Error
+                        ? event.error.message
+                        : String(event.error),
+                  },
           }),
         },
       },

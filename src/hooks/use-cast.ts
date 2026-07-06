@@ -3,15 +3,17 @@ import { useMachine } from "@xstate/react"
 import { useMutation } from "convex/react"
 import { fromPromise } from "xstate"
 import { api } from "../../convex/_generated/api"
-import { castMachine, type CastSubmission } from "#/machines/cast"
-import { seamErrorMessage } from "#/lib/seam-errors"
+import { castMachine, type CastError, type CastSubmission } from "#/machines/cast"
+import { seamFailure } from "#/lib/seam-errors"
 import type { ArcanumName, KnownRote } from "#/domain/character"
 import type { Id } from "../../convex/_generated/dataModel"
 
-const castErrorMessage = (err: unknown): string =>
-  seamErrorMessage(err, {
-    fallback: (e) => (e instanceof Error ? e.message : "The cast failed."),
-  })
+/** A seam refusal keeps its typed tag (issue #36); anything else is prose only. */
+const castError = (err: unknown): CastError =>
+  seamFailure(err) ?? {
+    tag: null,
+    message: err instanceof Error ? err.message : "The cast failed.",
+  }
 
 /**
  * The casting controller (PRD #11, issue #20): wires the cast machine's
@@ -42,7 +44,7 @@ export function useCast(
         await castRote({ sessionId, characterId, ...args })
       }
     } catch (err) {
-      throw new Error(castErrorMessage(err))
+      throw castError(err)
     }
   }
 

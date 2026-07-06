@@ -251,10 +251,11 @@ export function CastPanel({
         </button>
       </div>
 
-      {/* error — the seam's typed refusal, mapped to table language */}
+      {/* error — the seam's typed refusal, mapped to table language; its
+          tag rides in context for UI that wants to dispatch on it */}
       {cast.context.error && (
         <p className="px-3 pb-2 text-[12px]" style={{ color: "var(--bad)" }}>
-          {cast.context.error}
+          {cast.context.error.message}
         </p>
       )}
     </div>

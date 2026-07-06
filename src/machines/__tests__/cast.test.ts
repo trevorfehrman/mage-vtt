@@ -148,9 +148,11 @@ describe("cast machine", () => {
     ])
   })
 
-  test("a refused submit returns to declaring with the error, declaration intact", async () => {
+  test("a refused submit returns to declaring with the typed error, declaration intact", async () => {
+    // The hook's actor throws a CastError (issue #36): the seam's tag rides
+    // into context so UI can dispatch on the refusal, not just print it.
     const actor = startMachine(async () => {
-      throw new Error("Not enough Mana: need 2, have 0.")
+      throw { tag: "InsufficientMana", message: "Not enough Mana: need 2, have 0." }
     })
     actor.send({ type: "ARM_IMPROVISED", arcanum: "death", dots: 3 })
     actor.send({ type: "SET_EXTRA_MANA", value: 2 })
@@ -158,8 +160,25 @@ describe("cast machine", () => {
 
     await waitFor(actor, (s) => s.matches("declaring"))
     const snap = actor.getSnapshot()
-    expect(snap.context.error).toBe("Not enough Mana: need 2, have 0.")
+    expect(snap.context.error).toEqual({
+      tag: "InsufficientMana",
+      message: "Not enough Mana: need 2, have 0.",
+    })
     expect(snap.context.extraMana).toBe(2) // fix the declaration, not retype it
+  })
+
+  test("a non-seam failure lands as prose without a tag", async () => {
+    const actor = startMachine(async () => {
+      throw new Error("Network hiccup.")
+    })
+    actor.send({ type: "ARM_IMPROVISED", arcanum: "death", dots: 3 })
+    actor.send({ type: "CAST" })
+
+    await waitFor(actor, (s) => s.matches("declaring"))
+    expect(actor.getSnapshot().context.error).toEqual({
+      tag: null,
+      message: "Network hiccup.",
+    })
   })
 })
 
