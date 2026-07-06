@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect"
+import { Effect, Match, Option, Schema } from "effect"
 
 // --- Weapon Data (from WoD Core pages 169-171) ---
 
@@ -82,24 +82,17 @@ export class CombatError extends Schema.TaggedErrorClass<CombatError>()(
 
 // --- Public API ---
 
-export const getWeapon = Effect.fn("Combat.getWeapon")(function* (name: string) {
-  const melee = MELEE_WEAPONS.find((w) => w.name === name)
-  if (melee) return melee
+/** Find-by-name across both weapon tables: a miss is a value (ADR-0014). */
+export const findWeapon = (name: string): Option.Option<WeaponDef> =>
+  Option.fromUndefinedOr(
+    MELEE_WEAPONS.find((w) => w.name === name) ??
+      RANGED_WEAPONS.find((w) => w.name === name),
+  )
 
-  const ranged = RANGED_WEAPONS.find((w) => w.name === name)
-  if (ranged) return ranged
+export const findArmor = (name: string): Option.Option<ArmorDef> =>
+  Option.fromUndefinedOr(ARMOR.find((a) => a.name === name))
 
-  return yield* new CombatError({ message: `Unknown weapon: ${name}` })
-})
-
-export const getArmor = Effect.fn("Combat.getArmor")(function* (name: string) {
-  const armor = ARMOR.find((a) => a.name === name)
-  if (!armor) {
-    return yield* new CombatError({ message: `Unknown armor: ${name}` })
-  }
-  return armor
-})
-
+// Stays Effect: an unknown weapon name is a typed failure the caller handles.
 export const calculateAttackPool = Effect.fn("Combat.attackPool")(function* (input: {
   type: "unarmed" | "melee" | "ranged" | "thrown"
   strength?: number
@@ -113,70 +106,98 @@ export const calculateAttackPool = Effect.fn("Combat.attackPool")(function* (inp
   targetArmor: number
   allOutAttack?: boolean
 }) {
-  let dice = 0
-  let damageType: "bashing" | "lethal" = "bashing"
   let weaponDamage = 0
+  let weaponDamageType: "bashing" | "lethal" = "bashing"
 
-  // Get weapon stats if applicable
   if (input.weaponName) {
-    const weapon = yield* getWeapon(input.weaponName)
-    weaponDamage = weapon.damage
-    damageType = weapon.damageType
+    const weapon = findWeapon(input.weaponName)
+    if (Option.isNone(weapon)) {
+      return yield* new CombatError({ message: `Unknown weapon: ${input.weaponName}` })
+    }
+    weaponDamage = weapon.value.damage
+    weaponDamageType = weapon.value.damageType
   }
 
-  switch (input.type) {
-    case "unarmed":
-      // Strength + Brawl - Defense - Armor
-      dice = (input.strength ?? 0) + (input.brawl ?? 0)
-      dice -= input.targetDefense
-      dice -= input.targetArmor
-      damageType = "bashing"
-      break
-
-    case "melee":
-      // Strength + Weaponry + weapon damage - Defense - Armor
-      dice = (input.strength ?? 0) + (input.weaponry ?? 0) + weaponDamage
-      dice -= input.targetDefense
-      dice -= input.targetArmor
-      damageType = damageType || "lethal"
-      break
-
-    case "ranged":
-      // Dexterity + Firearms + weapon damage - Armor (NO Defense)
-      dice = (input.dexterity ?? 0) + (input.firearms ?? 0) + weaponDamage
-      dice -= input.targetArmor
-      // Defense does NOT apply to ranged attacks
-      break
-
-    case "thrown":
-      // Dexterity + Athletics + weapon damage - Defense - Armor
-      dice = (input.dexterity ?? 0) + (input.athletics ?? 0) + weaponDamage
-      dice -= input.targetDefense
-      dice -= input.targetArmor
-      break
-  }
+  const attack = Match.value(input.type).pipe(
+    // Strength + Brawl - Defense - Armor, always bashing
+    Match.when("unarmed", () => ({
+      dice:
+        (input.strength ?? 0) +
+        (input.brawl ?? 0) -
+        input.targetDefense -
+        input.targetArmor,
+      damageType: "bashing" as const,
+    })),
+    // Strength + Weaponry + weapon damage - Defense - Armor
+    Match.when("melee", () => ({
+      dice:
+        (input.strength ?? 0) +
+        (input.weaponry ?? 0) +
+        weaponDamage -
+        input.targetDefense -
+        input.targetArmor,
+      damageType: weaponDamageType,
+    })),
+    // Dexterity + Firearms + weapon damage - Armor (Defense does NOT apply)
+    Match.when("ranged", () => ({
+      dice:
+        (input.dexterity ?? 0) + (input.firearms ?? 0) + weaponDamage - input.targetArmor,
+      damageType: weaponDamageType,
+    })),
+    // Dexterity + Athletics + weapon damage - Defense - Armor
+    Match.when("thrown", () => ({
+      dice:
+        (input.dexterity ?? 0) +
+        (input.athletics ?? 0) +
+        weaponDamage -
+        input.targetDefense -
+        input.targetArmor,
+      damageType: weaponDamageType,
+    })),
+    Match.exhaustive,
+  )
 
   // All-out attack: +2 dice, lose Defense
-  if (input.allOutAttack) {
-    dice += 2
-  }
+  const dice = attack.dice + (input.allOutAttack ? 2 : 0)
 
   return new AttackPool({
     totalDice: Math.max(0, dice),
-    damageType,
+    damageType: attack.damageType,
     attackerLosesDefense: input.allOutAttack ?? false,
   })
 })
 
-export const healingTime = Effect.fn("Combat.healingTime")(function* (
+// Pure rules leaf (ADR-0014): plain function, exhaustive over the damage kinds.
+export const healingTime = (
   damageType: "bashing" | "lethal" | "aggravated",
-) {
-  switch (damageType) {
-    case "bashing":
-      return new HealingRate({ damageType, minutes: 15, description: "15 minutes per point" })
-    case "lethal":
-      return new HealingRate({ damageType, minutes: 2 * 24 * 60, description: "2 days per point" })
-    case "aggravated":
-      return new HealingRate({ damageType, minutes: 7 * 24 * 60, description: "1 week per point" })
-  }
-})
+): HealingRate =>
+  Match.value(damageType).pipe(
+    Match.when(
+      "bashing",
+      () =>
+        new HealingRate({
+          damageType: "bashing",
+          minutes: 15,
+          description: "15 minutes per point",
+        }),
+    ),
+    Match.when(
+      "lethal",
+      () =>
+        new HealingRate({
+          damageType: "lethal",
+          minutes: 2 * 24 * 60,
+          description: "2 days per point",
+        }),
+    ),
+    Match.when(
+      "aggravated",
+      () =>
+        new HealingRate({
+          damageType: "aggravated",
+          minutes: 7 * 24 * 60,
+          description: "1 week per point",
+        }),
+    ),
+    Match.exhaustive,
+  )

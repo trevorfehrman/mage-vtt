@@ -1,11 +1,19 @@
-import { Effect, Schema } from "effect"
+import { Schema } from "effect"
+
+// Pure rules leaves (ADR-0014): plain functions over total tables. Every table
+// here is keyed by a closed Literals vocabulary, so lookups are total — a
+// typo'd key is a compile error, never a silently-wrong default.
 
 // --- Fire (page 180) ---
 
-const FIRE_SIZE_DAMAGE: Record<string, number> = { torch: 1, bonfire: 2, inferno: 3 }
-const FIRE_HEAT_MODIFIER: Record<string, number> = { candle: 0, torch: 1, bonfire: 2, chemical: 3 }
+export const FireSize = Schema.Literals(["torch", "bonfire", "inferno"])
+export type FireSize = typeof FireSize.Type
 
-export const FIRE_SIZES = Object.keys(FIRE_SIZE_DAMAGE)
+export const FireHeat = Schema.Literals(["candle", "torch", "bonfire", "chemical"])
+export type FireHeat = typeof FireHeat.Type
+
+const FIRE_SIZE_DAMAGE: Record<FireSize, number> = { torch: 1, bonfire: 2, inferno: 3 }
+const FIRE_HEAT_MODIFIER: Record<FireHeat, number> = { candle: 0, torch: 1, bonfire: 2, chemical: 3 }
 
 export class FireDamageResult extends Schema.Class<FireDamageResult>("FireDamageResult")({
   lethalPerTurn: Schema.Number.check(Schema.isInt()),
@@ -13,7 +21,15 @@ export class FireDamageResult extends Schema.Class<FireDamageResult>("FireDamage
 
 // --- Electrocution (page 178) ---
 
-const ELECTROCUTION_DAMAGE: Record<string, number> = { minor: 4, moderate: 6, severe: 8, extreme: 10 }
+export const ElectrocutionSeverity = Schema.Literals(["minor", "moderate", "severe", "extreme"])
+export type ElectrocutionSeverity = typeof ElectrocutionSeverity.Type
+
+const ELECTROCUTION_DAMAGE: Record<ElectrocutionSeverity, number> = {
+  minor: 4,
+  moderate: 6,
+  severe: 8,
+  extreme: 10,
+}
 
 export class ElectrocutionResult extends Schema.Class<ElectrocutionResult>("ElectrocutionResult")({
   bashingPerTurn: Schema.Number.check(Schema.isInt()),
@@ -22,14 +38,20 @@ export class ElectrocutionResult extends Schema.Class<ElectrocutionResult>("Elec
 
 // --- Explosives (pages 178-179) ---
 
-interface ExplosiveDef { name: string; damage: number; blastRadius: number }
+export const ExplosiveType = Schema.Literals([
+  "incendiary",
+  "concussion",
+  "fragmentation",
+  "high_explosive",
+])
+export type ExplosiveType = typeof ExplosiveType.Type
 
-export const EXPLOSIVES: ReadonlyArray<ExplosiveDef> = [
-  { name: "incendiary", damage: 2, blastRadius: 3 },
-  { name: "concussion", damage: 4, blastRadius: 5 },
-  { name: "fragmentation", damage: 4, blastRadius: 10 },
-  { name: "high_explosive", damage: 6, blastRadius: 15 },
-]
+export const EXPLOSIVES: Record<ExplosiveType, { damage: number; blastRadius: number }> = {
+  incendiary: { damage: 2, blastRadius: 3 },
+  concussion: { damage: 4, blastRadius: 5 },
+  fragmentation: { damage: 4, blastRadius: 10 },
+  high_explosive: { damage: 6, blastRadius: 15 },
+}
 
 export class ExplosiveResult extends Schema.Class<ExplosiveResult>("ExplosiveResult")({
   damage: Schema.Number.check(Schema.isInt()),
@@ -38,6 +60,15 @@ export class ExplosiveResult extends Schema.Class<ExplosiveResult>("ExplosiveRes
 
 // --- Drug effects (pages 176-177) ---
 
+export const DrugName = Schema.Literals([
+  "alcohol",
+  "marijuana",
+  "hallucinogens",
+  "cocaine",
+  "heroin",
+])
+export type DrugName = typeof DrugName.Type
+
 interface DrugDef {
   name: string
   poolPenalty: number
@@ -45,7 +76,7 @@ interface DrugDef {
   duration: string
 }
 
-const DRUGS: Record<string, DrugDef> = {
+const DRUGS: Record<DrugName, DrugDef> = {
   alcohol: { name: "Alcohol", poolPenalty: -1, affectedPools: ["dexterity", "intelligence", "wits"], duration: "1 die fades per hour" },
   marijuana: { name: "Marijuana", poolPenalty: -1, affectedPools: ["dexterity", "intelligence", "resolve", "wits"], duration: "(8 - Stamina) hours" },
   hallucinogens: { name: "Hallucinogens", poolPenalty: -2, affectedPools: ["all"], duration: "(8 - Stamina) hours" },
@@ -67,55 +98,44 @@ export class DeprivationResult extends Schema.Class<DeprivationResult>("Deprivat
 
 // --- Public API ---
 
-export const fireDamage = Effect.fn("Env.fire")(function* (input: {
-  size: string
-  heat: string
-}) {
-  const sizeDmg = FIRE_SIZE_DAMAGE[input.size] ?? 1
-  const heatMod = FIRE_HEAT_MODIFIER[input.heat] ?? 0
-  return new FireDamageResult({ lethalPerTurn: sizeDmg + heatMod })
-})
+export const fireDamage = (input: { size: FireSize; heat: FireHeat }): FireDamageResult =>
+  new FireDamageResult({
+    lethalPerTurn: FIRE_SIZE_DAMAGE[input.size] + FIRE_HEAT_MODIFIER[input.heat],
+  })
 
-export const electrocutionDamage = Effect.fn("Env.electrocution")(function* (
-  severity: string,
-) {
-  return new ElectrocutionResult({
-    bashingPerTurn: ELECTROCUTION_DAMAGE[severity] ?? 4,
+export const electrocutionDamage = (severity: ElectrocutionSeverity): ElectrocutionResult =>
+  new ElectrocutionResult({
+    bashingPerTurn: ELECTROCUTION_DAMAGE[severity],
     armorApplies: false,
   })
-})
 
-export const explosiveDamage = Effect.fn("Env.explosive")(function* (input: {
-  type: string
+export const explosiveDamage = (input: {
+  type: ExplosiveType
   isProne: boolean
-}) {
-  const explosive = EXPLOSIVES.find((e) => e.name === input.type)
-  const baseDamage = explosive?.damage ?? 4
-  const damage = input.isProne ? Math.max(0, baseDamage - 2) : baseDamage
-
+}): ExplosiveResult => {
+  const explosive = EXPLOSIVES[input.type]
   return new ExplosiveResult({
-    damage,
-    blastRadius: explosive?.blastRadius ?? 5,
+    damage: input.isProne ? Math.max(0, explosive.damage - 2) : explosive.damage,
+    blastRadius: explosive.blastRadius,
   })
-})
+}
 
-export const poisonResistance = Effect.fn("Env.poison")(function* (input: {
+export const poisonResistance = (input: {
   stamina: number
   resolve: number
   toxicity: number
-}) {
-  return new PoisonResult({
+}): PoisonResult =>
+  new PoisonResult({
     resistPool: input.stamina + input.resolve,
     lethalDamage: input.toxicity,
   })
-})
 
-export const deprivationDamage = Effect.fn("Env.deprivation")(function* (input: {
+export const deprivationDamage = (input: {
   stamina: number
   resolve: number
   daysWithoutWater: number
   daysWithoutFood: number
-}) {
+}): DeprivationResult => {
   const waterThreshold = input.stamina
   const foodThreshold = input.stamina + input.resolve
 
@@ -127,19 +147,14 @@ export const deprivationDamage = Effect.fn("Env.deprivation")(function* (input: 
     bashingPerDay,
     thresholdDays: waterThreshold,
   })
-})
+}
 
-export const fatiguePenalty = Effect.fn("Env.fatigue")(function* (hoursAwake: number) {
+export const fatiguePenalty = (hoursAwake: number): number => {
   if (hoursAwake <= 24) return 0
   return -Math.floor((hoursAwake - 24) / 6)
-})
+}
 
-export const temperaturePenalty = Effect.fn("Env.temperature")(function* (hoursExposed: number) {
-  return hoursExposed === 0 ? 0 : -hoursExposed
-})
+export const temperaturePenalty = (hoursExposed: number): number =>
+  hoursExposed === 0 ? 0 : -hoursExposed
 
-export const drugEffects = Effect.fn("Env.drugs")(function* (drugName: string) {
-  const drug = DRUGS[drugName]
-  if (!drug) return { poolPenalty: 0, affectedPools: [] as string[], duration: "unknown" }
-  return drug
-})
+export const drugEffects = (drugName: DrugName): DrugDef => DRUGS[drugName]

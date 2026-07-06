@@ -1,4 +1,4 @@
-import { Effect, Random, Schema } from "effect"
+import { Effect, Option, Random, Schema } from "effect"
 
 // --- Action tick costs (homebrew from Scion: Hero) ---
 
@@ -55,7 +55,10 @@ export const rollInitiative = Effect.fn("Initiative.roll")(function* (input: {
   })
 })
 
-export const resolveTickOrder = Effect.fn("Initiative.resolveOrder")(function* (
+// Pure rules leaves below (ADR-0014): plain functions — only the roll itself
+// consumes Random and stays Effect.
+
+export const resolveTickOrder = (
   rolls: ReadonlyArray<{
     participantId: string
     total: number
@@ -65,7 +68,7 @@ export const resolveTickOrder = Effect.fn("Initiative.resolveOrder")(function* (
     wits?: number
     willpower?: number
   }>,
-) {
+): Array<TickEntry> => {
   const highest = Math.max(...rolls.map((r) => r.total))
 
   // Sort by tiebreaker priority: Wits > Dex > Composure > Willpower
@@ -85,32 +88,33 @@ export const resolveTickOrder = Effect.fn("Initiative.resolveOrder")(function* (
         ticks: highest - r.total,
       }),
   )
-})
+}
 
-export const applyActionCost = Effect.fn("Initiative.applyActionCost")(function* (input: {
+export const applyActionCost = (input: {
   participantId: string
   currentTicks: number
   action: keyof typeof ACTION_COSTS
-}) {
-  const cost = ACTION_COSTS[input.action]
-
-  return new ActionResult({
+}): ActionResult =>
+  new ActionResult({
     participantId: input.participantId,
-    newTicks: input.currentTicks + cost,
+    newTicks: input.currentTicks + ACTION_COSTS[input.action],
   })
-})
 
-export const findNextActor = Effect.fn("Initiative.findNextActor")(function* (
+/** The next actor is a genuine miss on an empty tracker — an Option, not a `!`. */
+export const findNextActor = (
   entries: ReadonlyArray<{ participantId: string; ticks: number }>,
-) {
-  // Find minimum ticks
+): Option.Option<NextActorResult> => {
+  if (entries.length === 0) return Option.none()
+
+  // Minimum ticks acts next; first entry wins a tie.
   const minTicks = Math.min(...entries.map((e) => e.ticks))
-
-  // Find the participant with minimum ticks (first one if tie)
-  const next = entries.find((e) => e.ticks === minTicks)!
-
-  return new NextActorResult({
-    participantId: next.participantId,
-    ticksAdvanced: minTicks,
-  })
-})
+  return Option.fromUndefinedOr(entries.find((e) => e.ticks === minTicks)).pipe(
+    Option.map(
+      (next) =>
+        new NextActorResult({
+          participantId: next.participantId,
+          ticksAdvanced: minTicks,
+        }),
+    ),
+  )
+}

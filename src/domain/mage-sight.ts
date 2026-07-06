@@ -1,4 +1,7 @@
-import { Effect, Schema } from "effect"
+import { Schema } from "effect"
+
+// Pure rules leaves (ADR-0014): plain functions — nothing here fails or
+// touches the world.
 
 // --- Types ---
 
@@ -15,43 +18,39 @@ export class MageSightPool extends Schema.Class<MageSightPool>("MageSightPool")(
 
 // --- Public API ---
 
-export const activateMageSight = Effect.fn("MageSight.activate")(function* (input: {
+export const activateMageSight = (input: {
   arcana: Record<string, number>
-}) {
-  // Find highest arcanum
-  let primaryArcanum = ""
-  let primaryDots = 0
-
-  for (const [name, dots] of Object.entries(input.arcana)) {
-    if (dots > primaryDots) {
-      primaryArcanum = name
-      primaryDots = dots
-    }
-  }
+}): MageSightActivation => {
+  // Highest arcanum wins; ties keep the first seen.
+  const [primaryArcanum, primaryDots] = Object.entries(input.arcana).reduce<
+    [string, number]
+  >(
+    ([bestName, bestDots], [name, dots]) =>
+      dots > bestDots ? [name, dots] : [bestName, bestDots],
+    ["", 0],
+  )
 
   return new MageSightActivation({
     manaCost: 1,
     primaryArcanum,
     primaryDots,
   })
-})
+}
 
-export const peripheralMageSightPool = Effect.fn("MageSight.peripheralPool")(function* (input: {
+export const peripheralMageSightPool = (input: {
   wits: number
   composure: number
-}) {
-  return new MageSightPool({
+}): MageSightPool =>
+  new MageSightPool({
     totalDice: input.wits + input.composure,
     isExtended: false,
   })
-})
 
-export const scrutinyPool = Effect.fn("MageSight.scrutinyPool")(function* (input: {
+export const scrutinyPool = (input: {
   intelligence: number
   arcanumDots: number
-}) {
-  return new MageSightPool({
+}): MageSightPool =>
+  new MageSightPool({
     totalDice: input.intelligence + input.arcanumDots,
     isExtended: true,
   })
-})

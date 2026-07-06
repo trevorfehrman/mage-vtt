@@ -1,4 +1,8 @@
-import { Effect, Schema } from "effect"
+import { Option, Schema } from "effect"
+
+// Pure rules leaves (ADR-0014): plain functions throughout. Closed-key tables
+// are total over their Literals vocabulary; the one genuine find-by-name
+// (derangements) returns Option instead of synthesizing an "unknown" object.
 
 // ================================================================
 // OBJECTS & VEHICLES (WoD Core pp. 135-148)
@@ -15,32 +19,40 @@ export class CrashDamage extends Schema.Class<CrashDamage>("CrashDamage")({
   damageType: Schema.Literals(["bashing", "lethal"]),
 }) {}
 
-export const objectDurability = Effect.fn("World.objectDurability")(function* (input: {
+export const objectDurability = (input: {
   durability: number
   size: number
-}) {
-  return new ObjectStats({
+}): ObjectStats =>
+  new ObjectStats({
     durability: input.durability,
     size: input.size,
     structure: input.durability + input.size,
   })
-})
 
-export const vehicleCrashDamage = Effect.fn("World.crashDamage")(function* (input: {
+export const vehicleCrashDamage = (input: {
   vehicleSize: number
   speedMph: number
-}) {
-  return new CrashDamage({
+}): CrashDamage =>
+  new CrashDamage({
     damage: input.vehicleSize + Math.floor(input.speedMph / 10),
     damageType: "bashing",
   })
-})
 
 // ================================================================
 // GAUNTLET (Mage pp. 282-283)
 // ================================================================
 
-export const GAUNTLET_TABLE: Record<string, number> = {
+export const GauntletLocation = Schema.Literals([
+  "dense_urban",
+  "suburbs",
+  "small_town",
+  "wilderness",
+  "locus",
+  "verge",
+])
+export type GauntletLocation = typeof GauntletLocation.Type
+
+export const GAUNTLET_TABLE: Record<GauntletLocation, number> = {
   dense_urban: 5,
   suburbs: 4,
   small_town: 3,
@@ -49,25 +61,24 @@ export const GAUNTLET_TABLE: Record<string, number> = {
   verge: 0,
 }
 
-export const gauntletStrength = Effect.fn("World.gauntlet")(function* (location: string) {
-  return GAUNTLET_TABLE[location] ?? 3
-})
+export const gauntletStrength = (location: GauntletLocation): number =>
+  GAUNTLET_TABLE[location]
 
 // ================================================================
 // ASTRAL PLANES (Mage pp. 283-286)
 // ================================================================
 
-const ASTRAL_TARGETS: Record<string, number> = {
+export const AstralDestination = Schema.Literals(["oneiros", "temenos", "dreamtime"])
+export type AstralDestination = typeof AstralDestination.Type
+
+const ASTRAL_TARGETS: Record<AstralDestination, number> = {
   oneiros: 12,
   temenos: 16,
   dreamtime: 20,
 }
 
-export const astralJourneyTarget = Effect.fn("World.astralTarget")(function* (
-  destination: string,
-) {
-  return ASTRAL_TARGETS[destination] ?? 12
-})
+export const astralJourneyTarget = (destination: AstralDestination): number =>
+  ASTRAL_TARGETS[destination]
 
 // ================================================================
 // DISBELIEF (Mage p. 274)
@@ -79,16 +90,15 @@ export class DisbeliefInfo extends Schema.Class<DisbeliefInfo>("DisbeliefInfo")(
   rollInterval: Schema.String,
 }) {}
 
-export const disbeliefPool = Effect.fn("World.disbelief")(function* (input: {
+export const disbeliefPool = (input: {
   resolve: number
   composure: number
-}) {
-  return new DisbeliefInfo({
+}): DisbeliefInfo =>
+  new DisbeliefInfo({
     dicePool: input.resolve + input.composure,
     isExtended: true,
     rollInterval: "10 minutes",
   })
-})
 
 // ================================================================
 // DUEL ARCANE (Mage pp. 286-289)
@@ -99,38 +109,43 @@ export class DuelAttack extends Schema.Class<DuelAttack>("DuelAttack")({
   damageType: Schema.Literals(["willpower"]),
 }) {}
 
-export const duelArcaneAttack = Effect.fn("World.duelAttack")(function* (input: {
+export const duelArcaneAttack = (input: {
   gnosis: number
   swordArcanum: number
   opponentShieldArcanum: number
-}) {
-  return new DuelAttack({
+}): DuelAttack =>
+  new DuelAttack({
     dicePool: Math.max(0, input.gnosis + input.swordArcanum - input.opponentShieldArcanum),
     damageType: "willpower",
   })
-})
 
 // ================================================================
 // SPIRIT ADVANCED (Mage pp. 317-322)
 // ================================================================
 
-const INFLUENCE_ESSENCE_COST = [1, 1, 2, 3, 5] // levels 1-5
+export const InfluenceLevel = Schema.Literals([1, 2, 3, 4, 5])
+export type InfluenceLevel = typeof InfluenceLevel.Type
 
-export const spiritInfluenceCost = Effect.fn("World.spiritInfluence")(function* (level: number) {
-  return INFLUENCE_ESSENCE_COST[level - 1] ?? 1
-})
+const INFLUENCE_ESSENCE_COST: Record<InfluenceLevel, number> = {
+  1: 1,
+  2: 1,
+  3: 2,
+  4: 3,
+  5: 5,
+}
+
+export const spiritInfluenceCost = (level: InfluenceLevel): number =>
+  INFLUENCE_ESSENCE_COST[level]
 
 export class EssenceHarvest extends Schema.Class<EssenceHarvest>("EssenceHarvest")({
   dicePool: Schema.Number.check(Schema.isInt()),
 }) {}
 
-export const spiritEssenceHarvest = Effect.fn("World.essenceHarvest")(function* (input: {
+export const spiritEssenceHarvest = (input: {
   power: number
   finesse: number
   gauntletStrength: number
-}) {
-  return new EssenceHarvest({ dicePool: input.power + input.finesse })
-})
+}): EssenceHarvest => new EssenceHarvest({ dicePool: input.power + input.finesse })
 
 // ================================================================
 // SOUL MECHANICS (Mage pp. 276-277)
@@ -142,10 +157,10 @@ export class SoulLossResult extends Schema.Class<SoulLossResult>("SoulLossResult
   willpowerLost: Schema.Number.check(Schema.isInt()),
 }) {}
 
-export const soulLossProgression = Effect.fn("World.soulLoss")(function* (input: {
+export const soulLossProgression = (input: {
   weeksWithoutSoul: number
   currentWisdom: number
-}) {
+}): SoulLossResult => {
   const wisdomLost = Math.min(input.weeksWithoutSoul, input.currentWisdom - 1)
   const remainingWisdom = Math.max(1, input.currentWisdom - input.weeksWithoutSoul)
 
@@ -154,7 +169,7 @@ export const soulLossProgression = Effect.fn("World.soulLoss")(function* (input:
   const willpowerLost = excessWeeks
 
   return new SoulLossResult({ wisdomLost, remainingWisdom, willpowerLost })
-})
+}
 
 // ================================================================
 // DEMESNES (Mage pp. 280-281)
@@ -165,12 +180,11 @@ export class DemesneInfo extends Schema.Class<DemesneInfo>("DemesneInfo")({
   vulgarTreatedAsCovert: Schema.Boolean,
 }) {}
 
-export const demesneBonus = Effect.fn("World.demesne")(function* (_path: string) {
-  return new DemesneInfo({
+export const demesneBonus = (_path: string): DemesneInfo =>
+  new DemesneInfo({
     rulingBonus: 1,
     vulgarTreatedAsCovert: true,
   })
-})
 
 // ================================================================
 // DERANGEMENTS (WoD Core pp. 97-101)
@@ -205,8 +219,6 @@ export const DERANGEMENTS: ReadonlyArray<DerangementDef> = [
   { name: "Fugue", mild: false, resistPool: "Resolve + Composure", penalty: "Lose time, automatic actions only", trigger: "Extreme stress or trigger" },
 ]
 
-export const derangementEffect = Effect.fn("World.derangement")(function* (name: string) {
-  const d = DERANGEMENTS.find((dr) => dr.name === name)
-  if (!d) return { penalty: "Unknown derangement", resistPool: "", trigger: "" }
-  return d
-})
+/** Find-by-name over an open name set: a miss is a value, not a default. */
+export const findDerangement = (name: string): Option.Option<DerangementDef> =>
+  Option.fromUndefinedOr(DERANGEMENTS.find((d) => d.name === name))

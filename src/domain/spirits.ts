@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect"
+import { Schema } from "effect"
 
 // --- Spirit Rank Table (page 319) ---
 
@@ -61,8 +61,10 @@ export class SpiritDerivedStats extends Schema.Class<SpiritDerivedStats>("Spirit
 }) {}
 
 // --- Public API ---
+// Pure rules leaves (ADR-0014): plain functions — the constructor's checks
+// still validate; an out-of-range stat throws at construction.
 
-export const createSpirit = Effect.fn("Spirit.create")(function* (input: {
+export const createSpirit = (input: {
   name: string
   rank: number
   power: number
@@ -72,19 +74,16 @@ export const createSpirit = Effect.fn("Spirit.create")(function* (input: {
   essence: number
   influences: ReadonlyArray<{ name: string; dots: number }>
   numina: ReadonlyArray<string>
-}) {
-  return new Spirit(input)
-})
+}): Spirit => new Spirit(input)
 
-export const spiritDerivedStats = Effect.fn("Spirit.derivedStats")(function* (input: {
+export const spiritDerivedStats = (input: {
   power: number
   finesse: number
   resistance: number
   speciesFactor: number
-}) {
-  return new SpiritDerivedStats({
+}): SpiritDerivedStats =>
+  new SpiritDerivedStats({
     initiative: input.finesse + input.resistance,
     defense: Math.max(input.power, input.finesse),
     speed: input.power + input.finesse + input.speciesFactor,
   })
-})
