@@ -1,7 +1,7 @@
 import { Effect, Schema } from "effect"
 import { getSessionScopedSheet, requireRepairAuthority } from "../authz"
 import { type CharacterSheet } from "../character"
-import { HealthTrack, type HealthBox } from "../damage"
+import { DamageType, HealthTrack, type HealthBox } from "../damage"
 import { CharacterId, SessionId } from "../ids"
 import { GameStore, type SheetPatch } from "../ports/game-store"
 
@@ -57,7 +57,7 @@ const HandEditPatch = Schema.Struct({
 
 /** "clear" | "1 bashing" | "2 lethal, 1 aggravated" — the track, narrated. */
 const describeTrack = (track: ReadonlyArray<HealthBox>): string => {
-  const wounds = (["bashing", "lethal", "aggravated"] as const)
+  const wounds = DamageType.literals
     .map((state) => [state, track.filter((box) => box === state).length] as const)
     .filter(([, count]) => count > 0)
     .map(([state, count]) => `${count} ${state}`)

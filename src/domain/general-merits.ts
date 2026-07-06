@@ -142,13 +142,9 @@ const ratedFailure = (
 
 // --- Public API ---
 
-export const validateGeneralMerit = Effect.fn("GeneralMerits.validate")(function* (input: {
-  meritName: string
-  dots: number
-  attributes: Record<string, number>
-  skills: Record<string, number>
-  currentMerits: ReadonlyArray<{ name: string; dots: number }>
-}) {
+export const validateGeneralMerit = Effect.fn("GeneralMerits.validate")(function* (
+  input: { meritName: string; dots: number } & CharacterTraits,
+) {
   // Free-string merit name, so the miss is real
   const merit = Option.fromUndefinedOr(
     WOD_GENERAL_MERITS.find((m) => m.name === input.meritName),

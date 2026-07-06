@@ -1,15 +1,10 @@
 import { Effect, Match, Option, Schema } from "effect"
-import { DamageType, HealthBox } from "./damage"
+import { DamageType, HealthBox, type HealthTrack } from "./damage"
 
 // Pure rules leaves (ADR-0014): damage application, healing, and wound
 // penalties are plain functions over the shared health-box vocabulary
-// (`./damage`); only track creation keeps its typed error.
-
-// --- Types ---
-
-export class HealthTrack extends Schema.Class<HealthTrack>("HealthTrack")({
-  boxes: Schema.Array(HealthBox),
-}) {}
+// (`./damage`) — including its HealthTrack, so the track has one type, not a
+// parallel wrapper class here; only track creation keeps its typed error.
 
 // --- Errors ---
 
@@ -77,40 +72,38 @@ export const createHealthTrack = Effect.fn("HealthTrack.create")(function* (
     return yield* new HealthTrackError({ message: `Invalid health track size: ${size}` })
   }
 
-  const boxes: Array<HealthBox> = Array.from({ length: size }, () => "empty" as const)
-
-  return new HealthTrack({ boxes })
+  const track: HealthTrack = Array.from({ length: size }, () => "empty" as const)
+  return track
 })
 
 export const applyDamage = (track: HealthTrack, damage: DamageType): HealthTrack => {
-  const emptyIndex = track.boxes.indexOf("empty")
+  const emptyIndex = track.indexOf("empty")
 
   // With room on the track the wound fills a box; full tracks compound instead.
-  const boxes: ReadonlyArray<HealthBox> =
+  const boxes =
     emptyIndex !== -1
-      ? track.boxes.map((box, i) => (i === emptyIndex ? damage : box))
-      : overflowed(track.boxes, damage)
+      ? track.map((box, i) => (i === emptyIndex ? damage : box))
+      : overflowed(track, damage)
 
-  return new HealthTrack({ boxes: [...boxes].sort(bySeverity) })
+  return [...boxes].sort(bySeverity)
 }
 
 export const healDamage = (track: HealthTrack, damageType: DamageType): HealthTrack => {
   // Clear the rightmost box of this damage type; identity when none is marked.
-  const lastIndex = track.boxes.lastIndexOf(damageType)
+  const lastIndex = track.lastIndexOf(damageType)
   if (lastIndex === -1) return track
 
-  const boxes: Array<HealthBox> = track.boxes.map((box, i) =>
-    i === lastIndex ? "empty" : box,
-  )
-  return new HealthTrack({ boxes: boxes.sort(bySeverity) })
+  return track
+    .map((box, i): HealthBox => (i === lastIndex ? "empty" : box))
+    .sort(bySeverity)
 }
 
 export const isIncapacitated = (track: HealthTrack): boolean =>
-  track.boxes.every((b) => b !== "empty")
+  track.every((b) => b !== "empty")
 
 export const woundPenalty = (track: HealthTrack): number => {
-  const filled = track.boxes.filter((b) => b !== "empty").length
-  const total = track.boxes.length
+  const filled = track.filter((b) => b !== "empty").length
+  const total = track.length
 
   // Wound penalties apply based on how many boxes from the RIGHT are filled
   // 3rd to last filled: -1, 2nd to last: -2, last: -3

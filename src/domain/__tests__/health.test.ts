@@ -24,22 +24,22 @@ describe("Health Track", () => {
   it("bashing damage fills the leftmost empty box", () => {
     const track = freshTrack(7)
 
-    expect(track.boxes).toHaveLength(7)
-    expect(track.boxes.every((b: HealthBox) => b === "empty")).toBe(true)
+    expect(track).toHaveLength(7)
+    expect(track.every((b: HealthBox) => b === "empty")).toBe(true)
 
     const after = applyDamage(track, "bashing")
 
-    expect(after.boxes[0]).toBe("bashing")
-    expect(after.boxes[1]).toBe("empty")
+    expect(after[0]).toBe("bashing")
+    expect(after[1]).toBe("empty")
 
     // Apply two more
     const after2 = applyDamage(after, "bashing")
     const after3 = applyDamage(after2, "bashing")
 
-    expect(after3.boxes[0]).toBe("bashing")
-    expect(after3.boxes[1]).toBe("bashing")
-    expect(after3.boxes[2]).toBe("bashing")
-    expect(after3.boxes[3]).toBe("empty")
+    expect(after3[0]).toBe("bashing")
+    expect(after3[1]).toBe("bashing")
+    expect(after3[2]).toBe("bashing")
+    expect(after3[3]).toBe("empty")
   })
 
   it("lethal damage sorts left of bashing damage", () => {
@@ -51,10 +51,10 @@ describe("Health Track", () => {
     track = applyDamage(track, "lethal")
 
     // Lethal should be leftmost, then bashing
-    expect(track.boxes[0]).toBe("lethal")
-    expect(track.boxes[1]).toBe("bashing")
-    expect(track.boxes[2]).toBe("bashing")
-    expect(track.boxes[3]).toBe("empty")
+    expect(track[0]).toBe("lethal")
+    expect(track[1]).toBe("bashing")
+    expect(track[2]).toBe("bashing")
+    expect(track[3]).toBe("empty")
   })
 
   it("aggravated sorts left of lethal and bashing", () => {
@@ -64,10 +64,10 @@ describe("Health Track", () => {
     track = applyDamage(track, "lethal")
     track = applyDamage(track, "aggravated")
 
-    expect(track.boxes[0]).toBe("aggravated")
-    expect(track.boxes[1]).toBe("lethal")
-    expect(track.boxes[2]).toBe("bashing")
-    expect(track.boxes[3]).toBe("empty")
+    expect(track[0]).toBe("aggravated")
+    expect(track[1]).toBe("lethal")
+    expect(track[2]).toBe("bashing")
+    expect(track[3]).toBe("empty")
   })
 
   it("full bashing track + bashing upgrades rightmost bashing to lethal", () => {
@@ -78,14 +78,14 @@ describe("Health Track", () => {
     track = applyDamage(track, "bashing")
     track = applyDamage(track, "bashing")
 
-    expect(track.boxes).toEqual(["bashing", "bashing", "bashing"])
+    expect(track).toEqual(["bashing", "bashing", "bashing"])
 
     // Overflow: one more bashing upgrades rightmost to lethal
     track = applyDamage(track, "bashing")
 
-    expect(track.boxes[0]).toBe("lethal")
-    expect(track.boxes[1]).toBe("bashing")
-    expect(track.boxes[2]).toBe("bashing")
+    expect(track[0]).toBe("lethal")
+    expect(track[1]).toBe("bashing")
+    expect(track[2]).toBe("bashing")
   })
 
   it("full track + lethal upgrades rightmost bashing to lethal", () => {
@@ -99,9 +99,9 @@ describe("Health Track", () => {
     track = applyDamage(track, "lethal")
 
     // Rightmost bashing upgraded to lethal, then sorted
-    expect(track.boxes[0]).toBe("lethal")
-    expect(track.boxes[1]).toBe("bashing")
-    expect(track.boxes[2]).toBe("bashing")
+    expect(track[0]).toBe("lethal")
+    expect(track[1]).toBe("bashing")
+    expect(track[2]).toBe("bashing")
   })
 
   it("wound penalty increases as track fills from the right", () => {
@@ -138,7 +138,7 @@ describe("Health Track", () => {
 
     // Heal one bashing — rightmost bashing removed
     track = healDamage(track, "bashing")
-    const filled = track.boxes.filter((b: HealthBox) => b !== "empty").length
+    const filled = track.filter((b: HealthBox) => b !== "empty").length
     expect(filled).toBe(2) // lethal + 1 bashing remain
   })
 
