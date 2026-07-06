@@ -3,12 +3,15 @@ import { describe, expect, it } from "@effect/vitest"
 import {
   CharacterSheet,
   createCharacter,
+  initialCurrentState,
+  rulingArcanaOf,
   validateCreationRules,
   validateRoteSpecialties,
   validateSkillSpecialties,
   applyWisdomTradeoff,
   activeSpellPenalty,
 } from "../character"
+import { arctusData } from "../fixtures/arctus"
 
 /**
  * A complete, book-legal `CharacterSheet` input in its raw (pre-decode) form.
@@ -114,6 +117,22 @@ describe("Character Sheet", () => {
       expect(sheet.maxMana).toBe(10)
     }),
   )
+
+  it("initialCurrentState derives a fresh character's mutable state (issue #27)", () => {
+    const state = initialCurrentState(arctusData)
+
+    // The numbers the dev seed mutation used to hand-roll: health boxes are
+    // Stamina 2 + Size 5; Willpower is Resolve 2 + (Composure 3 + 1 Moros
+    // bonus); Mana starts at the Gnosis-1 maximum.
+    expect(state.healthTrack).toEqual(Array.from({ length: 7 }, () => "empty"))
+    expect(state.willpowerCurrent).toBe(6)
+    expect(state.manaCurrent).toBe(10)
+  })
+
+  it("rulingArcanaOf names the Path's ruling pair; an unknown path rules nothing", () => {
+    expect(rulingArcanaOf("Moros")).toEqual(["matter", "death"])
+    expect(rulingArcanaOf("Atlantean")).toEqual([])
+  })
 
   it.effect("CharacterSheet path resistance bonus applies correctly", () =>
     Effect.gen(function* () {

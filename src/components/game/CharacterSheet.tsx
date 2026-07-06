@@ -1,8 +1,9 @@
 import type { ReactNode } from "react"
-import type {
-  ArcanumName,
-  CharacterSheet as CharacterSheetData,
-  KnownRote,
+import {
+  rulingArcanaOf,
+  type ArcanumName,
+  type CharacterSheet as CharacterSheetData,
+  type KnownRote,
 } from "#/domain/character"
 import type { HealthBox } from "#/domain/damage"
 import { formatRotePool } from "#/domain/rote-pool"
@@ -22,15 +23,6 @@ const HEALTH_BOX_GLYPHS: Record<HealthBox, string> = {
   aggravated: "✳",
 }
 export const healthBoxGlyph = (box: HealthBox): string => HEALTH_BOX_GLYPHS[box]
-
-// Path ruling arcana lookup
-const PATH_RULING_ARCANA: Record<string, readonly string[]> = {
-  Acanthus: ["time", "fate"],
-  Mastigos: ["space", "mind"],
-  Moros: ["matter", "death"],
-  Obrimos: ["forces", "prime"],
-  Thyrsus: ["life", "spirit"],
-}
 
 interface CharacterSheetProps {
   character: CharacterSheetData
@@ -55,7 +47,7 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
   const { healthTrack, willpowerCurrent, manaCurrent } = character
   const canToggle =
     pool !== undefined && (pool.state === "idle" || pool.state === "building")
-  const ruling = PATH_RULING_ARCANA[character.path] ?? []
+  const ruling = rulingArcanaOf(character.path)
 
   const toggle = (type: string, name: string, dots: number) => {
     if (!pool || !canToggle) return

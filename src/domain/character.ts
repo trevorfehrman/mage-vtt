@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
-import { HealthTrack } from "./damage"
+import { HealthTrack, type HealthBox } from "./damage"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "./ids"
 import { RoteArcanumName, RotePool } from "./rote-pool"
 
@@ -170,6 +170,64 @@ const PATH_RULING_ARCANA: Record<string, readonly string[]> = {
   Thyrsus: ["life", "spirit"],
 }
 
+/** The Path's two ruling Arcana; a path outside the book rules nothing. */
+export const rulingArcanaOf = (path: string): ReadonlyArray<string> =>
+  PATH_RULING_ARCANA[path] ?? []
+
+// --- Derived-stat formulas (issue #27) ---
+//
+// One home for the sheet math: the `CharacterSheet` getters below and the dev
+// seed mutation both derive through these, so neither carries its own copy of
+// the tables above. They read only the traits the formulas need, which any
+// decoded character shape satisfies structurally.
+
+interface DerivationTraits {
+  readonly path: string
+  readonly gnosis: number
+  readonly attributes: {
+    readonly mental: { readonly resolve: number }
+    readonly physical: { readonly stamina: number }
+    readonly social: { readonly composure: number }
+  }
+}
+
+const resistanceBonusOf = (path: string) =>
+  PATH_RESISTANCE[path] ?? { attribute: "composure" as const, bonus: 0 }
+
+const effectiveResolveOf = (traits: DerivationTraits): number => {
+  const resistance = resistanceBonusOf(traits.path)
+  return traits.attributes.mental.resolve +
+    (resistance.attribute === "resolve" ? resistance.bonus : 0)
+}
+
+const effectiveComposureOf = (traits: DerivationTraits): number => {
+  const resistance = resistanceBonusOf(traits.path)
+  return traits.attributes.social.composure +
+    (resistance.attribute === "composure" ? resistance.bonus : 0)
+}
+
+const healthOf = (traits: DerivationTraits): number =>
+  traits.attributes.physical.stamina + DEFAULT_SIZE
+
+const willpowerOf = (traits: DerivationTraits): number =>
+  effectiveResolveOf(traits) + effectiveComposureOf(traits)
+
+const maxManaOf = (traits: DerivationTraits): number =>
+  GNOSIS_MAX_MANA[traits.gnosis - 1] ?? 10
+
+/** A fresh character's mutable state: an empty track, full Willpower and Mana. */
+export const initialCurrentState = (
+  traits: DerivationTraits,
+): {
+  healthTrack: Array<HealthBox>
+  willpowerCurrent: number
+  manaCurrent: number
+} => ({
+  healthTrack: Array.from({ length: healthOf(traits) }, () => "empty" as const),
+  willpowerCurrent: willpowerOf(traits),
+  manaCurrent: maxManaOf(traits),
+})
+
 // --- The Character Sheet (ADR-0011) ---
 //
 // Checks below encode representability — what fits in the sheet's boxes — not
@@ -276,25 +334,23 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   }
 
   get resistanceBonus() {
-    return PATH_RESISTANCE[this.path] ?? { attribute: "composure" as const, bonus: 0 }
+    return resistanceBonusOf(this.path)
   }
 
   get effectiveResolve(): number {
-    return this.attributes.mental.resolve +
-      (this.resistanceBonus.attribute === "resolve" ? this.resistanceBonus.bonus : 0)
+    return effectiveResolveOf(this)
   }
 
   get effectiveComposure(): number {
-    return this.attributes.social.composure +
-      (this.resistanceBonus.attribute === "composure" ? this.resistanceBonus.bonus : 0)
+    return effectiveComposureOf(this)
   }
 
   get health(): number {
-    return this.attributes.physical.stamina + DEFAULT_SIZE
+    return healthOf(this)
   }
 
   get willpower(): number {
-    return this.effectiveResolve + this.effectiveComposure
+    return willpowerOf(this)
   }
 
   get defense(): number {
@@ -314,7 +370,7 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   }
 
   get maxMana(): number {
-    return GNOSIS_MAX_MANA[this.gnosis - 1] ?? 10
+    return maxManaOf(this)
   }
 }
 
@@ -422,7 +478,7 @@ export const validateCreationRules = Effect.fn("Character.validateCreationRules"
   }
 
   // Check ruling requirement: 2 of the first 3 arcana must be ruling for the path
-  const ruling = PATH_RULING_ARCANA[character.path] ?? []
+  const ruling = rulingArcanaOf(character.path)
   const topThree = arcanaEntries.slice(0, 3).map(([name]) => name)
   const rulingInTopThree = topThree.filter((name) => ruling.includes(name)).length
 

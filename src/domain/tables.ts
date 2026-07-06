@@ -93,12 +93,13 @@ export const KnownRoteDoc = Schema.Struct({
 })
 
 /**
- * The ingestable width of a character — identity, rated Traits, current state,
- * known Rotes — everything except the linkage columns. The Dev-side character
- * ingestion mutation (issue #16) derives its `data` arg validator from this
- * struct; `CharacterDoc` composes it with the linkage.
+ * The seedable width of a character — identity and rated Traits, no current
+ * state. The dev seed mutation (issue #27) derives its `data` arg validator
+ * from this struct and computes the current state through the character
+ * domain's `initialCurrentState`; `CharacterData` composes it with the
+ * current-state columns.
  */
-export const CharacterData = Schema.Struct({
+export const CharacterSeedData = Schema.Struct({
   name: Schema.String,
   shadowName: Schema.optionalKey(Schema.String),
   concept: Schema.String,
@@ -168,6 +169,16 @@ export const CharacterData = Schema.Struct({
     spirit: Schema.optionalKey(Schema.Number),
     time: Schema.optionalKey(Schema.Number),
   }),
+})
+
+/**
+ * The ingestable width of a character — identity, rated Traits, current state,
+ * known Rotes — everything except the linkage columns. The Dev-side character
+ * ingestion mutation (issue #16) derives its `data` arg validator from this
+ * struct; `CharacterDoc` composes it with the linkage.
+ */
+export const CharacterData = Schema.Struct({
+  ...CharacterSeedData.fields,
   healthTrack: Schema.Array(Schema.String),
   willpowerCurrent: Schema.Number,
   manaCurrent: Schema.Number,
