@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import type { CharacterSheet as CharacterSheetData } from "#/domain/character"
-import type { HealthBoxState } from "#/domain/character"
+import type { HealthBox } from "#/domain/damage"
 import { healthBoxGlyph } from "./CharacterSheet"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import type { Id } from "../../../convex/_generated/dataModel"
@@ -15,7 +15,7 @@ import type { Id } from "../../../convex/_generated/dataModel"
  * accepted edit is Override-stamped ("Repair") and lands in the Activity Log.
  */
 
-const HEALTH_CYCLE: ReadonlyArray<HealthBoxState> = [
+const HEALTH_CYCLE: ReadonlyArray<HealthBox> = [
   "empty",
   "bashing",
   "lethal",
@@ -34,7 +34,7 @@ export function HandEditForm({
   const handEdit = useMutation(api.characters.handEdit)
   const [mana, setMana] = useState(character.manaCurrent)
   const [willpower, setWillpower] = useState(character.willpowerCurrent)
-  const [track, setTrack] = useState<ReadonlyArray<HealthBoxState>>(
+  const [track, setTrack] = useState<ReadonlyArray<HealthBox>>(
     character.healthTrack,
   )
   const [busy, setBusy] = useState(false)

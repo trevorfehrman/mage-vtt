@@ -1,4 +1,5 @@
 import { Effect, Schema } from "effect"
+import { HealthTrack } from "./damage"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "./ids"
 import { RoteArcanumName, RotePool } from "./rote-pool"
 
@@ -180,10 +181,6 @@ const PATH_RULING_ARCANA: Record<string, readonly string[]> = {
 /** What fits in a dot rating's boxes: 0–10. Game-legal maxima live in layer 3. */
 const SheetDots = Dots0to10
 
-/** The four states a health box can hold. */
-export const HealthBoxState = Schema.Literals(["empty", "bashing", "lethal", "aggravated"])
-export type HealthBoxState = typeof HealthBoxState.Type
-
 const SheetAttributes = Schema.Struct({
   mental: Schema.Struct({ intelligence: SheetDots, wits: SheetDots, resolve: SheetDots }),
   physical: Schema.Struct({ strength: SheetDots, dexterity: SheetDots, stamina: SheetDots }),
@@ -268,7 +265,7 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   attributes: SheetAttributes,
   skills: SheetSkills,
   arcana: SheetArcana,
-  healthTrack: Schema.Array(HealthBoxState),
+  healthTrack: HealthTrack,
   willpowerCurrent: CurrentPoints,
   manaCurrent: CurrentPoints,
   knownRotes: Schema.optionalKey(Schema.Array(KnownRote)),

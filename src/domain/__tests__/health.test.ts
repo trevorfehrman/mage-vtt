@@ -1,161 +1,156 @@
 import { Effect } from "effect"
 import { describe, expect, it } from "@effect/vitest"
+import type { HealthBox } from "../damage"
 import {
   createHealthTrack,
   applyDamage,
   woundPenalty,
   healDamage,
   isIncapacitated,
-  type HealthBox,
 } from "../health"
 
+// Track creation is the module's one effectful door (it can fail on a bad
+// size); the rules leaves under test are plain functions (ADR-0014).
+const freshTrack = (size: number) => Effect.runSync(createHealthTrack(size))
+
 describe("Health Track", () => {
-  it.effect("bashing damage fills the leftmost empty box", () =>
+  it.effect("track creation rejects sizes outside 1-20", () =>
     Effect.gen(function* () {
-      const track = yield* createHealthTrack(7)
-
-      expect(track.boxes).toHaveLength(7)
-      expect(track.boxes.every((b: HealthBox) => b === "empty")).toBe(true)
-
-      const after = yield* applyDamage(track, "bashing")
-
-      expect(after.boxes[0]).toBe("bashing")
-      expect(after.boxes[1]).toBe("empty")
-
-      // Apply two more
-      const after2 = yield* applyDamage(after, "bashing")
-      const after3 = yield* applyDamage(after2, "bashing")
-
-      expect(after3.boxes[0]).toBe("bashing")
-      expect(after3.boxes[1]).toBe("bashing")
-      expect(after3.boxes[2]).toBe("bashing")
-      expect(after3.boxes[3]).toBe("empty")
+      const error = yield* createHealthTrack(0).pipe(Effect.flip)
+      expect(error._tag).toBe("HealthTrackError")
     }),
   )
 
-  it.effect("lethal damage sorts left of bashing damage", () =>
-    Effect.gen(function* () {
-      let track = yield* createHealthTrack(5)
+  it("bashing damage fills the leftmost empty box", () => {
+    const track = freshTrack(7)
 
-      // Apply 2 bashing then 1 lethal
-      track = yield* applyDamage(track, "bashing")
-      track = yield* applyDamage(track, "bashing")
-      track = yield* applyDamage(track, "lethal")
+    expect(track.boxes).toHaveLength(7)
+    expect(track.boxes.every((b: HealthBox) => b === "empty")).toBe(true)
 
-      // Lethal should be leftmost, then bashing
-      expect(track.boxes[0]).toBe("lethal")
-      expect(track.boxes[1]).toBe("bashing")
-      expect(track.boxes[2]).toBe("bashing")
-      expect(track.boxes[3]).toBe("empty")
-    }),
-  )
+    const after = applyDamage(track, "bashing")
 
-  it.effect("aggravated sorts left of lethal and bashing", () =>
-    Effect.gen(function* () {
-      let track = yield* createHealthTrack(5)
+    expect(after.boxes[0]).toBe("bashing")
+    expect(after.boxes[1]).toBe("empty")
 
-      track = yield* applyDamage(track, "bashing")
-      track = yield* applyDamage(track, "lethal")
-      track = yield* applyDamage(track, "aggravated")
+    // Apply two more
+    const after2 = applyDamage(after, "bashing")
+    const after3 = applyDamage(after2, "bashing")
 
-      expect(track.boxes[0]).toBe("aggravated")
-      expect(track.boxes[1]).toBe("lethal")
-      expect(track.boxes[2]).toBe("bashing")
-      expect(track.boxes[3]).toBe("empty")
-    }),
-  )
+    expect(after3.boxes[0]).toBe("bashing")
+    expect(after3.boxes[1]).toBe("bashing")
+    expect(after3.boxes[2]).toBe("bashing")
+    expect(after3.boxes[3]).toBe("empty")
+  })
 
-  it.effect("full bashing track + bashing upgrades rightmost bashing to lethal", () =>
-    Effect.gen(function* () {
-      let track = yield* createHealthTrack(3)
+  it("lethal damage sorts left of bashing damage", () => {
+    let track = freshTrack(5)
 
-      // Fill with bashing
-      track = yield* applyDamage(track, "bashing")
-      track = yield* applyDamage(track, "bashing")
-      track = yield* applyDamage(track, "bashing")
+    // Apply 2 bashing then 1 lethal
+    track = applyDamage(track, "bashing")
+    track = applyDamage(track, "bashing")
+    track = applyDamage(track, "lethal")
 
-      expect(track.boxes).toEqual(["bashing", "bashing", "bashing"])
+    // Lethal should be leftmost, then bashing
+    expect(track.boxes[0]).toBe("lethal")
+    expect(track.boxes[1]).toBe("bashing")
+    expect(track.boxes[2]).toBe("bashing")
+    expect(track.boxes[3]).toBe("empty")
+  })
 
-      // Overflow: one more bashing upgrades rightmost to lethal
-      track = yield* applyDamage(track, "bashing")
+  it("aggravated sorts left of lethal and bashing", () => {
+    let track = freshTrack(5)
 
-      expect(track.boxes[0]).toBe("lethal")
-      expect(track.boxes[1]).toBe("bashing")
-      expect(track.boxes[2]).toBe("bashing")
-    }),
-  )
+    track = applyDamage(track, "bashing")
+    track = applyDamage(track, "lethal")
+    track = applyDamage(track, "aggravated")
 
-  it.effect("full track + lethal upgrades rightmost bashing to lethal", () =>
-    Effect.gen(function* () {
-      let track = yield* createHealthTrack(3)
+    expect(track.boxes[0]).toBe("aggravated")
+    expect(track.boxes[1]).toBe("lethal")
+    expect(track.boxes[2]).toBe("bashing")
+    expect(track.boxes[3]).toBe("empty")
+  })
 
-      track = yield* applyDamage(track, "bashing")
-      track = yield* applyDamage(track, "bashing")
-      track = yield* applyDamage(track, "bashing")
+  it("full bashing track + bashing upgrades rightmost bashing to lethal", () => {
+    let track = freshTrack(3)
 
-      // Apply lethal to a full bashing track
-      track = yield* applyDamage(track, "lethal")
+    // Fill with bashing
+    track = applyDamage(track, "bashing")
+    track = applyDamage(track, "bashing")
+    track = applyDamage(track, "bashing")
 
-      // Rightmost bashing upgraded to lethal, then sorted
-      expect(track.boxes[0]).toBe("lethal")
-      expect(track.boxes[1]).toBe("bashing")
-      expect(track.boxes[2]).toBe("bashing")
-    }),
-  )
+    expect(track.boxes).toEqual(["bashing", "bashing", "bashing"])
 
-  it.effect("wound penalty increases as track fills from the right", () =>
-    Effect.gen(function* () {
-      let track = yield* createHealthTrack(7)
+    // Overflow: one more bashing upgrades rightmost to lethal
+    track = applyDamage(track, "bashing")
 
-      // No damage = no penalty
-      expect(yield* woundPenalty(track)).toBe(0)
+    expect(track.boxes[0]).toBe("lethal")
+    expect(track.boxes[1]).toBe("bashing")
+    expect(track.boxes[2]).toBe("bashing")
+  })
 
-      // Fill 4 boxes (3 from last = 5th box) — no penalty yet
-      track = yield* applyDamage(track, "bashing")
-      track = yield* applyDamage(track, "bashing")
-      track = yield* applyDamage(track, "bashing")
-      track = yield* applyDamage(track, "bashing")
-      expect(yield* woundPenalty(track)).toBe(0)
+  it("full track + lethal upgrades rightmost bashing to lethal", () => {
+    let track = freshTrack(3)
 
-      // 5th box filled (3rd from last) — penalty -1
-      track = yield* applyDamage(track, "bashing")
-      expect(yield* woundPenalty(track)).toBe(-1)
+    track = applyDamage(track, "bashing")
+    track = applyDamage(track, "bashing")
+    track = applyDamage(track, "bashing")
 
-      // 6th box (2nd from last) — penalty -2
-      track = yield* applyDamage(track, "bashing")
-      expect(yield* woundPenalty(track)).toBe(-2)
+    // Apply lethal to a full bashing track
+    track = applyDamage(track, "lethal")
 
-      // 7th box (last) — penalty -3
-      track = yield* applyDamage(track, "bashing")
-      expect(yield* woundPenalty(track)).toBe(-3)
-    }),
-  )
+    // Rightmost bashing upgraded to lethal, then sorted
+    expect(track.boxes[0]).toBe("lethal")
+    expect(track.boxes[1]).toBe("bashing")
+    expect(track.boxes[2]).toBe("bashing")
+  })
 
-  it.effect("healing removes rightmost damage of specified type", () =>
-    Effect.gen(function* () {
-      let track = yield* createHealthTrack(5)
-      track = yield* applyDamage(track, "bashing")
-      track = yield* applyDamage(track, "bashing")
-      track = yield* applyDamage(track, "lethal")
+  it("wound penalty increases as track fills from the right", () => {
+    let track = freshTrack(7)
 
-      // Heal one bashing — rightmost bashing removed
-      track = yield* healDamage(track, "bashing")
-      const filled = track.boxes.filter((b: HealthBox) => b !== "empty").length
-      expect(filled).toBe(2) // lethal + 1 bashing remain
-    }),
-  )
+    // No damage = no penalty
+    expect(woundPenalty(track)).toBe(0)
 
-  it.effect("incapacitated when last health box is filled", () =>
-    Effect.gen(function* () {
-      let track = yield* createHealthTrack(3)
-      expect(yield* isIncapacitated(track)).toBe(false)
+    // Fill 4 boxes (3 from last = 5th box) — no penalty yet
+    track = applyDamage(track, "bashing")
+    track = applyDamage(track, "bashing")
+    track = applyDamage(track, "bashing")
+    track = applyDamage(track, "bashing")
+    expect(woundPenalty(track)).toBe(0)
 
-      track = yield* applyDamage(track, "bashing")
-      track = yield* applyDamage(track, "bashing")
-      expect(yield* isIncapacitated(track)).toBe(false)
+    // 5th box filled (3rd from last) — penalty -1
+    track = applyDamage(track, "bashing")
+    expect(woundPenalty(track)).toBe(-1)
 
-      track = yield* applyDamage(track, "bashing")
-      expect(yield* isIncapacitated(track)).toBe(true)
-    }),
-  )
+    // 6th box (2nd from last) — penalty -2
+    track = applyDamage(track, "bashing")
+    expect(woundPenalty(track)).toBe(-2)
+
+    // 7th box (last) — penalty -3
+    track = applyDamage(track, "bashing")
+    expect(woundPenalty(track)).toBe(-3)
+  })
+
+  it("healing removes rightmost damage of specified type", () => {
+    let track = freshTrack(5)
+    track = applyDamage(track, "bashing")
+    track = applyDamage(track, "bashing")
+    track = applyDamage(track, "lethal")
+
+    // Heal one bashing — rightmost bashing removed
+    track = healDamage(track, "bashing")
+    const filled = track.boxes.filter((b: HealthBox) => b !== "empty").length
+    expect(filled).toBe(2) // lethal + 1 bashing remain
+  })
+
+  it("incapacitated when last health box is filled", () => {
+    let track = freshTrack(3)
+    expect(isIncapacitated(track)).toBe(false)
+
+    track = applyDamage(track, "bashing")
+    track = applyDamage(track, "bashing")
+    expect(isIncapacitated(track)).toBe(false)
+
+    track = applyDamage(track, "bashing")
+    expect(isIncapacitated(track)).toBe(true)
+  })
 })

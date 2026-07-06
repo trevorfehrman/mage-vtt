@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect"
+import { Effect, Match, Option, Schema } from "effect"
 
 // --- Types ---
 
@@ -12,9 +12,9 @@ interface MeritDefinition {
 }
 
 type Prerequisite =
-  | { type: "awakened" }
-  | { type: "noMerit"; meritName: string }
-  | { type: "hasMerit"; meritName: string }
+  | { readonly _tag: "awakened" }
+  | { readonly _tag: "noMerit"; readonly meritName: string }
+  | { readonly _tag: "hasMerit"; readonly meritName: string }
 
 interface MeritSelection {
   meritName: string
@@ -35,7 +35,7 @@ export const MAGE_MERITS: ReadonlyArray<MeritDefinition> = [
     name: "Artifact",
     minDots: 3,
     maxDots: 5,
-    prerequisites: [{ type: "awakened" }],
+    prerequisites: [{ _tag: "awakened" }],
     description: "A magical item of mysterious origin from the Supernal World. Cost: 2 + highest Arcanum dots + 1 per additional power.",
     page: 81,
   },
@@ -43,7 +43,7 @@ export const MAGE_MERITS: ReadonlyArray<MeritDefinition> = [
     name: "Destiny",
     minDots: 1,
     maxDots: 5,
-    prerequisites: [{ type: "awakened" }],
+    prerequisites: [{ _tag: "awakened" }],
     description: "The character is fated for great things. Provides bonus dice equal to dots on one roll per chapter, but also attracts a bane.",
     page: 83,
   },
@@ -67,7 +67,7 @@ export const MAGE_MERITS: ReadonlyArray<MeritDefinition> = [
     name: "Familiar",
     minDots: 3,
     maxDots: 4,
-    prerequisites: [{ type: "awakened" }],
+    prerequisites: [{ _tag: "awakened" }],
     description: "A spirit aide mystically bonded to the mage. 3 dots for immaterial, 4 for embodied.",
     page: 85,
   },
@@ -75,7 +75,7 @@ export const MAGE_MERITS: ReadonlyArray<MeritDefinition> = [
     name: "Hallow",
     minDots: 1,
     maxDots: 5,
-    prerequisites: [{ type: "hasMerit", meritName: "Sanctum" }],
+    prerequisites: [{ _tag: "hasMerit", meritName: "Sanctum" }],
     description: "A place of power that generates Mana. Generates dots-per-day in Mana points.",
     page: 84,
   },
@@ -83,7 +83,7 @@ export const MAGE_MERITS: ReadonlyArray<MeritDefinition> = [
     name: "High Speech",
     minDots: 1,
     maxDots: 1,
-    prerequisites: [{ type: "awakened" }],
+    prerequisites: [{ _tag: "awakened" }],
     description: "The mage knows the Atlantean High Speech. Provides +2 bonus to spellcasting when spoken aloud.",
     page: 86,
   },
@@ -91,7 +91,7 @@ export const MAGE_MERITS: ReadonlyArray<MeritDefinition> = [
     name: "Occultation",
     minDots: 1,
     maxDots: 3,
-    prerequisites: [{ type: "awakened" }, { type: "noMerit", meritName: "Fame" }],
+    prerequisites: [{ _tag: "awakened" }, { _tag: "noMerit", meritName: "Fame" }],
     description: "The mage's presence is supernaturally masked. Imposes penalty on attempts to scrutinize the mage's resonance.",
     page: 88,
   },
@@ -105,6 +105,39 @@ export const MAGE_MERITS: ReadonlyArray<MeritDefinition> = [
   },
 ]
 
+// --- Pure rules leaves (ADR-0014) ---
+
+/**
+ * One prerequisite checked against the names the character would hold after
+ * the selection. `holds` covers current Merits and the selection together.
+ */
+const prerequisiteFailure = (
+  merit: MeritDefinition,
+  prereq: Prerequisite,
+  holds: (meritName: string) => boolean,
+): Option.Option<MeritValidationError> =>
+  Match.value(prereq).pipe(
+    // All mage characters are awakened; the prerequisite exists for the data's sake.
+    Match.tag("awakened", () => Option.none()),
+    Match.tag("noMerit", ({ meritName }) =>
+      holds(meritName)
+        ? Option.some(
+            new MeritValidationError({
+              message: `${merit.name} cannot be taken with ${meritName}`,
+            }),
+          )
+        : Option.none(),
+    ),
+    Match.tag("hasMerit", ({ meritName }) =>
+      holds(meritName)
+        ? Option.none()
+        : Option.some(
+            new MeritValidationError({ message: `${merit.name} requires ${meritName}` }),
+          ),
+    ),
+    Match.exhaustive,
+  )
+
 // --- Public API ---
 
 export const validateMeritSelections = Effect.fn("Merits.validate")(function* (input: {
@@ -117,49 +150,39 @@ export const validateMeritSelections = Effect.fn("Merits.validate")(function* (i
   // Check total dots
   const totalDots = selections.reduce((sum, s) => sum + s.dots, 0)
   if (totalDots > maxDots) {
-    yield* new MeritValidationError({
+    return yield* new MeritValidationError({
       message: `Total Merit dots ${totalDots} exceeds maximum ${maxDots}`,
     })
   }
 
+  const holds = (meritName: string) =>
+    currentMerits.some((m) => m.meritName === meritName) ||
+    selections.some((s) => s.meritName === meritName)
+
   for (const selection of selections) {
-    // Find the Merit definition
-    const merit = MAGE_MERITS.find((m) => m.name === selection.meritName)
-    if (!merit) {
-      yield* new MeritValidationError({
+    // Find the Merit definition — a free-string name, so the miss is real
+    const merit = Option.fromUndefinedOr(
+      MAGE_MERITS.find((m) => m.name === selection.meritName),
+    )
+    if (Option.isNone(merit)) {
+      return yield* new MeritValidationError({
         message: `Unknown Merit: "${selection.meritName}"`,
       })
-      continue
     }
 
     // Check dots are in range
-    if (selection.dots < merit.minDots || selection.dots > merit.maxDots) {
-      yield* new MeritValidationError({
-        message: `${merit.name} requires ${merit.minDots}-${merit.maxDots} dots, got ${selection.dots}`,
+    if (selection.dots < merit.value.minDots || selection.dots > merit.value.maxDots) {
+      return yield* new MeritValidationError({
+        message: `${merit.value.name} requires ${merit.value.minDots}-${merit.value.maxDots} dots, got ${selection.dots}`,
       })
     }
 
     // Check prerequisites
-    for (const prereq of merit.prerequisites) {
-      if (prereq.type === "noMerit") {
-        const hasForbidden = currentMerits.some((m) => m.meritName === prereq.meritName)
-          || selections.some((s) => s.meritName === prereq.meritName)
-        if (hasForbidden) {
-          yield* new MeritValidationError({
-            message: `${merit.name} cannot be taken with ${prereq.meritName}`,
-          })
-        }
+    for (const prereq of merit.value.prerequisites) {
+      const failure = prerequisiteFailure(merit.value, prereq, holds)
+      if (Option.isSome(failure)) {
+        return yield* failure.value
       }
-      if (prereq.type === "hasMerit") {
-        const hasRequired = currentMerits.some((m) => m.meritName === prereq.meritName)
-          || selections.some((s) => s.meritName === prereq.meritName)
-        if (!hasRequired) {
-          yield* new MeritValidationError({
-            message: `${merit.name} requires ${prereq.meritName}`,
-          })
-        }
-      }
-      // "awakened" prerequisite: all mage characters pass this, no check needed
     }
   }
 })

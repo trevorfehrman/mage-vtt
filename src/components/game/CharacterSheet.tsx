@@ -4,6 +4,7 @@ import type {
   CharacterSheet as CharacterSheetData,
   KnownRote,
 } from "#/domain/character"
+import type { HealthBox } from "#/domain/damage"
 import { formatRotePool } from "#/domain/rote-pool"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import { DotRating } from "./DotRating"
@@ -14,8 +15,13 @@ type DicePoolAPI = ReturnType<typeof useDicePool>
 type CastAPI = ReturnType<typeof useCast>
 
 /** One glyph per health box state — shared with the hand-edit panel. */
-export const healthBoxGlyph = (box: string): string =>
-  box === "bashing" ? "╱" : box === "lethal" ? "✕" : box === "aggravated" ? "✳" : ""
+const HEALTH_BOX_GLYPHS: Record<HealthBox, string> = {
+  empty: "",
+  bashing: "╱",
+  lethal: "✕",
+  aggravated: "✳",
+}
+export const healthBoxGlyph = (box: HealthBox): string => HEALTH_BOX_GLYPHS[box]
 
 // Path ruling arcana lookup
 const PATH_RULING_ARCANA: Record<string, readonly string[]> = {

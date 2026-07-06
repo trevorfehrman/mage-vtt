@@ -1,5 +1,6 @@
 import { Context, Effect } from "effect"
-import type { CharacterSheet, HealthBoxState } from "../character"
+import type { CharacterSheet } from "../character"
+import type { HealthBox } from "../damage"
 import type { DiceRollResult, RawPoolComponent } from "../dice"
 import type { CharacterId, MessageId, PlayerId, RollId, SessionId } from "../ids"
 import type { Membership } from "../membership"
@@ -44,7 +45,7 @@ export interface MessageDraft {
 export interface SheetPatch {
   readonly manaCurrent?: number
   readonly willpowerCurrent?: number
-  readonly healthTrack?: ReadonlyArray<HealthBoxState>
+  readonly healthTrack?: ReadonlyArray<HealthBox>
 }
 
 /**

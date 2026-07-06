@@ -1,17 +1,14 @@
 import { Schema } from "effect"
 
-// World of Darkness three-stage damage system
-export class Bashing extends Schema.TaggedClass<Bashing>()("Bashing", {}) {}
-export class Lethal extends Schema.TaggedClass<Lethal>()("Lethal", {}) {}
-export class Aggravated extends Schema.TaggedClass<Aggravated>()(
-  "Aggravated",
-  {},
-) {}
+// World of Darkness three-stage damage system — the one health-box vocabulary
+// (ADR-0014). Every module that speaks about wounds imports these; parallel
+// copies of the literals are the bug this file exists to prevent.
 
-export const DamageType = Schema.Union([Bashing, Lethal, Aggravated])
+/** The three kinds of damage a wound can inflict, mildest first. */
+export const DamageType = Schema.Literals(["bashing", "lethal", "aggravated"])
 export type DamageType = typeof DamageType.Type
 
-// A single box on the health track
+/** The four states a single box on the health track can hold. */
 export const HealthBox = Schema.Literals(["empty", "bashing", "lethal", "aggravated"])
 export type HealthBox = typeof HealthBox.Type
 

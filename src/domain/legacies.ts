@@ -1,15 +1,19 @@
-import { Effect, Schema } from "effect"
+import { Option, Schema } from "effect"
+
+// Pure rules leaves (ADR-0014): the name lookup is the only thing that can
+// miss and returns Option; the join/attainment rules are plain functions over
+// a found LegacyDef, and their results are domain answers.
 
 // --- Types ---
 
-interface Attainment {
+export interface Attainment {
   name: string
   gnosisRequirement: number
   arcanaRequirements: Record<string, number>
   description: string
 }
 
-interface LegacyDef {
+export interface LegacyDef {
   name: string
   parentPath: string
   parentOrder: string
@@ -95,25 +99,28 @@ export const LEGACIES: ReadonlyArray<LegacyDef> = [
 
 // --- Public API ---
 
-export const canJoinLegacy = Effect.fn("Legacy.canJoin")(function* (input: {
-  legacyName: string
-  gnosis: number
-  arcana: Record<string, number>
-}) {
-  const legacy = LEGACIES.find((l) => l.name === input.legacyName)
-  if (!legacy) {
-    return new JoinResult({ canJoin: false, reason: `Unknown legacy: ${input.legacyName}` })
-  }
+/** Legacies are keyed by free-string name, so a miss is real. */
+export const findLegacy = (name: string): Option.Option<LegacyDef> =>
+  Option.fromUndefinedOr(LEGACIES.find((l) => l.name === name))
 
+/** An unrated Arcanum is zero dots — genuine WoD semantics, not a lookup fallback. */
+const arcanumDots = (arcana: Record<string, number>, arcanum: string): number =>
+  arcana[arcanum] ?? 0
+
+export const canJoinLegacy = (
+  legacy: LegacyDef,
+  gnosis: number,
+  arcana: Record<string, number>,
+): JoinResult => {
   // Must have Gnosis 3+ to join any legacy
-  if (input.gnosis < 3) {
-    return new JoinResult({ canJoin: false, reason: `Gnosis must be 3+, currently ${input.gnosis}` })
+  if (gnosis < 3) {
+    return new JoinResult({ canJoin: false, reason: `Gnosis must be 3+, currently ${gnosis}` })
   }
 
   // Check first attainment's arcana prerequisites
   const firstAttainment = legacy.attainments[0]
   for (const [arcanum, required] of Object.entries(firstAttainment.arcanaRequirements)) {
-    const current = input.arcana[arcanum] ?? 0
+    const current = arcanumDots(arcana, arcanum)
     if (current < required) {
       return new JoinResult({
         canJoin: false,
@@ -123,22 +130,17 @@ export const canJoinLegacy = Effect.fn("Legacy.canJoin")(function* (input: {
   }
 
   return new JoinResult({ canJoin: true })
-})
+}
 
-export const getAttainmentsForGnosis = Effect.fn("Legacy.getAttainments")(function* (
-  legacyName: string,
+export const getAttainmentsForGnosis = (
+  legacy: LegacyDef,
   gnosis: number,
   arcana: Record<string, number>,
-) {
-  const legacy = LEGACIES.find((l) => l.name === legacyName)
-  if (!legacy) return []
-
-  return legacy.attainments.filter((att) => {
-    if (gnosis < att.gnosisRequirement) return false
-    // Check arcana requirements
-    for (const [arcanum, required] of Object.entries(att.arcanaRequirements)) {
-      if ((arcana[arcanum] ?? 0) < required) return false
-    }
-    return true
-  })
-})
+): ReadonlyArray<Attainment> =>
+  legacy.attainments.filter(
+    (att) =>
+      gnosis >= att.gnosisRequirement &&
+      Object.entries(att.arcanaRequirements).every(
+        ([arcanum, required]) => arcanumDots(arcana, arcanum) >= required,
+      ),
+  )
