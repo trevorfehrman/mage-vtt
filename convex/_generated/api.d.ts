@@ -15,12 +15,14 @@ import type * as http from "../http.js";
 import type * as ingest from "../ingest.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_convexLive from "../lib/convexLive.js";
+import type * as lib_dev from "../lib/dev.js";
 import type * as lib_effect from "../lib/effect.js";
 import type * as lib_enforce from "../lib/enforce.js";
 import type * as messages from "../messages.js";
 import type * as presence from "../presence.js";
 import type * as rolls from "../rolls.js";
 import type * as search from "../search.js";
+import type * as seat from "../seat.js";
 import type * as sessions from "../sessions.js";
 
 import type {
@@ -37,12 +39,14 @@ declare const fullApi: ApiFromModules<{
   ingest: typeof ingest;
   "lib/auth": typeof lib_auth;
   "lib/convexLive": typeof lib_convexLive;
+  "lib/dev": typeof lib_dev;
   "lib/effect": typeof lib_effect;
   "lib/enforce": typeof lib_enforce;
   messages: typeof messages;
   presence: typeof presence;
   rolls: typeof rolls;
   search: typeof search;
+  seat: typeof seat;
   sessions: typeof sessions;
 }>;
 

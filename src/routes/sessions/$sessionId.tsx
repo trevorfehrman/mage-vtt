@@ -16,6 +16,7 @@ import { Roster } from "#/components/game/Roster"
 import { HandEditForm } from "#/components/game/HandEditForm"
 import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
+import { SecondSeatControl } from "#/components/game/SecondSeatControl"
 import { Schema } from "effect"
 import { CharacterSheet as CharacterSheetData } from "#/domain/character"
 import { arctusData } from "#/domain/fixtures/arctus"
@@ -49,15 +50,39 @@ function SessionPage() {
   })
   const user = useQuery(api.auth.getCurrentUser)
 
-  // Presence — heartbeat for this session room
+  // Presence — heartbeat for this session room. Untouched by the Second Seat:
+  // a seat never fakes a heartbeat (ADR-0013).
   const presenceState = usePresence(
     api.presence,
     sessionId,
     user?.name ?? user?._id ?? "",
   )
 
+  // The Second Seat (ADR-0013): client state only — a refresh stands you back
+  // up in your own seat. Validated against the live roster so a stale id
+  // degrades to your own seat instead of a server refusal.
+  const [seatId, setSeatId] = useState<Id<"sessionMembers"> | null>(null)
+  const seatMember = seatId
+    ? session?.members.find((m) => m._id === seatId)
+    : undefined
+  const seatArg = seatMember ? { seat: seatMember._id } : {}
+  const announceSeat = useMutation(api.seat.announce)
+  const takeSeat = (id: Id<"sessionMembers"> | null) => {
+    setSeatId(id)
+    if (id) {
+      // Every sit-down is reported; the server announces only widening seats
+      // (ADR-0013) and stays silent for narrower ones. If the announcement
+      // can't be recorded, stand back up — no unlogged widened reading.
+      announceSeat({
+        sessionId: sessionId as Id<"sessions">,
+        target: id,
+      }).catch(() => setSeatId(null))
+    }
+  }
+
   const character = useQuery(api.characters.getForSession, {
     sessionId: sessionId as Id<"sessions">,
+    ...seatArg,
   })
   const roster = useQuery(api.characters.listForSession, {
     sessionId: sessionId as Id<"sessions">,
@@ -100,9 +125,11 @@ function SessionPage() {
     return decodeSheet({ id: _id, ...fields })
   }, [character])
 
-  // Lazy seed: if no character exists, seed Arctus once
+  // Lazy seed: if no character exists, seed Arctus once. Never while seated —
+  // a characterless seat must read as empty, not conjure a sheet for the
+  // Dev's own membership.
   useEffect(() => {
-    if (character === null && !seededRef.current) {
+    if (character === null && seatId === null && !seededRef.current) {
       seededRef.current = true
       seedCharacter({
         sessionId: sessionId as Id<"sessions">,
@@ -111,7 +138,7 @@ function SessionPage() {
         seededRef.current = false
       })
     }
-  }, [character, sessionId, seedCharacter])
+  }, [character, seatId, sessionId, seedCharacter])
 
   if (!session || !user) {
     return (
@@ -121,12 +148,16 @@ function SessionPage() {
     )
   }
 
+  // All chrome derives from the effective member (ADR-0013): while seated,
+  // role and identity resolve as the seat member — an ST-Dev in a player's
+  // seat sees player chrome, and their own sight is lost until they stand up.
+  const ownMember = session.members.find((m) => m.userId === user._id)
+  const effectiveMember = seatMember ?? ownMember
+
   // The affordances gated on this render only for the Storyteller (a Dev who
   // is also ST sees them too); the server refuses everyone else regardless
   // (issues #15, #19).
-  const isStoryteller = session.members.some(
-    (m) => m.userId === user._id && m.role === "storyteller",
-  )
+  const isStoryteller = effectiveMember?.role === "storyteller"
 
   // The viewed sheet is the roster selection, defaulting to your own
   // character (issue #17). A selection that no longer resolves — or a roster
@@ -221,11 +252,22 @@ function SessionPage() {
           members={session.members}
         />
       }
+      secondSeat={
+        user.isDev ? (
+          <SecondSeatControl
+            members={session.members}
+            ownUserId={user._id}
+            seatId={seatMember?._id ?? null}
+            onSeat={takeSeat}
+          />
+        ) : undefined
+      }
       characterSheet={characterSheet}
       activityLog={
         <ActivityLog
           sessionId={sessionId as Id<"sessions">}
           isRolling={pool.state === "rolling" || rawCast.state === "casting"}
+          {...seatArg}
         />
       }
       dicePoolBuilder={
@@ -246,7 +288,9 @@ function SessionPage() {
         <ChatInput
           sessionId={sessionId as Id<"sessions">}
           members={session.members}
-          currentUserId={user._id}
+          // Chrome follows the seat (ADR-0013): whisper targets exclude the
+          // seat member, not the Dev. Sends are still the Dev's own writes.
+          currentUserId={effectiveMember?.userId ?? user._id}
         />
       }
       onClearPool={() => {

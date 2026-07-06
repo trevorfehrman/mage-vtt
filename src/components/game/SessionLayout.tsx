@@ -31,6 +31,8 @@ interface SessionLayoutProps {
   sessionName: string
   inviteCode: string
   presence?: ReactNode
+  /** The Second Seat control + marker (ADR-0013) — Dev-only, absent otherwise. */
+  secondSeat?: ReactNode
   videoRail?: ReactNode
   characterSheet?: ReactNode
   activityLog: ReactNode
@@ -45,6 +47,7 @@ export function SessionLayout({
   sessionName,
   inviteCode,
   presence,
+  secondSeat,
   videoRail,
   characterSheet,
   activityLog,
@@ -113,6 +116,7 @@ export function SessionLayout({
           )}
           <h1 className="mv-h text-[15px] leading-none">{sessionName}</h1>
           {presence}
+          {secondSeat}
         </div>
         <div className="flex items-center gap-3">
           <span className="mv-data text-[11px]" style={{ color: "var(--dim)" }}>

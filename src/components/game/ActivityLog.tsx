@@ -8,6 +8,8 @@ import type { Id } from "../../../convex/_generated/dataModel"
 interface ActivityLogProps {
   sessionId: Id<"sessions">
   isRolling?: boolean
+  /** The Second Seat (ADR-0013): read the log as this member instead. */
+  seat?: Id<"sessionMembers">
 }
 
 /**
@@ -15,8 +17,11 @@ interface ActivityLogProps {
  * carry the corner-tick framing; system lines read as narration; the first
  * system line gets the single illuminated drop-cap.
  */
-export function ActivityLog({ sessionId, isRolling }: ActivityLogProps) {
-  const activity = useQuery(api.activity.list, { sessionId })
+export function ActivityLog({ sessionId, isRolling, seat }: ActivityLogProps) {
+  const activity = useQuery(api.activity.list, {
+    sessionId,
+    ...(seat ? { seat } : {}),
+  })
   const bottomRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll on new items or rolling state change

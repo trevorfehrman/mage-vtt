@@ -1,19 +1,19 @@
 import { v } from "convex/values"
 import { query } from "./_generated/server"
-import { requireUser } from "./lib/auth"
+import { seatedMember } from "./lib/auth"
 
 export const list = query({
-  args: { sessionId: v.id("sessions") },
+  args: {
+    sessionId: v.id("sessions"),
+    // The Second Seat (ADR-0013): a Dev-gated read-scope replacement — the
+    // whisper and hidden-roll filters below key off the seat member, and the
+    // caller's own sight is lost while seated.
+    seat: v.optional(v.id("sessionMembers")),
+  },
   handler: async (ctx, args) => {
-    const user = await requireUser(ctx)
-
-    const members = await ctx.db
-      .query("sessionMembers")
-      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
-      .collect()
-
-    const member = members.find((m) => m.userId === user._id)
-    const isStoryteller = member?.role === "storyteller"
+    const reader = await seatedMember(ctx, args.sessionId, args.seat)
+    const readerId = reader?.userId
+    const isStoryteller = reader?.role === "storyteller"
 
     // Fetch messages and rolls in parallel
     const [messages, rolls] = await Promise.all([
@@ -37,8 +37,8 @@ export const list = query({
       if (m.visibilityType === "whisper") {
         return (
           isStoryteller ||
-          m.senderId === user._id ||
-          m.whisperTargetId === user._id
+          m.senderId === readerId ||
+          m.whisperTargetId === readerId
         )
       }
       return false
@@ -47,7 +47,7 @@ export const list = query({
     // Visibility-filter rolls
     const visibleRolls = isStoryteller
       ? rolls
-      : rolls.filter((r) => r.visibility === "public" || r.userId === user._id)
+      : rolls.filter((r) => r.visibility === "public" || r.userId === readerId)
 
     // Rolls are atomic, self-describing Activity entries (ADR-0009): each carries
     // its own `summary`, so there is no shadow "system" message to deduplicate.

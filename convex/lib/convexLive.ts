@@ -27,23 +27,11 @@ import {
   type MessageDraft,
   type RollDraft,
 } from "../../src/domain/ports/game-store"
+import { isDevUser } from "./dev"
 
 /** Minimal shape of the authenticated user the seam needs. */
 interface AuthUser {
   readonly _id: string
-}
-
-/**
- * Global god-mode allowlist, resolved once at auth from an env var
- * (`DEV_USER_IDS`, comma-separated). Orthogonal to Session role.
- */
-const isDevUser = (userId: string): boolean => {
-  const raw = process.env.DEV_USER_IDS ?? ""
-  return raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0)
-    .includes(userId)
 }
 
 const overrideToDoc = (marker: OverrideMarker | null) =>

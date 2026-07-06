@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { memberOf, requireUser } from "./lib/auth"
+import { memberOf, requireUser, seatedMember } from "./lib/auth"
 import { enforcedMutation } from "./lib/enforce"
 import { castSpell as castSpellFlow } from "../src/domain/flows/casting"
 import { castRote as castRoteFlow } from "../src/domain/flows/rote-cast"
@@ -70,9 +70,14 @@ export const handEdit = enforcedMutation({
 })
 
 export const getForSession = query({
-  args: { sessionId: v.id("sessions") },
+  args: {
+    sessionId: v.id("sessions"),
+    // The Second Seat (ADR-0013): while seated, "my character" is the seat
+    // member's — the Dev's own sheet is out of reach until they stand up.
+    seat: v.optional(v.id("sessionMembers")),
+  },
   handler: async (ctx, args) => {
-    const member = await memberOf(ctx, args.sessionId)
+    const member = await seatedMember(ctx, args.sessionId, args.seat)
     if (!member) return null
 
     const character = await ctx.db

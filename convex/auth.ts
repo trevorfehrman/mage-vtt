@@ -6,6 +6,7 @@ import { components } from "./_generated/api"
 import { query } from "./_generated/server"
 import type { GenericCtx } from "@convex-dev/better-auth"
 import type { DataModel } from "./_generated/dataModel"
+import { isDevUser } from "./lib/dev"
 
 const siteUrl = process.env.SITE_URL!
 
@@ -35,6 +36,9 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
-    return await authComponent.getAuthUser(ctx)
+    const user = await authComponent.getAuthUser(ctx)
+    // Dev chrome (the Second Seat control, ADR-0013) renders off this flag;
+    // the allowlist itself stays server-side.
+    return { ...user, isDev: isDevUser(user._id) }
   },
 })
