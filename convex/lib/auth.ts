@@ -9,8 +9,30 @@ import { ConvexError } from "convex/values"
 import { authComponent } from "../auth"
 import type { QueryCtx, MutationCtx } from "../_generated/server"
 import type { Id } from "../_generated/dataModel"
+import { NotAMember, NotStoryteller } from "../../src/domain/authz"
+import { PlayerId, SessionId } from "../../src/domain/ids"
 import { resolveSeat } from "../../src/domain/seat"
 import { isDevUser } from "./dev"
+import { mapEffectError } from "./effect"
+
+/**
+ * A typed refusal on the wire, built from the domain error class itself —
+ * the payload shape has one owner (ADR-0010), so a renamed field can't
+ * silently drift away from the client's decode union.
+ */
+const refusal = (error: NotAMember | NotStoryteller) =>
+  new ConvexError(mapEffectError(error) as Record<string, string>)
+
+/** One owner of the Session roster scan the gates and seat resolution share. */
+async function sessionMembers(
+  ctx: QueryCtx | MutationCtx,
+  sessionId: Id<"sessions">,
+) {
+  return await ctx.db
+    .query("sessionMembers")
+    .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
+    .collect()
+}
 
 /**
  * Get the authenticated user or throw ConvexError("Unauthenticated").
@@ -36,14 +58,15 @@ export async function requireMember(
 ) {
   const user = await requireUser(ctx)
 
-  const members = await ctx.db
-    .query("sessionMembers")
-    .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
-    .collect()
-
+  const members = await sessionMembers(ctx, sessionId)
   const member = members.find((m) => m.userId === user._id)
   if (!member) {
-    throw new ConvexError({ _tag: "NotAMember", sessionId, userId: user._id })
+    throw refusal(
+      new NotAMember({
+        sessionId: SessionId.make(sessionId),
+        userId: PlayerId.make(user._id),
+      }),
+    )
   }
   return member
 }
@@ -55,7 +78,12 @@ export async function requireStoryteller(
 ) {
   const member = await requireMember(ctx, sessionId)
   if (member.role !== "storyteller") {
-    throw new ConvexError({ _tag: "NotStoryteller", sessionId, userId: member.userId })
+    throw refusal(
+      new NotStoryteller({
+        sessionId: SessionId.make(sessionId),
+        userId: PlayerId.make(member.userId),
+      }),
+    )
   }
   return member
 }
@@ -75,11 +103,7 @@ export async function resolveSeatRequest(
 ) {
   const user = await requireUser(ctx)
 
-  const members = await ctx.db
-    .query("sessionMembers")
-    .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
-    .collect()
-
+  const members = await sessionMembers(ctx, sessionId)
   const own = members.find((m) => m.userId === user._id) ?? null
   const decision = resolveSeat({
     isDev: isDevUser(user._id),
@@ -116,7 +140,12 @@ export async function seatedMember(
   // No effective reader — the caller is not a member and took no seat. The
   // membership gate's typed refusal (issue #37), not a thinned result.
   if (decision.member === null) {
-    throw new ConvexError({ _tag: "NotAMember", sessionId, userId: user._id })
+    throw refusal(
+      new NotAMember({
+        sessionId: SessionId.make(sessionId),
+        userId: PlayerId.make(user._id),
+      }),
+    )
   }
   return decision.member
 }

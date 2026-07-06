@@ -64,15 +64,16 @@ export const insertSpell = mutation({
     description: v.string(),
     pageStart: v.number(),
   },
-  // Spell names repeat across arcana (Sight, Protection, …), so identity is
-  // the (name, arcanum) pair — the old name-only lookup let re-runs stack
-  // duplicate rows for the later arcana.
+  // Spell names repeat across arcana (Sight, Protection, …) and at several
+  // levels within one Arcanum (Sight is Fate 1 and Fate 2), so identity is
+  // the (name, arcanum, level) triple — the old name-only lookup let re-runs
+  // stack duplicate rows for the later arcana.
   handler: async (ctx, args) =>
     upsertByKey(
       ctx,
       "spells",
-      "by_name_arcanum",
-      { name: args.name, arcanum: args.arcanum },
+      "by_name_arcanum_level",
+      { name: args.name, arcanum: args.arcanum, level: args.level },
       args,
     ),
 })

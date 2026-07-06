@@ -57,9 +57,10 @@ export default defineSchema({
     .index("by_arcanum", ["arcanum"])
     .index("by_arcanum_level", ["arcanum", "level"])
     .index("by_name", ["name"])
-    // Spell names repeat across arcana (Sight, Protection, …), so the upsert
-    // identity is the pair (issue #29).
-    .index("by_name_arcanum", ["name", "arcanum"]),
+    // Spell names repeat across arcana (Sight, Protection, …) AND at several
+    // levels within one Arcanum (Sight is Fate 1 and Fate 2), so the upsert
+    // identity is the full triple (issue #29).
+    .index("by_name_arcanum_level", ["name", "arcanum", "level"]),
 
   rotes: defineTable({
     spellName: v.string(),

@@ -18,6 +18,7 @@ import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { SecondSeatControl } from "#/components/game/SecondSeatControl"
 import { Schema } from "effect"
+import { seamErrorMessage } from "#/lib/seam-errors"
 import { CharacterSheet as CharacterSheetData } from "#/domain/character"
 import { arctusData } from "#/domain/fixtures/arctus"
 import type { Id } from "../../../convex/_generated/dataModel"
@@ -41,6 +42,18 @@ export const Route = createFileRoute("/sessions/$sessionId")({
     }
   },
   component: SessionPage,
+  // The membership gate (issue #37) refuses non-members with a typed error
+  // instead of thinned results; render the refusal as table language rather
+  // than an unhandled crash.
+  errorComponent: ({ error }) => (
+    <div className="grid min-h-screen place-items-center">
+      <p className="mv-data text-[13px]" style={{ color: "var(--bad)" }}>
+        {seamErrorMessage(error, {
+          overrides: { NotAMember: "You're not a member of this session — join with an invite code." },
+        })}
+      </p>
+    </div>
+  ),
 })
 
 function SessionPage() {
