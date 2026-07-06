@@ -193,6 +193,48 @@ export const upsertCharacter = internalMutation({
   },
 })
 
+/**
+ * Dev-side session deletion: cascade a Session and everything scoped to it —
+ * members, characters, messages, dice rolls — so stale test rooms don't pile
+ * up. An `internalMutation` like `upsertCharacter`: CLI admin auth only, via
+ * `scripts/delete-session.ts` — no UI, no public endpoint. Presence lives in
+ * its component's own tables keyed by room string; a deleted Session's room
+ * simply goes quiet, so it is left alone.
+ */
+export const deleteSession = internalMutation({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.sessionId)
+    if (!session) throw new Error(`No session ${args.sessionId}`)
+
+    const deleted = { members: 0, characters: 0, messages: 0, diceRolls: 0 }
+    for (const table of [
+      "sessionMembers",
+      "characters",
+      "messages",
+      "diceRolls",
+    ] as const) {
+      const rows = await ctx.db
+        .query(table)
+        .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+        .collect()
+      for (const row of rows) await ctx.db.delete(row._id)
+      deleted[table === "sessionMembers" ? "members" : table] = rows.length
+    }
+
+    await ctx.db.delete(args.sessionId)
+    return { name: session.name, ...deleted }
+  },
+})
+
+/** Dev-side rename — same CLI-admin authority story as `deleteSession`. */
+export const renameSession = internalMutation({
+  args: { sessionId: v.id("sessions"), name: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.sessionId, { name: args.name })
+  },
+})
+
 export const clearTable = mutation({
   args: { table: v.string() },
   handler: async (ctx, args) => {
