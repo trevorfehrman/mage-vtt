@@ -83,6 +83,11 @@ creation UI, NPC persistence. **Issues #12–#20** (all `ready-for-agent`):
 #16 ingestion (⇐14) · #17 roster (⇐13) · #18 rote cast (⇐14,16) ·
 #19 hand edits (⇐17) · #20 casting UX (⇐13,18).
 
+**Implemented and closed 2026-07-05** — #12–#20 shipped, all 24 acceptance
+stories audited in live playtest (audit on the closed PRD). Shipped beyond the
+PRD: **Second Seat** (#21, ADR-0013) and sheet-anchored plain rolls. Phase two
+(`combat-tracker-design`) is unblocked.
+
 ## combat-tracker-design: Design the combat phase — tick tracker feel + combat flows
 
 Blocked by: enforced-play-scope
