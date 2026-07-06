@@ -86,14 +86,27 @@ export const isDieExplosive = (
 
 const rollD10 = Random.nextIntBetween(1, 10)
 
-const rollNDice = (n: number) =>
-  Effect.gen(function* () {
-    const rolls: Array<number> = []
-    for (let i = 0; i < n; i++) {
-      rolls.push(yield* rollD10)
-    }
-    return rolls
-  })
+/** n sequential d10 draws; zero draws for n = 0. Draw order is the seeded-test contract. */
+const rollNDice = (n: number) => Effect.replicateEffect(rollD10, n)
+
+/**
+ * Cascading N-again rerolls: every die in a batch at or above the threshold
+ * earns another draw, until a batch yields none. Effect v4 dropped
+ * Effect.iterate/Effect.loop, so the cascade recurses through flatMap —
+ * batches are drawn in order, so seeded draw sequences match the old while loop.
+ */
+const cascadeExplosions = (
+  count: number,
+  threshold: number,
+): Effect.Effect<ReadonlyArray<number>> =>
+  count <= 0
+    ? Effect.succeed([])
+    : Effect.flatMap(rollNDice(count), (batch) =>
+        Effect.map(
+          cascadeExplosions(batch.filter((r) => r >= threshold).length, threshold),
+          (rest) => [...batch, ...rest],
+        ),
+      )
 
 const countSuccesses = (rolls: ReadonlyArray<number>, chanceDie: boolean): number =>
   rolls.filter((r) => isDieSuccess(r, chanceDie)).length
@@ -103,16 +116,13 @@ const countSuccesses = (rolls: ReadonlyArray<number>, chanceDie: boolean): numbe
 export const buildPool = Effect.fn("DicePool.build")(function* (
   rawComponents: ReadonlyArray<RawPoolComponent>,
 ) {
-  const components: Array<PoolComponent> = []
-
-  for (const raw of rawComponents) {
-    const component = yield* Schema.decodeUnknownEffect(PoolComponent)(raw).pipe(
+  const components = yield* Effect.forEach(rawComponents, (raw) =>
+    Schema.decodeUnknownEffect(PoolComponent)(raw).pipe(
       Effect.mapError(
         () => new InvalidPoolComponent({ message: `Invalid component: ${raw.name}` }),
       ),
-    )
-    components.push(component)
-  }
+    ),
+  )
 
   const size = components.reduce((sum, c) => sum + c.dots, 0)
 
@@ -135,27 +145,18 @@ export const rollPool = Effect.fn("DicePool.roll")(function* (
   const rolls = yield* rollNDice(diceToRoll)
 
   // Rote action: reroll all failed dice once
-  const roteRerolls: Array<number> = []
-  if (isRoteAction && !isChanceDie) {
-    const failures = rolls.filter((r) => !isDieSuccess(r, false))
-    if (failures.length > 0) {
-      const rerolls = yield* rollNDice(failures.length)
-      roteRerolls.push(...rerolls)
-    }
-  }
+  const roteRerolls =
+    isRoteAction && !isChanceDie
+      ? yield* rollNDice(rolls.filter((r) => !isDieSuccess(r, false)).length)
+      : []
 
   // Again explosions (10-again, 9-again, or 8-again)
-  const explosions: Array<number> = []
-  if (!isChanceDie) {
-    const allInitialRolls = [...rolls, ...roteRerolls]
-    let toReroll = allInitialRolls.filter((r) => r >= againThreshold).length
-
-    while (toReroll > 0) {
-      const newRolls = yield* rollNDice(toReroll)
-      explosions.push(...newRolls)
-      toReroll = newRolls.filter((r) => r >= againThreshold).length
-    }
-  }
+  const explosions = isChanceDie
+    ? []
+    : yield* cascadeExplosions(
+        [...rolls, ...roteRerolls].filter((r) => r >= againThreshold).length,
+        againThreshold,
+      )
 
   const allRolls = [...rolls, ...roteRerolls, ...explosions]
   const successes = countSuccesses(allRolls, isChanceDie)
@@ -179,14 +180,13 @@ export const resolveExplosions = Effect.fn("DicePool.resolveExplosions")(functio
   result: DiceRollResult,
 ) {
   const threshold = result.againThreshold
-  const explosions: Array<number> = [...result.explosions]
-  let toReroll = result.rolls.filter((r) => r >= threshold).length
-
-  while (toReroll > 0) {
-    const newRolls = yield* rollNDice(toReroll)
-    explosions.push(...newRolls)
-    toReroll = newRolls.filter((r) => r >= threshold).length
-  }
+  const explosions = [
+    ...result.explosions,
+    ...(yield* cascadeExplosions(
+      result.rolls.filter((r) => r >= threshold).length,
+      threshold,
+    )),
+  ]
 
   const allRolls = [...result.rolls, ...result.roteRerolls, ...explosions]
   const successes = countSuccesses(allRolls, result.isChanceDie)
