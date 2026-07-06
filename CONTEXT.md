@@ -112,6 +112,20 @@ explicit, opt-in, logged action — never implied by god-mode.
 _Avoid_: Admin, superuser (this is a single-operator repair capability, not a
 role tier in the Session).
 
+**Second Seat**:
+A Dev reading a Session from another member's seat: read visibility and table
+chrome resolve as if the target member were looking — their hidden-Roll
+redaction, their Whispers, their "my character." A **replacement**, never a
+union: taking a player's seat costs a Storyteller-Dev their wider sight for as
+long as they sit there. Read-path only — actions taken while in a Second Seat
+are still the Dev's own writes (god-mode, Override-stamped); no write ever
+wears the target's name. Distinct from god-mode, which is write-path only;
+together they cover both halves of solo playtesting. Taking a seat with *more*
+sight than your own (secret-seeing) is announced in the Activity Log; taking a
+narrower seat is silent.
+_Avoid_: impersonation (identity never swaps on writes), spectating (a Second
+Seat is a specific member's scope, not a god view).
+
 ### The table
 
 **Session**:
