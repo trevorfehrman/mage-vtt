@@ -67,3 +67,22 @@ definition) to a pre-1.0, single-maintainer, wrong-major framework.
     is how `ConvexId`/`ConvexInt64`/`ConvexBytes` reach `v.id`/`v.int64`/`v.bytes`.
 - The derived validator is typed from the schema's decoded shape (normalised to
   Convex `Value`s) so a derived table's `Doc<T>` matches a hand-written `v.*` one.
+
+## Extension: function returns (2026-07-05)
+
+The bridge's scope grows from table/args validators to **function `returns`
+validators**, first consumer: `activity.list`, whose return is
+`Schema.Array(ActivityEntry)` — the Activity-feed union from the Activity-module
+design (grilled 2026-07-05). One schema thereby locks the server's output and the
+client's decode together: projection drift fails loudly in the query at dev time
+instead of surfacing as silently dropped entries in the client's per-entry decode.
+
+Two facts the return shape relies on:
+
+- Returned entries are **projections, not stored docs** — they may carry `_id`
+  and a `_tag` discriminator. Convex reserves only `$`-prefixed field names at
+  the value layer (verified against `convex/values`); the `_` restriction applies
+  to stored documents' system fields, which projections are not.
+- The same property/conformance pattern applies: an `Arbitrary` generated from
+  the return schema must pass the derived validator and round-trip through
+  decode. New bridge surface, same safety net.
