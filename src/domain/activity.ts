@@ -1,4 +1,5 @@
-import { Result, Schema } from "effect"
+import { Match, Result, Schema } from "effect"
+import { SessionRole } from "./roles"
 import { ConvexId } from "./schema-bridge"
 import { DiceRollDoc, MessageDoc, OverrideMarkerDoc } from "./tables"
 
@@ -38,6 +39,72 @@ export const ActivityFeed = Schema.Array(ActivityEntry)
 
 /** The rule-was-bent badge's shape (ADR-0006), as entries carry it. */
 export type OverrideMark = typeof OverrideMarkerDoc.Type
+
+/**
+ * The effective viewer of the feed: user id + Session role, or null for a
+ * non-member (who sees nothing, never an empty result they could mistake for
+ * a real one). The policy is Second-Seat-agnostic: seat resolution (ADR-0013)
+ * produces the Reader *before* filtering, so replacement semantics fall out
+ * with no seat knowledge here.
+ */
+export type Reader = {
+  readonly userId: string
+  readonly role: SessionRole
+} | null
+
+/**
+ * The visibility policy — the one home of who sees what (issue #22 PRD).
+ * Public and system Messages are visible to all members; a Whisper to its
+ * sender, its target, and the Storyteller; a public Roll to all members; a
+ * Hidden roll to its roller and the Storyteller; a non-member sees nothing.
+ */
+export const visibleTo =
+  (reader: Reader) =>
+  (entry: ActivityEntry): boolean => {
+    if (reader === null) return false
+    if (reader.role === "storyteller") return true
+    return Match.value(entry).pipe(
+      Match.tag("message", (m) =>
+        Match.value(m.visibilityType).pipe(
+          Match.when("public", () => true),
+          Match.when("system", () => true),
+          Match.when(
+            "whisper",
+            () => m.senderId === reader.userId || m.whisperTargetId === reader.userId,
+          ),
+          Match.exhaustive,
+        ),
+      ),
+      Match.tag(
+        "roll",
+        (r) => r.visibility === "public" || r.userId === reader.userId,
+      ),
+      Match.exhaustive,
+    )
+  }
+
+/**
+ * The list-level composition of `visibleTo`: the feed a Reader may see.
+ * Generic over the entry projection so the feed query's freshly-projected
+ * (mutable) entries flow through without widening to the schema's readonly Type.
+ */
+export const visibleEntries = <E extends ActivityEntry>(
+  reader: Reader,
+  entries: ReadonlyArray<E>,
+): Array<E> => entries.filter(visibleTo(reader))
+
+/** The Chronicle's length: how many entries a merged feed keeps. */
+export const FEED_CAP = 100
+
+/**
+ * The chronological merge: interleave by timestamp descending (ties keep input
+ * order) and cap the feed. Database fetch caps stay in the query — they are
+ * storage concerns; this cap is the feed's.
+ */
+export const mergeFeed = <E extends { readonly timestamp: number }>(
+  entries: ReadonlyArray<E>,
+  cap: number = FEED_CAP,
+): Array<E> => [...entries].sort((a, b) => b.timestamp - a.timestamp).slice(0, cap)
 
 const decodeEntry = Schema.decodeUnknownResult(ActivityEntry)
 
