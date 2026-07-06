@@ -1,6 +1,8 @@
 import { v } from "convex/values"
 import { query } from "./_generated/server"
 import { seatedMember } from "./lib/auth"
+import { ActivityFeed } from "../src/domain/activity"
+import { schemaToConvexValidator } from "../src/domain/schema-bridge"
 
 export const list = query({
   args: {
@@ -10,6 +12,9 @@ export const list = query({
     // caller's own sight is lost while seated.
     seat: v.optional(v.id("sessionMembers")),
   },
+  // Derived from the domain's entry-array schema (ADR-0005, function-return
+  // extension): projection drift fails loudly here, not in the client's decode.
+  returns: schemaToConvexValidator(ActivityFeed),
   handler: async (ctx, args) => {
     const reader = await seatedMember(ctx, args.sessionId, args.seat)
     const readerId = reader?.userId
@@ -52,19 +57,21 @@ export const list = query({
     // Rolls are atomic, self-describing Activity entries (ADR-0009): each carries
     // its own `summary`, so there is no shadow "system" message to deduplicate.
     const messageItems = visibleMessages.map((m) => ({
-      kind: "message" as const,
+      _tag: "message" as const,
       _id: m._id,
       timestamp: m.timestamp,
       senderId: m.senderId,
       senderName: m.senderName,
       text: m.text,
       visibilityType: m.visibilityType,
-      whisperTargetId: m.whisperTargetId,
-      override: m.override,
+      ...(m.whisperTargetId !== undefined && {
+        whisperTargetId: m.whisperTargetId,
+      }),
+      ...(m.override !== undefined && { override: m.override }),
     }))
 
     const rollItems = visibleRolls.map((r) => ({
-      kind: "roll" as const,
+      _tag: "roll" as const,
       _id: r._id,
       timestamp: r.timestamp,
       userId: r.userId,
@@ -82,7 +89,7 @@ export const list = query({
       againThreshold: r.againThreshold,
       isRoteAction: r.isRoteAction,
       summary: r.summary,
-      override: r.override,
+      ...(r.override !== undefined && { override: r.override }),
     }))
 
     // Merge by timestamp descending, take 100

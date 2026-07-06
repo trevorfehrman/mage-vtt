@@ -38,7 +38,7 @@ const DiceRollComponentDoc = Schema.Struct({
  * (not the domain `OverrideMarker` class) so the derived column type stays a
  * flat Convex object; reuses `OverrideKind` so the marker kinds have one home.
  */
-const OverrideMarkerDoc = Schema.Struct({
+export const OverrideMarkerDoc = Schema.Struct({
   invokedByUserId: Schema.String,
   invokedByName: Schema.String,
   kind: OverrideKind,

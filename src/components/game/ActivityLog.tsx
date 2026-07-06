@@ -1,7 +1,8 @@
 import { useRef, useEffect, type ReactNode } from "react"
-import { useQuery } from "convex/react"
-import { api } from "../../../convex/_generated/api"
+import { Match } from "effect"
 import { ScrollArea } from "#/components/ui/scroll-area"
+import { useActivity } from "#/hooks/use-activity"
+import type { MessageEntry, OverrideMark, RollEntry } from "#/domain/activity"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import type { Id } from "../../../convex/_generated/dataModel"
 
@@ -18,10 +19,7 @@ interface ActivityLogProps {
  * system line gets the single illuminated drop-cap.
  */
 export function ActivityLog({ sessionId, isRolling, seat }: ActivityLogProps) {
-  const activity = useQuery(api.activity.list, {
-    sessionId,
-    ...(seat ? { seat } : {}),
-  })
+  const activity = useActivity(sessionId, seat)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll on new items or rolling state change
@@ -40,18 +38,19 @@ export function ActivityLog({ sessionId, isRolling, seat }: ActivityLogProps) {
 
       <ScrollArea className="flex-1 px-3 py-2">
         <div className="grid gap-2">
-          {sorted.map((item, i) => {
-            if (item.kind === "message") {
-              return (
+          {sorted.map((item, i) =>
+            Match.value(item).pipe(
+              Match.tag("message", (message) => (
                 <MessageItem
-                  key={item._id}
-                  message={item}
-                  dropCap={i === 0 && item.visibilityType === "system"}
+                  key={message._id}
+                  message={message}
+                  dropCap={i === 0 && message.visibilityType === "system"}
                 />
-              )
-            }
-            return <RollItem key={item._id} roll={item} />
-          })}
+              )),
+              Match.tag("roll", (roll) => <RollItem key={roll._id} roll={roll} />),
+              Match.exhaustive,
+            ),
+          )}
 
           {/* Rolling indicator — appears immediately when dice are in flight */}
           {isRolling && <RollingIndicator />}
@@ -72,15 +71,6 @@ function RollingIndicator() {
       <span className="mv-accent">casting the dice…</span>
     </div>
   )
-}
-
-type MessageEntry = {
-  kind: "message"
-  _id: string
-  senderName: string
-  text: string
-  visibilityType: string
-  override?: OverrideDoc | undefined
 }
 
 function MessageItem({ message, dropCap }: { message: MessageEntry; dropCap?: boolean }) {
@@ -126,14 +116,8 @@ function MessageItem({ message, dropCap }: { message: MessageEntry; dropCap?: bo
   )
 }
 
-type OverrideDoc = {
-  invokedByUserId: string
-  invokedByName: string
-  kind: "godmode-action" | "storyteller-action" | "repair"
-}
-
 /** The rule-was-bent badge (ADR-0006), shared by Roll and Message entries. */
-function OverrideTag({ override }: { override: OverrideDoc }) {
+function OverrideTag({ override }: { override: OverrideMark }) {
   return (
     <Tag title={`Invoked by ${override.invokedByName}`}>
       {override.kind === "storyteller-action"
@@ -143,26 +127,6 @@ function OverrideTag({ override }: { override: OverrideDoc }) {
           : "God-mode"}
     </Tag>
   )
-}
-
-type RollEntry = {
-  kind: "roll"
-  _id: string
-  displayName: string
-  components: Array<{ type: string; name: string; dots: number }>
-  poolSize: number
-  rolls: number[]
-  explosions: number[]
-  roteRerolls: number[]
-  successes: number
-  isChanceDie: boolean
-  isDramaticFailure: boolean
-  isExceptionalSuccess: boolean
-  visibility: string
-  againThreshold: number
-  isRoteAction: boolean
-  summary: string
-  override?: OverrideDoc | undefined
 }
 
 function RollItem({ roll }: { roll: RollEntry }) {
