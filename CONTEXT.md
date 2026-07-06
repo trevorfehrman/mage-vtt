@@ -74,9 +74,39 @@ one wound per success, to stop them from manifesting. Partial and health-capped 
 a post-roll decision, not automatic.
 
 **Scene**:
-A unit of narrative time within a Session. Some effects accumulate across it —
-notably Paradox pools grow +1 die per prior Paradox roll in the same Scene.
+A unit of narrative time within a Session — one location, one event, with the
+Storyteller deciding where it begins and ends (WoD Core p. 121). Some effects
+accumulate across it — notably a caster's Paradox pool grows +1 die per prior
+Paradox roll **made for that same caster** in the same Scene (per-caster, not
+scene-global).
 _Avoid_: Turn (that is one action), Session (that is the whole campaign room).
+
+**Cast**:
+A declared spellcasting working through its lifecycle — for Vulgar magic, a
+multi-step negotiation between caster and Storyteller (declare → negotiate
+liabilities → lock → Paradox roll → contain → casting roll), not a single
+event. At most one unresolved Cast per character.
+_Avoid_: Roll (a Cast contains rolls; it is not one).
+
+**Draft** (a Cast "in the wings"):
+A Cast a player has declared but the Storyteller has not yet engaged. Free to
+create, free for its owner or the Storyteller to kill; has no mechanical
+weight until engaged.
+
+**On stage**:
+The at-most-one engaged Cast in a Scene — from Storyteller engagement to a
+terminal status. The stage is exclusive; Drafts queue in the wings.
+
+**Mitigation**:
+The caster spending Mana (1 per die) to shrink the Paradox pool *before* it
+is rolled — blind insurance against a roll whose outcome nobody knows yet.
+Compare Backlash, which is chosen *after* seeing the roll.
+
+**Point of no return**:
+The caster locking in their intention (mitigation included) after the
+Storyteller locks liabilities. Before it, either party may cancel freely
+in-fiction; after it, the only exits are playing the Cast out or a
+Storyteller void (Override-stamped).
 
 **Again** (10-again / 9-again / 8-again):
 The reroll-on-high-die rule for a roll. 10-again is standard; 9- and 8-again are
@@ -89,6 +119,19 @@ success.
 **Tick**:
 The unit of the house-ruled initiative system. A participant acts when their
 Ticks reach 0; actions cost Ticks to take.
+
+**Combat**:
+A tracked fight inside a Scene — a roster of participants and their Tick
+counters. At most one active Combat per Scene, though a Scene may host several
+in sequence. Participants are sheet-backed (a character) or hand-entered (the
+Storyteller's paper NPC).
+_Avoid_: Encounter, battle, combat mode (a Combat is an object in a Scene, not
+a state the Scene switches into).
+
+**Resistant damage**:
+Damage that cannot be healed by Awakened magic (it heals naturally) — the dot
+beneath the health box. Paradox Backlash inflicts Resistant bashing. A property
+of the individual wound, travelling with it as wounds shift.
 
 ### Roles
 
