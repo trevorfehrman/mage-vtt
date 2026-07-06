@@ -5,9 +5,9 @@ import { decodeFeed } from "#/domain/activity"
 import type { Id } from "../../convex/_generated/dataModel"
 
 /**
- * The Chronicle's data feed: the Activity query decoded through the domain's
- * entry schema (`decodeFeed`, issue #22 PRD). A logic-free adapter — query,
- * decode, memo. `undefined` while the query loads, matching `useQuery`.
+ * The Activity Log's data feed: the Activity query decoded through the
+ * domain's entry schema (`decodeFeed`, issue #22 PRD). A logic-free adapter —
+ * query, decode, memo. `undefined` while the query loads, matching `useQuery`.
  */
 export function useActivity(
   sessionId: Id<"sessions">,

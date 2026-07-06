@@ -93,7 +93,7 @@ export const visibleEntries = <E extends ActivityEntry>(
   entries: ReadonlyArray<E>,
 ): Array<E> => entries.filter(visibleTo(reader))
 
-/** The Chronicle's length: how many entries a merged feed keeps. */
+/** The Activity Log's length: how many entries a merged feed keeps. */
 export const FEED_CAP = 100
 
 /**
@@ -103,15 +103,15 @@ export const FEED_CAP = 100
  */
 export const mergeFeed = <E extends { readonly timestamp: number }>(
   entries: ReadonlyArray<E>,
-  cap: number = FEED_CAP,
-): Array<E> => [...entries].sort((a, b) => b.timestamp - a.timestamp).slice(0, cap)
+): Array<E> =>
+  [...entries].sort((a, b) => b.timestamp - a.timestamp).slice(0, FEED_CAP)
 
 const decodeEntry = Schema.decodeUnknownResult(ActivityEntry)
 
 /**
  * Decode a feed off the wire, one entry at a time. Entries are atomic
  * (ADR-0009), so failure isolation is atom-level: an entry a stale client
- * can't recognize drops with a warning instead of blanking the Chronicle.
+ * can't recognize drops with a warning instead of blanking the Activity Log.
  */
 export const decodeFeed = (input: ReadonlyArray<unknown>): Array<ActivityEntry> => {
   const entries: Array<ActivityEntry> = []
