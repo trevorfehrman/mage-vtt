@@ -1,6 +1,42 @@
 import { Effect, Random } from "effect"
 import { describe, expect, it } from "@effect/vitest"
-import { buildPool, rollPool, resolveExplosions, type RollVisibility } from "../dice"
+import {
+  buildPool,
+  isDieDramaticFailure,
+  isDieExplosive,
+  isDieSuccess,
+  rollPool,
+  resolveExplosions,
+} from "../dice"
+
+describe("die-outcome rules (issue #25: one source of truth for the renderer)", () => {
+  it("a normal die succeeds on 8, 9, and 10", () => {
+    expect(isDieSuccess(7, false)).toBe(false)
+    expect(isDieSuccess(8, false)).toBe(true)
+    expect(isDieSuccess(9, false)).toBe(true)
+    expect(isDieSuccess(10, false)).toBe(true)
+  })
+
+  it("a chance die succeeds only on 10", () => {
+    expect(isDieSuccess(8, true)).toBe(false)
+    expect(isDieSuccess(9, true)).toBe(false)
+    expect(isDieSuccess(10, true)).toBe(true)
+  })
+
+  it("only a chance die showing 1 is a dramatic failure", () => {
+    expect(isDieDramaticFailure(1, true)).toBe(true)
+    expect(isDieDramaticFailure(2, true)).toBe(false)
+    expect(isDieDramaticFailure(1, false)).toBe(false)
+  })
+
+  it("a die at or above the again threshold explodes; chance dice never do", () => {
+    expect(isDieExplosive(10, 10, false)).toBe(true)
+    expect(isDieExplosive(9, 10, false)).toBe(false)
+    expect(isDieExplosive(9, 9, false)).toBe(true)
+    expect(isDieExplosive(8, 8, false)).toBe(true)
+    expect(isDieExplosive(10, 10, true)).toBe(false)
+  })
+})
 
 describe("Dice Roller", () => {
   it.effect("rolls a pool and counts 8, 9, 10 as successes", () =>

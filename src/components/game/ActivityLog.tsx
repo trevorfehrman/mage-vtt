@@ -3,6 +3,7 @@ import { Match } from "effect"
 import { ScrollArea } from "#/components/ui/scroll-area"
 import { useActivity } from "#/hooks/use-activity"
 import type { MessageEntry, OverrideMark, RollEntry } from "#/domain/activity"
+import { isDieDramaticFailure, isDieExplosive, isDieSuccess } from "#/domain/dice"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import type { Id } from "../../../convex/_generated/dataModel"
 
@@ -202,8 +203,8 @@ function Die({
   ring?: "rote" | "exp"
   chance?: boolean
 }) {
-  const success = chance ? v === 10 : v >= 8
-  const dramatic = chance && v === 1
+  const success = isDieSuccess(v, chance ?? false)
+  const dramatic = isDieDramaticFailure(v, chance ?? false)
   return (
     <span
       className="mv-data grid size-5 place-items-center rounded-[2px] text-[10px] font-bold"
@@ -215,7 +216,7 @@ function Die({
             ? "0 0 0 1px var(--dim2)"
             : ring === "exp"
               ? "0 0 0 1px var(--accent)"
-              : v >= again && !chance
+              : isDieExplosive(v, again, chance ?? false)
                 ? "0 0 0 1px var(--accent)"
                 : undefined,
       }}

@@ -57,10 +57,32 @@ export class InvalidPoolComponent extends Schema.TaggedErrorClass<InvalidPoolCom
   { message: Schema.String },
 ) {}
 
-// --- Internal helpers ---
+// --- Die-outcome rules ---
+// One source of truth for what a single die face means (issue #25): the roll
+// math below and the client's Die renderer both consume these plain predicates
+// (pure rules leaves, ADR-0014).
 
 const SUCCESS_THRESHOLD = 8
 const EXCEPTIONAL_THRESHOLD = 5
+const CHANCE_DIE_SUCCESS = 10
+const CHANCE_DIE_DRAMATIC_FAILURE = 1
+
+/** A normal die succeeds on 8+; a chance die only on 10. */
+export const isDieSuccess = (value: number, isChanceDie: boolean): boolean =>
+  isChanceDie ? value === CHANCE_DIE_SUCCESS : value >= SUCCESS_THRESHOLD
+
+/** Only a chance die showing 1 is the dramatic failure. */
+export const isDieDramaticFailure = (value: number, isChanceDie: boolean): boolean =>
+  isChanceDie && value === CHANCE_DIE_DRAMATIC_FAILURE
+
+/** A die at or above the pool's again threshold explodes; chance dice never do. */
+export const isDieExplosive = (
+  value: number,
+  againThreshold: number,
+  isChanceDie: boolean,
+): boolean => !isChanceDie && value >= againThreshold
+
+// --- Internal helpers ---
 
 const rollD10 = Random.nextIntBetween(1, 10)
 
@@ -74,9 +96,7 @@ const rollNDice = (n: number) =>
   })
 
 const countSuccesses = (rolls: ReadonlyArray<number>, chanceDie: boolean): number =>
-  chanceDie
-    ? rolls.filter((r) => r === 10).length
-    : rolls.filter((r) => r >= SUCCESS_THRESHOLD).length
+  rolls.filter((r) => isDieSuccess(r, chanceDie)).length
 
 // --- Public API ---
 
@@ -117,7 +137,7 @@ export const rollPool = Effect.fn("DicePool.roll")(function* (
   // Rote action: reroll all failed dice once
   const roteRerolls: Array<number> = []
   if (isRoteAction && !isChanceDie) {
-    const failures = rolls.filter((r) => r < SUCCESS_THRESHOLD)
+    const failures = rolls.filter((r) => !isDieSuccess(r, false))
     if (failures.length > 0) {
       const rerolls = yield* rollNDice(failures.length)
       roteRerolls.push(...rerolls)
@@ -146,7 +166,7 @@ export const rollPool = Effect.fn("DicePool.roll")(function* (
     explosions,
     successes,
     isChanceDie,
-    isDramaticFailure: isChanceDie && rolls[0] === 1,
+    isDramaticFailure: isChanceDie && rolls[0] === CHANCE_DIE_DRAMATIC_FAILURE,
     isExceptionalSuccess: successes >= EXCEPTIONAL_THRESHOLD,
     visibility: options?.visibility ?? "public",
     againThreshold,
