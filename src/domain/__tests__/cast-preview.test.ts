@@ -13,68 +13,58 @@ import { failureTag, makeAldousSheet as makeSheet } from "../testing/fixtures"
  */
 
 describe("CastPreview.improvised", () => {
-  it.effect("base pool is Gnosis + Arcanum; a ruling Arcanum costs no Mana", () =>
-    Effect.gen(function* () {
-      const preview = yield* previewImprovisedCast({
-        sheet: makeSheet(),
-        arcanum: "death",
-      })
+  it("base pool is Gnosis + Arcanum; a ruling Arcanum costs no Mana", () => {
+    const preview = previewImprovisedCast({
+      sheet: makeSheet(),
+      arcanum: "death",
+    })
 
-      expect(preview.dice).toBe(4) // Gnosis 1 + Death 3
-      expect(preview.isChanceDie).toBe(false)
-      expect(preview.manaCost).toBe(0) // death is ruling for Moros
-      expect(preview.components).toEqual([
-        { type: "gnosis", name: "Gnosis", dots: 1 },
-        { type: "arcanum", name: "Death", dots: 3 },
-      ])
-    }),
-  )
+    expect(preview.dice).toBe(4) // Gnosis 1 + Death 3
+    expect(preview.isChanceDie).toBe(false)
+    expect(preview.manaCost).toBe(0) // death is ruling for Moros
+    expect(preview.components).toEqual([
+      { type: "gnosis", name: "Gnosis", dots: 1 },
+      { type: "arcanum", name: "Death", dots: 3 },
+    ])
+  })
 
-  it.effect(
-    "High Speech and Willpower add dice; non-ruling and extra Mana add cost",
-    () =>
-      Effect.gen(function* () {
-        const preview = yield* previewImprovisedCast({
-          sheet: makeSheet(),
-          arcanum: "prime", // not ruling for Moros → 1 Mana
-          highSpeech: true,
-          spendWillpower: true,
-          extraManaCost: 2,
-        })
+  it("High Speech and Willpower add dice; non-ruling and extra Mana add cost", () => {
+    const preview = previewImprovisedCast({
+      sheet: makeSheet(),
+      arcanum: "prime", // not ruling for Moros → 1 Mana
+      highSpeech: true,
+      spendWillpower: true,
+      extraManaCost: 2,
+    })
 
-        expect(preview.dice).toBe(7) // Gnosis 1 + Prime 1 + 2 + 3
-        expect(preview.manaCost).toBe(3) // 1 Path + 2 declared
-        expect(preview.components).toEqual([
-          { type: "gnosis", name: "Gnosis", dots: 1 },
-          { type: "arcanum", name: "Prime", dots: 1 },
-          { type: "modifier", name: "High Speech", dots: 2 },
-          { type: "modifier", name: "Willpower", dots: 3 },
-        ])
-      }),
-  )
+    expect(preview.dice).toBe(7) // Gnosis 1 + Prime 1 + 2 + 3
+    expect(preview.manaCost).toBe(3) // 1 Path + 2 declared
+    expect(preview.components).toEqual([
+      { type: "gnosis", name: "Gnosis", dots: 1 },
+      { type: "arcanum", name: "Prime", dots: 1 },
+      { type: "modifier", name: "High Speech", dots: 2 },
+      { type: "modifier", name: "Willpower", dots: 3 },
+    ])
+  })
 
-  it.effect(
-    "factor penalties floor the pool at a chance die, recording only the effective portion",
-    () =>
-      Effect.gen(function* () {
-        const preview = yield* previewImprovisedCast({
-          sheet: makeSheet(),
-          arcanum: "death",
-          potency: 5, // -8
-          targets: 4, // -4
-        })
+  it("factor penalties floor the pool at a chance die, recording only the effective portion", () => {
+    const preview = previewImprovisedCast({
+      sheet: makeSheet(),
+      arcanum: "death",
+      potency: 5, // -8
+      targets: 4, // -4
+    })
 
-        expect(preview.dice).toBe(0)
-        expect(preview.isChanceDie).toBe(true)
-        // Pool was 4 positive dice, so only -4 of the -12 penalty is real —
-        // the same effective chunking the flow records on the entry.
-        expect(preview.components).toEqual([
-          { type: "gnosis", name: "Gnosis", dots: 1 },
-          { type: "arcanum", name: "Death", dots: 3 },
-          { type: "modifier", name: "Spell factors", dots: -4 },
-        ])
-      }),
-  )
+    expect(preview.dice).toBe(0)
+    expect(preview.isChanceDie).toBe(true)
+    // Pool was 4 positive dice, so only -4 of the -12 penalty is real —
+    // the same effective chunking the flow records on the entry.
+    expect(preview.components).toEqual([
+      { type: "gnosis", name: "Gnosis", dots: 1 },
+      { type: "arcanum", name: "Death", dots: 3 },
+      { type: "modifier", name: "Spell factors", dots: -4 },
+    ])
+  })
 })
 
 // Presence 2 + Occult 4 + Death 3 = 9 dice on Aldous's sheet.

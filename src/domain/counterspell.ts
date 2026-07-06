@@ -1,4 +1,7 @@
-import { Effect, Schema } from "effect"
+import { Schema } from "effect"
+
+// Pure rules leaves (ADR-0014): plain functions — nothing here fails or
+// touches the world.
 
 // --- Types ---
 
@@ -19,10 +22,10 @@ export class DispelResult extends Schema.Class<DispelResult>("DispelResult")({
 
 // --- Public API ---
 
-export const canCounterspell = Effect.fn("Counterspell.canCounter")(function* (input: {
+export const canCounterspell = (input: {
   casterArcana: Record<string, number>
   targetSpellArcanum: string
-}) {
+}): CounterspellCheck => {
   // Can counter with matching arcanum (at least 1 dot)
   const matchingDots = input.casterArcana[input.targetSpellArcanum.toLowerCase()]
   if (matchingDots && matchingDots >= 1) {
@@ -42,24 +45,22 @@ export const canCounterspell = Effect.fn("Counterspell.canCounter")(function* (i
   }
 
   return new CounterspellCheck({ canCounter: false })
-})
+}
 
-export const calculateCounterspellPool = Effect.fn("Counterspell.pool")(function* (input: {
+export const calculateCounterspellPool = (input: {
   gnosis: number
   arcanumDots: number
-}) {
-  return new CounterspellPool({
+}): CounterspellPool =>
+  new CounterspellPool({
     totalDice: input.gnosis + input.arcanumDots,
   })
-})
 
-export const resolveDispel = Effect.fn("Counterspell.resolveDispel")(function* (input: {
+export const resolveDispel = (input: {
   dispelSuccesses: number
   targetPotency: number
-}) {
-  return new DispelResult({
+}): DispelResult =>
+  new DispelResult({
     dispelled: input.dispelSuccesses >= input.targetPotency,
     dispelSuccesses: input.dispelSuccesses,
     targetPotency: input.targetPotency,
   })
-})

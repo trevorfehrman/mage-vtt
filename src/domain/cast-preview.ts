@@ -33,51 +33,51 @@ export interface CastPreview {
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-export const previewImprovisedCast = Effect.fn("CastPreview.improvised")(
-  function* (input: {
-    sheet: Pick<CharacterSheet, "path" | "gnosis" | "arcana">
-    arcanum: ArcanumName
-    potency?: number
-    targets?: number
-    highSpeech?: boolean
-    extraManaCost?: number
-    spendWillpower?: boolean
-  }) {
-    const dots = input.sheet.arcana[input.arcanum] ?? 0
-    const basePool = yield* calculateImprovisedPool({
-      gnosis: input.sheet.gnosis,
-      arcanumDots: dots,
-      ...(input.highSpeech ? { highSpeech: true } : {}),
-      ...(input.spendWillpower ? { willpower: true } : {}),
-    })
-    const pool = yield* applySpellFactors(basePool, {
-      ...(input.potency !== undefined ? { potency: input.potency } : {}),
-      ...(input.targets !== undefined ? { targets: input.targets } : {}),
-    })
+// A pure preview (ADR-0014): every leaf it composes is a plain function, so
+// the improvised readout is one itself.
+export const previewImprovisedCast = (input: {
+  sheet: Pick<CharacterSheet, "path" | "gnosis" | "arcana">
+  arcanum: ArcanumName
+  potency?: number
+  targets?: number
+  highSpeech?: boolean
+  extraManaCost?: number
+  spendWillpower?: boolean
+}): CastPreview => {
+  const dots = input.sheet.arcana[input.arcanum] ?? 0
+  const basePool = calculateImprovisedPool({
+    gnosis: input.sheet.gnosis,
+    arcanumDots: dots,
+    ...(input.highSpeech ? { highSpeech: true } : {}),
+    ...(input.spendWillpower ? { willpower: true } : {}),
+  })
+  const pool = applySpellFactors(basePool, {
+    ...(input.potency !== undefined ? { potency: input.potency } : {}),
+    ...(input.targets !== undefined ? { targets: input.targets } : {}),
+  })
 
-    const pathCost = yield* improvisedManaCost(input.sheet.path, input.arcanum)
+  const pathCost = improvisedManaCost(input.sheet.path, input.arcanum)
 
-    const components: ReadonlyArray<RawPoolComponent> = [
-      { type: "gnosis", name: "Gnosis", dots: input.sheet.gnosis },
-      { type: "arcanum", name: capitalize(input.arcanum), dots },
-      ...(input.highSpeech
-        ? [{ type: "modifier", name: "High Speech", dots: 2 }]
-        : []),
-      ...(input.spendWillpower
-        ? [{ type: "modifier", name: "Willpower", dots: WILLPOWER_BONUS_DICE }]
-        : []),
-      ...factorPenaltyComponents(pool),
-    ]
+  const components: ReadonlyArray<RawPoolComponent> = [
+    { type: "gnosis", name: "Gnosis", dots: input.sheet.gnosis },
+    { type: "arcanum", name: capitalize(input.arcanum), dots },
+    ...(input.highSpeech
+      ? [{ type: "modifier", name: "High Speech", dots: 2 }]
+      : []),
+    ...(input.spendWillpower
+      ? [{ type: "modifier", name: "Willpower", dots: WILLPOWER_BONUS_DICE }]
+      : []),
+    ...factorPenaltyComponents(pool),
+  ]
 
-    const dice = Math.max(pool.totalDice, 0)
-    return {
-      components,
-      dice,
-      isChanceDie: dice === 0,
-      manaCost: pathCost + pool.manaCost + (input.extraManaCost ?? 0),
-    } satisfies CastPreview
-  },
-)
+  const dice = Math.max(pool.totalDice, 0)
+  return {
+    components,
+    dice,
+    isChanceDie: dice === 0,
+    manaCost: pathCost + pool.manaCost + (input.extraManaCost ?? 0),
+  }
+}
 
 export const previewRoteCast = Effect.fn("CastPreview.rote")(function* (input: {
   sheet: Pick<CharacterSheet, "attributes" | "skills" | "arcana">
@@ -91,14 +91,14 @@ export const previewRoteCast = Effect.fn("CastPreview.rote")(function* (input: {
 }) {
   const resolved = yield* resolveRotePool(input.sheet, input.rote, input.skillChoice)
 
-  const basePool = yield* calculateRotePool({
+  const basePool = calculateRotePool({
     attributeDots: resolved.attribute.dots,
     skillDots: resolved.skill.dots,
     arcanumDots: resolved.arcanum.dots,
     ...(input.highSpeech ? { highSpeech: true } : {}),
     ...(input.spendWillpower ? { willpower: true } : {}),
   })
-  const pool = yield* applySpellFactors(basePool, {
+  const pool = applySpellFactors(basePool, {
     ...(input.potency !== undefined ? { potency: input.potency } : {}),
     ...(input.targets !== undefined ? { targets: input.targets } : {}),
   })

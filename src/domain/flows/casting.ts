@@ -192,13 +192,13 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
     })
   }
 
-  const basePool = yield* calculateImprovisedPool({
+  const basePool = calculateImprovisedPool({
     gnosis: sheet.gnosis,
     arcanumDots: dots,
     ...(declaration.highSpeech ? { highSpeech: true } : {}),
     ...(declaration.spendWillpower ? { willpower: true } : {}),
   })
-  const pool = yield* applySpellFactors(basePool, {
+  const pool = applySpellFactors(basePool, {
     ...(declaration.potency !== undefined ? { potency: declaration.potency } : {}),
     ...(declaration.targets !== undefined ? { targets: declaration.targets } : {}),
   })
@@ -206,7 +206,7 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
 
   // Mana: improvised cost by Path (Ruling free, otherwise 1 — computed here,
   // never declared) + whatever the pool itself demands + the declared extra.
-  const pathCost = yield* improvisedManaCost(sheet.path, declaration.arcanum)
+  const pathCost = improvisedManaCost(sheet.path, declaration.arcanum)
   const manaCost = pathCost + pool.manaCost + (declaration.extraManaCost ?? 0)
   const manaRemaining = yield* spendMana(sheet.manaCurrent, manaCost)
 

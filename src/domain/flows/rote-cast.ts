@@ -160,14 +160,14 @@ export const castRote = Effect.fn("Flows.roteCast.castRote")(function* (
 
   const resolved = yield* resolveRotePool(sheet, rote, declaration.skillChoice)
 
-  const basePool = yield* calculateRotePool({
+  const basePool = calculateRotePool({
     attributeDots: resolved.attribute.dots,
     skillDots: resolved.skill.dots,
     arcanumDots: resolved.arcanum.dots,
     ...(declaration.highSpeech ? { highSpeech: true } : {}),
     ...(declaration.spendWillpower ? { willpower: true } : {}),
   })
-  const pool = yield* applySpellFactors(basePool, {
+  const pool = applySpellFactors(basePool, {
     ...(declaration.potency !== undefined ? { potency: declaration.potency } : {}),
     ...(declaration.targets !== undefined ? { targets: declaration.targets } : {}),
   })

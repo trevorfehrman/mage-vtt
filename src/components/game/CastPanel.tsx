@@ -36,25 +36,27 @@ export function CastPanel({
     const factors = declaredFactors(cast.context)
     // An "or" pool with no pick has no pool yet — the caster decides first.
     if (selection.method === "rote" && skillChoice === null) return null
-    const exit: Exit.Exit<CastPreview, unknown> =
-      selection.method === "improvised"
-        ? Effect.runSyncExit(
-            previewImprovisedCast({
-              sheet: character,
-              arcanum: selection.arcanum,
-              ...factors,
-            }),
-          )
-        : Effect.runSyncExit(
-            previewRoteCast({
-              sheet: character,
-              rote: selection.rote,
-              ...(skillChoice !== null ? { skillChoice } : {}),
-              ...factors,
-            }),
-          )
     // A failed preview degrades to no readout — the server recomputes and
     // refuses with its typed tag; a readout must never crash the panel.
+    if (selection.method === "improvised") {
+      try {
+        return previewImprovisedCast({
+          sheet: character,
+          arcanum: selection.arcanum,
+          ...factors,
+        })
+      } catch {
+        return null
+      }
+    }
+    const exit: Exit.Exit<CastPreview, unknown> = Effect.runSyncExit(
+      previewRoteCast({
+        sheet: character,
+        rote: selection.rote,
+        ...(skillChoice !== null ? { skillChoice } : {}),
+        ...factors,
+      }),
+    )
     return Exit.isSuccess(exit) ? exit.value : null
   }, [cast.context, selection, skillChoice, character])
 

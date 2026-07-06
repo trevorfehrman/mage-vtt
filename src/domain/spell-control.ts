@@ -24,10 +24,12 @@ export class SpellControlError extends Schema.TaggedErrorClass<SpellControlError
 
 // --- Public API ---
 
-export const canMaintainSpell = Effect.fn("SpellControl.canMaintain")(function* (input: {
+// Pure rules leaf (ADR-0014): plain function — maintaining is always allowed,
+// only the penalty varies.
+export const canMaintainSpell = (input: {
   gnosis: number
   currentlyMaintained: number
-}) {
+}): MaintainCheck => {
   // Spells up to gnosis are free. Each beyond gnosis incurs -2 to further casting.
   const excess = Math.max(0, input.currentlyMaintained - input.gnosis + 1)
   const penalty = excess === 0 ? 0 : excess * -2
@@ -38,13 +40,14 @@ export const canMaintainSpell = Effect.fn("SpellControl.canMaintain")(function* 
     activeCount: input.currentlyMaintained + 1,
     gnosisLimit: input.gnosis,
   })
-})
+}
 
+// Stays Effect: relinquishing can fail with a typed error.
 export const relinquishSpell = Effect.fn("SpellControl.relinquish")(function* (input: {
   currentWillpowerDots: number
 }) {
   if (input.currentWillpowerDots <= 0) {
-    yield* new SpellControlError({
+    return yield* new SpellControlError({
       message: "Cannot relinquish spell — no Willpower dots to sacrifice",
     })
   }

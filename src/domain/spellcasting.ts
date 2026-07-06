@@ -1,5 +1,10 @@
-import { Effect, Schema } from "effect"
+import { Schema } from "effect"
 import { WILLPOWER_BONUS_DICE } from "./willpower-economy"
+
+// Pure rules leaves (ADR-0014): the whole casting-math surface is plain
+// functions — nothing here fails or touches the world. The sympathetic
+// connection vocabulary is closed, so an unknown level is a compile error,
+// not a runtime failure.
 
 // --- Types ---
 
@@ -26,7 +31,17 @@ export class CastingPool extends Schema.Class<CastingPool>("CastingPool")({
 
 // --- Sympathetic connection penalties (page 115) ---
 
-const SYMPATHETIC_PENALTIES: Record<string, number> = {
+export const SympatheticConnection = Schema.Literals([
+  "intimate",
+  "known",
+  "acquainted",
+  "encountered",
+  "described",
+  "unknown",
+])
+export type SympatheticConnection = typeof SympatheticConnection.Type
+
+const SYMPATHETIC_PENALTIES: Record<SympatheticConnection, number> = {
   intimate: -2,
   known: -4,
   acquainted: -6,
@@ -35,53 +50,31 @@ const SYMPATHETIC_PENALTIES: Record<string, number> = {
   unknown: -12, // practically impossible
 }
 
-// --- Spell factor penalty tables (page 118) ---
+// --- Helpers ---
 
-const POTENCY_PENALTY: Record<number, number> = {
-  1: 0,
-  2: -2,
-  3: -4,
-  4: -6,
-  5: -8,
-  // 6+: -8 + -2 per additional
+/** Spell factor penalty (page 118): Potency 1 free, then -2 per point. */
+function potencyPenalty(potency: number): number {
+  if (potency <= 1) return 0
+  return (potency - 1) * -2
 }
 
+/**
+ * Target-count penalty (page 118): the doubling brackets 1/2/4/8/16 map to
+ * 0/-2/-4/-6/-8; past 16 each further doubling is -2 more. Counts off a
+ * bracket pay the -8 floor (pre-existing behavior, preserved).
+ */
 const TARGET_COUNT_PENALTY: Record<number, number> = {
   1: 0,
   2: -2,
   4: -4,
   8: -6,
   16: -8,
-  // 32+: -8 + -2 per doubling
-}
-
-// --- Errors ---
-
-export class SpellcastingError extends Schema.TaggedErrorClass<SpellcastingError>()(
-  "SpellcastingError",
-  { message: Schema.String },
-) {}
-
-// --- Helpers ---
-
-function potencyPenalty(potency: number): number {
-  if (potency <= 1) return 0
-  if (potency <= 5) return POTENCY_PENALTY[potency] ?? 0
-  // Beyond 5: base -8 + -2 per extra
-  return -8 + (potency - 5) * -2
 }
 
 function targetCountPenalty(targets: number): number {
   if (targets <= 1) return 0
-  // Find the bracket
-  const brackets = [1, 2, 4, 8, 16]
-  for (let i = brackets.length - 1; i >= 0; i--) {
-    if (targets <= brackets[i]) continue
-    if (targets === brackets[i]) return TARGET_COUNT_PENALTY[brackets[i]] ?? 0
-  }
-  // Exact match or compute
-  if (TARGET_COUNT_PENALTY[targets] !== undefined) return TARGET_COUNT_PENALTY[targets]
-  // Each doubling from 16 is -2 more
+  const exact = TARGET_COUNT_PENALTY[targets]
+  if (exact !== undefined) return exact
   let penalty = -8
   let threshold = 16
   while (threshold < targets) {
@@ -102,15 +95,17 @@ function sumDice(
   return base + bonusTotal + penaltyTotal + factorPenalty
 }
 
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
 // --- Public API ---
 
-export const calculateImprovisedPool = Effect.fn("Spellcasting.improvisedPool")(function* (input: {
+export const calculateImprovisedPool = (input: {
   gnosis: number
   arcanumDots: number
   highSpeech?: boolean
   willpower?: boolean
-  sympatheticConnection?: string
-}) {
+  sympatheticConnection?: SympatheticConnection
+}): CastingPool => {
   const baseDice = input.gnosis + input.arcanumDots
   const bonuses: Array<DiceBonus> = []
   const penalties: Array<DicePenalty> = []
@@ -126,15 +121,9 @@ export const calculateImprovisedPool = Effect.fn("Spellcasting.improvisedPool")(
   }
 
   if (input.sympatheticConnection) {
-    const penalty = SYMPATHETIC_PENALTIES[input.sympatheticConnection]
-    if (penalty === undefined) {
-      yield* new SpellcastingError({
-        message: `Unknown sympathetic connection level: ${input.sympatheticConnection}`,
-      })
-    }
     penalties.push({
-      source: `Sympathetic (${input.sympatheticConnection.charAt(0).toUpperCase() + input.sympatheticConnection.slice(1)})`,
-      dice: penalty ?? 0,
+      source: `Sympathetic (${capitalize(input.sympatheticConnection)})`,
+      dice: SYMPATHETIC_PENALTIES[input.sympatheticConnection],
     })
     isVulgar = true // sympathetic spells are always vulgar
     manaCost += 1 // costs 1 Mana
@@ -152,15 +141,15 @@ export const calculateImprovisedPool = Effect.fn("Spellcasting.improvisedPool")(
     isVulgar,
     manaCost,
   })
-})
+}
 
-export const calculateRotePool = Effect.fn("Spellcasting.rotePool")(function* (input: {
+export const calculateRotePool = (input: {
   attributeDots: number
   skillDots: number
   arcanumDots: number
   highSpeech?: boolean
   willpower?: boolean
-}) {
+}): CastingPool => {
   const baseDice = input.attributeDots + input.skillDots + input.arcanumDots
   const bonuses: Array<DiceBonus> = []
 
@@ -184,16 +173,16 @@ export const calculateRotePool = Effect.fn("Spellcasting.rotePool")(function* (i
     isVulgar: false,
     manaCost: 0,
   })
-})
+}
 
-export const applySpellFactors = Effect.fn("Spellcasting.applyFactors")(function* (
+export const applySpellFactors = (
   pool: CastingPool,
   factors: {
     potency?: number
     targets?: number
     // duration and area to be added
   },
-) {
+): CastingPool => {
   let factorPen = 0
 
   if (factors.potency && factors.potency > 1) {
@@ -211,24 +200,22 @@ export const applySpellFactors = Effect.fn("Spellcasting.applyFactors")(function
     factorPenalty: factorPen,
     totalDice,
   })
-})
+}
 
 // --- Duration penalty table (pages 119-120) ---
 
-export const calculateDurationPenalty = Effect.fn("Spellcasting.durationPenalty")(function* (
-  type: "transitory" | "prolonged",
+export const calculateDurationPenalty = (
+  _type: "transitory" | "prolonged",
   steps: number,
-) {
+): number => {
   // Step 1 is the default (0 penalty), each step beyond is -2
   if (steps <= 1) return 0
   return (steps - 1) * -2
-})
+}
 
 // --- Size penalty table (page 118) ---
 
-export const calculateSizePenalty = Effect.fn("Spellcasting.sizePenalty")(function* (
-  size: number,
-) {
+export const calculateSizePenalty = (size: number): number => {
   if (size <= 20) return 0
   if (size <= 30) return -2
   if (size <= 40) return -4
@@ -236,14 +223,11 @@ export const calculateSizePenalty = Effect.fn("Spellcasting.sizePenalty")(functi
   if (size <= 60) return -8
   // Beyond 60: -8 + -2 per +10 size
   return -8 + Math.ceil((size - 60) / 10) * -2
-})
+}
 
 // --- Area-affecting penalty tables (page 118) ---
 
-export const calculateAreaPenalty = Effect.fn("Spellcasting.areaPenalty")(function* (
-  radiusYards: number,
-  advanced: boolean,
-) {
+export const calculateAreaPenalty = (radiusYards: number, advanced: boolean): number => {
   if (advanced) {
     // Advanced: 1→0, 4→-2, 16→-4, 64→-6, 256→-8
     if (radiusYards <= 1) return 0
@@ -275,13 +259,13 @@ export const calculateAreaPenalty = Effect.fn("Spellcasting.areaPenalty")(functi
     penalty -= 2
   }
   return penalty
-})
+}
 
 // --- Aimed spell range (page 116) ---
 
-export const calculateAimedSpellRange = Effect.fn("Spellcasting.aimedRange")(function* (
+export const calculateAimedSpellRange = (
   gnosis: number,
-) {
+): { short: number; medium: number; long: number } => {
   const short = gnosis * 10
   return { short, medium: short * 2, long: short * 4 }
-})
+}

@@ -1,8 +1,21 @@
-import { Effect, Schema } from "effect"
+import { Schema } from "effect"
+import { WisdomRank } from "./wisdom"
+
+// Pure rules leaves (ADR-0014): plain functions; the duration table is total
+// over its severity-kind × Wisdom-rank vocabularies, so no lookup can miss.
 
 // --- Paradox Duration by Wisdom (page 268) ---
 
-const DURATION_TABLE: Record<string, Record<number, number>> = {
+/** The Paradox severities that persist long enough to have a duration. */
+export const ParadoxDurationKind = Schema.Literals([
+  "bedlam",
+  "anomaly",
+  "branding",
+  "manifestation",
+])
+export type ParadoxDurationKind = typeof ParadoxDurationKind.Type
+
+const DURATION_TABLE: Record<ParadoxDurationKind, Record<WisdomRank, number>> = {
   // Wisdom → minutes
   bedlam: { 10: 30, 9: 60, 8: 60, 7: 120, 6: 120, 5: 360, 4: 720, 3: 1440, 2: 2880, 1: 2880 },
   anomaly: { 10: 60, 9: 120, 8: 360, 7: 720, 6: 1440, 5: 1440, 4: 1440, 3: 4320, 2: 10080, 1: 43200 },
@@ -41,39 +54,29 @@ export class BrandingInfo extends Schema.Class<BrandingInfo>("BrandingInfo")({
 
 // --- Public API ---
 
-export const paradoxDuration = Effect.fn("ParadoxEffects.duration")(function* (
-  type: string,
-  wisdom: number,
-) {
-  const table = DURATION_TABLE[type]
-  const minutes = table?.[wisdom] ?? 60
+export const paradoxDuration = (
+  type: ParadoxDurationKind,
+  wisdom: WisdomRank,
+): ParadoxDuration =>
+  new ParadoxDuration({ type, wisdom, minutes: DURATION_TABLE[type][wisdom] })
 
-  return new ParadoxDuration({ type, wisdom, minutes })
-})
-
-export const paradoxBacklash = Effect.fn("ParadoxEffects.backlash")(function* (
-  paradoxSuccesses: number,
-) {
-  return new BacklashResult({
+export const paradoxBacklash = (paradoxSuccesses: number): BacklashResult =>
+  new BacklashResult({
     resistantBashingDamage: paradoxSuccesses,
     paradoxContained: true,
   })
-})
 
-export const brandingSeverity = Effect.fn("ParadoxEffects.branding")(function* (
-  arcanumDots: number,
-) {
-  const entry = BRANDING_TABLE.findLast((e) => arcanumDots >= e.minDots) ?? BRANDING_TABLE[0]
+export const brandingSeverity = (arcanumDots: number): BrandingInfo => {
+  // Highest bracket at or below the dots; below 1 dot falls to the weakest brand.
+  const entry =
+    [...BRANDING_TABLE].reverse().find((e) => arcanumDots >= e.minDots) ??
+    BRANDING_TABLE[0]
 
   return new BrandingInfo({
     name: entry.name,
     socialPenalty: entry.socialPenalty,
     arcanumDots,
   })
-})
+}
 
-export const anomalyArea = Effect.fn("ParadoxEffects.anomalyArea")(function* (
-  arcanumDots: number,
-) {
-  return arcanumDots * 20
-})
+export const anomalyArea = (arcanumDots: number): number => arcanumDots * 20
