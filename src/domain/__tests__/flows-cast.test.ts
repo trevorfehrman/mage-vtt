@@ -5,6 +5,7 @@ import { castSpell } from "../flows/casting"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "../ids"
 import { Membership } from "../membership"
 import type { SheetPatch } from "../ports/game-store"
+import { Mana, Willpower } from "../quantities"
 import { failureTag, makeAldousSheet as makeSheet } from "../testing/fixtures"
 import { makeInMemory } from "../testing/in-memory"
 
@@ -731,8 +732,8 @@ const _traitsUnreachable: SheetPatch = { gnosis: 10 }
 // @ts-expect-error — identity is unreachable through SheetPatch
 const _identityUnreachable: SheetPatch = { name: "Renamed" }
 const _playStateReachable: SheetPatch = {
-  manaCurrent: 1,
-  willpowerCurrent: 2,
+  manaCurrent: Mana.make(1),
+  willpowerCurrent: Willpower.make(2),
   healthTrack: ["empty"],
 }
 void _traitsUnreachable

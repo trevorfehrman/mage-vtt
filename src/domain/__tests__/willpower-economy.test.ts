@@ -1,4 +1,5 @@
 import { Effect, Exit } from "effect"
+import { Willpower } from "../quantities"
 import { describe, expect, it } from "@effect/vitest"
 import {
   InsufficientWillpower,
@@ -9,14 +10,14 @@ import {
 describe("willpower economy", () => {
   it.effect("spending a point returns the remainder", () =>
     Effect.gen(function* () {
-      expect(yield* spendWillpower(6)).toBe(5)
-      expect(yield* spendWillpower(1)).toBe(0)
+      expect(yield* spendWillpower(Willpower.make(6))).toBe(5)
+      expect(yield* spendWillpower(Willpower.make(1))).toBe(0)
     }),
   )
 
   it.effect("spending at 0 fails InsufficientWillpower", () =>
     Effect.gen(function* () {
-      const exit = yield* spendWillpower(0).pipe(Effect.exit)
+      const exit = yield* spendWillpower(Willpower.make(0)).pipe(Effect.exit)
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {

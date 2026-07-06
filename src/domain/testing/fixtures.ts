@@ -1,21 +1,24 @@
-import { Exit } from "effect"
+import { Exit, Schema } from "effect"
 import { CharacterSheet } from "../character"
-import { CharacterId, PlayerId, SessionId, SessionMemberId } from "../ids"
 
 /**
  * Shared flow-test fixtures: the canonical Aldous sheet (a Moros of the
  * Mysterium — ruling Matter/Death, Death 3 / Matter 2 / Prime 1) and the
  * failure-tag extractor the flow suites assert with.
+ *
+ * The sheet is *decoded*, not constructed — the same boundary translation the
+ * adapters do — so the fixture speaks plain numbers and the branded
+ * quantities (issue #35) are minted by the schema.
  */
 
 export const makeAldousSheet = (
-  overrides: Partial<ConstructorParameters<typeof CharacterSheet>[0]> = {},
+  overrides: Partial<typeof CharacterSheet.Encoded> = {},
 ) =>
-  new CharacterSheet({
-    id: CharacterId.make("char-aldous"),
-    sessionId: SessionId.make("session-1"),
-    userId: PlayerId.make("user-aldous"),
-    sessionMemberId: SessionMemberId.make("member-aldous"),
+  Schema.decodeUnknownSync(CharacterSheet)({
+    id: "char-aldous",
+    sessionId: "session-1",
+    userId: "user-aldous",
+    sessionMemberId: "member-aldous",
     name: "Aldous",
     concept: "Occult investigator",
     virtue: "Justice",

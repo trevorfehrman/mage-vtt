@@ -32,8 +32,10 @@ export function HandEditForm({
   character: CharacterSheetData
 }) {
   const handEdit = useMutation(api.characters.handEdit)
-  const [mana, setMana] = useState(character.manaCurrent)
-  const [willpower, setWillpower] = useState(character.willpowerCurrent)
+  // Draft edits are plain numbers — the branded quantities live in the domain;
+  // the wire (mutation args) is raw and the server re-validates.
+  const [mana, setMana] = useState<number>(character.manaCurrent)
+  const [willpower, setWillpower] = useState<number>(character.willpowerCurrent)
   const [track, setTrack] = useState<ReadonlyArray<HealthBox>>(
     character.healthTrack,
   )

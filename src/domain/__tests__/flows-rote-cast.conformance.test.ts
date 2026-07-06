@@ -1,10 +1,10 @@
-import { Effect, Random } from "effect"
+import { Effect, Random, Schema } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import type { MutationCtx } from "../../../convex/_generated/server"
 import { convexLive } from "../../../convex/lib/convexLive"
 import { CharacterSheet, KnownRote } from "../character"
 import { castRote } from "../flows/rote-cast"
-import { CharacterId, PlayerId, SessionId, SessionMemberId } from "../ids"
+import { CharacterId, PlayerId, SessionId } from "../ids"
 import { Membership } from "../membership"
 import { GameStore } from "../ports/game-store"
 import { RotePool } from "../rote-pool"
@@ -176,11 +176,13 @@ const makeInMemoryStore = (opts: { extraRotes?: ReadonlyArray<KnownRote> } = {})
     members,
     actor: { userId: PlayerId.make(USER), isDev: false },
     sheets: [
-      new CharacterSheet({
-        id: CharacterId.make(doc._id),
-        sessionId: SessionId.make(doc.sessionId),
-        userId: PlayerId.make(doc.userId),
-        sessionMemberId: SessionMemberId.make(doc.sessionMemberId),
+      Schema.decodeUnknownSync(CharacterSheet)({
+        // Decoded, not constructed: the boundary translation mints the
+        // branded quantities (issue #35) from the doc's plain numbers.
+        id: doc._id,
+        sessionId: doc.sessionId,
+        userId: doc.userId,
+        sessionMemberId: doc.sessionMemberId,
         name: doc.name,
         concept: doc.concept,
         virtue: "Justice",

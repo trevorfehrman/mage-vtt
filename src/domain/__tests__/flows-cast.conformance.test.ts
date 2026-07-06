@@ -1,10 +1,11 @@
-import { Effect, Exit, Random } from "effect"
+import { Effect, Exit, Random, Schema } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import type { MutationCtx } from "../../../convex/_generated/server"
 import { convexLive } from "../../../convex/lib/convexLive"
 import { CharacterSheet } from "../character"
 import { castSpell } from "../flows/casting"
-import { CharacterId, PlayerId, SessionId, SessionMemberId } from "../ids"
+import { CharacterId, PlayerId, SessionId } from "../ids"
+import { Mana, Willpower } from "../quantities"
 import { Membership } from "../membership"
 import { GameStore } from "../ports/game-store"
 import { makeInMemory } from "../testing/in-memory"
@@ -61,11 +62,13 @@ const characterDoc = (manaCurrent: number) => ({
 /** The same character as the decoded domain artifact, for seeding `InMemory`. */
 const characterSheet = (manaCurrent: number) => {
   const doc = characterDoc(manaCurrent)
-  return new CharacterSheet({
-    id: CharacterId.make(doc._id),
-    sessionId: SessionId.make(doc.sessionId),
-    userId: PlayerId.make(doc.userId),
-    sessionMemberId: SessionMemberId.make(doc.sessionMemberId),
+  // Decoded, not constructed: the adapter's boundary translation mints the
+  // branded quantities (issue #35) from the doc's plain numbers.
+  return Schema.decodeUnknownSync(CharacterSheet)({
+    id: doc._id,
+    sessionId: doc.sessionId,
+    userId: doc.userId,
+    sessionMemberId: doc.sessionMemberId,
     name: doc.name,
     concept: doc.concept,
     virtue: "Justice",
@@ -321,8 +324,8 @@ describe("Flows.casting.castSpell conformance (ConvexLive vs InMemory)", () => {
       const patchIt = Effect.gen(function* () {
         const store = yield* GameStore
         yield* store.patchSheet(CharacterId.make(CHARACTER), {
-          manaCurrent: 4,
-          willpowerCurrent: 3,
+          manaCurrent: Mana.make(4),
+          willpowerCurrent: Willpower.make(3),
           healthTrack: ["bashing", "empty"],
         })
       })

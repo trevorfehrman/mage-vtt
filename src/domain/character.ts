@@ -1,6 +1,7 @@
 import { Effect, Schema } from "effect"
 import { HealthTrack, type HealthBox } from "./damage"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "./ids"
+import { Dots, Mana, Willpower } from "./quantities"
 import { RoteArcanumName, RotePool } from "./rote-pool"
 
 // --- Constrained number types ---
@@ -236,8 +237,8 @@ export const initialCurrentState = (
 // a first-class feature), while game rules like allocation totals stay in the
 // creation-rules move validation.
 
-/** What fits in a dot rating's boxes: 0–10. Game-legal maxima live in layer 3. */
-const SheetDots = Dots0to10
+/** What fits in a dot rating's boxes: the branded 0–10 `Dots` quantity (issue #35). */
+const SheetDots = Dots
 
 const SheetAttributes = Schema.Struct({
   mental: Schema.Struct({ intelligence: SheetDots, wits: SheetDots, resolve: SheetDots }),
@@ -276,11 +277,6 @@ const SheetArcana = Schema.Struct({
   time: Schema.optionalKey(SheetDots),
 })
 
-/** Current totals (Mana can reach 100 at Gnosis 10) — never negative. */
-const CurrentPoints = Schema.Number.check(
-  Schema.isInt(),
-  Schema.isGreaterThanOrEqualTo(0),
-)
 
 /**
  * A Rote the character trained (issue #16): the sheet-side mirror of
@@ -324,8 +320,8 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   skills: SheetSkills,
   arcana: SheetArcana,
   healthTrack: HealthTrack,
-  willpowerCurrent: CurrentPoints,
-  manaCurrent: CurrentPoints,
+  willpowerCurrent: Willpower,
+  manaCurrent: Mana,
   knownRotes: Schema.optionalKey(Schema.Array(KnownRote)),
 }) {
   /** Known Rotes, absent-column-safe: rows stored before issue #16 have none. */

@@ -1,4 +1,5 @@
 import { Effect, Random, Schema } from "effect"
+import { ComponentDots, PoolSize, Successes } from "./quantities"
 
 // --- Schemas ---
 
@@ -12,15 +13,10 @@ const PoolComponentType = Schema.Literals([
   "modifier",
 ])
 
-const Dots = Schema.Number.check(
-  Schema.isInt(),
-  Schema.isBetween({ minimum: -10, maximum: 10 }),
-)
-
 export class PoolComponent extends Schema.Class<PoolComponent>("PoolComponent")({
   type: PoolComponentType,
   name: Schema.String,
-  dots: Dots,
+  dots: ComponentDots,
 }) {}
 
 // The raw, pre-decode shape of a pool component as it crosses the wire / Convex
@@ -30,17 +26,17 @@ export type RawPoolComponent = { type: string; name: string; dots: number }
 
 export class DicePool extends Schema.Class<DicePool>("DicePool")({
   components: Schema.Array(PoolComponent),
-  size: Schema.Number.check(Schema.isInt()),
+  size: PoolSize,
 }) {}
 
 const RollVisibilitySchema = Schema.Literals(["public", "hidden"])
 export type RollVisibility = typeof RollVisibilitySchema.Type
 
 export class DiceRollResult extends Schema.Class<DiceRollResult>("DiceRollResult")({
-  poolSize: Schema.Number.check(Schema.isInt()),
+  poolSize: PoolSize,
   rolls: Schema.Array(Schema.Number),
   explosions: Schema.Array(Schema.Number),
-  successes: Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
+  successes: Successes,
   isChanceDie: Schema.Boolean,
   isDramaticFailure: Schema.Boolean,
   isExceptionalSuccess: Schema.Boolean,
@@ -108,8 +104,8 @@ const cascadeExplosions = (
         ),
       )
 
-const countSuccesses = (rolls: ReadonlyArray<number>, chanceDie: boolean): number =>
-  rolls.filter((r) => isDieSuccess(r, chanceDie)).length
+const countSuccesses = (rolls: ReadonlyArray<number>, chanceDie: boolean): Successes =>
+  Successes.make(rolls.filter((r) => isDieSuccess(r, chanceDie)).length)
 
 // --- Public API ---
 
@@ -124,7 +120,7 @@ export const buildPool = Effect.fn("DicePool.build")(function* (
     ),
   )
 
-  const size = components.reduce((sum, c) => sum + c.dots, 0)
+  const size = PoolSize.make(components.reduce((sum, c) => sum + c.dots, 0))
 
   return new DicePool({ components, size })
 })

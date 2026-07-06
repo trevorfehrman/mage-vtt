@@ -4,6 +4,7 @@ import { type CharacterSheet } from "../character"
 import { DamageType, HealthTrack, type HealthBox } from "../damage"
 import { CharacterId, SessionId } from "../ids"
 import { GameStore, type SheetPatch } from "../ports/game-store"
+import { Mana, Willpower } from "../quantities"
 
 /**
  * `handEditSheet` — the fudge/repair path (PRD #11, issue #19): a direct,
@@ -42,16 +43,14 @@ export class InvalidHandEdit extends Schema.TaggedErrorClass<InvalidHandEdit>()(
   { message: Schema.String },
 ) {}
 
-/** Non-negative integer — what a current-points box can represent. */
-const BoxValue = Schema.Number.check(
-  Schema.isInt(),
-  Schema.isGreaterThanOrEqualTo(0),
-)
-
-/** The hand-editable surface: the sheet's current-state values, nothing else. */
+/**
+ * The hand-editable surface: the sheet's current-state values, nothing else.
+ * The point boxes decode straight to the branded quantities (issue #35) —
+ * their non-negative-integer checks are exactly what a box can represent.
+ */
 const HandEditPatch = Schema.Struct({
-  manaCurrent: Schema.optionalKey(BoxValue),
-  willpowerCurrent: Schema.optionalKey(BoxValue),
+  manaCurrent: Schema.optionalKey(Mana),
+  willpowerCurrent: Schema.optionalKey(Willpower),
   healthTrack: Schema.optionalKey(HealthTrack),
 })
 

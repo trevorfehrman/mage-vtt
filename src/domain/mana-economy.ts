@@ -1,4 +1,5 @@
 import { Effect, Schema } from "effect"
+import { Mana } from "./quantities"
 
 // Pure rules leaves are plain functions (ADR-0014); only `spendMana` stays
 // Effect — it carries the typed InsufficientMana failure. Closed-key tables
@@ -96,13 +97,13 @@ export class InsufficientMana extends Schema.TaggedErrorClass<InsufficientMana>(
  * never go negative or half-update.
  */
 export const spendMana = Effect.fn("Mana.spend")(function* (
-  current: number,
-  cost: number,
+  current: Mana,
+  cost: Mana,
 ) {
   if (cost > current) {
     return yield* new InsufficientMana({ current, required: cost })
   }
-  return current - cost
+  return Mana.make(current - cost)
 })
 
 export const manaPerTurnByGnosis = (gnosis: GnosisRank): number =>
@@ -111,8 +112,8 @@ export const manaPerTurnByGnosis = (gnosis: GnosisRank): number =>
 export const isRulingArcanum = (path: string, arcanum: string): boolean =>
   isPathName(path) && PATH_RULING[path].includes(arcanum.toLowerCase())
 
-export const improvisedManaCost = (path: string, arcanum: string): number =>
-  isRulingArcanum(path, arcanum) ? 0 : 1
+export const improvisedManaCost = (path: string, arcanum: string): Mana =>
+  Mana.make(isRulingArcanum(path, arcanum) ? 0 : 1)
 
 export const patternRestoration = (input: { gnosis: number }): PatternRestorationInfo =>
   new PatternRestorationInfo({

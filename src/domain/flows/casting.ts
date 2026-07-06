@@ -4,6 +4,7 @@ import { ArcanumName } from "../character"
 import { buildPool, rollPool, type RawPoolComponent, type RollVisibility } from "../dice"
 import { CharacterId, SessionId } from "../ids"
 import { improvisedManaCost, spendMana } from "../mana-economy"
+import { Mana } from "../quantities"
 import { spendWillpower, WILLPOWER_BONUS_DICE } from "../willpower-economy"
 import { GameStore } from "../ports/game-store"
 import {
@@ -207,7 +208,7 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
   // Mana: improvised cost by Path (Ruling free, otherwise 1 — computed here,
   // never declared) + whatever the pool itself demands + the declared extra.
   const pathCost = improvisedManaCost(sheet.path, declaration.arcanum)
-  const manaCost = pathCost + pool.manaCost + (declaration.extraManaCost ?? 0)
+  const manaCost = Mana.make(pathCost + pool.manaCost + (declaration.extraManaCost ?? 0))
   const manaRemaining = yield* spendMana(sheet.manaCurrent, manaCost)
 
   // Willpower: declared, checked before anything rolls or writes (issue #12).

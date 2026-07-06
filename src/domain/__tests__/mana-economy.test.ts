@@ -1,4 +1,5 @@
 import { Effect } from "effect"
+import { Mana, Willpower } from "../quantities"
 import { describe, expect, it } from "@effect/vitest"
 import {
   manaPerTurnByGnosis,
@@ -9,6 +10,12 @@ import {
   spendMana,
   startingMana,
 } from "../mana-economy"
+
+// --- Type-level guard (issue #35): quantities don't cross-fund ---
+// The branding campaign's contract: a Willpower value cannot pay a Mana cost.
+// @ts-expect-error — Willpower where Mana is expected is a compile error
+const _quantityConfusion = spendMana(Mana.make(5), Willpower.make(3))
+void _quantityConfusion
 
 describe("Mana Economy", () => {
   it("mana per turn lookup by gnosis", () => {
@@ -59,20 +66,20 @@ describe("Mana Economy", () => {
 
   it.effect("spendMana deducts the cost and returns the remainder", () =>
     Effect.gen(function* () {
-      expect(yield* spendMana(10, 1)).toBe(9)
-      expect(yield* spendMana(10, 0)).toBe(10)
-      expect(yield* spendMana(3, 3)).toBe(0)
+      expect(yield* spendMana(Mana.make(10), Mana.make(1))).toBe(9)
+      expect(yield* spendMana(Mana.make(10), Mana.make(0))).toBe(10)
+      expect(yield* spendMana(Mana.make(3), Mana.make(3))).toBe(0)
     }),
   )
 
   it.effect("spendMana fails InsufficientMana when the cost can't be paid", () =>
     Effect.gen(function* () {
-      const error = yield* spendMana(2, 3).pipe(Effect.flip)
+      const error = yield* spendMana(Mana.make(2), Mana.make(3)).pipe(Effect.flip)
       expect(error._tag).toBe("InsufficientMana")
       expect(error.current).toBe(2)
       expect(error.required).toBe(3)
 
-      const zero = yield* spendMana(0, 1).pipe(Effect.flip)
+      const zero = yield* spendMana(Mana.make(0), Mana.make(1)).pipe(Effect.flip)
       expect(zero._tag).toBe("InsufficientMana")
     }),
   )

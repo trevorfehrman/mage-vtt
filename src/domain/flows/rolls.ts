@@ -10,6 +10,7 @@ import {
 import { CharacterId, SessionId } from "../ids"
 import { GameStore } from "../ports/game-store"
 import { spendWillpower, WILLPOWER_BONUS_DICE } from "../willpower-economy"
+import type { Willpower } from "../quantities"
 
 /**
  * `rolls.create` re-implemented through the enforcement seam (ADR-0004, ADR-0007).
@@ -75,7 +76,7 @@ export const createRoll = Effect.fn("Flows.rolls.create")(function* (
 
   // A declared Willpower spend: resolve the funding sheet, walk the authority
   // ladder, and check the pool before anything rolls or writes.
-  let willpowerSpend: { characterId: CharacterId; remaining: number } | null = null
+  let willpowerSpend: { characterId: CharacterId; remaining: Willpower } | null = null
   let components = args.components
   if (args.willpower) {
     const sheet = yield* requireSessionCharacter(

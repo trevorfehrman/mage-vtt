@@ -4,6 +4,7 @@ import { buildPool, rollPool, type RawPoolComponent, type RollVisibility } from 
 import { CharacterId, SessionId } from "../ids"
 import { spendMana } from "../mana-economy"
 import { GameStore } from "../ports/game-store"
+import { Mana } from "../quantities"
 import { requireCovertSpell, resolveRotePool, type SpellRef } from "../rote-cast"
 import { applySpellFactors, calculateRotePool } from "../spellcasting"
 import { spendWillpower, WILLPOWER_BONUS_DICE } from "../willpower-economy"
@@ -174,7 +175,7 @@ export const castRote = Effect.fn("Flows.roteCast.castRote")(function* (
 
   // Mana: no Path cost for a Rote — the pool's own demand plus the declared
   // extra, computed here and never client-totalled.
-  const manaCost = pool.manaCost + (declaration.extraManaCost ?? 0)
+  const manaCost = Mana.make(pool.manaCost + (declaration.extraManaCost ?? 0))
   const manaRemaining = yield* spendMana(sheet.manaCurrent, manaCost)
 
   // Willpower: declared, checked before anything rolls or writes (issue #12).

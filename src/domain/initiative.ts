@@ -1,4 +1,5 @@
 import { Effect, Option, Random, Schema } from "effect"
+import { Ticks } from "./quantities"
 
 // --- Action tick costs (homebrew from Scion: Hero) ---
 
@@ -23,7 +24,7 @@ export class InitiativeRoll extends Schema.Class<InitiativeRoll>("InitiativeRoll
 
 export class TickEntry extends Schema.Class<TickEntry>("TickEntry")({
   participantId: Schema.String,
-  ticks: Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
+  ticks: Ticks,
 }) {}
 
 export class ActionResult extends Schema.Class<ActionResult>("ActionResult")({
@@ -33,7 +34,7 @@ export class ActionResult extends Schema.Class<ActionResult>("ActionResult")({
 
 export class NextActorResult extends Schema.Class<NextActorResult>("NextActorResult")({
   participantId: Schema.String,
-  ticksAdvanced: Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
+  ticksAdvanced: Ticks,
 }) {}
 
 // --- Public API ---
@@ -85,7 +86,7 @@ export const resolveTickOrder = (
     (r) =>
       new TickEntry({
         participantId: r.participantId,
-        ticks: highest - r.total,
+        ticks: Ticks.make(highest - r.total),
       }),
   )
 }
@@ -113,7 +114,7 @@ export const findNextActor = (
       (next) =>
         new NextActorResult({
           participantId: next.participantId,
-          ticksAdvanced: minTicks,
+          ticksAdvanced: Ticks.make(minTicks),
         }),
     ),
   )

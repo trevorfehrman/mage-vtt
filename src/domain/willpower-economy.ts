@@ -1,4 +1,5 @@
 import { Effect, Schema } from "effect"
+import { Willpower } from "./quantities"
 
 /**
  * The Willpower economy (PRD #11, issue #12): spending a point of Willpower is
@@ -31,10 +32,10 @@ export class InsufficientWillpower extends Schema.TaggedErrorClass<InsufficientW
  * a sheet can never go negative or half-update.
  */
 export const spendWillpower = Effect.fn("Willpower.spend")(function* (
-  current: number,
+  current: Willpower,
 ) {
   if (current < 1) {
     return yield* new InsufficientWillpower({ current })
   }
-  return current - 1
+  return Willpower.make(current - 1)
 })

@@ -5,6 +5,7 @@ import type { DiceRollResult, RawPoolComponent } from "../dice"
 import type { CharacterId, MessageId, PlayerId, RollId, SessionId } from "../ids"
 import type { Membership } from "../membership"
 import type { NotAMember } from "../authz"
+import type { Mana, Willpower } from "../quantities"
 import type { SpellRef } from "../rote-cast"
 import type { RoteArcanumName } from "../rote-pool"
 import type { DocumentNotFound } from "./errors"
@@ -43,8 +44,8 @@ export interface MessageDraft {
  * Widening this type is a design decision, not a convenience edit.
  */
 export interface SheetPatch {
-  readonly manaCurrent?: number
-  readonly willpowerCurrent?: number
+  readonly manaCurrent?: Mana
+  readonly willpowerCurrent?: Willpower
   readonly healthTrack?: ReadonlyArray<HealthBox>
 }
 
