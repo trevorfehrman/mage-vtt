@@ -5,11 +5,11 @@ import OpenAI from "openai"
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-export const getChunkById = internalQuery({
-  args: { id: v.id("ruleChunks") },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.id)
-  },
+// One round-trip for all of a search's result documents (issue #30); rows
+// come back in ids order so the action can zip them with the scored hits.
+export const getChunksByIds = internalQuery({
+  args: { ids: v.array(v.id("ruleChunks")) },
+  handler: async (ctx, args) => Promise.all(args.ids.map((id) => ctx.db.get(id))),
 })
 
 interface SearchResult {
@@ -36,18 +36,19 @@ export const searchRules = action({
       limit: args.limit ?? 5,
     })
 
-    const docs: SearchResult[] = []
-    for (const r of results) {
-      const doc = await ctx.runQuery(internal.search.getChunkById, { id: r._id })
-      docs.push({
+    const chunks = await ctx.runQuery(internal.search.getChunksByIds, {
+      ids: results.map((r) => r._id),
+    })
+
+    return results.map((r, i) => {
+      const doc = chunks[i]
+      return {
         score: r._score,
         text: doc?.text?.slice(0, 300) ?? "",
         section: doc?.section ?? "",
         source: doc?.source ?? "",
         contentType: doc?.contentType ?? "",
-      })
-    }
-
-    return docs
+      }
+    })
   },
 })
