@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { mutation } from "./_generated/server"
-import { requireUser } from "./lib/auth"
+import { requireMember } from "./lib/auth"
 
 export const send = mutation({
   args: {
@@ -12,22 +12,11 @@ export const send = mutation({
     whisperTargetId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireUser(ctx)
-
-    // Verify membership
-    const members = await ctx.db
-      .query("sessionMembers")
-      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
-      .collect()
-
-    const member = members.find((m) => m.userId === user._id)
-    if (!member) {
-      throw new Error("Not a member of this session")
-    }
+    const member = await requireMember(ctx, args.sessionId)
 
     return await ctx.db.insert("messages", {
       sessionId: args.sessionId,
-      senderId: user._id,
+      senderId: member.userId,
       senderName: member.displayName,
       text: args.text,
       visibilityType: args.visibilityType ?? "public",

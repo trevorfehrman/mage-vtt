@@ -63,8 +63,9 @@ export const list = query({
   // extension): projection drift fails loudly here, not in the client's decode.
   returns: schemaToConvexValidator(ActivityFeed),
   handler: async (ctx, args) => {
+    // The gate refuses non-members (issue #37), so the Reader always exists.
     const member = await seatedMember(ctx, args.sessionId, args.seat)
-    const reader = member ? { userId: member.userId, role: member.role } : null
+    const reader = { userId: member.userId, role: member.role }
 
     // Fetch caps are storage concerns; the feed's own cap lives in mergeFeed.
     const [messages, rolls] = await Promise.all([

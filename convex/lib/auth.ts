@@ -21,11 +21,16 @@ export async function requireUser(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
- * The authenticated user's membership in a session, or null if they aren't
- * a member. Session-scoped reads gate on this server-side — a non-member
- * sees nothing, never an empty result they could mistake for a real one.
+ * The membership gate for plain reads and simple writes (issue #37): resolve
+ * the caller's membership once, refusing with the seam's `NotAMember` tag
+ * (ADR-0010) — the same `ConvexError` shape the enforcement seam raises, so
+ * the client's error mapping needs no new cases. A logged-in non-member gets
+ * this typed refusal instead of a silently thinned result: Session content
+ * never leaks outside the table, and a refusal is not mistakable for an
+ * empty room. Per ADR-0004 this stays a helper inside plain handlers — not a
+ * port, no `GameStore` growth.
  */
-export async function memberOf(
+export async function requireMember(
   ctx: QueryCtx | MutationCtx,
   sessionId: Id<"sessions">,
 ) {
@@ -36,7 +41,23 @@ export async function memberOf(
     .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
     .collect()
 
-  return members.find((m) => m.userId === user._id) ?? null
+  const member = members.find((m) => m.userId === user._id)
+  if (!member) {
+    throw new ConvexError({ _tag: "NotAMember", sessionId, userId: user._id })
+  }
+  return member
+}
+
+/** The gate's role rung: membership plus the Storyteller chair (ADR-0010's tag). */
+export async function requireStoryteller(
+  ctx: QueryCtx | MutationCtx,
+  sessionId: Id<"sessions">,
+) {
+  const member = await requireMember(ctx, sessionId)
+  if (member.role !== "storyteller") {
+    throw new ConvexError({ _tag: "NotStoryteller", sessionId, userId: member.userId })
+  }
+  return member
 }
 
 /**
@@ -91,6 +112,11 @@ export async function seatedMember(
   sessionId: Id<"sessions">,
   seat?: Id<"sessionMembers">,
 ) {
-  const { decision } = await resolveSeatRequest(ctx, sessionId, seat)
+  const { user, decision } = await resolveSeatRequest(ctx, sessionId, seat)
+  // No effective reader — the caller is not a member and took no seat. The
+  // membership gate's typed refusal (issue #37), not a thinned result.
+  if (decision.member === null) {
+    throw new ConvexError({ _tag: "NotAMember", sessionId, userId: user._id })
+  }
   return decision.member
 }

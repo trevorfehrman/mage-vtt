@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { requireUser } from "./lib/auth"
+import { requireMember, requireUser } from "./lib/auth"
 
 const INVITE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
@@ -70,9 +70,14 @@ export const join = mutation({
   },
 })
 
+// The Session document plus its roster, for members only (issue #37): the
+// gate replaces what was an ungated read — Session content, member names
+// included, never leaves the table.
 export const get = query({
   args: { sessionId: v.id("sessions") },
   handler: async (ctx, args) => {
+    await requireMember(ctx, args.sessionId)
+
     const session = await ctx.db.get(args.sessionId)
     if (!session) return null
 

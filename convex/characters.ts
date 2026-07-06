@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { memberOf, requireUser, seatedMember } from "./lib/auth"
+import { requireMember, seatedMember } from "./lib/auth"
 import { enforcedMutation } from "./lib/enforce"
 import { initialCurrentState } from "../src/domain/character"
 import { castSpell as castSpellFlow } from "../src/domain/flows/casting"
@@ -80,30 +80,29 @@ export const getForSession = query({
     seat: v.optional(v.id("sessionMembers")),
   },
   handler: async (ctx, args) => {
+    // The gate refuses non-members (issue #37); null now only ever means
+    // "this member has no character yet" — the client's seeding trigger.
     const member = await seatedMember(ctx, args.sessionId, args.seat)
-    if (!member) return null
 
-    const character = await ctx.db
+    return await ctx.db
       .query("characters")
       .withIndex("by_sessionMemberId", (q) =>
         q.eq("sessionMemberId", member._id),
       )
       .unique()
-
-    return character
   },
 })
 
 // The Session roster (PRD #11, issue #17): every PC in the Session, readable
-// by every session member. Scoping is server-side — a non-member gets null,
-// never an empty roster they could confuse for a real one. Sheets carry no
-// secrets by table norm (hidden things live in the feed, which already
-// filters server-side), so the full documents go to every member.
+// by every session member. Scoping is server-side — a non-member gets the
+// gate's typed refusal (issue #37), never an empty roster they could confuse
+// for a real one. Sheets carry no secrets by table norm (hidden things live
+// in the feed, which already filters server-side), so the full documents go
+// to every member.
 export const listForSession = query({
   args: { sessionId: v.id("sessions") },
   handler: async (ctx, args) => {
-    const member = await memberOf(ctx, args.sessionId)
-    if (!member) return null
+    await requireMember(ctx, args.sessionId)
 
     return await ctx.db
       .query("characters")
@@ -122,17 +121,7 @@ export const seed = mutation({
     data: schemaToConvexValidator(CharacterSeedData),
   },
   handler: async (ctx, args) => {
-    const user = await requireUser(ctx)
-
-    const members = await ctx.db
-      .query("sessionMembers")
-      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
-      .collect()
-
-    const member = members.find((m) => m.userId === user._id)
-    if (!member) {
-      throw new Error("Not a member of this session")
-    }
+    const member = await requireMember(ctx, args.sessionId)
 
     // Idempotent: skip if character already exists
     const existing = await ctx.db
@@ -147,7 +136,7 @@ export const seed = mutation({
     return await ctx.db.insert("characters", {
       sessionMemberId: member._id,
       sessionId: args.sessionId,
-      userId: user._id,
+      userId: member.userId,
       ...args.data,
       ...initialCurrentState(args.data),
     })
