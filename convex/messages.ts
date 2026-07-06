@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { mutation } from "./_generated/server"
 import { requireUser } from "./lib/auth"
 
 export const send = mutation({
@@ -35,44 +35,6 @@ export const send = mutation({
         whisperTargetId: args.whisperTargetId,
       }),
       timestamp: Date.now(),
-    })
-  },
-})
-
-export const list = query({
-  args: { sessionId: v.id("sessions") },
-  handler: async (ctx, args) => {
-    const user = await requireUser(ctx)
-
-    const members = await ctx.db
-      .query("sessionMembers")
-      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
-      .collect()
-
-    const member = members.find((m) => m.userId === user._id)
-    const isStoryteller = member?.role === "storyteller"
-
-    const messages = await ctx.db
-      .query("messages")
-      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
-      .order("desc")
-      .take(100)
-
-    // Visibility filter:
-    // - Public + system messages: visible to all
-    // - Whispers: visible to sender, target, and storyteller
-    return messages.filter((m) => {
-      if (m.visibilityType === "public" || m.visibilityType === "system") {
-        return true
-      }
-      if (m.visibilityType === "whisper") {
-        return (
-          isStoryteller ||
-          m.senderId === user._id ||
-          m.whisperTargetId === user._id
-        )
-      }
-      return false
     })
   },
 })
