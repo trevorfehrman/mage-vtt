@@ -18,10 +18,11 @@
  * document in place.
  */
 
-import { Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { CharacterSheet } from "../src/domain/character"
 import { formatRotePool } from "../src/domain/rote-pool"
 import { CharacterData } from "../src/domain/tables"
+import { convexRun, runScript } from "./lib/script-runtime"
 
 const path = process.argv[2]
 if (!path) {
@@ -118,19 +119,10 @@ console.log(
     `${sheet.rotes.length} known rote(s) — into session ${sessionId} for user ${userId}`,
 )
 
-const proc = Bun.spawnSync(
-  [
-    "bunx",
-    "convex",
-    "run",
-    "ingest:upsertCharacter",
-    JSON.stringify({ sessionId, userId, data }),
-  ],
-  { stdout: "inherit", stderr: "inherit" },
+await runScript(
+  Effect.gen(function* () {
+    const out = yield* convexRun("ingest:upsertCharacter", { sessionId, userId, data })
+    if (out) console.log(out)
+    console.log("Done — the character document was created or replaced.")
+  }),
 )
-
-if (proc.exitCode !== 0) {
-  console.error("Ingestion failed.")
-  process.exit(proc.exitCode ?? 1)
-}
-console.log("Done — the character document was created or replaced.")

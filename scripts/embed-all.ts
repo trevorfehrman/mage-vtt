@@ -4,91 +4,62 @@
  * - Fine-grained rule chunks (data/rule-chunks.json)
  *
  * The Mage book chunks are already in Convex from the first pipeline run.
- * This script adds the remaining sources.
+ * This script adds the remaining sources. Re-runs are safe: insertRuleChunk
+ * upserts by chunkId.
  *
  * Usage: bun scripts/embed-all.ts
  */
 
 import OpenAI from "openai"
 import { ConvexHttpClient } from "convex/browser"
+import { Effect, Redacted, Schema } from "effect"
 import { api } from "../convex/_generated/api"
+import {
+  embedAndUploadChunks,
+  embeddingEnv,
+  loadJson,
+  RuleChunk,
+  runScript,
+} from "./lib/script-runtime"
 
 const DATA_DIR = new URL("../data/", import.meta.url).pathname
-const BATCH_SIZE = 50
-const CONVEX_URL = process.env.VITE_CONVEX_URL!
 
-const openai = new OpenAI()
-const convex = new ConvexHttpClient(CONVEX_URL)
+const program = Effect.gen(function* () {
+  // Env validates before any work starts (issue #38).
+  const env = yield* embeddingEnv
+  const openai = new OpenAI({ apiKey: Redacted.value(env.openaiKey) })
+  const convex = new ConvexHttpClient(env.convexUrl)
 
-interface Chunk {
-  id: string
-  text: string
-  chapter: string
-  section: string
-  contentType: string
-  pageStart: number
-  pageEnd: number
-  charCount: number
-  source: string
-  domain?: string
-}
-
-async function embedBatch(texts: string[]): Promise<number[][]> {
-  const response = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: texts,
+  const wodChunks = yield* loadJson(
+    `${DATA_DIR}wod-chunks.json`,
+    Schema.Array(RuleChunk),
+  )
+  yield* embedAndUploadChunks({
+    openai,
+    convex,
+    insertRuleChunk: api.ingest.insertRuleChunk,
+    chunks: wodChunks,
+    label: "WoD Core Rulebook",
   })
-  return response.data.map((d) => d.embedding)
-}
 
-async function uploadChunks(chunks: Chunk[], label: string) {
-  console.log(`\n=== Uploading ${label}: ${chunks.length} chunks ===`)
+  const ruleChunks = yield* loadJson(
+    `${DATA_DIR}rule-chunks.json`,
+    Schema.Array(RuleChunk),
+  )
+  yield* embedAndUploadChunks({
+    openai,
+    convex,
+    insertRuleChunk: api.ingest.insertRuleChunk,
+    chunks: ruleChunks,
+    label: "Fine-grained Rule Chunks",
+  })
 
-  for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
-    const batch = chunks.slice(i, i + BATCH_SIZE)
-    const texts = batch.map((c) => c.text)
-
-    try {
-      const embeddings = await embedBatch(texts)
-
-      for (let j = 0; j < batch.length; j++) {
-        const chunk = batch[j]
-        await convex.mutation(api.ingest.insertRuleChunk, {
-          chunkId: chunk.id,
-          text: chunk.text,
-          embedding: embeddings[j],
-          chapter: chunk.chapter,
-          section: chunk.section,
-          contentType: chunk.contentType,
-          pageStart: chunk.pageStart,
-          pageEnd: chunk.pageEnd,
-          source: chunk.source,
-        })
-      }
-
-      console.log(`  Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(chunks.length / BATCH_SIZE)}: ✓`)
-    } catch (err) {
-      console.error(`  Batch failed:`, err)
-      process.exit(1)
-    }
-  }
-
-  console.log(`  Done: ${chunks.length} chunks uploaded`)
-}
-
-async function main() {
-  // WoD chunks
-  const wodChunks: Chunk[] = await Bun.file(`${DATA_DIR}wod-chunks.json`).json()
-  await uploadChunks(wodChunks, "WoD Core Rulebook")
-
-  // Fine-grained rule chunks
-  const ruleChunks: Chunk[] = await Bun.file(`${DATA_DIR}rule-chunks.json`).json()
-  await uploadChunks(ruleChunks, "Fine-grained Rule Chunks")
-
-  const totalTokens = (wodChunks.reduce((s, c) => s + c.charCount, 0) +
-    ruleChunks.reduce((s, c) => s + c.charCount, 0)) / 4
+  const totalTokens =
+    (wodChunks.reduce((s, c) => s + c.charCount, 0) +
+      ruleChunks.reduce((s, c) => s + c.charCount, 0)) /
+    4
   console.log(`\nTotal tokens embedded: ~${Math.round(totalTokens).toLocaleString()}`)
-  console.log(`Estimated cost: ~$${(totalTokens / 1_000_000 * 0.02).toFixed(4)}`)
-}
+  console.log(`Estimated cost: ~$${((totalTokens / 1_000_000) * 0.02).toFixed(4)}`)
+})
 
-main()
+await runScript(program)

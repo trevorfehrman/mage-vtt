@@ -15,35 +15,28 @@
  * auth) into an internalMutation — no UI, no public endpoint.
  */
 
-const [sessionId, ...nameParts] = process.argv.slice(2)
-const displayName = nameParts.join(" ")
-if (!sessionId || !displayName) {
-  console.error("Usage: bun scripts/add-phantom-member.ts <sessionId> <display name...>")
-  process.exit(1)
-}
+import { Effect } from "effect"
+import { convexRun, runScript, UsageError } from "./lib/script-runtime"
 
-const proc = Bun.spawnSync(
-  [
-    "bunx",
-    "convex",
-    "run",
-    "ingest:addPhantomMember",
-    JSON.stringify({ sessionId, displayName }),
-  ],
-  { stdout: "pipe", stderr: "inherit" },
-)
+const program = Effect.gen(function* () {
+  const [sessionId, ...nameParts] = process.argv.slice(2)
+  const displayName = nameParts.join(" ")
+  if (!sessionId || !displayName) {
+    return yield* new UsageError({
+      message: "Usage: bun scripts/add-phantom-member.ts <sessionId> <display name...>",
+    })
+  }
 
-if (proc.exitCode !== 0) {
-  console.error("Failed to add phantom member.")
-  process.exit(proc.exitCode ?? 1)
-}
+  const out = yield* convexRun("ingest:addPhantomMember", { sessionId, displayName })
+  console.log(out)
 
-const out = proc.stdout.toString().trim()
-console.log(out)
-const userId = /"userId":\s*"([^"]+)"/.exec(out)?.[1]
-if (userId) {
-  console.log(
-    `\nPhantom in place. Put this in the character file's linkage:\n` +
-      `  { "sessionId": "${sessionId}", "userId": "${userId}", ... }`,
-  )
-}
+  const userId = /"userId":\s*"([^"]+)"/.exec(out)?.[1]
+  if (userId) {
+    console.log(
+      `\nPhantom in place. Put this in the character file's linkage:\n` +
+        `  { "sessionId": "${sessionId}", "userId": "${userId}", ... }`,
+    )
+  }
+})
+
+await runScript(program)
