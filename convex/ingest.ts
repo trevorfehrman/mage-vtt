@@ -1,8 +1,39 @@
+import type { WithoutSystemFields } from "convex/server"
 import { internalMutation, mutation } from "./_generated/server"
+import type { Doc, TableNames } from "./_generated/dataModel"
+import type { MutationCtx } from "./_generated/server"
 import { v } from "convex/values"
 import { rotePoolValidator } from "./schema"
 import { schemaToConvexValidator } from "../src/domain/schema-bridge"
 import { CharacterData } from "../src/domain/tables"
+
+/**
+ * Reference-data upsert (issue #29): the one owner of the query-by-index →
+ * delete-if-present → insert dance the ingest mutations share. `key` lists the
+ * named index's fields in index order; every row matching the whole key is
+ * deleted (so a re-run converges even if past sloppier upserts left
+ * duplicates) and `doc` replaces it whole. Loosely typed inside: Convex types
+ * index names and range builders per table, which a table-generic helper
+ * cannot express — the mutations' args validators keep the field types honest.
+ */
+const upsertByKey = async <Table extends TableNames>(
+  ctx: MutationCtx,
+  table: Table,
+  index: string,
+  key: Record<string, string | number>,
+  doc: WithoutSystemFields<Doc<Table>>,
+): Promise<void> => {
+  const existing = await ctx.db
+    .query(table)
+    .withIndex(index as never, (q) => {
+      let range: any = q
+      for (const [field, value] of Object.entries(key)) range = range.eq(field, value)
+      return range
+    })
+    .collect()
+  for (const row of existing) await ctx.db.delete(row._id)
+  await ctx.db.insert(table, doc)
+}
 
 export const insertRuleChunk = mutation({
   args: {
@@ -16,17 +47,8 @@ export const insertRuleChunk = mutation({
     pageEnd: v.number(),
     source: v.string(),
   },
-  handler: async (ctx, args) => {
-    // Upsert: delete existing chunk with same ID, then insert
-    const existing = await ctx.db
-      .query("ruleChunks")
-      .withIndex("by_chunkId", (q) => q.eq("chunkId", args.chunkId))
-      .first()
-    if (existing) {
-      await ctx.db.delete(existing._id)
-    }
-    await ctx.db.insert("ruleChunks", args)
-  },
+  handler: async (ctx, args) =>
+    upsertByKey(ctx, "ruleChunks", "by_chunkId", { chunkId: args.chunkId }, args),
 })
 
 export const insertSpell = mutation({
@@ -42,19 +64,22 @@ export const insertSpell = mutation({
     description: v.string(),
     pageStart: v.number(),
   },
-  handler: async (ctx, args) => {
-    // Upsert by name + arcanum
-    const existing = await ctx.db
-      .query("spells")
-      .withIndex("by_name", (q) => q.eq("name", args.name))
-      .first()
-    if (existing && existing.arcanum === args.arcanum) {
-      await ctx.db.delete(existing._id)
-    }
-    await ctx.db.insert("spells", args)
-  },
+  // Spell names repeat across arcana (Sight, Protection, …), so identity is
+  // the (name, arcanum) pair — the old name-only lookup let re-runs stack
+  // duplicate rows for the later arcana.
+  handler: async (ctx, args) =>
+    upsertByKey(
+      ctx,
+      "spells",
+      "by_name_arcanum",
+      { name: args.name, arcanum: args.arcanum },
+      args,
+    ),
 })
 
+// Deliberately a plain insert, not an upsert: rotes have no natural key — the
+// same (spell, arcanum, order) triple names several distinct rotes in the
+// book — so the pipeline clears the table (`clearTable`) and re-inserts.
 export const insertRote = mutation({
   args: {
     spellName: v.string(),
@@ -80,14 +105,8 @@ export const insertPath = mutation({
     resistanceBonusAttribute: v.string(),
     resistanceBonusValue: v.number(),
   },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("paths")
-      .withIndex("by_name", (q) => q.eq("name", args.name))
-      .first()
-    if (existing) await ctx.db.delete(existing._id)
-    await ctx.db.insert("paths", args)
-  },
+  handler: async (ctx, args) =>
+    upsertByKey(ctx, "paths", "by_name", { name: args.name }, args),
 })
 
 export const insertOrder = mutation({
@@ -96,14 +115,8 @@ export const insertOrder = mutation({
     roteSkills: v.array(v.string()),
     description: v.string(),
   },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("orders")
-      .withIndex("by_name", (q) => q.eq("name", args.name))
-      .first()
-    if (existing) await ctx.db.delete(existing._id)
-    await ctx.db.insert("orders", args)
-  },
+  handler: async (ctx, args) =>
+    upsertByKey(ctx, "orders", "by_name", { name: args.name }, args),
 })
 
 /**
