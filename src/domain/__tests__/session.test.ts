@@ -1,4 +1,4 @@
-import { Effect } from "effect"
+import { Effect, Random } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import {
   createSession,
@@ -6,13 +6,31 @@ import {
   getMembers,
   assignCharacter,
 } from "../session"
+import { CharacterId, PlayerId } from "../ids"
 
 describe("Session", () => {
+  it.effect("invite codes are deterministic under a seeded Random", () =>
+    Effect.gen(function* () {
+      const a = yield* createSession({
+        name: "Seeded A",
+        storytellerId: PlayerId.make("st-1"),
+      }).pipe(Random.withSeed("invite-seed"))
+      const b = yield* createSession({
+        name: "Seeded B",
+        storytellerId: PlayerId.make("st-1"),
+      }).pipe(Random.withSeed("invite-seed"))
+
+      expect(a.inviteCode).toBe(b.inviteCode)
+      expect(a.id).toBe(b.id)
+      // 4-4 groups from the confusable-free alphabet (no I/O/0/1)
+      expect(a.inviteCode).toMatch(/^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/)
+    }),
+  )
   it.effect("creates a session with the creator as storyteller", () =>
     Effect.gen(function* () {
       const session = yield* createSession({
         name: "The Boston Chronicles",
-        storytellerId: "user-123",
+        storytellerId: PlayerId.make("user-123"),
       })
 
       expect(session.name).toBe("The Boston Chronicles")
@@ -32,12 +50,12 @@ describe("Session", () => {
     Effect.gen(function* () {
       const session = yield* createSession({
         name: "Test Game",
-        storytellerId: "st-1",
+        storytellerId: PlayerId.make("st-1"),
       })
 
       const membership = yield* joinSession({
         inviteCode: session.inviteCode,
-        playerId: "player-1",
+        playerId: PlayerId.make("player-1"),
         sessions: [session],
       })
 
@@ -51,12 +69,12 @@ describe("Session", () => {
     Effect.gen(function* () {
       const session = yield* createSession({
         name: "Test Game",
-        storytellerId: "st-1",
+        storytellerId: PlayerId.make("st-1"),
       })
 
       const error = yield* joinSession({
         inviteCode: "WRONG-CODE",
-        playerId: "player-1",
+        playerId: PlayerId.make("player-1"),
         sessions: [session],
       }).pipe(Effect.flip)
 
@@ -68,13 +86,13 @@ describe("Session", () => {
     Effect.gen(function* () {
       const session = yield* createSession({
         name: "Test Game",
-        storytellerId: "st-1",
+        storytellerId: PlayerId.make("st-1"),
       })
 
       // First join succeeds
       yield* joinSession({
         inviteCode: session.inviteCode,
-        playerId: "player-1",
+        playerId: PlayerId.make("player-1"),
         sessions: [session],
       })
 
@@ -84,13 +102,13 @@ describe("Session", () => {
         ...session,
         members: [
           ...session.members,
-          { userId: "player-1", role: "player" as const, characterId: undefined },
+          { userId: PlayerId.make("player-1"), role: "player" as const, characterId: undefined },
         ],
       }
 
       const error = yield* joinSession({
         inviteCode: updatedSession.inviteCode,
-        playerId: "player-1",
+        playerId: PlayerId.make("player-1"),
         sessions: [updatedSession],
       }).pipe(Effect.flip)
 
@@ -102,14 +120,14 @@ describe("Session", () => {
     Effect.gen(function* () {
       const session = yield* createSession({
         name: "Test Game",
-        storytellerId: "st-1",
+        storytellerId: PlayerId.make("st-1"),
       })
 
       // Add the storyteller's character
       const updated = yield* assignCharacter({
         session,
-        userId: "st-1",
-        characterId: "char-456",
+        userId: PlayerId.make("st-1"),
+        characterId: CharacterId.make("char-456"),
       })
 
       const members = yield* getMembers(updated)
@@ -122,13 +140,13 @@ describe("Session", () => {
     Effect.gen(function* () {
       const session = yield* createSession({
         name: "Test Game",
-        storytellerId: "st-1",
+        storytellerId: PlayerId.make("st-1"),
       })
 
       const error = yield* assignCharacter({
         session,
-        userId: "not-a-member",
-        characterId: "char-789",
+        userId: PlayerId.make("not-a-member"),
+        characterId: CharacterId.make("char-789"),
       }).pipe(Effect.flip)
 
       expect(error._tag).toBe("SessionNotFound")

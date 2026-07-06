@@ -1,26 +1,26 @@
-import { Effect, Schema } from "effect"
+import { Effect, Random, Schema } from "effect"
+import { CharacterId, PlayerId, SessionId } from "./ids"
+import { SessionRole } from "./roles"
 
 // --- Types ---
 
-const Role = Schema.Literals(["storyteller", "player"])
-
 export class SessionMember extends Schema.Class<SessionMember>("SessionMember")({
-  userId: Schema.String,
-  role: Role,
-  characterId: Schema.optional(Schema.String),
+  userId: PlayerId,
+  role: SessionRole,
+  characterId: Schema.optional(CharacterId),
 }) {}
 
 export class SessionMembership extends Schema.Class<SessionMembership>("SessionMembership")({
-  userId: Schema.String,
-  role: Role,
-  sessionId: Schema.String,
-  characterId: Schema.optional(Schema.String),
+  userId: PlayerId,
+  role: SessionRole,
+  sessionId: SessionId,
+  characterId: Schema.optional(CharacterId),
 }) {}
 
 export class Session extends Schema.Class<Session>("Session")({
-  id: Schema.String,
+  id: SessionId,
   name: Schema.String,
-  storytellerId: Schema.String,
+  storytellerId: PlayerId,
   inviteCode: Schema.String,
   members: Schema.Array(SessionMember),
 }) {}
@@ -39,23 +39,28 @@ export class AlreadyJoined extends Schema.TaggedErrorClass<AlreadyJoined>()(
 
 // --- Helpers ---
 
+const INVITE_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // no I/O/0/1 to avoid confusion
+
 const generateInviteCode = Effect.gen(function* () {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // no I/O/0/1 to avoid confusion
-  let code = ""
-  for (let i = 0; i < 8; i++) {
-    const idx = Math.floor(Math.random() * chars.length)
-    code += chars[idx]
-  }
+  const indices = yield* Effect.forEach(Array.from({ length: 8 }), () =>
+    Random.nextIntBetween(0, INVITE_CODE_CHARS.length - 1),
+  )
+  const code = indices.map((i) => INVITE_CODE_CHARS[i]).join("")
   return `${code.slice(0, 4)}-${code.slice(4)}`
 })
 
-const generateId = Effect.sync(() => crypto.randomUUID())
+const generateId = Effect.gen(function* () {
+  const nibbles = yield* Effect.forEach(Array.from({ length: 32 }), () =>
+    Random.nextIntBetween(0, 15),
+  )
+  return SessionId.make(nibbles.map((n) => n.toString(16)).join(""))
+})
 
 // --- Public API ---
 
 export const createSession = Effect.fn("Session.create")(function* (input: {
   name: string
-  storytellerId: string
+  storytellerId: PlayerId
 }) {
   const id = yield* generateId
   const inviteCode = yield* generateInviteCode
@@ -77,26 +82,23 @@ export const createSession = Effect.fn("Session.create")(function* (input: {
 
 export const joinSession = Effect.fn("Session.join")(function* (input: {
   inviteCode: string
-  playerId: string
+  playerId: PlayerId
   sessions: ReadonlyArray<Session>
 }) {
   // Find session by invite code
   const session = input.sessions.find((s) => s.inviteCode === input.inviteCode)
   if (!session) {
-    yield* new SessionNotFound({
+    return yield* new SessionNotFound({
       message: `No session found with invite code: ${input.inviteCode}`,
     })
-    // unreachable but TypeScript needs it
-    throw new Error("unreachable")
   }
 
   // Check if already a member
   const existing = session.members.find((m) => m.userId === input.playerId)
   if (existing) {
-    yield* new AlreadyJoined({
+    return yield* new AlreadyJoined({
       message: `User ${input.playerId} is already in session ${session.name}`,
     })
-    throw new Error("unreachable")
   }
 
   return new SessionMembership({
@@ -115,16 +117,15 @@ export const getMembers = Effect.fn("Session.getMembers")(function* (
 
 export const assignCharacter = Effect.fn("Session.assignCharacter")(function* (input: {
   session: Session
-  userId: string
-  characterId: string
+  userId: PlayerId
+  characterId: CharacterId
 }) {
   const memberIndex = input.session.members.findIndex((m) => m.userId === input.userId)
 
   if (memberIndex === -1) {
-    yield* new SessionNotFound({
+    return yield* new SessionNotFound({
       message: `User ${input.userId} is not a member of session ${input.session.name}`,
     })
-    throw new Error("unreachable")
   }
 
   const updatedMembers = input.session.members.map((m, i) =>

@@ -89,15 +89,13 @@ export const getWeapon = Effect.fn("Combat.getWeapon")(function* (name: string) 
   const ranged = RANGED_WEAPONS.find((w) => w.name === name)
   if (ranged) return ranged
 
-  yield* new CombatError({ message: `Unknown weapon: ${name}` })
-  throw new Error("unreachable")
+  return yield* new CombatError({ message: `Unknown weapon: ${name}` })
 })
 
 export const getArmor = Effect.fn("Combat.getArmor")(function* (name: string) {
   const armor = ARMOR.find((a) => a.name === name)
   if (!armor) {
-    yield* new CombatError({ message: `Unknown armor: ${name}` })
-    throw new Error("unreachable")
+    return yield* new CombatError({ message: `Unknown armor: ${name}` })
   }
   return armor
 })
