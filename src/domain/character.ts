@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
-import { HealthTrack, type HealthBox } from "./damage"
+import { HealthTrack, healthBox, type HealthBox } from "./damage"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "./ids"
 import { Dots, Mana, Willpower } from "./quantities"
 import { RoteArcanumName, RotePool } from "./rote-pool"
@@ -224,7 +224,7 @@ export const initialCurrentState = (
   willpowerCurrent: number
   manaCurrent: number
 } => ({
-  healthTrack: Array.from({ length: healthOf(traits) }, () => "empty" as const),
+  healthTrack: Array.from({ length: healthOf(traits) }, () => healthBox("empty")),
   willpowerCurrent: willpowerOf(traits),
   manaCurrent: maxManaOf(traits),
 })

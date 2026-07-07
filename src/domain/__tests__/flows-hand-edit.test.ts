@@ -1,5 +1,6 @@
 import { Effect } from "effect"
 import { describe, expect, it } from "@effect/vitest"
+import { healthBox } from "../damage"
 import { handEditSheet } from "../flows/hand-edit"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "../ids"
 import { Membership } from "../membership"
@@ -222,19 +223,72 @@ describe("Flows.handEdit.handEditSheet (issue #19)", () => {
       yield* handEditSheet({
         sessionId: SESSION,
         characterId: CHARACTER,
-        healthTrack: ["lethal", "bashing", "empty", "empty", "empty", "empty", "empty"],
+        healthTrack: [
+          healthBox("lethal"),
+          healthBox("bashing"),
+          ...Array.from({ length: 5 }, () => healthBox("empty")),
+        ],
       }).pipe(Effect.provide(store.layer))
 
       expect(store.sheets.get(CHARACTER)!.healthTrack).toEqual([
-        "lethal",
-        "bashing",
-        "empty",
-        "empty",
-        "empty",
-        "empty",
-        "empty",
+        healthBox("lethal"),
+        healthBox("bashing"),
+        ...Array.from({ length: 5 }, () => healthBox("empty")),
       ])
       expect(store.messages[0]!.text).toContain("Health")
+    }),
+  )
+
+  it.effect("resistance is hand-settable per box, and the narration counts the dots (issue #41)", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: ST_USER })
+
+      yield* handEditSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        healthTrack: [
+          healthBox("bashing", true),
+          healthBox("bashing"),
+          ...Array.from({ length: 5 }, () => healthBox("empty")),
+        ],
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.healthTrack.slice(0, 2)).toEqual([
+        healthBox("bashing", true),
+        healthBox("bashing"),
+      ])
+      expect(store.messages[0]!.text).toContain("2 bashing (1 resistant)")
+    }),
+  )
+
+  it.effect("resistance is hand-clearable per box — the representable is editable (ADR-0011)", () =>
+    Effect.gen(function* () {
+      const store = makeInMemory({
+        members: [aldous, briar, stella],
+        actor: { userId: ST_USER, isDev: false },
+        sheets: [
+          makeSheet({
+            healthTrack: [
+              healthBox("bashing", true),
+              ...Array.from({ length: 6 }, () => healthBox("empty")),
+            ],
+          }),
+        ],
+      })
+
+      yield* handEditSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        healthTrack: [
+          healthBox("bashing"),
+          ...Array.from({ length: 6 }, () => healthBox("empty")),
+        ],
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.healthTrack[0]).toEqual(healthBox("bashing"))
+      expect(store.messages[0]!.text).toContain(
+        "Health 1 bashing (1 resistant) → 1 bashing",
+      )
     }),
   )
 
@@ -296,7 +350,7 @@ describe("Flows.handEdit.handEditSheet (issue #19)", () => {
       const exit = yield* handEditSheet({
         sessionId: SESSION,
         characterId: CHARACTER,
-        healthTrack: ["mangled"],
+        healthTrack: [{ severity: "mangled", resistant: false }],
       }).pipe(Effect.provide(store.layer), Effect.exit)
 
       expect(failureTag(exit)).toBe("InvalidHandEdit")
@@ -311,7 +365,7 @@ describe("Flows.handEdit.handEditSheet (issue #19)", () => {
       const exit = yield* handEditSheet({
         sessionId: SESSION,
         characterId: CHARACTER,
-        healthTrack: ["bashing", "empty"], // Aldous has 7 boxes
+        healthTrack: [healthBox("bashing"), healthBox("empty")], // Aldous has 7 boxes
       }).pipe(Effect.provide(store.layer), Effect.exit)
 
       expect(failureTag(exit)).toBe("InvalidHandEdit")

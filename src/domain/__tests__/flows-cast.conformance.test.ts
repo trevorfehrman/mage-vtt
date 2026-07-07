@@ -3,6 +3,7 @@ import { describe, expect, it } from "@effect/vitest"
 import type { MutationCtx } from "../../../convex/_generated/server"
 import { convexLive } from "../../../convex/lib/convexLive"
 import { CharacterSheet } from "../character"
+import { healthBox } from "../damage"
 import { castSpell } from "../flows/casting"
 import { CharacterId, PlayerId, SessionId } from "../ids"
 import { Mana, Willpower } from "../quantities"
@@ -304,7 +305,7 @@ describe("Flows.casting.castSpell conformance (ConvexLive vs InMemory)", () => {
         yield* store.patchSheet(CharacterId.make(CHARACTER), {
           manaCurrent: Mana.make(4),
           willpowerCurrent: Willpower.make(3),
-          healthTrack: ["bashing", "empty"],
+          healthTrack: [healthBox("bashing"), healthBox("empty")],
         })
       })
       yield* patchIt.pipe(Effect.provide(convexLive(fake.ctx, { _id: USER })))
@@ -312,7 +313,7 @@ describe("Flows.casting.castSpell conformance (ConvexLive vs InMemory)", () => {
       const doc = fake.characters.get(CHARACTER)!
       expect(doc.manaCurrent).toBe(4)
       expect(doc.willpowerCurrent).toBe(3)
-      expect(doc.healthTrack).toEqual(["bashing", "empty"])
+      expect(doc.healthTrack).toEqual([healthBox("bashing"), healthBox("empty")])
       // Everything else untouched
       expect(doc.gnosis).toBe(1)
       expect(doc.name).toBe("Aldous")

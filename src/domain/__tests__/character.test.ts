@@ -124,7 +124,9 @@ describe("Character Sheet", () => {
     // The numbers the dev seed mutation used to hand-roll: health boxes are
     // Stamina 2 + Size 5; Willpower is Resolve 2 + (Composure 3 + 1 Moros
     // bonus); Mana starts at the Gnosis-1 maximum.
-    expect(state.healthTrack).toEqual(Array.from({ length: 7 }, () => "empty"))
+    expect(state.healthTrack).toEqual(
+      Array.from({ length: 7 }, () => ({ severity: "empty", resistant: false })),
+    )
     expect(state.willpowerCurrent).toBe(6)
     expect(state.manaCurrent).toBe(10)
   })

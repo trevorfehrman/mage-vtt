@@ -164,7 +164,7 @@ export const convexLive = (
               ? { willpowerCurrent: patch.willpowerCurrent }
               : {}),
             ...(patch.healthTrack !== undefined
-              ? { healthTrack: [...patch.healthTrack] }
+              ? { healthTrack: patch.healthTrack.map((box) => ({ ...box })) }
               : {}),
           }),
         )

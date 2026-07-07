@@ -1,6 +1,7 @@
 import { Effect, Exit, Random } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import type { CharacterSheet } from "../character"
+import { healthBox } from "../damage"
 import { castSpell } from "../flows/casting"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "../ids"
 import { Membership } from "../membership"
@@ -734,7 +735,7 @@ const _identityUnreachable: SheetPatch = { name: "Renamed" }
 const _playStateReachable: SheetPatch = {
   manaCurrent: Mana.make(1),
   willpowerCurrent: Willpower.make(2),
-  healthTrack: ["empty"],
+  healthTrack: [healthBox("empty")],
 }
 void _traitsUnreachable
 void _identityUnreachable

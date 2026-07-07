@@ -1,8 +1,10 @@
+import { Schema } from "effect"
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireMember, seatedMember } from "./lib/auth"
 import { enforcedMutation } from "./lib/enforce"
 import { initialCurrentState } from "../src/domain/character"
+import { HealthBox } from "../src/domain/damage"
 import { castSpell as castSpellFlow } from "../src/domain/flows/casting"
 import { castRote as castRoteFlow } from "../src/domain/flows/rote-cast"
 import { handEditSheet as handEditSheetFlow } from "../src/domain/flows/hand-edit"
@@ -58,16 +60,10 @@ export const handEdit = enforcedMutation({
     characterId: v.id("characters"),
     manaCurrent: v.optional(v.number()),
     willpowerCurrent: v.optional(v.number()),
-    healthTrack: v.optional(
-      v.array(
-        v.union(
-          v.literal("empty"),
-          v.literal("bashing"),
-          v.literal("lethal"),
-          v.literal("aggravated"),
-        ),
-      ),
-    ),
+    // The (severity, resistant) pair (issue #41) — the dot beneath the box is
+    // hand-editable like everything the sheet can represent (ADR-0011). The
+    // validator is bridge-derived from the one box vocabulary (ADR-0005).
+    healthTrack: v.optional(schemaToConvexValidator(Schema.Array(HealthBox))),
   },
   flow: handEditSheetFlow,
 })

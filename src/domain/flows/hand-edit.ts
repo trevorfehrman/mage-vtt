@@ -32,7 +32,13 @@ export interface HandEditArgs {
   readonly characterId: string
   readonly manaCurrent?: number
   readonly willpowerCurrent?: number
-  readonly healthTrack?: ReadonlyArray<string>
+  /** Boxes arrive as (severity, resistant) pairs (issue #41). Legacy bare
+   * strings live only in stored documents, normalized at the sheet decode —
+   * the wire speaks the pair. */
+  readonly healthTrack?: ReadonlyArray<{
+    readonly severity: string
+    readonly resistant: boolean
+  }>
 }
 
 // --- Errors (ADR-0010) ---
@@ -54,12 +60,21 @@ const HandEditPatch = Schema.Struct({
   healthTrack: Schema.optionalKey(HealthTrack),
 })
 
-/** "clear" | "1 bashing" | "2 lethal, 1 aggravated" — the track, narrated. */
+/** "clear" | "1 bashing" | "2 lethal (1 resistant), 1 aggravated" — the
+ * track, narrated; resistant dots (issue #41) counted per severity. */
 const describeTrack = (track: ReadonlyArray<HealthBox>): string => {
   const wounds = DamageType.literals
-    .map((state) => [state, track.filter((box) => box === state).length] as const)
+    .map((severity) => {
+      const marked = track.filter((box) => box.severity === severity)
+      const resistant = marked.filter((box) => box.resistant).length
+      return [severity, marked.length, resistant] as const
+    })
     .filter(([, count]) => count > 0)
-    .map(([state, count]) => `${count} ${state}`)
+    .map(([severity, count, resistant]) =>
+      resistant > 0
+        ? `${count} ${severity} (${resistant} resistant)`
+        : `${count} ${severity}`,
+    )
   return wounds.length > 0 ? wounds.join(", ") : "clear"
 }
 

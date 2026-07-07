@@ -35,6 +35,11 @@ const decodeSheet = (input: unknown): CharacterSheetData | null => {
   }
 }
 
+// Remount-key fragment for the hand-edit form: one token per box, `*` marking
+// a Resistant dot, so any remote track change resets the form's draft.
+const trackKey = (track: CharacterSheetData["healthTrack"]): string =>
+  track.map((b) => `${b.severity}${b.resistant ? "*" : ""}`).join(",")
+
 export const Route = createFileRoute("/sessions/$sessionId")({
   beforeLoad: ({ context }) => {
     if (!context.isAuthenticated) {
@@ -232,7 +237,7 @@ function SessionPage() {
             edit affordance in the app; players never see edit controls. */}
         {isStoryteller && (
           <HandEditForm
-            key={`${sheet.id}:${sheet.manaCurrent}:${sheet.willpowerCurrent}:${sheet.healthTrack.join(",")}`}
+            key={`${sheet.id}:${sheet.manaCurrent}:${sheet.willpowerCurrent}:${trackKey(sheet.healthTrack)}`}
             sessionId={sessionId as Id<"sessions">}
             characterId={viewed._id}
             character={sheet}

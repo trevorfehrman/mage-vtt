@@ -5,7 +5,7 @@ import {
   type CharacterSheet as CharacterSheetData,
   type KnownRote,
 } from "#/domain/character"
-import type { HealthBox } from "#/domain/damage"
+import type { BoxSeverity } from "#/domain/damage"
 import { formatRotePool } from "#/domain/rote-pool"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import { DotRating } from "./DotRating"
@@ -15,14 +15,30 @@ import type { useDicePool } from "#/hooks/use-dice-pool"
 type DicePoolAPI = ReturnType<typeof useDicePool>
 type CastAPI = ReturnType<typeof useCast>
 
-/** One glyph per health box state — shared with the hand-edit panel. */
-const HEALTH_BOX_GLYPHS: Record<HealthBox, string> = {
+/** One glyph per health box severity — shared with the hand-edit panel. */
+const HEALTH_BOX_GLYPHS: Record<BoxSeverity, string> = {
   empty: "",
   bashing: "╱",
   lethal: "✕",
   aggravated: "✳",
 }
-export const healthBoxGlyph = (box: HealthBox): string => HEALTH_BOX_GLYPHS[box]
+export const healthBoxGlyph = (severity: BoxSeverity): string =>
+  HEALTH_BOX_GLYPHS[severity]
+
+/**
+ * The dot beneath a health box — Resistant damage (issue #41), the wound
+ * Awakened magic can't heal. The slot always renders so the track's boxes
+ * don't shift when a dot appears; shared with the hand-edit panel.
+ */
+export function ResistantDot({ resistant }: { resistant: boolean }) {
+  return (
+    <span
+      className="size-[5px] rounded-full"
+      title={resistant ? "Resistant — heals only naturally" : undefined}
+      style={{ background: resistant ? "var(--accent)" : "transparent" }}
+    />
+  )
+}
 
 interface CharacterSheetProps {
   character: CharacterSheetData
@@ -210,16 +226,22 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
             <span className="mv-eyebrow w-16">Health</span>
             <div className="flex gap-1">
               {healthTrack.map((box, i) => (
-                <span
-                  key={i}
-                  className="mv-data grid size-5 place-items-center rounded-[2px] border text-[10px] font-bold"
-                  style={{
-                    borderColor: box === "empty" ? "var(--line)" : "var(--accent)",
-                    background: box === "empty" || box === "bashing" ? "transparent" : "var(--glow)",
-                    color: "var(--accent)",
-                  }}
-                >
-                  {healthBoxGlyph(box)}
+                <span key={i} className="flex flex-col items-center gap-[2px]">
+                  <span
+                    className="mv-data grid size-5 place-items-center rounded-[2px] border text-[10px] font-bold"
+                    style={{
+                      borderColor:
+                        box.severity === "empty" ? "var(--line)" : "var(--accent)",
+                      background:
+                        box.severity === "empty" || box.severity === "bashing"
+                          ? "transparent"
+                          : "var(--glow)",
+                      color: "var(--accent)",
+                    }}
+                  >
+                    {healthBoxGlyph(box.severity)}
+                  </span>
+                  <ResistantDot resistant={box.resistant} />
                 </span>
               ))}
             </div>

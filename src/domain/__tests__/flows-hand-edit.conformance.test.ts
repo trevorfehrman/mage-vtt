@@ -184,6 +184,48 @@ describe("Flows.handEdit.handEditSheet conformance (ConvexLive vs InMemory)", ()
     }),
   )
 
+  it.effect(
+    "both adapters agree on a resistant track edit over a legacy string document (issue #41)",
+    () =>
+      Effect.gen(function* () {
+        // The stored doc holds pre-#41 bare severity strings; the edit writes
+        // the (severity, resistant) pair — the exact migration seam.
+        const trackArgs = {
+          sessionId: SESSION,
+          characterId: CHARACTER,
+          healthTrack: [
+            { severity: "bashing", resistant: true },
+            ...Array.from({ length: 6 }, () => ({
+              severity: "empty",
+              resistant: false,
+            })),
+          ],
+        }
+
+        const inMem = makeInMemoryStore({ actor: ST_USER })
+        yield* handEditSheet(trackArgs).pipe(Effect.provide(inMem.layer))
+        const inMemTrack = inMem.sheets.get(CharacterId.make(CHARACTER))!.healthTrack
+
+        const fake = makeFakeCtx()
+        yield* handEditSheet(trackArgs).pipe(
+          Effect.provide(convexLive(fake.ctx, { _id: ST_USER })),
+        )
+
+        // The live adapter persists the pair…
+        const patchedDoc = fake.characters.get(CHARACTER)!
+        expect(patchedDoc.healthTrack).toEqual(trackArgs.healthTrack)
+        // …and the patched document decodes back to the same sheet InMemory
+        // holds — the round trip, both stored generations covered.
+        expect(
+          sheetFromDoc(patchedDoc as Record<string, unknown> & { _id: string })
+            .healthTrack,
+        ).toEqual(inMemTrack)
+        expect((fake.messages[0] as { text: string }).text).toEqual(
+          inMem.messages[0]!.text,
+        )
+      }),
+  )
+
   it.effect("both adapters reject the owning Player with NotStoryteller, zero writes", () =>
     Effect.gen(function* () {
       const inMem = makeInMemoryStore({ actor: USER })

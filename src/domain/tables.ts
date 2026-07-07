@@ -172,6 +172,17 @@ export const CharacterSeedData = Schema.Struct({
 })
 
 /**
+ * One health box as stored (issue #41): documents written before the
+ * (severity, resistant) pair carry the bare severity string, so the column
+ * stays a union superset of both generations — new writes are always pairs.
+ * Raw primitives here (ADR-0011); the vocabulary decode lives in `damage.ts`.
+ */
+const HealthBoxDoc = Schema.Union([
+  Schema.String,
+  Schema.Struct({ severity: Schema.String, resistant: Schema.Boolean }),
+])
+
+/**
  * The ingestable width of a character — identity, rated Traits, current state,
  * known Rotes — everything except the linkage columns. The Dev-side character
  * ingestion mutation (issue #16) derives its `data` arg validator from this
@@ -179,7 +190,7 @@ export const CharacterSeedData = Schema.Struct({
  */
 export const CharacterData = Schema.Struct({
   ...CharacterSeedData.fields,
-  healthTrack: Schema.Array(Schema.String),
+  healthTrack: Schema.Array(HealthBoxDoc),
   willpowerCurrent: Schema.Number,
   manaCurrent: Schema.Number,
   // Optional column: rows stored before issue #16 have no knownRotes.

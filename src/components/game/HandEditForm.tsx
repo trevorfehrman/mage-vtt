@@ -2,8 +2,8 @@ import { useState } from "react"
 import { useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import type { CharacterSheet as CharacterSheetData } from "#/domain/character"
-import type { HealthBox } from "#/domain/damage"
-import { healthBoxGlyph } from "./CharacterSheet"
+import { BoxSeverity, type HealthBox } from "#/domain/damage"
+import { ResistantDot, healthBoxGlyph } from "./CharacterSheet"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import type { Id } from "../../../convex/_generated/dataModel"
 
@@ -15,12 +15,11 @@ import type { Id } from "../../../convex/_generated/dataModel"
  * accepted edit is Override-stamped ("Repair") and lands in the Activity Log.
  */
 
-const HEALTH_CYCLE: ReadonlyArray<HealthBox> = [
-  "empty",
-  "bashing",
-  "lethal",
-  "aggravated",
-]
+// The one box vocabulary, in its declared order — never a parallel copy.
+const HEALTH_CYCLE: ReadonlyArray<BoxSeverity> = BoxSeverity.literals
+
+const sameBox = (a: HealthBox, b: HealthBox) =>
+  a.severity === b.severity && a.resistant === b.resistant
 
 export function HandEditForm({
   sessionId,
@@ -44,16 +43,29 @@ export function HandEditForm({
 
   const manaDirty = mana !== character.manaCurrent
   const willpowerDirty = willpower !== character.willpowerCurrent
-  const trackDirty = track.some((box, i) => box !== character.healthTrack[i])
+  const trackDirty = track.some((box, i) => !sameBox(box, character.healthTrack[i]!))
   const dirty = manaDirty || willpowerDirty || trackDirty
 
+  // Two orthogonal axes, two gestures: click cycles the wound severity;
+  // shift-click toggles the Resistant dot beneath the box (issue #41).
   const cycleBox = (i: number) =>
     setTrack((prev) =>
       prev.map((box, j) =>
         j === i
-          ? HEALTH_CYCLE[(HEALTH_CYCLE.indexOf(box) + 1) % HEALTH_CYCLE.length]!
+          ? {
+              ...box,
+              severity:
+                HEALTH_CYCLE[
+                  (HEALTH_CYCLE.indexOf(box.severity) + 1) % HEALTH_CYCLE.length
+                ]!,
+            }
           : box,
       ),
+    )
+
+  const toggleResistant = (i: number) =>
+    setTrack((prev) =>
+      prev.map((box, j) => (j === i ? { ...box, resistant: !box.resistant } : box)),
     )
 
   const submit = async () => {
@@ -65,7 +77,7 @@ export function HandEditForm({
         characterId,
         ...(manaDirty ? { manaCurrent: mana } : {}),
         ...(willpowerDirty ? { willpowerCurrent: willpower } : {}),
-        ...(trackDirty ? { healthTrack: [...track] } : {}),
+        ...(trackDirty ? { healthTrack: track.map((box) => ({ ...box })) } : {}),
       })
       // The edit lands on the sheet and in the Activity Log, Override-stamped.
     } catch (err) {
@@ -127,20 +139,26 @@ export function HandEditForm({
             {track.map((box, i) => (
               <button
                 key={i}
-                onClick={() => cycleBox(i)}
-                title="Click to cycle: clear → bashing → lethal → aggravated"
-                className="mv-data grid size-5 cursor-pointer place-items-center rounded-[2px] border text-[10px] font-bold"
-                style={{
-                  borderColor:
-                    box !== character.healthTrack[i]
+                onClick={(e) =>
+                  e.shiftKey ? toggleResistant(i) : cycleBox(i)
+                }
+                title="Click to cycle: clear → bashing → lethal → aggravated · Shift-click to toggle the Resistant dot"
+                className="flex cursor-pointer flex-col items-center gap-[2px]"
+              >
+                <span
+                  className="mv-data grid size-5 place-items-center rounded-[2px] border text-[10px] font-bold"
+                  style={{
+                    borderColor: !sameBox(box, character.healthTrack[i]!)
                       ? "var(--accent)"
-                      : box === "empty"
+                      : box.severity === "empty"
                         ? "var(--line)"
                         : "var(--dim)",
-                  color: "var(--accent)",
-                }}
-              >
-                {healthBoxGlyph(box)}
+                    color: "var(--accent)",
+                  }}
+                >
+                  {healthBoxGlyph(box.severity)}
+                </span>
+                <ResistantDot resistant={box.resistant} />
               </button>
             ))}
           </div>

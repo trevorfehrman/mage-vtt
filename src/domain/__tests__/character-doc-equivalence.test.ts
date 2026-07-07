@@ -96,6 +96,16 @@ const handWritten = v.object({
   manaCurrent: v.number(),
 })
 
+// Columns *widened* after the migration — each a union superset of its frozen
+// shape, so every document stored under it still validates. `healthTrack`
+// (issue #41): the bare severity string grew the (severity, resistant) pair;
+// the plain-string member must remain a branch or pre-#41 documents brick.
+const widenedColumns = {
+  healthTrack: v.array(
+    v.union(v.string(), v.object({ severity: v.string(), resistant: v.boolean() })),
+  ),
+}
+
 // Columns added after the migration, each *optional* so every document stored
 // under the frozen shape above still validates. `knownRotes`: issue #16.
 const addedColumns = {
@@ -122,9 +132,13 @@ const structuralJson = (validator: unknown): unknown =>
   JSON.parse(JSON.stringify((validator as { json: unknown }).json))
 
 describe("characters table: derived validator equals the hand-written shape", () => {
-  it("schemaToConvexValidator(CharacterDoc) compiles to the frozen definition plus the optional added columns", () => {
+  it("schemaToConvexValidator(CharacterDoc) compiles to the frozen definition plus the widened and optional added columns", () => {
     const derived = schemaToConvexValidator(CharacterDoc)
-    const expected = v.object({ ...handWritten.fields, ...addedColumns })
+    const expected = v.object({
+      ...handWritten.fields,
+      ...widenedColumns,
+      ...addedColumns,
+    })
     expect(structuralJson(derived)).toEqual(structuralJson(expected))
   })
 })
