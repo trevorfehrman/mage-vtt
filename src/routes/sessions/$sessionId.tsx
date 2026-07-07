@@ -3,6 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router"
 import { useMutation, useQuery } from "convex/react"
 import usePresence from "@convex-dev/presence/react"
 import { api } from "../../../convex/_generated/api"
+import type { PoolComponentInput } from "#/domain/dice"
 import { useCast } from "#/hooks/use-cast"
 import { useDicePool } from "#/hooks/use-dice-pool"
 import { SessionLayout } from "#/components/game/SessionLayout"
@@ -154,7 +155,7 @@ function SessionPage() {
   }
   const poolForSheet = {
     ...pool,
-    toggleComponent: (component: { type: string; name: string; dots: number }) => {
+    toggleComponent: (component: PoolComponentInput) => {
       if (rawCast.state === "declaring") rawCast.cancel()
       pool.toggleComponent(component)
     },

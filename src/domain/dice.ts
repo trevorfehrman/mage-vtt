@@ -5,13 +5,14 @@ import { ComponentDots, PoolSize, Successes } from "./quantities"
 
 // A Trait toggled into a pool (see CONTEXT.md): Gnosis is its own kind, not an
 // attribute — casting pools are Gnosis + Arcanum.
-const PoolComponentType = Schema.Literals([
+export const PoolComponentType = Schema.Literals([
   "attribute",
   "skill",
   "arcanum",
   "gnosis",
   "modifier",
 ])
+export type PoolComponentType = typeof PoolComponentType.Type
 
 export class PoolComponent extends Schema.Class<PoolComponent>("PoolComponent")({
   type: PoolComponentType,
@@ -28,6 +29,17 @@ export const RawPoolComponent = Schema.Struct({
   dots: Schema.Number,
 })
 export type RawPoolComponent = typeof RawPoolComponent.Type
+
+// The builder tier's component (issue #53): what the sheet toggles in and the
+// dice-pool machine accumulates — domain-typed kind, plain name and dots. The
+// one home for the shape the machine, hook, and builder all speak; it narrows
+// to `RawPoolComponent` at the wire.
+export const PoolComponentInput = Schema.Struct({
+  type: PoolComponentType,
+  name: Schema.String,
+  dots: Schema.Number,
+})
+export type PoolComponentInput = typeof PoolComponentInput.Type
 
 export class DicePool extends Schema.Class<DicePool>("DicePool")({
   components: Schema.Array(PoolComponent),

@@ -6,6 +6,7 @@ import {
   type KnownRote,
 } from "#/domain/character"
 import type { BoxSeverity } from "#/domain/damage"
+import type { PoolComponentType } from "#/domain/dice"
 import { formatRotePool } from "#/domain/rote-pool"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import { DotRating } from "./DotRating"
@@ -65,12 +66,12 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
     pool !== undefined && (pool.state === "idle" || pool.state === "building")
   const ruling = rulingArcanaOf(character.path)
 
-  const toggle = (type: string, name: string, dots: number) => {
+  const toggle = (type: PoolComponentType, name: string, dots: number) => {
     if (!pool || !canToggle) return
     pool.toggleComponent({ type, name, dots })
   }
 
-  const isActive = (type: string, name: string) =>
+  const isActive = (type: PoolComponentType, name: string) =>
     pool?.isComponentActive(type, name) ?? false
 
   const interactive = pool !== undefined
@@ -356,9 +357,9 @@ function StatColumn({
 }: {
   label: string
   stats: [string, number][]
-  type: string
-  onToggle: (type: string, name: string, dots: number) => void
-  isActive: (type: string, name: string) => boolean
+  type: PoolComponentType
+  onToggle: (type: PoolComponentType, name: string, dots: number) => void
+  isActive: (type: PoolComponentType, name: string) => boolean
   canToggle: boolean
   interactive: boolean
 }) {
@@ -397,8 +398,8 @@ function SkillColumn({
 }: {
   label: string
   skills: [string, number][]
-  onToggle: (type: string, name: string, dots: number) => void
-  isActive: (type: string, name: string) => boolean
+  onToggle: (type: PoolComponentType, name: string, dots: number) => void
+  isActive: (type: PoolComponentType, name: string) => boolean
   canToggle: boolean
   interactive: boolean
 }) {
@@ -442,8 +443,8 @@ function ArcanaList({
 }: {
   arcana: Record<string, number | undefined>
   ruling: readonly string[]
-  onToggle: (type: string, name: string, dots: number) => void
-  isActive: (type: string, name: string) => boolean
+  onToggle: (type: PoolComponentType, name: string, dots: number) => void
+  isActive: (type: PoolComponentType, name: string) => boolean
   canToggle: boolean
   interactive: boolean
   cast?: CastAPI | undefined

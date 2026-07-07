@@ -1,6 +1,7 @@
 import { useMachine } from "@xstate/react"
 import { useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
+import type { PoolComponentInput, PoolComponentType } from "#/domain/dice"
 import { dicePoolMachine } from "#/machines/dice-pool"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import type { Id } from "../../convex/_generated/dataModel"
@@ -51,13 +52,13 @@ export function useDicePool(
     context: snapshot.context,
     /** Willpower spends need a sheet to fund them. */
     canSpendWillpower: characterId !== undefined,
-    addComponent: (component: { type: string; name: string; dots: number }) =>
+    addComponent: (component: PoolComponentInput) =>
       send({ type: "ADD_COMPONENT", component }),
     removeComponent: (index: number) =>
       send({ type: "REMOVE_COMPONENT", index }),
-    toggleComponent: (component: { type: string; name: string; dots: number }) =>
+    toggleComponent: (component: PoolComponentInput) =>
       send({ type: "TOGGLE_COMPONENT", component }),
-    isComponentActive: (type: string, name: string): boolean =>
+    isComponentActive: (type: PoolComponentType, name: string): boolean =>
       snapshot.context.components.some(
         (c) => c.type === type && c.name === name,
       ),

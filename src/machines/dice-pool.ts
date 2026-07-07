@@ -1,10 +1,5 @@
 import { assign, setup } from "xstate"
-
-export interface PoolComponentInput {
-  type: string
-  name: string
-  dots: number
-}
+import type { PoolComponentInput } from "#/domain/dice"
 
 interface DicePoolContext {
   components: PoolComponentInput[]
