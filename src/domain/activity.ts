@@ -130,15 +130,12 @@ const decodeEntry = Schema.decodeUnknownResult(ActivityEntry)
  * (ADR-0009), so failure isolation is atom-level: an entry a stale client
  * can't recognize drops with a warning instead of blanking the Activity Log.
  */
-export const decodeFeed = (input: ReadonlyArray<unknown>): Array<ActivityEntry> => {
-  const entries: Array<ActivityEntry> = []
-  for (const raw of input) {
+export const decodeFeed = (input: ReadonlyArray<unknown>): Array<ActivityEntry> =>
+  input.flatMap((raw) => {
     const result = decodeEntry(raw)
-    if (Result.isSuccess(result)) {
-      entries.push(result.success)
-    } else {
+    if (Result.isFailure(result)) {
       console.warn("Activity: dropped an unrecognizable feed entry", result.failure)
+      return []
     }
-  }
-  return entries
-}
+    return [result.success]
+  })

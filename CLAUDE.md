@@ -60,14 +60,14 @@ This project uses Effect v4 beta. Core concepts are the same as v3 but some APIs
 - `it.effect()` for effectful code; plain `it()` for pure rules leaves (ADR-0014); `it.scoped()` for resource tests.
 - `Random.withSeed("seed")` for deterministic dice tests.
 - TDD skill installed (Matt Pocock's red-green-refactor workflow).
-- 155 tests across 24 domain modules, all green.
+- 518 tests across the domain, flows, machines, and seam, all green.
 
 ## Project Structure
 
 ```
 src/
 ├── components/    — React components (shadcn + custom)
-├── domain/        — Effect domain logic (24 modules, 155 tests)
+├── domain/        — Effect domain logic (rules leaves, flows, ports, seam)
 │   ├── __tests__/ — All test files
 │   ├── dice.ts, character.ts, health.ts, ...
 │   └── index.ts   — Re-exports

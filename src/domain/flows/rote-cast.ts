@@ -41,7 +41,7 @@ export const CastRoteArgs = Schema.Struct({
   skillChoice: Schema.optionalKey(Schema.String),
   /** Spell factor: effect Potency beyond 1 costs dice (book table). */
   potency: Schema.optionalKey(Schema.Number),
-  /** Spell factor: targets beyond 1 costs dice (book table). */
+  /** Spell factor: targets beyond 1 cost dice (book table). */
   targets: Schema.optionalKey(Schema.Number),
   /** High Speech: +2 dice. */
   highSpeech: Schema.optionalKey(Schema.Boolean),

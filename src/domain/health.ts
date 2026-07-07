@@ -1,4 +1,4 @@
-import { Effect, Match, Option, Schema } from "effect"
+import { Array as Arr, Effect, Match, Option, Schema } from "effect"
 import { healthBox, type BoxSeverity, type DamageType, type HealthBox, type HealthTrack } from "./damage"
 
 // Pure rules leaves (ADR-0014): damage application, healing, and wound
@@ -32,12 +32,11 @@ const bySeverity = (a: HealthBox, b: HealthBox): number =>
 const lastIndexOfSeverity = (
   boxes: ReadonlyArray<HealthBox>,
   severity: BoxSeverity,
-): number => {
-  for (let i = boxes.length - 1; i >= 0; i--) {
-    if (boxes[i]!.severity === severity) return i
-  }
-  return -1
-}
+): number =>
+  Option.getOrElse(
+    Arr.findLastIndex(boxes, (box) => box.severity === severity),
+    () => -1,
+  )
 
 /** Worsen the rightmost `from` box to `to`; `none` when no such box exists. */
 const upgraded = (

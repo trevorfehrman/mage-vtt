@@ -33,8 +33,9 @@ const RangedWeaponDef = Schema.Struct({
   ranges: Schema.Struct({ short: Schema.Number, medium: Schema.Number, long: Schema.Number }),
   clip: Schema.Number,
 })
+type RangedWeaponDef = typeof RangedWeaponDef.Type
 
-export const RANGED_WEAPONS: ReadonlyArray<typeof RangedWeaponDef.Type> = [
+export const RANGED_WEAPONS: ReadonlyArray<RangedWeaponDef> = [
   { name: "Revolver, Lt.", damage: 2, damageType: "lethal", size: 1, ranges: { short: 20, medium: 40, long: 80 }, clip: 6 },
   { name: "Revolver, Hvy.", damage: 3, damageType: "lethal", size: 1, ranges: { short: 35, medium: 70, long: 140 }, clip: 6 },
   { name: "Pistol, Lt.", damage: 2, damageType: "lethal", size: 1, ranges: { short: 20, medium: 40, long: 80 }, clip: 18 },
