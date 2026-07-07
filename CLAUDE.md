@@ -33,6 +33,9 @@ This project uses Effect v4 beta. Core concepts are the same as v3 but some APIs
 - Domain types go in `src/domain/` using Effect Schema.
 - Errors use `Schema.TaggedErrorClass` (v4 name, was `Schema.TaggedError` in v3) — yieldable, no `Effect.fail()` wrapper needed.
 - Brand nearly all primitive types (IDs, stats, etc.).
+- Data shapes are Schema, always — a manual `interface` is legal only for capability contracts: `Context.Tag` service methods and React props carrying functions/JSX (ADR-0017).
+- Never write `switch` — dispatch through `Match` (`Match.exhaustive` for closed sets, `Match.orElse` for open spaces). Zero exceptions (ADR-0018).
+- Pure functions use the pure half of the toolbox — `Match`, `Option`, `Data`, `Array`/`Record`/`HashMap` modules — not `for`/`while`/`new Map`/`new Set`. "Plain function" (ADR-0014) means no `Effect` type, not plain JavaScript (ADR-0019).
 
 ### Effect v4 API Differences from v3
 
@@ -46,7 +49,7 @@ This project uses Effect v4 beta. Core concepts are the same as v3 but some APIs
 ## Convex Patterns
 
 - Convex functions (queries, mutations, actions) run in Convex's runtime.
-- Effect is currently used in `src/domain/` for domain logic (155 tests). Convex-Effect integration for server-side functions is planned but not yet built.
+- The Effect↔Convex seam is BUILT and is the enforced convention (ADR-0004/0005/0007): every game-rules write goes through `convex/lib/enforce.ts` (`enforcedMutation` → `convexLive` layer → domain flow in `src/domain/flows/`). Reads stay plain by decision (ADR-0004). Game-table validators are derived from domain Schemas via `src/domain/schema-bridge.ts` — never hand-write a validator for a shape that has a domain Schema.
 - `convex/search.ts` has the RAG vector search endpoint (working).
 - Schema types in `src/domain/` are shared between client and Convex.
 
@@ -54,7 +57,7 @@ This project uses Effect v4 beta. Core concepts are the same as v3 but some APIs
 
 - Use `bunx vitest run` (NOT `bun test`) for all tests.
 - Import `{ describe, expect, it }` from `@effect/vitest`.
-- `it.effect()` for most tests, `it.scoped()` for resource tests.
+- `it.effect()` for effectful code; plain `it()` for pure rules leaves (ADR-0014); `it.scoped()` for resource tests.
 - `Random.withSeed("seed")` for deterministic dice tests.
 - TDD skill installed (Matt Pocock's red-green-refactor workflow).
 - 155 tests across 24 domain modules, all green.
