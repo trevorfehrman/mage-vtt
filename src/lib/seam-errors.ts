@@ -23,6 +23,7 @@ const NOT_FOUND_NOUNS: Record<string, string> = {
   characters: "Character",
   casts: "Cast",
   scenes: "Scene",
+  sessions: "Session",
   spells: "Spell",
 }
 
@@ -38,8 +39,6 @@ const describe = Match.type<SeamError>().pipe(
     NotStoryteller: () => "That door is the Storyteller's.",
     DocumentNotFound: (e) =>
       `${NOT_FOUND_NOUNS[e.table] ?? "That record"} not found.`,
-    // Raised with caller-facing prose at both raise sites (join, assignment).
-    SessionNotFound: (e) => e.message,
     InvalidCastDeclaration: () => "That declaration isn't castable.",
     InvalidSheetlessCast: () => `That pool isn't castable (0–${MAX_DECLARED_POOL} dice).`,
     InvalidHandEdit: (e) => e.message,

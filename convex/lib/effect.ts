@@ -55,6 +55,16 @@ export function mapEffectError(error: unknown): Record<string, unknown> {
   return { _tag: "UnknownError", message: String(error) }
 }
 
+/**
+ * A typed refusal on the wire (ADR-0010), built from a domain tagged error:
+ * the payload shape has one owner, so a renamed field can't silently drift
+ * away from the client's decode union. The cast is the seam's one honest lie —
+ * `mapEffectError` copies unknown-typed fields, `ConvexError` wants `Value`;
+ * every field crossing here is Schema-defined and Convex-serializable.
+ */
+export const seamRefusal = (error: { readonly _tag: string }) =>
+  new ConvexError(mapEffectError(error) as Record<string, string>)
+
 // --- Bridge ---
 
 export async function runConvexEffect<A>(

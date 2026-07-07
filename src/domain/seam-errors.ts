@@ -22,7 +22,6 @@ import {
 import { InsufficientMana } from "./mana-economy"
 import { DocumentNotFound } from "./ports/errors"
 import { RoteSkillChoiceRequired, VulgarCastingNotYetSupported } from "./rote-cast"
-import { SessionNotFound } from "./session"
 import { InsufficientWillpower } from "./willpower-economy"
 
 /**
@@ -41,9 +40,8 @@ export const SeamError = Schema.Union([
   NotAMember,
   NotYourCharacter,
   NotStoryteller,
-  // Not found
+  // Not found — the one generic tag (ADR-0010); never per-entity variants.
   DocumentNotFound,
-  SessionNotFound,
   // Rules / precondition
   InsufficientMana,
   InsufficientWillpower,

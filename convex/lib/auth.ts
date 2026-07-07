@@ -13,15 +13,10 @@ import { NotAMember, NotStoryteller } from "../../src/domain/authz"
 import { PlayerId, SessionId } from "../../src/domain/ids"
 import { resolveSeat } from "../../src/domain/seat"
 import { isDevUser } from "./dev"
-import { mapEffectError } from "./effect"
+import { seamRefusal } from "./effect"
 
-/**
- * A typed refusal on the wire, built from the domain error class itself —
- * the payload shape has one owner (ADR-0010), so a renamed field can't
- * silently drift away from the client's decode union.
- */
-const refusal = (error: NotAMember | NotStoryteller) =>
-  new ConvexError(mapEffectError(error) as Record<string, string>)
+/** The typed refusal on the wire (ADR-0010) — narrowed to the gates' errors. */
+const refusal = (error: NotAMember | NotStoryteller) => seamRefusal(error)
 
 /** One owner of the Session roster scan the gates and seat resolution share. */
 async function sessionMembers(

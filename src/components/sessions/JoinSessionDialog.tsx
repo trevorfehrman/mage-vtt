@@ -31,8 +31,14 @@ export function JoinSessionDialog() {
       navigate({ to: "/sessions/$sessionId", params: { sessionId } })
     } catch (err) {
       // The seam contract (ADR-0010, issue #50): typed refusals arrive as
-      // table language; anything else degrades to the generic join failure.
-      setError(seamErrorMessage(err, { fallback: "Failed to join session" }))
+      // table language — sharpened here for the join context — and anything
+      // else degrades to the generic join failure.
+      setError(
+        seamErrorMessage(err, {
+          overrides: { DocumentNotFound: "No session found with that invite code." },
+          fallback: "Failed to join session",
+        }),
+      )
     }
   }
 
