@@ -15,7 +15,7 @@
  */
 
 import { Cause, Effect, Exit } from "effect"
-import { ConvexError } from "convex/values"
+import { ConvexError, type Value } from "convex/values"
 import { DocumentNotFound } from "./ports/errors"
 
 // --- Errors ---
@@ -27,18 +27,39 @@ export { DocumentNotFound }
 // --- Error mapping ---
 
 /**
+ * Runtime check for Convex's `Value` (what a `ConvexError` payload may carry).
+ * Objects must be plain records — a `Date`/`RegExp`/class instance has no
+ * Convex wire form and must drop at this seam, not explode in the serializer.
+ */
+function isValue(v: unknown): v is Value {
+  if (v === null) return true
+  const t = typeof v
+  if (t === "string" || t === "number" || t === "boolean" || t === "bigint") return true
+  if (v instanceof ArrayBuffer) return true
+  if (Array.isArray(v)) return v.every(isValue)
+  if (t === "object") {
+    const proto = Object.getPrototypeOf(v)
+    if (proto !== Object.prototype && proto !== null) return false
+    return Object.values(v).every((x) => x === undefined || isValue(x))
+  }
+  return false
+}
+
+/**
  * Extract structured error data for serialization to the client.
  * Handles both Schema.TaggedErrorClass instances and plain objects with _tag.
+ * Every copied field passes the `isValue` check, so the return type is a
+ * `ConvexError` payload by construction — no assertion at the throw sites.
  */
-export function mapEffectError(error: unknown): Record<string, unknown> {
+export function mapEffectError(error: unknown): Record<string, Value> {
   if (error && typeof error === "object") {
     // For Schema.TaggedErrorClass, properties may be on the prototype
     // or defined via Object.defineProperty. Use a manual approach.
     const obj = error as Record<string, unknown>
-    const data: Record<string, unknown> = {}
+    const data: Record<string, Value> = {}
 
     // Get _tag first
-    if ("_tag" in obj) {
+    if (typeof obj._tag === "string") {
       data._tag = obj._tag
     }
 
@@ -53,8 +74,8 @@ export function mapEffectError(error: unknown): Record<string, unknown> {
       if (key.startsWith("_") && key !== "_tag") continue
       if (key === "constructor" || key === "toString" || key === "toJSON") continue
       try {
-        const val = (obj as any)[key]
-        if (typeof val !== "function") {
+        const val = obj[key]
+        if (isValue(val)) {
           data[key] = val
         }
       } catch {
@@ -89,7 +110,7 @@ export async function runConvexEffect<A>(
       // Find first typed error (Fail reason)
       const failReason = reasons.find(Cause.isFailReason)
       if (failReason) {
-        throw new ConvexError(mapEffectError(failReason.error) as Record<string, string>)
+        throw new ConvexError(mapEffectError(failReason.error))
       }
 
       // Find first defect (Die reason)

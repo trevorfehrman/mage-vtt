@@ -34,6 +34,14 @@ const trackKey = (track: CharacterSheetData["healthTrack"]): string =>
   track.map((b) => `${b.severity}${b.resistant ? "*" : ""}`).join(",")
 
 export const Route = createFileRoute("/sessions/$sessionId")({
+  params: {
+    // The one boundary assertion (route param → Convex Id brand): a Convex Id
+    // has no client-side validator — the server is the validator, and every
+    // query below refuses a bogus id with a typed error. Typing it here means
+    // the page body carries zero casts instead of one per query call.
+    parse: (raw) => ({ sessionId: raw.sessionId as Id<"sessions"> }),
+    stringify: (params) => ({ sessionId: params.sessionId }),
+  },
   beforeLoad: ({ context }) => {
     if (!context.isAuthenticated) {
       throw redirect({ to: "/" })
@@ -58,7 +66,7 @@ function SessionPage() {
   const { sessionId } = Route.useParams()
   // Decoded at the seam (issue #49): members carry the SessionRole literal
   // union, not raw strings, and every consumer below shares the one mirror.
-  const session = useSession(sessionId as Id<"sessions">)
+  const session = useSession(sessionId)
   const user = useQuery(api.auth.getCurrentUser)
 
   // Presence — heartbeat for this session room. Untouched by the Second Seat:
@@ -85,18 +93,18 @@ function SessionPage() {
       // (ADR-0013) and stays silent for narrower ones. If the announcement
       // can't be recorded, stand back up — no unlogged widened reading.
       announceSeat({
-        sessionId: sessionId as Id<"sessions">,
+        sessionId,
         target: id,
       }).catch(() => setSeatId(null))
     }
   }
 
   const character = useQuery(api.characters.getForSession, {
-    sessionId: sessionId as Id<"sessions">,
+    sessionId,
     ...seatArg,
   })
   const roster = useQuery(api.characters.listForSession, {
-    sessionId: sessionId as Id<"sessions">,
+    sessionId,
   })
   // The roster selection (issue #17). null = "my own character", the default —
   // it survives the own-character id arriving late and never dangles.
@@ -114,8 +122,8 @@ function SessionPage() {
   // sheet lands as that sheet's owner, Override-marked when the roller isn't
   // them (ADR-0006) — the "help my players" flow. Casting stays bound to
   // your own (or seat's) character.
-  const pool = useDicePool(sessionId as Id<"sessions">, viewed?._id)
-  const rawCast = useCast(sessionId as Id<"sessions">, character?._id)
+  const pool = useDicePool(sessionId, viewed?._id)
+  const rawCast = useCast(sessionId, character?._id)
 
   // Switching sheets clears the pool: its components carry the previous
   // sheet's dots while the roll would anchor to the new one — a stale mix
@@ -167,7 +175,7 @@ function SessionPage() {
     if (character === null && seatId === null && !seededRef.current) {
       seededRef.current = true
       seedCharacter({
-        sessionId: sessionId as Id<"sessions">,
+        sessionId,
         data: { ...arctusData },
       }).catch(() => {
         seededRef.current = false
@@ -231,7 +239,7 @@ function SessionPage() {
         {isStoryteller && (
           <HandEditForm
             key={`${sheet.id}:${sheet.manaCurrent}:${sheet.willpowerCurrent}:${trackKey(sheet.healthTrack)}`}
-            sessionId={sessionId as Id<"sessions">}
+            sessionId={sessionId}
             characterId={viewed._id}
             character={sheet}
           />
@@ -297,14 +305,14 @@ function SessionPage() {
         // Chrome follows the seat (ADR-0013): a seated ST-Dev in a player's
         // chair sees player chrome; the server refuses non-ST writes anyway.
         <SceneStrip
-          sessionId={sessionId as Id<"sessions">}
+          sessionId={sessionId}
           isStoryteller={isStoryteller}
         />
       }
       characterSheet={characterSheet}
       activityLog={
         <ActivityLog
-          sessionId={sessionId as Id<"sessions">}
+          sessionId={sessionId}
           isRolling={pool.state === "rolling" || rawCast.state === "casting"}
           // The live Cast card's role gates (issue #43): chrome follows the
           // seat (ADR-0013); the server refuses wrong actors regardless.
@@ -325,12 +333,12 @@ function SessionPage() {
       }
       storytellerTools={
         isStoryteller ? (
-          <SheetlessCastForm sessionId={sessionId as Id<"sessions">} />
+          <SheetlessCastForm sessionId={sessionId} />
         ) : undefined
       }
       chatInput={
         <ChatInput
-          sessionId={sessionId as Id<"sessions">}
+          sessionId={sessionId}
           members={session.members}
           // Chrome follows the seat (ADR-0013): whisper targets exclude the
           // seat member, not the Dev. Sends are still the Dev's own writes.

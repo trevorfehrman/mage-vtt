@@ -6,7 +6,7 @@
  */
 
 import { Cause, Effect, Exit } from "effect"
-import { ConvexError } from "convex/values"
+import { ConvexError, type Value } from "convex/values"
 import { DocumentNotFound } from "../../src/domain/ports/errors"
 
 // --- Errors ---
@@ -17,12 +17,31 @@ export { DocumentNotFound }
 
 // --- Error mapping ---
 
-export function mapEffectError(error: unknown): Record<string, unknown> {
+/**
+ * Runtime check for Convex's `Value` (what a `ConvexError` payload may carry).
+ * Objects must be plain records — a `Date`/`RegExp`/class instance has no
+ * Convex wire form and must drop at this seam, not explode in the serializer.
+ */
+function isValue(v: unknown): v is Value {
+  if (v === null) return true
+  const t = typeof v
+  if (t === "string" || t === "number" || t === "boolean" || t === "bigint") return true
+  if (v instanceof ArrayBuffer) return true
+  if (Array.isArray(v)) return v.every(isValue)
+  if (t === "object") {
+    const proto = Object.getPrototypeOf(v)
+    if (proto !== Object.prototype && proto !== null) return false
+    return Object.values(v).every((x) => x === undefined || isValue(x))
+  }
+  return false
+}
+
+export function mapEffectError(error: unknown): Record<string, Value> {
   if (error && typeof error === "object") {
     const obj = error as Record<string, unknown>
-    const data: Record<string, unknown> = {}
+    const data: Record<string, Value> = {}
 
-    if ("_tag" in obj) {
+    if (typeof obj._tag === "string") {
       data._tag = obj._tag
     }
 
@@ -36,8 +55,8 @@ export function mapEffectError(error: unknown): Record<string, unknown> {
       if (key.startsWith("_") && key !== "_tag") continue
       if (key === "constructor" || key === "toString" || key === "toJSON") continue
       try {
-        const val = (obj as any)[key]
-        if (typeof val !== "function") {
+        const val = obj[key]
+        if (isValue(val)) {
           data[key] = val
         }
       } catch {
@@ -58,12 +77,11 @@ export function mapEffectError(error: unknown): Record<string, unknown> {
 /**
  * A typed refusal on the wire (ADR-0010), built from a domain tagged error:
  * the payload shape has one owner, so a renamed field can't silently drift
- * away from the client's decode union. The cast is the seam's one honest lie —
- * `mapEffectError` copies unknown-typed fields, `ConvexError` wants `Value`;
- * every field crossing here is Schema-defined and Convex-serializable.
+ * away from the client's decode union. Cast-free: `mapEffectError` copies
+ * only fields that pass the `isValue` check, so its return *is* a payload.
  */
 export const seamRefusal = (error: { readonly _tag: string }) =>
-  new ConvexError(mapEffectError(error) as Record<string, string>)
+  new ConvexError(mapEffectError(error))
 
 // --- Bridge ---
 
@@ -79,7 +97,7 @@ export async function runConvexEffect<A>(
 
       const failReason = reasons.find(Cause.isFailReason)
       if (failReason) {
-        throw new ConvexError(mapEffectError(failReason.error) as Record<string, string>)
+        throw new ConvexError(mapEffectError(failReason.error))
       }
 
       const dieReason = reasons.find(Cause.isDieReason)

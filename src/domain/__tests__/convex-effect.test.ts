@@ -66,6 +66,26 @@ describe("Convex-Effect Bridge", () => {
     }),
   )
 
+  it.effect("mapEffectError copies only Convex-serializable Values — junk drops at the seam", () =>
+    Effect.gen(function* () {
+      // A malformed error carrying fields Convex's serializer would reject:
+      // they must drop here, at the boundary, not explode at throw time.
+      const errorData = mapEffectError({
+        _tag: "TestValidation",
+        message: "bad input",
+        when: new Date(0),
+        pattern: /nope/,
+        nested: { fine: 1, alsoFine: ["a", "b"] },
+      })
+
+      expect(errorData._tag).toBe("TestValidation")
+      expect(errorData.message).toBe("bad input")
+      expect(errorData).not.toHaveProperty("when")
+      expect(errorData).not.toHaveProperty("pattern")
+      expect(errorData.nested).toEqual({ fine: 1, alsoFine: ["a", "b"] })
+    }),
+  )
+
   it.effect("wrapNullable converts null to DocumentNotFound error", () =>
     Effect.gen(function* () {
       const found = yield* wrapNullable({ id: "123", name: "test" }, "users", "123")
