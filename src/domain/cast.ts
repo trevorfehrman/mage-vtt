@@ -2,7 +2,7 @@ import { Schema } from "effect"
 import type { HealthTrack } from "./damage"
 import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "./ids"
 import type { GnosisRank } from "./mana-economy"
-import { ParadoxSeverity } from "./paradox"
+import { ParadoxPoolModifier, ParadoxSeverity } from "./paradox"
 
 /**
  * The Cast (issue #43, PRD #39, ADR-0016): a declared Vulgar spellcasting
@@ -95,11 +95,16 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   ),
   declaredPool: Schema.Number,
   spellManaCost: Schema.Number,
-  // The stage (the engage beat) — liability defaults frozen off the table
+  // The stage (the engage beat) — liability defaults frozen off the table,
+  // then live under the ST's negotiation buttons until liabilities lock
+  // (issue #44). `witnessCount` supersedes the boolean (kept for rows written
+  // before the count existed); `discretionaryModifiers` are ST judgment calls.
   sceneId: Schema.optionalKey(SceneId),
   gnosis: Schema.optionalKey(Schema.Number),
   sleeperWitnesses: Schema.optionalKey(Schema.Boolean),
+  witnessCount: Schema.optionalKey(Schema.Number),
   priorParadoxRolls: Schema.optionalKey(Schema.Number),
+  discretionaryModifiers: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
   // Commitment (the caster's lock)
   manaMitigation: Schema.optionalKey(Schema.Number),
   // The Paradox roll
@@ -128,11 +133,24 @@ export class Cast extends Schema.Class<Cast>("Cast")({
  * will be able to edit once the negotiation UI lands (ADR-0015).
  *
  * No Scene (downtime) accumulates nothing.
+ *
+ * Typed structurally (issue #44): the strip's pips query reads raw `casts`
+ * rows outside the enforcement seam, and the derivation needs only these
+ * fields — a decoded `Cast` satisfies the shape, a `Doc<"casts">` too.
  */
+export interface AccumulatorCast {
+  readonly status: CastStatus
+  readonly sceneId?: string | undefined
+  readonly characterId: string
+  readonly casterName: string
+  readonly paradoxIsDramaticFailure?: boolean | undefined
+  readonly updatedAt: number
+}
+
 export const deriveAccumulator = (
-  casts: ReadonlyArray<Cast>,
-  sceneId: SceneId | undefined,
-  characterId: CharacterId,
+  casts: ReadonlyArray<AccumulatorCast>,
+  sceneId: string | undefined,
+  characterId: string,
 ): number => {
   if (sceneId === undefined) return 0
   const resolved = casts
@@ -146,6 +164,52 @@ export const deriveAccumulator = (
   if (resolved.length === 0) return 0
   const grace = resolved[resolved.length - 1]!.paradoxIsDramaticFailure === true
   return Math.max(0, resolved.length - (grace ? 1 : 0))
+}
+
+/**
+ * The witness count a Cast's pool reads (issue #44): rows written before the
+ * count existed carry only the Scene toggle's boolean — "one or more" is 1.
+ */
+export const effectiveWitnessCount = (cast: {
+  readonly witnessCount?: number | undefined
+  readonly sleeperWitnesses?: boolean | undefined
+}): number => cast.witnessCount ?? (cast.sleeperWitnesses ? 1 : 0)
+
+/** One caster's standing on the strip: who, and how hard they're pushing. */
+export interface ScenePip {
+  readonly characterId: string
+  readonly casterName: string
+  readonly accumulator: number
+}
+
+/**
+ * The strip's per-caster Paradox pips (issue #44): every caster with a
+ * nonzero accumulator this Scene, each derived through `deriveAccumulator`
+ * (grace and all), ordered heaviest first (ties by name, a stable strip).
+ * The name rides the latest resolved Cast. No Scene, no pips.
+ */
+export const sceneParadoxPips = (
+  casts: ReadonlyArray<AccumulatorCast>,
+  sceneId: string | undefined,
+): Array<ScenePip> => {
+  if (sceneId === undefined) return []
+  const latestNames = new Map<string, string>()
+  for (const c of [...casts].sort((a, b) => a.updatedAt - b.updatedAt)) {
+    if (c.status === "resolved" && c.sceneId === sceneId) {
+      latestNames.set(c.characterId, c.casterName)
+    }
+  }
+  return [...latestNames.entries()]
+    .map(([characterId, casterName]) => ({
+      characterId,
+      casterName,
+      accumulator: deriveAccumulator(casts, sceneId, characterId),
+    }))
+    .filter((pip) => pip.accumulator > 0)
+    .sort(
+      (a, b) =>
+        b.accumulator - a.accumulator || a.casterName.localeCompare(b.casterName),
+    )
 }
 
 /**

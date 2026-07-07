@@ -35,9 +35,16 @@ export type ParadoxSeverity = typeof ParadoxSeverity.Type
 
 // --- Types ---
 
+/** One named ± on a Paradox pool — the shape every modifier list speaks. */
+export const ParadoxPoolModifier = Schema.Struct({
+  source: Schema.String,
+  dice: Schema.Number,
+})
+export type ParadoxPoolModifier = typeof ParadoxPoolModifier.Type
+
 export class ParadoxPool extends Schema.Class<ParadoxPool>("ParadoxPool")({
   baseDice: Schema.Number.check(Schema.isInt()),
-  modifiers: Schema.Array(Schema.Struct({ source: Schema.String, dice: Schema.Number })),
+  modifiers: Schema.Array(ParadoxPoolModifier),
   totalDice: Schema.Number.check(Schema.isInt()),
 }) {}
 
@@ -54,11 +61,19 @@ export const calculateParadoxPool = (input: {
   isRote?: boolean
   usesMagicalTool?: boolean
   sleeperWitnesses?: boolean
+  /**
+   * The negotiated head count (issue #44) — fiction detail the table haggles
+   * over; the dice stay the book's flat "+2, one or more Sleepers" (p. 125).
+   * When present it overrules the coarse `sleeperWitnesses` boolean.
+   */
+  witnessCount?: number
   priorParadoxRollsThisScene?: number
+  /** ST judgment calls (ADR-0015), each a named ± the table can read. */
+  discretionaryModifiers?: ReadonlyArray<ParadoxPoolModifier>
   manaMitigation?: number
 }): ParadoxPool => {
   const baseDice = GNOSIS_PARADOX_DICE[input.gnosis]
-  const modifiers: Array<{ source: string; dice: number }> = []
+  const modifiers: Array<ParadoxPoolModifier> = []
 
   if (input.priorParadoxRollsThisScene && input.priorParadoxRollsThisScene > 0) {
     modifiers.push({
@@ -75,8 +90,19 @@ export const calculateParadoxPool = (input: {
     modifiers.push({ source: "Magical tool", dice: -1 })
   }
 
-  if (input.sleeperWitnesses) {
+  if (input.witnessCount !== undefined) {
+    if (input.witnessCount > 0) {
+      modifiers.push({
+        source: `Sleeper witnesses (${input.witnessCount})`,
+        dice: 2,
+      })
+    }
+  } else if (input.sleeperWitnesses) {
     modifiers.push({ source: "Sleeper witnesses", dice: 2 })
+  }
+
+  for (const m of input.discretionaryModifiers ?? []) {
+    modifiers.push({ source: m.source, dice: m.dice })
   }
 
   if (input.manaMitigation && input.manaMitigation > 0) {

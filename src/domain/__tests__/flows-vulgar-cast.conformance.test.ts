@@ -7,11 +7,13 @@ import { convexLive } from "../../../convex/lib/convexLive"
 import {
   containParadox,
   draftCast,
+  editLiabilities,
   engageCast,
   lockIntention,
   lockLiabilities,
   rollCastDice,
   rollParadox,
+  setMagicalTool,
   voidCast,
 } from "../flows/vulgar-cast"
 import { PlayerId, SessionId } from "../ids"
@@ -183,6 +185,18 @@ const runHandshake = (
     yield* engageCast({ sessionId: SESSION, castId }).pipe(
       Effect.provide(layerFor(ST_USER)),
     )
+    // The negotiation beats (issue #44) pin the new patch fields through both
+    // adapters. Deliberately net-zero on the pool (+1 discretionary, −1 tool)
+    // so the seeded dice downstream stay byte-identical.
+    yield* editLiabilities({
+      sessionId: SESSION,
+      castId,
+      witnessCount: 0,
+      discretionaryModifiers: [{ source: "Ley line hum", dice: 1 }],
+    }).pipe(Effect.provide(layerFor(ST_USER)))
+    yield* setMagicalTool({ sessionId: SESSION, castId, usesMagicalTool: true }).pipe(
+      Effect.provide(layerFor(PLAYER)),
+    )
     yield* lockLiabilities({ sessionId: SESSION, castId }).pipe(
       Effect.provide(layerFor(ST_USER)),
     )
@@ -214,7 +228,9 @@ const observedCast = (row: Record<string, unknown>) => ({
   sceneId: row.sceneId ?? null,
   gnosis: row.gnosis,
   sleeperWitnesses: row.sleeperWitnesses,
+  witnessCount: row.witnessCount,
   priorParadoxRolls: row.priorParadoxRolls,
+  discretionaryModifiers: row.discretionaryModifiers,
   manaMitigation: row.manaMitigation,
   paradoxSuccesses: row.paradoxSuccesses,
   paradoxIsDramaticFailure: row.paradoxIsDramaticFailure,

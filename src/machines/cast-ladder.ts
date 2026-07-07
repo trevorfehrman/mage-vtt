@@ -68,6 +68,8 @@ export type LadderControl =
   | "kill" // caster: withdraw own draft
   | "decline" // ST: refuse a draft
   | "engage" // ST: put a draft on stage
+  | "negotiate" // ST: the liability buttons (issue #44), engaged only
+  | "tool" // caster: the magical-tool toggle, free until the ST locks
   | "lockLiabilities" // ST: freeze the pool
   | "lockIntention" // caster: the point of no return (with mitigation)
   | "cancel" // either party, pre-commitment
@@ -83,11 +85,12 @@ export const ladderControls = (
   const controls: Array<LadderControl> = []
   switch (status) {
     case "draft":
-      if (viewer.isCaster) controls.push("kill")
+      if (viewer.isCaster) controls.push("kill", "tool")
       if (viewer.isStoryteller) controls.push("engage", "decline")
       break
     case "engaged":
-      if (viewer.isStoryteller) controls.push("lockLiabilities")
+      if (viewer.isStoryteller) controls.push("negotiate", "lockLiabilities")
+      if (viewer.isCaster) controls.push("tool")
       if (viewer.isCaster || viewer.isStoryteller) controls.push("cancel")
       break
     case "liabilitiesLocked":

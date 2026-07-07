@@ -52,6 +52,7 @@ const describe = Match.type<SeamError>().pipe(
     CastAlreadyPending: () => "This character already has an unresolved Cast.",
     StageOccupied: (e) => `The stage is taken — ${e.casterName}'s cast is still playing out.`,
     CastStatusConflict: () => "The Cast has moved on — that beat is no longer available.",
+    InvalidLiability: (e) => e.message,
     InvalidMitigation: (e) => e.message,
     InvalidContainment: (e) => e.message,
   }),

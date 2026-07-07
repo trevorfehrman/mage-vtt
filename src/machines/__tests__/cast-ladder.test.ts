@@ -74,19 +74,20 @@ describe("ladderControls — buttons only for the viewer's role", () => {
   const storyteller = { isStoryteller: true, isCaster: false }
   const spectator = { isStoryteller: false, isCaster: false }
 
-  test("the wings: owner kills, ST engages or declines, spectators watch", () => {
-    expect(ladderControls("draft", caster)).toEqual(["kill"])
+  test("the wings: owner kills (and may ready a tool), ST engages or declines", () => {
+    expect(ladderControls("draft", caster)).toEqual(["kill", "tool"])
     expect(ladderControls("draft", storyteller)).toEqual(["engage", "decline"])
     expect(ladderControls("draft", spectator)).toEqual([])
   })
 
-  test("negotiation: locks in strict order, cancel free for both parties", () => {
+  test("negotiation: ST liability buttons and caster tool live here (issue #44)", () => {
     expect(ladderControls("engaged", storyteller)).toEqual([
+      "negotiate",
       "lockLiabilities",
       "cancel",
       "void",
     ])
-    expect(ladderControls("engaged", caster)).toEqual(["cancel"])
+    expect(ladderControls("engaged", caster)).toEqual(["tool", "cancel"])
     expect(ladderControls("liabilitiesLocked", caster)).toEqual([
       "lockIntention",
       "cancel",

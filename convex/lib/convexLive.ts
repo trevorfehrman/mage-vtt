@@ -358,13 +358,26 @@ export const convexLive = (
         yield* Effect.promise(() =>
           ctx.db.patch(id, {
             ...(patch.status !== undefined ? { status: patch.status } : {}),
+            ...(patch.usesMagicalTool !== undefined
+              ? { usesMagicalTool: patch.usesMagicalTool }
+              : {}),
             ...(sceneId ? { sceneId } : {}),
             ...(patch.gnosis !== undefined ? { gnosis: patch.gnosis } : {}),
             ...(patch.sleeperWitnesses !== undefined
               ? { sleeperWitnesses: patch.sleeperWitnesses }
               : {}),
+            ...(patch.witnessCount !== undefined
+              ? { witnessCount: patch.witnessCount }
+              : {}),
             ...(patch.priorParadoxRolls !== undefined
               ? { priorParadoxRolls: patch.priorParadoxRolls }
+              : {}),
+            ...(patch.discretionaryModifiers !== undefined
+              ? {
+                  discretionaryModifiers: patch.discretionaryModifiers.map(
+                    (m) => ({ ...m }),
+                  ),
+                }
               : {}),
             ...(patch.manaMitigation !== undefined
               ? { manaMitigation: patch.manaMitigation }

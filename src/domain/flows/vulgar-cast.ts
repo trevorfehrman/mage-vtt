@@ -10,6 +10,7 @@ import {
   castPoolAfterParadox,
   containmentCap,
   deriveAccumulator,
+  effectiveWitnessCount,
   isCommitted,
   isOnStage,
   isUnresolved,
@@ -21,7 +22,11 @@ import { buildPool, rollPool, type RawPoolComponent } from "../dice"
 import { applyDamage, healResistantBashing, isIncapacitated } from "../health"
 import { CastId, CharacterId, SessionId } from "../ids"
 import { improvisedManaCost, spendMana } from "../mana-economy"
-import { calculateParadoxPool, resolveParadox } from "../paradox"
+import {
+  calculateParadoxPool,
+  resolveParadox,
+  type ParadoxPoolModifier,
+} from "../paradox"
 import { GameStore } from "../ports/game-store"
 import { DocumentNotFound } from "../ports/errors"
 import { Mana } from "../quantities"
@@ -87,6 +92,12 @@ export class CastStatusConflict extends Schema.TaggedErrorClass<CastStatusConfli
     status: CastStatus,
     needed: Schema.String,
   },
+) {}
+
+/** Validation: a liability edit that no ruling could mean (issue #44). */
+export class InvalidLiability extends Schema.TaggedErrorClass<InvalidLiability>()(
+  "InvalidLiability",
+  { message: Schema.String },
 ) {}
 
 /** Validation: the mitigation declaration itself is malformed or pointless. */
@@ -158,18 +169,23 @@ const modifierComponents = (name: string, dots: number): Array<RawPoolComponent>
   return components
 }
 
-/** The Paradox pool's inputs as the engage beat froze them onto the document. */
+/**
+ * The Paradox pool's inputs as the engage beat stamped them and the
+ * negotiation edited them (issue #44). Rows written before the witness count
+ * existed fall back to the coarse boolean ("one or more" = 1).
+ */
 const paradoxInputs = Effect.fn("Flows.vulgarCast.paradoxInputs")(function* (
   cast: Cast,
 ) {
   const gnosis = yield* stamped(cast.gnosis, "gnosis")
-  const sleeperWitnesses = yield* stamped(cast.sleeperWitnesses, "sleeperWitnesses")
+  yield* stamped(cast.sleeperWitnesses, "sleeperWitnesses")
   const priorParadoxRolls = yield* stamped(cast.priorParadoxRolls, "priorParadoxRolls")
   return {
     gnosis: toGnosisRank(gnosis),
     usesMagicalTool: cast.usesMagicalTool,
-    sleeperWitnesses,
+    witnessCount: effectiveWitnessCount(cast),
     priorParadoxRollsThisScene: priorParadoxRolls,
+    discretionaryModifiers: cast.discretionaryModifiers ?? [],
   }
 })
 
@@ -369,11 +385,17 @@ export const engageCast = Effect.fn("Flows.vulgarCast.engageCast")(function* (
   const scene = yield* store.getActiveScene(sessionId)
   const sceneId = Option.isSome(scene) ? scene.value.id : undefined
 
+  const sleeperWitnesses = Option.isSome(scene)
+    ? scene.value.sleeperWitnesses
+    : false
   yield* store.patchCast(castId, {
     status: "engaged",
     ...(sceneId !== undefined ? { sceneId } : {}),
     gnosis: sheet.gnosis,
-    sleeperWitnesses: Option.isSome(scene) ? scene.value.sleeperWitnesses : false,
+    sleeperWitnesses,
+    // The toggle's "one or more" becomes a countable default the ST's
+    // liability buttons then negotiate over (issue #44).
+    witnessCount: sleeperWitnesses ? 1 : 0,
     priorParadoxRolls: deriveAccumulator(casts, sceneId, cast.characterId),
   })
 
@@ -386,6 +408,113 @@ export const engageCast = Effect.fn("Flows.vulgarCast.engageCast")(function* (
 
   return castId
 })
+
+export interface EditLiabilitiesArgs extends CastStepArgs {
+  /** Sleeper head count; dice stay the book's flat +2 for one-or-more. */
+  readonly witnessCount?: number
+  /** The ST's override of the derived accumulator default (ADR-0015). */
+  readonly priorParadoxRolls?: number
+  /** The whole discretionary list as it should now read — replace, not merge. */
+  readonly discretionaryModifiers?: ReadonlyArray<ParadoxPoolModifier>
+}
+
+/**
+ * The Storyteller's liability buttons (issue #44, PRD #39 stories 14/17): each
+ * press patches the shared document during negotiation, and every screen
+ * watches the Paradox pool reassemble in realtime. Only the ST's side of the
+ * document is reachable here — the caster's fields have their own doors — and
+ * only on `engaged`: after the ST locks, the caster commits against a frozen
+ * pool, so liability edits refuse. No Activity entry lands: negotiation is
+ * table talk, not a reveal (ADR-0016); the lock narrates the final pool.
+ */
+export const editLiabilities = Effect.fn("Flows.vulgarCast.editLiabilities")(
+  function* (args: EditLiabilitiesArgs) {
+    const sessionId = SessionId.make(args.sessionId)
+    const castId = CastId.make(args.castId)
+    const store = yield* GameStore
+
+    yield* requireStoryteller(sessionId)
+    const cast = yield* requireCast(sessionId, castId)
+    yield* requireStatus(cast, "engaged")
+
+    if (
+      args.witnessCount !== undefined &&
+      (!Number.isInteger(args.witnessCount) || args.witnessCount < 0)
+    ) {
+      return yield* new InvalidLiability({
+        message: `Witnesses must be a whole count of Sleepers, got ${args.witnessCount}.`,
+      })
+    }
+    if (
+      args.priorParadoxRolls !== undefined &&
+      (!Number.isInteger(args.priorParadoxRolls) || args.priorParadoxRolls < 0)
+    ) {
+      return yield* new InvalidLiability({
+        message: `The accumulator must be a whole count of prior rolls, got ${args.priorParadoxRolls}.`,
+      })
+    }
+    for (const modifier of args.discretionaryModifiers ?? []) {
+      if (modifier.source.trim().length === 0) {
+        return yield* new InvalidLiability({
+          message: "A discretionary modifier needs a name the table can read.",
+        })
+      }
+      if (!Number.isInteger(modifier.dice) || modifier.dice === 0) {
+        return yield* new InvalidLiability({
+          message: `A discretionary modifier must be a whole nonzero die count, got ${modifier.dice}.`,
+        })
+      }
+    }
+
+    yield* store.patchCast(castId, {
+      ...(args.witnessCount !== undefined
+        ? { witnessCount: args.witnessCount }
+        : {}),
+      ...(args.priorParadoxRolls !== undefined
+        ? { priorParadoxRolls: args.priorParadoxRolls }
+        : {}),
+      ...(args.discretionaryModifiers !== undefined
+        ? { discretionaryModifiers: args.discretionaryModifiers }
+        : {}),
+    })
+
+    return castId
+  },
+)
+
+export interface SetMagicalToolArgs extends CastStepArgs {
+  readonly usesMagicalTool: boolean
+}
+
+/**
+ * The caster's side of the negotiation (issue #44): the magical-tool flag is
+ * theirs to change until the ST locks liabilities — after that the caster
+ * would be reshaping the very pool the lock froze. Walks the same authority
+ * ladder as every caster beat (owner plain; ST/Dev in-stead Override-stamped,
+ * ADR-0015). Table talk like the ST's buttons: no Activity entry.
+ */
+export const setMagicalTool = Effect.fn("Flows.vulgarCast.setMagicalTool")(
+  function* (args: SetMagicalToolArgs) {
+    const sessionId = SessionId.make(args.sessionId)
+    const castId = CastId.make(args.castId)
+    const store = yield* GameStore
+
+    const cast = yield* requireCast(sessionId, castId)
+    // Authority before status: a stranger learns nothing about the ladder.
+    yield* requireSessionCharacter(sessionId, cast.characterId)
+    if (cast.status !== "draft" && cast.status !== "engaged") {
+      return yield* new CastStatusConflict({
+        castId: cast.id,
+        status: cast.status,
+        needed: "draft | engaged",
+      })
+    }
+
+    yield* store.patchCast(castId, { usesMagicalTool: args.usesMagicalTool })
+
+    return castId
+  },
+)
 
 /** The Storyteller locks liabilities: the caster now commits against a frozen pool. */
 export const lockLiabilities = Effect.fn("Flows.vulgarCast.lockLiabilities")(

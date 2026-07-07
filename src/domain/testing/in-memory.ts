@@ -12,6 +12,7 @@ import {
   type SessionId,
 } from "../ids"
 import type { Membership } from "../membership"
+import type { ParadoxPoolModifier } from "../paradox"
 import { NotAMember } from "../authz"
 import { OverrideMarker, OverrideStamp, makeOverrideStamp } from "../override"
 import { CurrentActor, type Actor } from "../ports/current-actor"
@@ -102,7 +103,9 @@ export interface StoredCast {
   readonly sceneId?: SceneId
   readonly gnosis?: number
   readonly sleeperWitnesses?: boolean
+  readonly witnessCount?: number
   readonly priorParadoxRolls?: number
+  readonly discretionaryModifiers?: ReadonlyArray<ParadoxPoolModifier>
   readonly manaMitigation?: number
   readonly paradoxSuccesses?: number
   readonly paradoxIsDramaticFailure?: boolean

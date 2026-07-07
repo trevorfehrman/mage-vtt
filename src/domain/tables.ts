@@ -18,6 +18,7 @@
 import { Schema } from "effect"
 import { ConvexId } from "./schema-bridge"
 import { OverrideKind } from "./override"
+import { ParadoxPoolModifier } from "./paradox"
 
 export const SessionMemberDoc = Schema.Struct({
   sessionId: ConvexId("sessions"),
@@ -260,11 +261,17 @@ export const CastDoc = Schema.Struct({
   declaredComponents: Schema.Array(DiceRollComponentDoc),
   declaredPool: Schema.Number,
   spellManaCost: Schema.Number,
-  // The stage (the engage beat)
+  // The stage (the engage beat), then live under the negotiation's edits
+  // (issue #44). `witnessCount` supersedes the boolean on new rows — the
+  // boolean stays for rows written before the count existed.
   sceneId: Schema.optionalKey(ConvexId("scenes")),
   gnosis: Schema.optionalKey(Schema.Number),
   sleeperWitnesses: Schema.optionalKey(Schema.Boolean),
+  witnessCount: Schema.optionalKey(Schema.Number),
   priorParadoxRolls: Schema.optionalKey(Schema.Number),
+  // Same raw two-field struct the pool speaks (plain String + Number, so the
+  // Doc layer stays primitive per ADR-0011).
+  discretionaryModifiers: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
   // Commitment (the caster's point-of-no-return lock)
   manaMitigation: Schema.optionalKey(Schema.Number),
   // The Paradox roll

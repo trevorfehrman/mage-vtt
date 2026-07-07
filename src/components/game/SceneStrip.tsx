@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "../../../convex/_generated/api"
+import type { ScenePip } from "#/domain/cast"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import type { Id } from "../../../convex/_generated/dataModel"
 
@@ -10,11 +11,13 @@ import type { Id } from "../../../convex/_generated/dataModel"
  * and status live; no Scene renders a quiet downtime state. The Storyteller
  * additionally holds the open/close doors and the Sleeper-witnesses toggle
  * (visible to all, ST's to change — it feeds Paradox liability defaults in
- * the negotiation slice). Player controls never render; the server refuses
- * them regardless (ADR-0010).
+ * the negotiation). Player controls never render; the server refuses them
+ * regardless (ADR-0010).
  *
- * Built to grow: per-caster Paradox pips join the right-hand group in a later
- * slice, and a possible active-effects surface much later.
+ * The right-hand group carries the per-caster Paradox pips (issue #44): who
+ * is pushing their luck this Scene, derived from resolved Cast history and
+ * updating after each resolution; past a few casters they overflow into a
+ * popover. Built to grow further: a possible active-effects surface later.
  */
 
 export function SceneStrip({
@@ -25,6 +28,7 @@ export function SceneStrip({
   isStoryteller: boolean
 }) {
   const scene = useQuery(api.scenes.getActive, { sessionId })
+  const pips = useQuery(api.casts.paradoxPips, { sessionId })
   const openScene = useMutation(api.scenes.open)
   const closeScene = useMutation(api.scenes.close)
   const setWitnesses = useMutation(api.scenes.setWitnesses)
@@ -114,8 +118,9 @@ export function SceneStrip({
           </span>
           <span className="mv-h truncate text-[13px] leading-none">{scene.name}</span>
 
-          {/* The right-hand group — witnesses now, Paradox pips later. */}
+          {/* The right-hand group — Paradox pips, witnesses, the close door. */}
           <span className="ml-auto flex items-center gap-2">
+            {pips !== undefined && pips.length > 0 && <ParadoxPips pips={pips} />}
             {isStoryteller ? (
               <button
                 onClick={() =>
@@ -163,5 +168,88 @@ export function SceneStrip({
         </span>
       )}
     </div>
+  )
+}
+
+/** How many casters ride the strip inline before the popover takes over. */
+const INLINE_PIPS = 3
+
+/**
+ * Per-caster Paradox pips (issue #44): only casters with a nonzero
+ * accumulator arrive here (the query filters), heaviest first. Past
+ * `INLINE_PIPS` casters the tail collapses into a "+N" popover — the strip
+ * stays one line no matter how reckless the coven gets.
+ */
+function ParadoxPips({ pips }: { pips: ReadonlyArray<ScenePip> }) {
+  const [open, setOpen] = useState(false)
+  const popoverRef = useRef<HTMLSpanElement>(null)
+
+  // The popover stands down on any outside click — strip chrome must never
+  // demand a dismissal ritual.
+  useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent) => {
+      if (!popoverRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", close)
+    return () => document.removeEventListener("mousedown", close)
+  }, [open])
+
+  const inline = pips.length > INLINE_PIPS ? pips.slice(0, INLINE_PIPS - 1) : pips
+  const overflow = pips.length - inline.length
+
+  return (
+    <span ref={popoverRef} className="relative flex items-center gap-2">
+      <span
+        className="mv-data text-[9px] uppercase tracking-wider"
+        style={{ color: "var(--dim)" }}
+      >
+        Paradox
+      </span>
+      {inline.map((pip) => (
+        <PipBadge key={pip.characterId} pip={pip} />
+      ))}
+      {overflow > 0 && (
+        <>
+          <button
+            onClick={() => setOpen((o) => !o)}
+            className={`mv-mini ${open ? "mv-mini-on" : ""}`}
+            title={`${overflow} more ${overflow === 1 ? "caster is" : "casters are"} carrying Paradox this Scene`}
+          >
+            +{overflow}
+          </button>
+          {open && (
+            <div
+              className="absolute right-0 top-full z-20 mt-1.5 grid min-w-40 gap-1.5 rounded-[3px] p-2"
+              style={{
+                background: "var(--panel)",
+                border: "1px solid var(--line)",
+                boxShadow: "0 6px 20px rgba(0, 0, 0, 0.55)",
+              }}
+            >
+              {pips.map((pip) => (
+                <PipBadge key={pip.characterId} pip={pip} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </span>
+  )
+}
+
+function PipBadge({ pip }: { pip: ScenePip }) {
+  const dots =
+    pip.accumulator <= 4 ? "●".repeat(pip.accumulator) : `●×${pip.accumulator}`
+  return (
+    <span
+      className="mv-data inline-flex items-center gap-1 text-[10px]"
+      title={`${pip.casterName}: ${pip.accumulator} Paradox ${pip.accumulator === 1 ? "roll" : "rolls"} this Scene — the next pool starts +${pip.accumulator}`}
+    >
+      <span className="max-w-24 truncate" style={{ color: "var(--ink)" }}>
+        {pip.casterName}
+      </span>
+      <span style={{ color: "var(--bad)", letterSpacing: "1px" }}>{dots}</span>
+    </span>
   )
 }

@@ -12,7 +12,7 @@ import type {
   SceneId,
   SessionId,
 } from "../ids"
-import type { ParadoxSeverity } from "../paradox"
+import type { ParadoxPoolModifier, ParadoxSeverity } from "../paradox"
 import type { Membership } from "../membership"
 import type { NotAMember } from "../authz"
 import type { Mana, Willpower } from "../quantities"
@@ -102,15 +102,20 @@ export interface CastDraft {
 /**
  * The writes the beat flows can express against a Cast: each beat stamps its
  * own fields plus the status rung it lands on. The declaration is immutable
- * after draft; the adapter stamps `updatedAt` and any recorded `Override`
- * marker (void's repair provenance) structurally.
+ * after draft — except `usesMagicalTool`, the caster's side of the
+ * negotiation (issue #44), editable until liabilities lock. The adapter
+ * stamps `updatedAt` and any recorded `Override` marker (void's repair
+ * provenance) structurally.
  */
 export interface CastPatch {
   readonly status?: CastStatus
+  readonly usesMagicalTool?: boolean
   readonly sceneId?: SceneId
   readonly gnosis?: number
   readonly sleeperWitnesses?: boolean
+  readonly witnessCount?: number
   readonly priorParadoxRolls?: number
+  readonly discretionaryModifiers?: ReadonlyArray<ParadoxPoolModifier>
   readonly manaMitigation?: number
   readonly paradoxSuccesses?: number
   readonly paradoxIsDramaticFailure?: boolean

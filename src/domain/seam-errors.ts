@@ -15,6 +15,7 @@ import {
   CastAlreadyPending,
   CastStatusConflict,
   InvalidContainment,
+  InvalidLiability,
   InvalidMitigation,
   StageOccupied,
 } from "./flows/vulgar-cast"
@@ -58,6 +59,7 @@ export const SeamError = Schema.Union([
   // Validation
   InvalidSceneName,
   InvalidCastDeclaration,
+  InvalidLiability,
   InvalidMitigation,
   InvalidSheetlessCast,
   InvalidHandEdit,

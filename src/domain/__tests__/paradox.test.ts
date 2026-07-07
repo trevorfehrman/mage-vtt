@@ -23,6 +23,53 @@ describe("Paradox", () => {
     expect(pool.totalDice).toBe(4)
   })
 
+  it("witness count carries the book's flat +2 — one Sleeper or a crowd (issue #44)", () => {
+    // The count is fiction detail the table negotiates; the modifier is the
+    // book's flat "+2, one or more Sleepers witnesses the magic" (p. 125).
+    const one = calculateParadoxPool({ gnosis: 3, witnessCount: 1 })
+    expect(one.totalDice).toBe(4)
+    expect(one.modifiers).toEqual([{ source: "Sleeper witnesses (1)", dice: 2 }])
+
+    const crowd = calculateParadoxPool({ gnosis: 3, witnessCount: 12 })
+    expect(crowd.totalDice).toBe(4)
+    expect(crowd.modifiers).toEqual([{ source: "Sleeper witnesses (12)", dice: 2 }])
+  })
+
+  it("witness count takes precedence over the coarse boolean, including zero", () => {
+    // The ST pressed the count down to none: the Scene-toggle default stands aside.
+    const pool = calculateParadoxPool({
+      gnosis: 3,
+      sleeperWitnesses: true,
+      witnessCount: 0,
+    })
+    expect(pool.totalDice).toBe(2)
+    expect(pool.modifiers).toEqual([])
+  })
+
+  it("discretionary modifiers ride the pool verbatim, either direction (issue #44)", () => {
+    const pool = calculateParadoxPool({
+      gnosis: 3,
+      discretionaryModifiers: [
+        { source: "Ley line nexus", dice: 2 },
+        { source: "Consecrated ground", dice: -1 },
+      ],
+    })
+    // base 2, +2 ley line, -1 ground = 3
+    expect(pool.totalDice).toBe(3)
+    expect(pool.modifiers).toEqual([
+      { source: "Ley line nexus", dice: 2 },
+      { source: "Consecrated ground", dice: -1 },
+    ])
+  })
+
+  it("the pool still floors at zero under heavy discretionary reductions", () => {
+    const pool = calculateParadoxPool({
+      gnosis: 3,
+      discretionaryModifiers: [{ source: "Demesne", dice: -5 }],
+    })
+    expect(pool.totalDice).toBe(0)
+  })
+
   it("mana mitigation reduces paradox pool", () => {
     const pool = calculateParadoxPool({
       gnosis: 3,

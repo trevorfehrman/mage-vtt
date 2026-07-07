@@ -1,16 +1,21 @@
 import { v } from "convex/values"
+import { query } from "./_generated/server"
+import { requireMember } from "./lib/auth"
 import { enforcedMutation } from "./lib/enforce"
+import { sceneParadoxPips } from "../src/domain/cast"
 import {
   cancelCast as cancelCastFlow,
   containParadox as containParadoxFlow,
   declineDraft as declineDraftFlow,
   draftCast as draftCastFlow,
+  editLiabilities as editLiabilitiesFlow,
   engageCast as engageCastFlow,
   killDraft as killDraftFlow,
   lockIntention as lockIntentionFlow,
   lockLiabilities as lockLiabilitiesFlow,
   rollCastDice as rollCastDiceFlow,
   rollParadox as rollParadoxFlow,
+  setMagicalTool as setMagicalToolFlow,
   voidCast as voidCastFlow,
 } from "../src/domain/flows/vulgar-cast"
 
@@ -42,6 +47,27 @@ export const decline = enforcedMutation({ args: step, flow: declineDraftFlow })
 
 export const engage = enforcedMutation({ args: step, flow: engageCastFlow })
 
+// The ST's liability buttons (issue #44): each press is one patch, one
+// realtime reassembly of the pool on every screen. ST-only, `engaged`-only —
+// the flow refuses everything else on the taxonomy.
+export const editLiabilities = enforcedMutation({
+  args: {
+    ...step,
+    witnessCount: v.optional(v.number()),
+    priorParadoxRolls: v.optional(v.number()),
+    discretionaryModifiers: v.optional(
+      v.array(v.object({ source: v.string(), dice: v.number() })),
+    ),
+  },
+  flow: editLiabilitiesFlow,
+})
+
+// The caster's side of the negotiation (issue #44): theirs until the ST locks.
+export const setTool = enforcedMutation({
+  args: { ...step, usesMagicalTool: v.boolean() },
+  flow: setMagicalToolFlow,
+})
+
 export const lockLiabilities = enforcedMutation({
   args: step,
   flow: lockLiabilitiesFlow,
@@ -65,3 +91,29 @@ export const rollCast = enforcedMutation({ args: step, flow: rollCastDiceFlow })
 
 // The repair door (ADR-0015): named for what it does, stamped for how it did it.
 export const voidCast = enforcedMutation({ args: step, flow: voidCastFlow })
+
+// The strip's per-caster Paradox pips (issue #44): who is pushing their luck
+// this Scene, derived live from resolved Cast history through the same leaf
+// the engage beat prefills defaults with (ADR-0012 — never a stored tally).
+// Member-gated like the Scene read; empty in downtime.
+export const paradoxPips = query({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    await requireMember(ctx, args.sessionId)
+
+    const scenes = await ctx.db
+      .query("scenes")
+      .withIndex("by_sessionId_status", (q) =>
+        q.eq("sessionId", args.sessionId).eq("status", "active"),
+      )
+      .collect()
+    const scene = scenes[0]
+    if (!scene) return []
+
+    const casts = await ctx.db
+      .query("casts")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .collect()
+    return sceneParadoxPips(casts, scene._id)
+  },
+})

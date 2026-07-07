@@ -8,6 +8,7 @@ import {
   isCommitted,
   isOnStage,
   isUnresolved,
+  sceneParadoxPips,
   toGnosisRank,
   waitingOn,
   type CastStatus,
@@ -127,6 +128,50 @@ describe("deriveAccumulator (ADR-0012: resolved Cast history, never a tally)", (
   it("never goes negative", () => {
     const casts = [makeCast({ id: "cast-1", updatedAt: 1, paradoxIsDramaticFailure: true })]
     expect(deriveAccumulator(casts, SCENE, CASTER)).toBe(0)
+  })
+})
+
+describe("sceneParadoxPips (issue #44: the strip's per-caster accumulators)", () => {
+  it("groups resolved Casts per caster and reports nonzero accumulators only", () => {
+    const casts = [
+      makeCast({ id: "cast-1", updatedAt: 1 }),
+      makeCast({ id: "cast-2", updatedAt: 2 }),
+      makeCast({ id: "cast-3", characterId: OTHER_CASTER, casterName: "Briar", updatedAt: 3 }),
+      // Terminal-but-not-resolved and other-Scene rows leave no pips.
+      makeCast({ id: "cast-4", status: "voided", updatedAt: 4 }),
+      makeCast({ id: "cast-5", sceneId: OTHER_SCENE, updatedAt: 5 }),
+    ]
+    expect(sceneParadoxPips(casts, SCENE)).toEqual([
+      { characterId: CASTER, casterName: "Aldous", accumulator: 2 },
+      { characterId: OTHER_CASTER, casterName: "Briar", accumulator: 1 },
+    ])
+  })
+
+  it("applies each caster's dramatic-failure grace independently", () => {
+    const casts = [
+      // Aldous's only roll was a dramatic failure: accumulator 0, no pip.
+      makeCast({ id: "cast-1", updatedAt: 1, paradoxIsDramaticFailure: true }),
+      makeCast({ id: "cast-2", characterId: OTHER_CASTER, casterName: "Briar", updatedAt: 2 }),
+    ]
+    expect(sceneParadoxPips(casts, SCENE)).toEqual([
+      { characterId: OTHER_CASTER, casterName: "Briar", accumulator: 1 },
+    ])
+  })
+
+  it("orders by accumulator descending, then name — a stable strip", () => {
+    const casts = [
+      makeCast({ id: "cast-1", characterId: OTHER_CASTER, casterName: "Briar", updatedAt: 1 }),
+      makeCast({ id: "cast-2", updatedAt: 2 }),
+      makeCast({ id: "cast-3", updatedAt: 3 }),
+    ]
+    expect(sceneParadoxPips(casts, SCENE).map((p) => p.casterName)).toEqual([
+      "Aldous",
+      "Briar",
+    ])
+  })
+
+  it("no Scene, no pips (downtime)", () => {
+    expect(sceneParadoxPips([makeCast({ id: "cast-1", updatedAt: 1 })], undefined)).toEqual([])
   })
 })
 

@@ -7,12 +7,14 @@ import {
   containParadox,
   declineDraft,
   draftCast,
+  editLiabilities,
   engageCast,
   killDraft,
   lockIntention,
   lockLiabilities,
   rollCastDice,
   rollParadox,
+  setMagicalTool,
   voidCast,
 } from "../flows/vulgar-cast"
 import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "../ids"
@@ -124,6 +126,7 @@ const castAt = (
           sceneId: SCENE,
           gnosis: 1,
           sleeperWitnesses: false,
+          witnessCount: 0,
           priorParadoxRolls: 0,
         }
   const commitment =
@@ -175,6 +178,7 @@ describe("Flows.vulgarCast — the whole handshake (issue #43)", () => {
       expect(engaged.sceneId).toBe(SCENE)
       expect(engaged.gnosis).toBe(1)
       expect(engaged.sleeperWitnesses).toBe(true) // from the Scene toggle
+      expect(engaged.witnessCount).toBe(1) // the toggle's "one or more", countable
       expect(engaged.priorParadoxRolls).toBe(0)
 
       // Beat 3 — the ST locks liabilities against a frozen pool.
@@ -345,7 +349,210 @@ describe("Flows.vulgarCast — the whole handshake (issue #43)", () => {
       expect(engaged.status).toBe("engaged")
       expect(engaged.sceneId).toBeUndefined()
       expect(engaged.sleeperWitnesses).toBe(false)
+      expect(engaged.witnessCount).toBe(0)
       expect(engaged.priorParadoxRolls).toBe(0)
+    }),
+  )
+
+  it.effect("the dramatic-failure grace prefills the accumulator default (issue #44)", () =>
+    Effect.gen(function* () {
+      // Two resolved rolls this Scene, the latest a dramatic failure: Paradox
+      // leaves the caster alone, so the default forgives that Cast's +1.
+      const store = seed({
+        scenes: [activeScene()],
+        casts: [
+          castAt("resolved", { id: CastId.make("cast-one"), updatedAt: 1 }),
+          castAt("resolved", {
+            id: CastId.make("cast-two"),
+            paradoxIsDramaticFailure: true,
+            updatedAt: 2,
+          }),
+        ],
+      })
+
+      const castId = yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        arcanum: "death",
+        level: 1,
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+      yield* engageCast({ sessionId: SESSION, castId }).pipe(
+        as(ST_USER),
+        Effect.provide(store.layer),
+      )
+
+      expect(store.casts[2]!.priorParadoxRolls).toBe(1)
+    }),
+  )
+})
+
+describe("Flows.vulgarCast — negotiation richness (issue #44)", () => {
+  const CAST = CastId.make("cast-prior")
+
+  it.effect("the ST's liability buttons reshape the pool the roll then uses", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [castAt("engaged")] })
+
+      // Three presses of the liability buttons, each its own realtime patch.
+      yield* editLiabilities({
+        sessionId: SESSION,
+        castId: CAST,
+        witnessCount: 3,
+      }).pipe(as(ST_USER), Effect.provide(store.layer))
+      yield* editLiabilities({
+        sessionId: SESSION,
+        castId: CAST,
+        priorParadoxRolls: 2,
+      }).pipe(as(ST_USER), Effect.provide(store.layer))
+      yield* editLiabilities({
+        sessionId: SESSION,
+        castId: CAST,
+        discretionaryModifiers: [{ source: "Ley line nexus", dice: 1 }],
+      }).pipe(as(ST_USER), Effect.provide(store.layer))
+
+      // Partial edits accumulate on the document; negotiation is table talk,
+      // so no Activity entries land (ADR-0016: deliberation is not a reveal).
+      const engaged = store.casts[0]!
+      expect(engaged.witnessCount).toBe(3)
+      expect(engaged.priorParadoxRolls).toBe(2)
+      expect(engaged.discretionaryModifiers).toEqual([
+        { source: "Ley line nexus", dice: 1 },
+      ])
+      expect(store.messages).toHaveLength(0)
+
+      // The lock narrates the edited pool: base 1, +2 successive, +2
+      // witnesses, +1 ley line = 6 dice.
+      yield* lockLiabilities({ sessionId: SESSION, castId: CAST }).pipe(
+        as(ST_USER),
+        Effect.provide(store.layer),
+      )
+      expect(store.messages[0]!.text).toContain("6-die Paradox pool")
+
+      yield* lockIntention({
+        sessionId: SESSION,
+        castId: CAST,
+        manaMitigation: 0,
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      // The roll itself throws the edited pool, discretionary source and all.
+      yield* rollParadox({ sessionId: SESSION, castId: CAST }).pipe(
+        as(ST_USER),
+        Effect.provide(store.layer),
+      )
+      expect(store.rolls[0]!.result.poolSize).toBe(6)
+      const names = store.rolls[0]!.components.map((c) => c.name)
+      expect(names).toContain("Sleeper witnesses (3)")
+      expect(names).toContain("Ley line nexus")
+    }).pipe(Random.withSeed("negotiation")),
+  )
+
+  it.effect("the caster's magical-tool flag is theirs to change until the ST locks", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [castAt("engaged")] })
+
+      yield* setMagicalTool({
+        sessionId: SESSION,
+        castId: CAST,
+        usesMagicalTool: true,
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      expect(store.casts[0]!.usesMagicalTool).toBe(true)
+      expect(store.messages).toHaveLength(0) // table talk, no ceremony
+
+      // The lock's narrated pool wears the tool: base 1, −1 tool = chance die
+      // territory — but the pool floors at 0 dice.
+      yield* lockLiabilities({ sessionId: SESSION, castId: CAST }).pipe(
+        as(ST_USER),
+        Effect.provide(store.layer),
+      )
+      expect(store.messages[0]!.text).toContain("0-die Paradox pool")
+    }),
+  )
+
+  it.effect("liability edits are refused before engagement and after the ST's lock", () =>
+    Effect.gen(function* () {
+      const early = seed({ casts: [storedCast()] })
+      const earlyExit = yield* editLiabilities({
+        sessionId: SESSION, castId: CAST, witnessCount: 1,
+      }).pipe(as(ST_USER), Effect.provide(early.layer), Effect.exit)
+      expect(failureTag(earlyExit)).toBe("CastStatusConflict")
+
+      const late = seed({ casts: [castAt("liabilitiesLocked")] })
+      const lateExit = yield* editLiabilities({
+        sessionId: SESSION, castId: CAST, witnessCount: 1,
+      }).pipe(as(ST_USER), Effect.provide(late.layer), Effect.exit)
+      expect(failureTag(lateExit)).toBe("CastStatusConflict")
+      expect(late.casts[0]!.witnessCount).toBe(0)
+    }),
+  )
+
+  it.effect("the liability buttons are the Storyteller's; the tool flag is the caster's", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [castAt("engaged")] })
+
+      // The caster reaching for the ST's side of the document…
+      const casterExit = yield* editLiabilities({
+        sessionId: SESSION, castId: CAST, witnessCount: 5,
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+      expect(failureTag(casterExit)).toBe("NotStoryteller")
+
+      // …and a third player reaching for the caster's.
+      const strangerExit = yield* setMagicalTool({
+        sessionId: SESSION, castId: CAST, usesMagicalTool: true,
+      }).pipe(as(OTHER_PLAYER), Effect.provide(store.layer), Effect.exit)
+      expect(failureTag(strangerExit)).toBe("NotYourCharacter")
+
+      expect(store.casts[0]!.witnessCount).toBe(0)
+      expect(store.casts[0]!.usesMagicalTool).toBe(false)
+    }),
+  )
+
+  it.effect("the tool flag freezes with the liabilities — the caster committed against that pool", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [castAt("liabilitiesLocked")] })
+
+      const exit = yield* setMagicalTool({
+        sessionId: SESSION, castId: CAST, usesMagicalTool: true,
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("CastStatusConflict")
+      expect(store.casts[0]!.usesMagicalTool).toBe(false)
+    }),
+  )
+
+  it.effect("malformed liabilities are refused with the typed error", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [castAt("engaged")] })
+
+      const cases = [
+        { witnessCount: -1 },
+        { witnessCount: 1.5 },
+        { priorParadoxRolls: -2 },
+        { discretionaryModifiers: [{ source: "   ", dice: 1 }] },
+        { discretionaryModifiers: [{ source: "Nexus", dice: 0 }] },
+        { discretionaryModifiers: [{ source: "Nexus", dice: 1.5 }] },
+      ]
+      for (const bad of cases) {
+        const exit = yield* editLiabilities({
+          sessionId: SESSION, castId: CAST, ...bad,
+        }).pipe(as(ST_USER), Effect.provide(store.layer), Effect.exit)
+        expect(failureTag(exit)).toBe("InvalidLiability")
+      }
+      expect(store.casts[0]!.witnessCount).toBe(0)
+      expect(store.casts[0]!.discretionaryModifiers).toBeUndefined()
+    }),
+  )
+
+  it.effect("an ST toggling the tool in the caster's stead is Override-stamped (ADR-0015)", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [castAt("engaged")] })
+
+      yield* setMagicalTool({
+        sessionId: SESSION, castId: CAST, usesMagicalTool: true,
+      }).pipe(as(ST_USER), Effect.provide(store.layer))
+
+      expect(store.casts[0]!.usesMagicalTool).toBe(true)
+      expect(store.casts[0]!.override?.kind).toBe("storyteller-action")
     }),
   )
 })
