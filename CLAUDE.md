@@ -36,6 +36,7 @@ This project uses Effect v4 beta. Core concepts are the same as v3 but some APIs
 - Data shapes are Schema, always — a manual `interface` is legal only for capability contracts: `Context.Tag` service methods and React props carrying functions/JSX (ADR-0017).
 - Never write `switch` — dispatch through `Match` (`Match.exhaustive` for closed sets, `Match.orElse` for open spaces). Zero exceptions (ADR-0018).
 - Pure functions use the pure half of the toolbox — `Match`, `Option`, `Data`, `Array`/`Record`/`HashMap` modules — not `for`/`while`/`new Map`/`new Set`. "Plain function" (ADR-0014) means no `Effect` type, not plain JavaScript (ADR-0019).
+- Mechanical enforcement (issue #56): `bun run lint` — `eslint.config.js` is the source of truth for what is banned where (`switch` everywhere; `try`/`Math.random`/`Date.now`/`process.exit` in `src/domain`; bare `vitest` imports in tests). Inline `eslint-disable` comments are inert. Runs on pre-commit (husky) and in CI alongside `effect-language-service diagnostics`.
 
 ### Effect v4 API Differences from v3
 

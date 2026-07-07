@@ -1,4 +1,4 @@
-import { describe, test, expect } from "vitest"
+import { describe, test, expect } from "@effect/vitest"
 import { createActor } from "xstate"
 import { dicePoolMachine } from "../dice-pool"
 

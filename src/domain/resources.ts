@@ -30,13 +30,13 @@ export const spendResource = Effect.fn("Resource.spend")(function* (
   options?: { perTurnLimit?: number },
 ) {
   if (options?.perTurnLimit !== undefined && amount > options.perTurnLimit) {
-    yield* new InsufficientResource({
+    return yield* new InsufficientResource({
       message: `Cannot spend ${amount} ${tracker.name} — per-turn limit is ${options.perTurnLimit}`,
     })
   }
 
   if (amount > tracker.current) {
-    yield* new InsufficientResource({
+    return yield* new InsufficientResource({
       message: `Cannot spend ${amount} ${tracker.name} — only ${tracker.current} remaining`,
     })
   }

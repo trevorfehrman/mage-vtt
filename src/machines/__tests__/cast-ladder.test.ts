@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, test } from "@effect/vitest"
 import { createActor } from "xstate"
 import type { CastEntry } from "#/domain/activity"
 import { CastStatus } from "#/domain/cast"

@@ -1,4 +1,4 @@
-import { describe, test, expect } from "vitest"
+import { describe, test, expect } from "@effect/vitest"
 import { createActor, fromPromise, waitFor } from "xstate"
 import { buildSubmission, castMachine, type CastSubmission } from "../cast"
 import { KnownRote } from "#/domain/character"
