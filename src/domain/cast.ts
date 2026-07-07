@@ -1,4 +1,4 @@
-import { Array as Arr, Order, Schema } from "effect"
+import { Array as Arr, Match, Order, Schema } from "effect"
 import type { HealthTrack } from "./damage"
 import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "./ids"
 import type { GnosisRank } from "./mana-economy"
@@ -56,20 +56,18 @@ export const isCommitted = (status: CastStatus): boolean =>
   status === "intentionLocked" || status === "paradoxRolled" || status === "contained"
 
 /** Whose button the table is waiting on; null once the Cast is terminal. */
-export const waitingOn = (status: CastStatus): "storyteller" | "caster" | null => {
-  switch (status) {
-    case "draft": // in the wings — the ST engages (or declines)
-    case "engaged": // negotiation — the ST locks liabilities
-    case "intentionLocked": // the ST's own Paradox-roll button
-      return "storyteller"
-    case "liabilitiesLocked": // the caster's point-of-no-return lock
-    case "paradoxRolled": // the caster's containment choice
-    case "contained": // the caster's climax cast-roll button
-      return "caster"
-    default:
-      return null
-  }
-}
+export const waitingOn = (status: CastStatus): "storyteller" | "caster" | null =>
+  Match.value(status).pipe(
+    // draft: in the wings — the ST engages (or declines); engaged: negotiation —
+    // the ST locks liabilities; intentionLocked: the ST's own Paradox-roll button
+    Match.whenOr("draft", "engaged", "intentionLocked", () => "storyteller" as const),
+    // liabilitiesLocked: the caster's point-of-no-return lock; paradoxRolled: the
+    // caster's containment choice; contained: the caster's climax cast-roll button
+    Match.whenOr("liabilitiesLocked", "paradoxRolled", "contained", () => "caster" as const),
+    // Terminals listed, not defaulted (ADR-0018): a new rung is a compile error.
+    Match.whenOr("resolved", "cancelled", "voided", () => null),
+    Match.exhaustive,
+  )
 
 /**
  * Seam mirror of a `casts` row (ADR-0004): decoded at the adapter from

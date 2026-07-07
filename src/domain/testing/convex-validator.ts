@@ -1,4 +1,4 @@
-import type { Schema } from "effect"
+import { Match, type Schema } from "effect"
 import { schemaToConvexValidator } from "../schema-bridge"
 
 /**
@@ -30,41 +30,36 @@ export const validatorJson = (schema: Schema.Top): ValidatorJson =>
 
 /** Does `value` conform to a Convex validator, read from its `.json` form? */
 export function matchesConvexValidator(value: unknown, node: ValidatorJson): boolean {
-  switch (node.type) {
-    case "string":
-    case "id":
-      return typeof value === "string"
-    case "number":
-    case "float64":
-      return typeof value === "number"
-    case "boolean":
-      return typeof value === "boolean"
-    case "bigint":
-      return typeof value === "bigint"
-    case "null":
-      return value === null
-    case "bytes":
-      return value instanceof ArrayBuffer
-    case "literal":
-      return value === node.value
-    case "array":
-      return Array.isArray(value) && value.every((item) => matchesConvexValidator(item, node.value))
-    case "union":
-      return node.value.some((member) => matchesConvexValidator(value, member))
-    case "object": {
+  return Match.value(node).pipe(
+    Match.whenOr({ type: "string" }, { type: "id" }, () => typeof value === "string"),
+    Match.whenOr({ type: "number" }, { type: "float64" }, () => typeof value === "number"),
+    Match.when({ type: "boolean" }, () => typeof value === "boolean"),
+    Match.when({ type: "bigint" }, () => typeof value === "bigint"),
+    Match.when({ type: "null" }, () => value === null),
+    Match.when({ type: "bytes" }, () => value instanceof ArrayBuffer),
+    Match.when({ type: "literal" }, (literal) => value === literal.value),
+    Match.when(
+      { type: "array" },
+      (array) =>
+        Array.isArray(value) && value.every((item) => matchesConvexValidator(item, array.value)),
+    ),
+    Match.when({ type: "union" }, (union) =>
+      union.value.some((member) => matchesConvexValidator(value, member)),
+    ),
+    Match.when({ type: "object" }, (object) => {
       if (typeof value !== "object" || value === null || Array.isArray(value)) return false
       const record = value as Record<string, unknown>
       // Every present key must be a declared field of the right type...
-      for (const key of Object.keys(record)) {
-        const field = node.value[key]
-        if (!field) return false
-        if (!matchesConvexValidator(record[key], field.fieldType)) return false
-      }
+      const declared = Object.keys(record).every((key) => {
+        const field = object.value[key]
+        return field !== undefined && matchesConvexValidator(record[key], field.fieldType)
+      })
       // ...and every required field must be present.
-      for (const [key, field] of Object.entries(node.value)) {
-        if (!field.optional && !(key in record)) return false
-      }
-      return true
-    }
-  }
+      const required = Object.entries(object.value).every(
+        ([key, field]) => field.optional || key in record,
+      )
+      return declared && required
+    }),
+    Match.exhaustive,
+  )
 }

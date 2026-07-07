@@ -147,11 +147,12 @@ function MessageItem({ message, dropCap }: { message: MessageEntry; dropCap?: bo
 function OverrideTag({ override }: { override: OverrideMark }) {
   return (
     <Tag title={`Invoked by ${override.invokedByName}`}>
-      {override.kind === "storyteller-action"
-        ? "Storyteller"
-        : override.kind === "repair"
-          ? "Repair"
-          : "God-mode"}
+      {Match.value(override.kind).pipe(
+        Match.when("storyteller-action", () => "Storyteller"),
+        Match.when("repair", () => "Repair"),
+        Match.when("godmode-action", () => "God-mode"),
+        Match.exhaustive,
+      )}
     </Tag>
   )
 }

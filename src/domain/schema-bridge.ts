@@ -11,7 +11,7 @@
  * name. Anything outside that projection throws loudly rather than mis-compiling.
  */
 
-import { Schema } from "effect"
+import { Match, Schema } from "effect"
 import { v, type GenericId, type GenericValidator, type Validator } from "convex/values"
 
 /**
@@ -124,33 +124,32 @@ function compileNode(node: JsonNode, definitions: Definitions): GenericValidator
     )
   }
 
+  // `type` is an open external string space (JSON Schema draft-2020-12): known
+  // types match by name; everything else falls to `orElse`, which still admits
+  // typeless enum/const nodes before refusing to guess (ADR-0018).
   const enumValues = node.enum
-  switch (node.type) {
-    case "string":
-      return Array.isArray(enumValues) ? literalUnion(enumValues) : v.string()
-    case "boolean":
-      return v.boolean()
-    case "number":
-    case "integer":
-      return v.number()
-    case "null":
-      return v.null()
-    case "array": {
+  return Match.value(node.type).pipe(
+    Match.when("string", () =>
+      Array.isArray(enumValues) ? literalUnion(enumValues) : v.string(),
+    ),
+    Match.when("boolean", () => v.boolean()),
+    Match.whenOr("number", "integer", () => v.number()),
+    Match.when("null", () => v.null()),
+    Match.when("array", () => {
       const items = node.items
       if (!items || typeof items !== "object" || Array.isArray(items)) {
         throw unsupported(node, "array must have a single `items` schema")
       }
       return v.array(compileNode(items as JsonNode, definitions))
-    }
-    case "object":
-      return compileObject(node, definitions)
-  }
-
-  // Typeless enum / const nodes still map cleanly onto literals.
-  if (Array.isArray(enumValues)) return literalUnion(enumValues)
-  if ("const" in node) return v.literal(node.const as string | number | boolean)
-
-  throw unsupported(node)
+    }),
+    Match.when("object", () => compileObject(node, definitions)),
+    Match.orElse(() => {
+      // Typeless enum / const nodes still map cleanly onto literals.
+      if (Array.isArray(enumValues)) return literalUnion(enumValues)
+      if ("const" in node) return v.literal(node.const as string | number | boolean)
+      throw unsupported(node)
+    }),
+  )
 }
 
 function compileObject(node: JsonNode, definitions: Definitions): GenericValidator {
@@ -167,14 +166,12 @@ function compileObject(node: JsonNode, definitions: Definitions): GenericValidat
 }
 
 function compileNative(annotation: ConvexNativeAnnotation): GenericValidator {
-  switch (annotation.type) {
-    case "id":
-      return v.id(annotation.table)
-    case "int64":
-      return v.int64()
-    case "bytes":
-      return v.bytes()
-  }
+  return Match.value(annotation).pipe(
+    Match.when({ type: "id" }, ({ table }) => v.id(table)),
+    Match.when({ type: "int64" }, () => v.int64()),
+    Match.when({ type: "bytes" }, () => v.bytes()),
+    Match.exhaustive,
+  )
 }
 
 function literalUnion(values: ReadonlyArray<unknown>): GenericValidator {

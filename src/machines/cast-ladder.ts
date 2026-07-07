@@ -1,6 +1,7 @@
+import { Match } from "effect"
 import { assign, setup } from "xstate"
 import type { CastEntry } from "#/domain/activity"
-import { CastStatus } from "#/domain/cast"
+import { CastStatus, isOnStage } from "#/domain/cast"
 
 /**
  * The Cast-ladder machine (issue #43, ADR-0016): a *projection* of the
@@ -82,43 +83,31 @@ export const ladderControls = (
   status: CastStatus,
   viewer: { isStoryteller: boolean; isCaster: boolean },
 ): ReadonlyArray<LadderControl> => {
-  const controls: Array<LadderControl> = []
-  switch (status) {
-    case "draft":
-      if (viewer.isCaster) controls.push("kill", "tool")
-      if (viewer.isStoryteller) controls.push("engage", "decline")
-      break
-    case "engaged":
-      if (viewer.isStoryteller) controls.push("negotiate", "lockLiabilities")
-      if (viewer.isCaster) controls.push("tool")
-      if (viewer.isCaster || viewer.isStoryteller) controls.push("cancel")
-      break
-    case "liabilitiesLocked":
-      if (viewer.isCaster) controls.push("lockIntention")
-      if (viewer.isCaster || viewer.isStoryteller) controls.push("cancel")
-      break
-    case "intentionLocked":
-      if (viewer.isStoryteller) controls.push("rollParadox")
-      break
-    case "paradoxRolled":
-      if (viewer.isCaster) controls.push("contain")
-      break
-    case "contained":
-      if (viewer.isCaster) controls.push("rollCast")
-      break
-    default:
-      break
-  }
+  const eitherParty = viewer.isCaster || viewer.isStoryteller
+  const rung = Match.value(status).pipe(
+    Match.withReturnType<ReadonlyArray<LadderControl>>(),
+    Match.when("draft", () => [
+      ...(viewer.isCaster ? (["kill", "tool"] as const) : []),
+      ...(viewer.isStoryteller ? (["engage", "decline"] as const) : []),
+    ]),
+    Match.when("engaged", () => [
+      ...(viewer.isStoryteller ? (["negotiate", "lockLiabilities"] as const) : []),
+      ...(viewer.isCaster ? (["tool"] as const) : []),
+      ...(eitherParty ? (["cancel"] as const) : []),
+    ]),
+    Match.when("liabilitiesLocked", () => [
+      ...(viewer.isCaster ? (["lockIntention"] as const) : []),
+      ...(eitherParty ? (["cancel"] as const) : []),
+    ]),
+    Match.when("intentionLocked", () => (viewer.isStoryteller ? ["rollParadox" as const] : [])),
+    Match.when("paradoxRolled", () => (viewer.isCaster ? ["contain" as const] : [])),
+    Match.when("contained", () => (viewer.isCaster ? ["rollCast" as const] : [])),
+    // Terminal rungs offer no buttons — listed, not defaulted (ADR-0018), so a
+    // new rung is a compile error here instead of a silently control-less card.
+    Match.whenOr("resolved", "cancelled", "voided", () => []),
+    Match.exhaustive,
+  )
   // The repair door rides every live rung except the free-exit draft stage
   // (a draft dies by kill/decline; void exists to unstick the contract).
-  if (
-    viewer.isStoryteller &&
-    status !== "draft" &&
-    status !== "resolved" &&
-    status !== "cancelled" &&
-    status !== "voided"
-  ) {
-    controls.push("void")
-  }
-  return controls
+  return viewer.isStoryteller && isOnStage(status) ? [...rung, "void"] : rung
 }
