@@ -4,6 +4,7 @@ import {
   Cast,
   castPoolAfterParadox,
   containmentCap,
+  mitigationCap,
   deriveAccumulator,
   isCommitted,
   isOnStage,
@@ -195,6 +196,28 @@ describe("containmentCap (the martyr play: last box yes, death no)", () => {
 
   it("is zero on a full track", () => {
     expect(containmentCap(track(0, 7), 5)).toBe(0)
+  })
+})
+
+describe("mitigationCap (issue #52: one die per Mana, after the spell takes its cut)", () => {
+  it("caps at the pool when Mana is plentiful", () => {
+    expect(mitigationCap(4, 10, 2)).toBe(4)
+  })
+
+  it("caps at the Mana left once the spell cost is reserved", () => {
+    expect(mitigationCap(6, 3, 1)).toBe(2)
+  })
+
+  it("a spell cost eating the whole reserve leaves nothing to mitigate with", () => {
+    expect(mitigationCap(5, 2, 2)).toBe(0)
+  })
+
+  it("clamps at zero when the spell costs more Mana than the caster holds", () => {
+    expect(mitigationCap(5, 1, 3)).toBe(0)
+  })
+
+  it("a zero pool needs no mitigation regardless of wealth", () => {
+    expect(mitigationCap(0, 10, 0)).toBe(0)
   })
 })
 

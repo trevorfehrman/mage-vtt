@@ -228,6 +228,19 @@ export const containmentCap = (
   )
 
 /**
+ * How many Paradox dice the caster may buy off with Mana at the intention
+ * lock: one die per Mana, capped by the pool itself and by the Mana still
+ * free once the spell's own cost is reserved (issue #52 — the client mirror
+ * of the server's mitigation refusals; the server stays authoritative).
+ */
+export const mitigationCap = (
+  poolBeforeMitigation: number,
+  manaCurrent: number,
+  spellManaCost: number,
+): number =>
+  Math.min(poolBeforeMitigation, Math.max(manaCurrent - spellManaCost, 0))
+
+/**
  * The climax pool: declared dice minus every uncontained Paradox success
  * (−1 die each, page 124). Zero or below rolls a chance die — `rollPool`'s
  * contract, not this leaf's.

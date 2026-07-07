@@ -4,6 +4,7 @@ import { useMachine } from "@xstate/react"
 import type { CastEntry } from "#/domain/activity"
 import {
   containmentCap,
+  mitigationCap,
   effectiveWitnessCount,
   toGnosisRank,
   waitingOn,
@@ -138,8 +139,9 @@ export function CastCard({
   const poolBeforeMitigation = poolInputs
     ? calculateParadoxPool(poolInputs).totalDice
     : 0
-  const manaFree = mySheet ? Math.max(mySheet.manaCurrent - cast.spellManaCost, 0) : 0
-  const mitigationCap = Math.min(poolBeforeMitigation, manaFree)
+  const mitigateCap = mySheet
+    ? mitigationCap(poolBeforeMitigation, mySheet.manaCurrent, cast.spellManaCost)
+    : 0
   const containCap = mySheet
     ? containmentCap(mySheet.healthTrack, cast.paradoxSuccesses ?? 0)
     : (cast.paradoxSuccesses ?? 0)
@@ -423,7 +425,7 @@ export function CastCard({
               <NumberInput
                 label="mitigate"
                 value={mitigation}
-                cap={mitigationCap}
+                cap={mitigateCap}
                 onChange={setMitigation}
                 disabled={busy}
               />
