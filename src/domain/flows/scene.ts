@@ -136,6 +136,14 @@ export const closeScene = Effect.fn("Flows.scene.closeScene")(function* (
     store.patchCast(draft.id, { status: "cancelled" }),
   )
 
+  // A Combat is a child of the Scene (issue #60): it cannot outlive its
+  // parent, so the close ends it — narrated below, never silent (the same
+  // posture as the cancelled wings).
+  const combat = yield* store.getActiveCombat(sessionId)
+  if (Option.isSome(combat)) {
+    yield* store.patchCombat(combat.value.id, { status: "ended" })
+  }
+
   yield* store.patchScene(scene.id, { status: "closed" })
 
   // One close entry narrates the whole beat, cancelled wings included
@@ -146,10 +154,11 @@ export const closeScene = Effect.fn("Flows.scene.closeScene")(function* (
       : drafts.length === 1
         ? ` The draft in the wings was cancelled.`
         : ` ${drafts.length} drafts in the wings were cancelled.`
+  const clash = Option.isSome(combat) ? " The Combat still raging ended with it." : ""
   yield* store.insertMessage({
     sessionId,
     sender: { userId: storyteller.userId, displayName: storyteller.displayName },
-    text: `${storyteller.displayName} closed the Scene "${scene.name}".${wings}`,
+    text: `${storyteller.displayName} closed the Scene "${scene.name}".${wings}${clash}`,
     visibility: "system",
   })
 
@@ -176,8 +185,9 @@ export const setSceneWitnesses = Effect.fn("Flows.scene.setSceneWitnesses")(
   },
 )
 
-/** The precondition close and the toggle share: an open Scene, or the refusal. */
-const requireActiveScene = Effect.fn("Flows.scene.requireActiveScene")(function* (
+/** The precondition close and the toggle share — and Combat's start door
+ * (issue #60: a Combat is a child of a Scene): an open Scene, or the refusal. */
+export const requireActiveScene = Effect.fn("Flows.scene.requireActiveScene")(function* (
   sessionId: SessionId,
 ) {
   const store = yield* GameStore

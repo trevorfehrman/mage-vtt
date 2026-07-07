@@ -1,7 +1,13 @@
 import { describe, expect, it } from "@effect/vitest"
 import { Schema } from "effect"
 import { matchesConvexValidator, validatorJson } from "../testing/convex-validator"
-import { CharacterDoc, DiceRollDoc, MessageDoc, SessionMemberDoc } from "../tables"
+import {
+  CharacterDoc,
+  CombatDoc,
+  DiceRollDoc,
+  MessageDoc,
+  SessionMemberDoc,
+} from "../tables"
 
 /**
  * Round-trip safety net for the schema bridge (ADR-0005): for each seam table,
@@ -16,6 +22,7 @@ const tables = {
   diceRolls: DiceRollDoc,
   messages: MessageDoc,
   characters: CharacterDoc,
+  combats: CombatDoc,
 } as const
 
 describe("schema bridge: derived validators accept their mirror's rows", () => {

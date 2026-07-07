@@ -31,5 +31,8 @@ export type SceneId = typeof SceneId.Type
 export const CastId = Schema.String.pipe(Schema.brand("CastId"))
 export type CastId = typeof CastId.Type
 
+export const CombatId = Schema.String.pipe(Schema.brand("CombatId"))
+export type CombatId = typeof CombatId.Type
+
 export const RuleChunkId = Schema.String.pipe(Schema.brand("RuleChunkId"))
 export type RuleChunkId = typeof RuleChunkId.Type

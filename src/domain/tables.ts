@@ -17,6 +17,7 @@
  */
 
 import { Schema } from "effect"
+import { CombatParticipant } from "./combat-tracker"
 import { ConvexId } from "./schema-bridge"
 import { OverrideKind } from "./override"
 import { ParadoxPoolModifier } from "./paradox"
@@ -302,6 +303,24 @@ export const CastDoc = Schema.Struct({
   override: Schema.optionalKey(OverrideMarkerDoc),
   createdAt: Schema.Number,
   updatedAt: Schema.Number,
+})
+
+/**
+ * Stored shape of a Combat (issue #60): the FFX tick timeline, a child of a
+ * Scene. At most one row per session is `active` — the start flow's
+ * invariant, not the table's. The participant union is the domain's own
+ * (`combat-tracker.ts`, raw primitives per ADR-0011 — the `ParadoxPoolModifier`
+ * precedent); `endedAt` is present only once ended.
+ */
+export const CombatDoc = Schema.Struct({
+  sessionId: ConvexId("sessions"),
+  sceneId: ConvexId("scenes"),
+  status: Schema.Literals(["active", "ended"]),
+  participants: Schema.Array(CombatParticipant),
+  seq: Schema.Number,
+  nextActorId: Schema.optionalKey(Schema.String),
+  startedAt: Schema.Number,
+  endedAt: Schema.optionalKey(Schema.Number),
 })
 
 export const MessageDoc = Schema.Struct({

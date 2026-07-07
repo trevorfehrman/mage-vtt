@@ -1,6 +1,7 @@
 import { Context, Effect, Schema, type Option } from "effect"
 import { CastStatus, type Cast } from "../cast"
 import type { CharacterSheet } from "../character"
+import { CombatParticipant, type Combat } from "../combat-tracker"
 import { HealthBox } from "../damage"
 import { DiceRollResult, RawPoolComponent } from "../dice"
 import {
@@ -9,6 +10,7 @@ import {
   SceneId,
   SessionId,
   type CastId,
+  type CombatId,
   type MessageId,
   type RollId,
 } from "../ids"
@@ -136,6 +138,31 @@ export const CastPatch = Schema.Struct({
 export type CastPatch = typeof CastPatch.Type
 
 /**
+ * Intent-level draft of a new `combats` row (issue #60): always born `active`
+ * with an empty roster — the adapter stamps status, the counters, and the
+ * start timestamp (from `Clock`).
+ */
+export const CombatDraft = Schema.Struct({
+  sessionId: SessionId,
+  sceneId: SceneId,
+})
+export type CombatDraft = typeof CombatDraft.Type
+
+/**
+ * The writes the Combat flows can express: the lifecycle end, the whole
+ * roster as it should now read (replace, not merge — the document is the
+ * atom), the participant-id mint, and the settled next actor (`null` clears
+ * it when no rolled participant remains).
+ */
+export const CombatPatch = Schema.Struct({
+  status: Schema.optionalKey(Schema.Literals(["ended"])),
+  participants: Schema.optionalKey(Schema.Array(CombatParticipant)),
+  seq: Schema.optionalKey(Schema.Number),
+  nextActorId: Schema.optionalKey(Schema.NullOr(Schema.String)),
+})
+export type CombatPatch = typeof CombatPatch.Type
+
+/**
  * The write-side persistence port (ADR-0004).
  *
  * Domain-specific write helpers hide the wide field maps; typed reads fail with a
@@ -192,5 +219,18 @@ export class GameStore extends Context.Service<
      * three — sessions hold few Casts and the flows' filters are the rules.
      */
     readonly listCasts: (sessionId: SessionId) => Effect.Effect<ReadonlyArray<Cast>>
+    /**
+     * The session's at-most-one active Combat (issue #60). `Option`, like
+     * `getActiveScene`: no Combat running is a legal state, so absence is an
+     * answer — flows that need one raise their own precondition error.
+     */
+    readonly getActiveCombat: (
+      sessionId: SessionId,
+    ) => Effect.Effect<Option.Option<Combat>>
+    readonly insertCombat: (draft: CombatDraft) => Effect.Effect<CombatId>
+    readonly patchCombat: (
+      combatId: CombatId,
+      patch: CombatPatch,
+    ) => Effect.Effect<void>
   }
 >()("GameStore") {}

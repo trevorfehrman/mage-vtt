@@ -24,8 +24,8 @@ import { useSessionShortcuts } from "#/hooks/use-session-shortcuts"
  * for the covert-tier phase (PRD #11, issue #13): center = Character; right
  * rail = Activity Log + dice pool + chat. The left rail renders a cosmetic
  * video placeholder (owner call 2026-07-04 — the grid can't be judged without
- * its fourth wall); the bottom band (FFX-style initiative tracker) stays
- * unrendered until the combat phase.
+ * its fourth wall); the bottom band is the FFX-style tick timeline (issue
+ * #60), a slot like the strip's — it collapses itself out of combat.
  */
 interface SessionLayoutProps {
   sessionName: string
@@ -42,6 +42,8 @@ interface SessionLayoutProps {
   /** ST/Dev-only affordances (e.g. the sheet-less cast) — absent for players. */
   storytellerTools?: ReactNode
   chatInput: ReactNode
+  /** The FFX tick timeline (issue #60): the full-width bottom band. */
+  combatTracker?: ReactNode
   onClearPool: () => void
 }
 
@@ -57,6 +59,7 @@ export function SessionLayout({
   dicePoolBuilder,
   storytellerTools,
   chatInput,
+  combatTracker,
   onClearPool,
 }: SessionLayoutProps) {
   const leftPanelRef = usePanelRef()
@@ -203,6 +206,9 @@ export function SessionLayout({
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
+
+      {/* Bottom band — the FFX tick timeline (issue #60), full width */}
+      {combatTracker}
     </div>
   )
 }

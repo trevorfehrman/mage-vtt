@@ -89,8 +89,10 @@ const ChainStats = Schema.Struct({
 })
 type ChainStats = typeof ChainStats.Type
 
-/** Wits > Dexterity > Composure > Willpower; 0 means the chain is exhausted. */
-const byChain = (a: ChainStats, b: ChainStats): number =>
+/** Wits > Dexterity > Composure > Willpower; 0 means the chain is exhausted.
+ * Exported for the tracker's display ordering (issue #60): the timeline sorts
+ * tied Ticks by the same authority the queue leaves consult. */
+export const byChain = (a: ChainStats, b: ChainStats): number =>
   (b.wits ?? 0) - (a.wits ?? 0) ||
   (b.dexterity ?? 0) - (a.dexterity ?? 0) ||
   (b.composure ?? 0) - (a.composure ?? 0) ||

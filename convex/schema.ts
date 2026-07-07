@@ -5,6 +5,7 @@ import { RotePool } from "../src/domain/rote-pool"
 import {
   CastDoc,
   CharacterDoc,
+  CombatDoc,
   DiceRollDoc,
   MessageDoc,
   SceneDoc,
@@ -126,6 +127,13 @@ export default defineSchema({
   // --- Scenes (derived from the `SceneDoc` mirror, ADR-0005; issue #42) ---
   // The compound index serves the one hot read: "this session's active Scene".
   scenes: defineTable(schemaToConvexValidator(SceneDoc)).index(
+    "by_sessionId_status",
+    ["sessionId", "status"],
+  ),
+
+  // --- Combats (derived from the `CombatDoc` mirror, ADR-0005; issue #60) ---
+  // The compound index serves the one hot read: "this session's active Combat".
+  combats: defineTable(schemaToConvexValidator(CombatDoc)).index(
     "by_sessionId_status",
     ["sessionId", "status"],
   ),

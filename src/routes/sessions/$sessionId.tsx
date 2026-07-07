@@ -17,6 +17,7 @@ import { SheetlessCastForm } from "#/components/game/SheetlessCastForm"
 import { Roster } from "#/components/game/Roster"
 import { HandEditForm } from "#/components/game/HandEditForm"
 import { SceneStrip } from "#/components/game/SceneStrip"
+import { CombatTracker } from "#/components/game/CombatTracker"
 import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { SecondSeatControl } from "#/components/game/SecondSeatControl"
@@ -343,6 +344,17 @@ function SessionPage() {
           // Chrome follows the seat (ADR-0013): whisper targets exclude the
           // seat member, not the Dev. Sends are still the Dev's own writes.
           currentUserId={effectiveMember?.userId ?? user._id}
+        />
+      }
+      combatTracker={
+        // The bottom band (issue #60). Chrome follows the seat (ADR-0013):
+        // "my face" is the seat's character, and a seated ST-Dev sees player
+        // chrome; the server refuses wrong actors regardless.
+        <CombatTracker
+          sessionId={sessionId}
+          isStoryteller={isStoryteller}
+          myCharacterId={character?._id}
+          roster={(roster ?? []).map((c) => ({ id: c._id, name: c.name }))}
         />
       }
       onClearPool={() => {

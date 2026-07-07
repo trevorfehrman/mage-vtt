@@ -12,8 +12,10 @@ import type { Doc, Id } from "../_generated/dataModel"
 import type { MutationCtx } from "../_generated/server"
 import { Cast } from "../../src/domain/cast"
 import { CharacterSheet } from "../../src/domain/character"
+import { Combat, type CombatParticipant } from "../../src/domain/combat-tracker"
 import {
   CastId,
+  CombatId,
   PlayerId,
   MessageId,
   RollId,
@@ -35,6 +37,8 @@ import {
   GameStore,
   type CastDraft,
   type CastPatch,
+  type CombatDraft,
+  type CombatPatch,
   type MessageDraft,
   type RollDraft,
   type SceneDraft,
@@ -81,6 +85,28 @@ const decodeCast = Effect.fn("ConvexLive.decodeCast")(function* (doc: Doc<"casts
   return yield* Schema.decodeUnknownEffect(Cast)({ id: _id, ...fields }).pipe(
     Effect.orDie,
   )
+})
+
+/**
+ * Doc → Combat, once, at the adapter (issue #60): the timestamp columns stay
+ * in the row; a stored Combat that fails the vocabulary decode is corrupt
+ * data — a bug, not a client-actionable failure (ADR-0010's Fail/Die split).
+ */
+const decodeCombat = Effect.fn("ConvexLive.decodeCombat")(function* (
+  doc: Doc<"combats">,
+) {
+  const { _id, _creationTime, startedAt: _startedAt, endedAt: _endedAt, ...fields } = doc
+  return yield* Schema.decodeUnknownEffect(Combat)({ id: _id, ...fields }).pipe(
+    Effect.orDie,
+  )
+})
+
+/** A participant as the flows shaped it, cloned mutably for the Convex write. */
+const participantToDoc = (p: CombatParticipant) => ({
+  ...p,
+  ...(p.kind === "manual" ? { stats: { ...p.stats } } : {}),
+  ...(p.initiative !== undefined ? { initiative: { ...p.initiative } } : {}),
+  ...(p.reminder !== undefined ? { reminder: { ...p.reminder } } : {}),
 })
 
 export const convexLive = (
@@ -415,6 +441,70 @@ export const convexLive = (
             .collect(),
         )
         return yield* Effect.forEach(rows, decodeCast)
+      }),
+
+    getActiveCombat: (sessionId) =>
+      Effect.gen(function* () {
+        const rows = yield* Effect.promise(() =>
+          ctx.db
+            .query("combats")
+            .withIndex("by_sessionId_status", (q) =>
+              q.eq("sessionId", sessionRef(sessionId)).eq("status", "active"),
+            )
+            .collect(),
+        )
+        // At most one active per session is the start flow's invariant, not
+        // the table's; the oldest row is "the" active Combat should it fork.
+        const row = rows[0]
+        if (!row) return Option.none()
+        return Option.some(yield* decodeCombat(row))
+      }),
+
+    insertCombat: (draft: CombatDraft) =>
+      Effect.gen(function* () {
+        const startedAt = yield* Clock.currentTimeMillis
+        const sceneId = ctx.db.normalizeId("scenes", draft.sceneId)
+        if (sceneId === null) {
+          // The start flow just read this Scene; a malformed id here is a bug.
+          throw new Error(`Not a valid scenes id: ${draft.sceneId}`)
+        }
+        const id = yield* Effect.promise(() =>
+          ctx.db.insert("combats", {
+            sessionId: sessionRef(draft.sessionId),
+            sceneId,
+            status: "active",
+            participants: [],
+            seq: 0,
+            startedAt,
+          }),
+        )
+        return CombatId.make(id)
+      }),
+
+    patchCombat: (combatId: CombatId, patch: CombatPatch) =>
+      Effect.gen(function* () {
+        const id = ctx.db.normalizeId("combats", combatId)
+        if (id === null) {
+          // patchCombat follows a successful getActiveCombat in every flow; a
+          // malformed id here is a bug, so fail loudly like sessionRef does.
+          throw new Error(`Not a valid combats id: ${combatId}`)
+        }
+        const endedAt = yield* Clock.currentTimeMillis
+        yield* Effect.promise(() =>
+          ctx.db.patch(id, {
+            ...(patch.status !== undefined ? { status: patch.status, endedAt } : {}),
+            ...(patch.participants !== undefined
+              ? { participants: patch.participants.map(participantToDoc) }
+              : {}),
+            ...(patch.seq !== undefined ? { seq: patch.seq } : {}),
+            // `null` clears the settled next actor: Convex removes a field
+            // patched to `undefined`, so the column vanishes rather than
+            // holding a dangling id.
+            ...(patch.nextActorId !== undefined
+              ? { nextActorId: patch.nextActorId ?? undefined }
+              : {}),
+          }),
+        )
       }),
 
     patchScene: (sceneId: SceneId, patch: ScenePatch) =>

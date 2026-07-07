@@ -57,6 +57,14 @@ const describe = Match.type<SeamError>().pipe(
     InvalidLiability: (e) => e.message,
     InvalidMitigation: (e) => e.message,
     InvalidContainment: (e) => e.message,
+    CombatAlreadyActive: () => "Combat is already underway — end it before the next.",
+    NoActiveCombat: () => "No Combat is underway.",
+    ParticipantNotInCombat: () => "That combatant isn't on the tracker.",
+    DuplicateCombatant: () => "That character is already in the Combat.",
+    InitiativeAlreadyRolled: () => "Initiative is already rolled for that combatant.",
+    InitiativeNotRolled: () => "Roll initiative first — no Ticks to bill yet.",
+    InvalidCombatant: (e) => e.message,
+    InvalidTickSpend: (e) => e.message,
   }),
 )
 

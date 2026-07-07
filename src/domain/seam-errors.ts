@@ -2,6 +2,16 @@ import { Schema } from "effect"
 import { NotAMember, NotStoryteller, NotYourCharacter } from "./authz"
 import { InvalidPoolComponent } from "./dice"
 import { ArcanumTooWeak, InvalidCastDeclaration } from "./flows/casting"
+import {
+  CombatAlreadyActive,
+  DuplicateCombatant,
+  InitiativeAlreadyRolled,
+  InitiativeNotRolled,
+  InvalidCombatant,
+  InvalidTickSpend,
+  NoActiveCombat,
+  ParticipantNotInCombat,
+} from "./flows/combat"
 import { InvalidHandEdit } from "./flows/hand-edit"
 import { RoteNotKnown } from "./flows/rote-cast"
 import {
@@ -61,8 +71,16 @@ export const SeamError = Schema.Union([
   StageOccupied,
   CastStatusConflict,
   InvalidContainment,
+  CombatAlreadyActive,
+  NoActiveCombat,
+  ParticipantNotInCombat,
+  DuplicateCombatant,
+  InitiativeAlreadyRolled,
+  InitiativeNotRolled,
   // Validation
   InvalidSceneName,
+  InvalidCombatant,
+  InvalidTickSpend,
   InvalidCastDeclaration,
   InvalidLiability,
   InvalidMitigation,

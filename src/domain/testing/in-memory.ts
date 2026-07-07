@@ -1,9 +1,11 @@
 import { Clock, Effect, Layer, Option } from "effect"
 import { Cast } from "../cast"
 import { CharacterSheet } from "../character"
+import { Combat, type CombatParticipant, type CombatStatus } from "../combat-tracker"
 import type { DiceRollResult, RawPoolComponent, RollVisibility } from "../dice"
 import {
   CastId,
+  CombatId,
   MessageId,
   PlayerId,
   RollId,
@@ -23,6 +25,8 @@ import {
   GameStore,
   type CastDraft,
   type CastPatch,
+  type CombatDraft,
+  type CombatPatch,
   type MessageDraft,
   type RollDraft,
   type SceneDraft,
@@ -120,6 +124,19 @@ export interface StoredCast {
   readonly updatedAt: number
 }
 
+/** A `combats` row as stored (issue #60) — timestamps stamped like the scenes'. */
+export interface StoredCombat {
+  readonly id: CombatId
+  readonly sessionId: SessionId
+  readonly sceneId: SceneId
+  readonly status: CombatStatus
+  readonly participants: ReadonlyArray<CombatParticipant>
+  readonly seq: number
+  readonly nextActorId?: string
+  readonly startedAt: number
+  readonly endedAt?: number
+}
+
 export interface InMemory {
   readonly layer: Layer.Layer<GameStore | CurrentActor | OverrideStamp>
   readonly rolls: ReadonlyArray<StoredRoll>
@@ -131,6 +148,8 @@ export interface InMemory {
   readonly scenes: ReadonlyArray<StoredScene>
   /** Live Cast state — inserts append, patches apply in place (issue #43). */
   readonly casts: ReadonlyArray<StoredCast>
+  /** Live Combat state — inserts append, patches apply in place (issue #60). */
+  readonly combats: ReadonlyArray<StoredCombat>
 }
 
 export const makeInMemory = (seed: {
@@ -143,6 +162,8 @@ export const makeInMemory = (seed: {
   scenes?: ReadonlyArray<StoredScene>
   /** Pre-existing Cast rows (issue #43) — e.g. a ladder already mid-climb. */
   casts?: ReadonlyArray<StoredCast>
+  /** Pre-existing Combat rows (issue #60) — e.g. a fight already underway. */
+  combats?: ReadonlyArray<StoredCombat>
 }): InMemory => {
   const rolls: Array<StoredRoll> = []
   const messages: Array<StoredMessage> = []
@@ -152,7 +173,21 @@ export const makeInMemory = (seed: {
   const sheetPatches: Array<StoredSheetPatch> = []
   const scenes: Array<StoredScene> = [...(seed.scenes ?? [])]
   const casts: Array<StoredCast> = [...(seed.casts ?? [])]
+  const combats: Array<StoredCombat> = [...(seed.combats ?? [])]
   const override = makeOverrideStamp()
+
+  // The artifact the flows read: the stored row minus its timestamp columns,
+  // present-only fields picked so `optionalKey` decode sees absent, not undefined.
+  const combatOf = (row: StoredCombat): Combat =>
+    new Combat({
+      id: row.id,
+      sessionId: row.sessionId,
+      sceneId: row.sceneId,
+      status: row.status,
+      participants: row.participants,
+      seq: row.seq,
+      ...(row.nextActorId !== undefined ? { nextActorId: row.nextActorId } : {}),
+    })
 
   // The artifact the flows read: the stored row minus its provenance columns,
   // present-only fields picked so `optionalKey` decode sees absent, not undefined.
@@ -336,6 +371,55 @@ export const makeInMemory = (seed: {
         casts.filter((c) => c.sessionId === sessionId).map(castOf),
       ),
 
+    getActiveCombat: (sessionId) => {
+      const row = combats.find(
+        (c) => c.sessionId === sessionId && c.status === "active",
+      )
+      return Effect.succeed(row ? Option.some(combatOf(row)) : Option.none())
+    },
+
+    insertCombat: (draft: CombatDraft) =>
+      Effect.gen(function* () {
+        const startedAt = yield* Clock.currentTimeMillis
+        const id = CombatId.make(`combat_${combats.length}`)
+        combats.push({
+          id,
+          sessionId: draft.sessionId,
+          sceneId: draft.sceneId,
+          status: "active",
+          participants: [],
+          seq: 0,
+          startedAt,
+        })
+        return id
+      }),
+
+    patchCombat: (combatId: CombatId, patch: CombatPatch) =>
+      Effect.gen(function* () {
+        const index = combats.findIndex((c) => c.id === combatId)
+        if (index === -1) {
+          // patchCombat follows a successful getActiveCombat in every flow; a
+          // missing row is a bug — fail loudly, as the live adapter does.
+          throw new Error(`patch of missing combat ${combatId}`)
+        }
+        const endedAt = yield* Clock.currentTimeMillis
+        const { nextActorId: current, ...rest } = combats[index]!
+        // `undefined` keeps the settled answer, `null` clears it (the key
+        // stays absent, as Convex removes a field patched to undefined),
+        // a string replaces it.
+        const nextActorId =
+          patch.nextActorId === undefined ? current : (patch.nextActorId ?? undefined)
+        combats[index] = {
+          ...rest,
+          ...(nextActorId !== undefined ? { nextActorId } : {}),
+          ...(patch.status !== undefined ? { status: patch.status, endedAt } : {}),
+          ...(patch.participants !== undefined
+            ? { participants: patch.participants }
+            : {}),
+          ...(patch.seq !== undefined ? { seq: patch.seq } : {}),
+        }
+      }),
+
     patchScene: (sceneId: SceneId, patch: ScenePatch) =>
       Effect.gen(function* () {
         const index = scenes.findIndex((s) => s.id === sceneId)
@@ -363,5 +447,5 @@ export const makeInMemory = (seed: {
     Layer.succeed(OverrideStamp, override.stamp),
   )
 
-  return { layer, rolls, messages, sheets, sheetPatches, scenes, casts }
+  return { layer, rolls, messages, sheets, sheetPatches, scenes, casts, combats }
 }
