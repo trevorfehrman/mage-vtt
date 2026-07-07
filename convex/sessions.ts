@@ -1,6 +1,8 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
+import { SessionNotFound } from "../src/domain/session"
 import { mutation, query } from "./_generated/server"
 import { requireMember, requireUser } from "./lib/auth"
+import { mapEffectError } from "./lib/effect"
 
 const INVITE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
@@ -46,7 +48,15 @@ export const join = mutation({
       .unique()
 
     if (!session) {
-      throw new Error(`No session found with invite code: ${args.inviteCode}`)
+      // A typed refusal on the wire (ADR-0010, issue #50): the same domain
+      // class the join flow raises, decodable against the SeamError union.
+      throw new ConvexError(
+        mapEffectError(
+          new SessionNotFound({
+            message: `No session found with invite code: ${args.inviteCode}`,
+          }),
+        ) as Record<string, string>,
+      )
     }
 
     // Check not already a member

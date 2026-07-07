@@ -23,6 +23,18 @@ describe("SeamError union", () => {
     expect(error._tag === "InsufficientMana" && error.required).toBe(5)
   })
 
+  it("a bad invite code crosses the wire typed: SessionNotFound decodes (issue #50)", () => {
+    const decoded = decode({
+      _tag: "SessionNotFound",
+      message: "No session found with invite code: ABCD-EF23",
+      stack: "Error\n    at somewhere",
+    })
+
+    expect(Option.isSome(decoded)).toBe(true)
+    const error = Option.getOrThrow(decoded)
+    expect(error._tag).toBe("SessionNotFound")
+  })
+
   it("a tag outside the contract is a decode miss, not an answer", () => {
     expect(Option.isNone(decode({ _tag: "BrandNewServerError", detail: 1 }))).toBe(true)
     expect(Option.isNone(decode("not even an object"))).toBe(true)

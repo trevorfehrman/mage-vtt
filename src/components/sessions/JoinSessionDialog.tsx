@@ -12,6 +12,7 @@ import {
 import { Button } from "#/components/ui/button"
 import { Input } from "#/components/ui/input"
 import { Label } from "#/components/ui/label"
+import { seamErrorMessage } from "#/lib/seam-errors"
 
 export function JoinSessionDialog() {
   const [open, setOpen] = useState(false)
@@ -29,7 +30,9 @@ export function JoinSessionDialog() {
       setCode("")
       navigate({ to: "/sessions/$sessionId", params: { sessionId } })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to join session")
+      // The seam contract (ADR-0010, issue #50): typed refusals arrive as
+      // table language; anything else degrades to the generic join failure.
+      setError(seamErrorMessage(err, { fallback: "Failed to join session" }))
     }
   }
 
