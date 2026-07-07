@@ -3,7 +3,7 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireMember, seatedMember } from "./lib/auth"
 import { enforcedMutation } from "./lib/enforce"
-import { initialCurrentState } from "../src/domain/character"
+import { initialCurrentState, PathName } from "../src/domain/character"
 import { HealthBox } from "../src/domain/damage"
 import { castSpell as castSpellFlow } from "../src/domain/flows/casting"
 import { castRote as castRoteFlow } from "../src/domain/flows/rote-cast"
@@ -134,7 +134,12 @@ export const seed = mutation({
       sessionId: args.sessionId,
       userId: member.userId,
       ...args.data,
-      ...initialCurrentState(args.data),
+      // The wire validator already pins the Path literals; the decode re-proves
+      // it to the type system so the derivation reads a total table.
+      ...initialCurrentState({
+        ...args.data,
+        path: Schema.decodeUnknownSync(PathName)(args.data.path),
+      }),
     })
   },
 })

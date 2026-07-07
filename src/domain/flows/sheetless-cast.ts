@@ -3,7 +3,7 @@ import { requireStoryteller } from "../authz"
 import { buildPool, RollVisibility, rollPool, type RawPoolComponent } from "../dice"
 import { SessionId } from "../ids"
 import { GameStore } from "../ports/game-store"
-import { outcomeOf } from "./casting"
+import { modifierComponents, outcomeOf } from "./casting"
 
 /**
  * `castSheetless` — NPC and spirit opposition through the enforcement seam
@@ -58,13 +58,12 @@ export const castSheetless = Effect.fn("Flows.sheetlessCast.castSheetless")(
     const member = yield* requireStoryteller(SessionId.make(args.sessionId))
 
     // The declared pool, chunked to fit a component's dots range so the
-    // breakdown stays representable in the Activity entry.
-    const components: Array<RawPoolComponent> = []
-    let rest = poolSize
-    for (; rest > 10; rest -= 10) {
-      components.push({ type: "modifier", name: "Declared pool", dots: 10 })
-    }
-    components.push({ type: "modifier", name: "Declared pool", dots: rest })
+    // breakdown stays representable in the Activity entry. A zero pool keeps
+    // its explicit zero-dot chip — the entry still shows what was declared.
+    const components: Array<RawPoolComponent> =
+      poolSize === 0
+        ? [{ type: "modifier", name: "Declared pool", dots: 0 }]
+        : modifierComponents("Declared pool", poolSize)
 
     const pool = yield* buildPool(components)
     const result = yield* rollPool(pool, {

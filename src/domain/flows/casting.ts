@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect"
+import { Array as Arr, Effect, Schema } from "effect"
 import { requireSessionCharacter } from "../authz"
 import { ArcanumName } from "../character"
 import { buildPool, RollVisibility, rollPool, type RawPoolComponent } from "../dice"
@@ -96,26 +96,36 @@ const CastDeclaration = Schema.Struct({
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 /**
+ * A named dice modifier as pool components, chunked to the ±10 a component
+ * holds (a book-legal Potency 12 can be -22; a deep-Scene accumulator can
+ * outgrow one box the other way). Zero dots is no component at all. Shared by
+ * every flow that records a modifier bigger than one component's box.
+ */
+export const modifierComponents = (
+  name: string,
+  dots: number,
+): Array<RawPoolComponent> => {
+  if (dots === 0) return []
+  const sign = Math.sign(dots)
+  const magnitude = Math.abs(dots)
+  return Arr.makeBy(Math.ceil(magnitude / 10), (i) => ({
+    type: "modifier",
+    name,
+    dots: sign * Math.min(10, magnitude - i * 10),
+  }))
+}
+
+/**
  * A declared factor penalty past the pool's floor changes nothing mechanically —
  * zero and fewer dice are the same chance die — so record only the effective
- * portion, chunked to fit a component's dots range (a book-legal Potency 12
- * can be -22, far outside one component's box). Shared by every casting flow
- * that applies spell factors.
+ * portion. Shared by every casting flow that applies spell factors.
  */
 export const factorPenaltyComponents = (
   pool: CastingPool,
 ): Array<RawPoolComponent> => {
   const positiveDice = pool.totalDice - pool.factorPenalty
   const effectivePenalty = Math.max(pool.factorPenalty, -positiveDice)
-  const components: Array<RawPoolComponent> = []
-  for (let rest = effectivePenalty; rest < 0; rest += 10) {
-    components.push({
-      type: "modifier",
-      name: "Spell factors",
-      dots: Math.max(rest, -10),
-    })
-  }
-  return components
+  return modifierComponents("Spell factors", effectivePenalty)
 }
 
 /** Shared narrative fragment for cast summaries (also the sheet-less flow). */

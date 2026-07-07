@@ -168,11 +168,13 @@ export const validateGeneralMerit = Effect.fn("GeneralMerits.validate")(function
     })
   }
 
-  // Check prerequisites
-  for (const prereq of merit.value.prerequisites) {
-    const failure = prerequisiteFailure(merit.value, prereq, input)
-    if (Option.isSome(failure)) {
-      return yield* failure.value
-    }
+  // Check prerequisites: the first failure refuses the whole selection.
+  const failure = Option.firstSomeOf(
+    merit.value.prerequisites.map((prereq) =>
+      prerequisiteFailure(merit.value, prereq, input),
+    ),
+  )
+  if (Option.isSome(failure)) {
+    return yield* failure.value
   }
 })

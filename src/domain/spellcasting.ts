@@ -74,17 +74,23 @@ const TARGET_COUNT_PENALTY: Record<number, number> = {
   16: -8,
 }
 
+/** The open tail every bracket table shares: -8 at the last printed bracket,
+ * then -2 per ×`factor` step beyond it. */
+const beyondBracketPenalty = (
+  target: number,
+  threshold: number,
+  factor: number,
+  penalty = -8,
+): number =>
+  threshold >= target
+    ? penalty
+    : beyondBracketPenalty(target, threshold * factor, factor, penalty - 2)
+
 function targetCountPenalty(targets: number): number {
   if (targets <= 1) return 0
   const exact = TARGET_COUNT_PENALTY[targets]
   if (exact !== undefined) return exact
-  let penalty = -8
-  let threshold = 16
-  while (threshold < targets) {
-    threshold *= 2
-    penalty -= 2
-  }
-  return penalty
+  return beyondBracketPenalty(targets, 16, 2)
 }
 
 function sumDice(
@@ -239,13 +245,7 @@ export const calculateAreaPenalty = (radiusYards: number, advanced: boolean): nu
     if (radiusYards <= 64) return -6
     if (radiusYards <= 256) return -8
     // Beyond: -8 + -2 per ×4
-    let penalty = -8
-    let threshold = 256
-    while (threshold < radiusYards) {
-      threshold *= 4
-      penalty -= 2
-    }
-    return penalty
+    return beyondBracketPenalty(radiusYards, 256, 4)
   }
 
   // Basic: 1→0, 2→-2, 4→-4, 8→-6, 16→-8
@@ -255,13 +255,7 @@ export const calculateAreaPenalty = (radiusYards: number, advanced: boolean): nu
   if (radiusYards <= 8) return -6
   if (radiusYards <= 16) return -8
   // Beyond: -8 + -2 per ×2
-  let penalty = -8
-  let threshold = 16
-  while (threshold < radiusYards) {
-    threshold *= 2
-    penalty -= 2
-  }
-  return penalty
+  return beyondBracketPenalty(radiusYards, 16, 2)
 }
 
 // --- Aimed spell range (page 116) ---

@@ -1,4 +1,4 @@
-import { Option, Schema } from "effect"
+import { Array as Arr, Option, Schema } from "effect"
 
 // Pure rules leaves (ADR-0014): the name lookup is the only thing that can
 // miss and returns Option; the join/attainment rules are plain functions over
@@ -119,19 +119,21 @@ export const canJoinLegacy = (
     return new JoinResult({ canJoin: false, reason: `Gnosis must be 3+, currently ${gnosis}` })
   }
 
-  // Check first attainment's arcana prerequisites
+  // Check first attainment's arcana prerequisites: the first shortfall refuses.
   const firstAttainment = legacy.attainments[0]
-  for (const [arcanum, required] of Object.entries(firstAttainment.arcanaRequirements)) {
-    const current = arcanumDots(arcana, arcanum)
-    if (current < required) {
-      return new JoinResult({
-        canJoin: false,
-        reason: `Requires ${arcanum} ${required}+, currently ${current}`,
-      })
-    }
-  }
+  const shortfall = Arr.findFirst(
+    Object.entries(firstAttainment.arcanaRequirements),
+    ([arcanum, required]) => arcanumDots(arcana, arcanum) < required,
+  )
 
-  return new JoinResult({ canJoin: true })
+  return Option.match(shortfall, {
+    onNone: () => new JoinResult({ canJoin: true }),
+    onSome: ([arcanum, required]) =>
+      new JoinResult({
+        canJoin: false,
+        reason: `Requires ${arcanum} ${required}+, currently ${arcanumDots(arcana, arcanum)}`,
+      }),
+  })
 }
 
 export const getAttainmentsForGnosis = (

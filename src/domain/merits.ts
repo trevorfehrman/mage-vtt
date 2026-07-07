@@ -163,30 +163,34 @@ export const validateMeritSelections = Effect.fn("Merits.validate")(function* (i
     currentMerits.some((m) => m.meritName === meritName) ||
     selections.some((s) => s.meritName === meritName)
 
-  for (const selection of selections) {
-    // Find the Merit definition — a free-string name, so the miss is real
-    const merit = Option.fromUndefinedOr(
-      MAGE_MERITS.find((m) => m.name === selection.meritName),
-    )
-    if (Option.isNone(merit)) {
-      return yield* new MeritValidationError({
-        message: `Unknown Merit: "${selection.meritName}"`,
-      })
-    }
+  yield* Effect.forEach(selections, (selection) =>
+    Effect.gen(function* () {
+      // Find the Merit definition — a free-string name, so the miss is real
+      const merit = Option.fromUndefinedOr(
+        MAGE_MERITS.find((m) => m.name === selection.meritName),
+      )
+      if (Option.isNone(merit)) {
+        return yield* new MeritValidationError({
+          message: `Unknown Merit: "${selection.meritName}"`,
+        })
+      }
 
-    // Check dots are in range
-    if (selection.dots < merit.value.minDots || selection.dots > merit.value.maxDots) {
-      return yield* new MeritValidationError({
-        message: `${merit.value.name} requires ${merit.value.minDots}-${merit.value.maxDots} dots, got ${selection.dots}`,
-      })
-    }
+      // Check dots are in range
+      if (selection.dots < merit.value.minDots || selection.dots > merit.value.maxDots) {
+        return yield* new MeritValidationError({
+          message: `${merit.value.name} requires ${merit.value.minDots}-${merit.value.maxDots} dots, got ${selection.dots}`,
+        })
+      }
 
-    // Check prerequisites
-    for (const prereq of merit.value.prerequisites) {
-      const failure = prerequisiteFailure(merit.value, prereq, holds)
+      // Check prerequisites: the first failure refuses the whole selection.
+      const failure = Option.firstSomeOf(
+        merit.value.prerequisites.map((prereq) =>
+          prerequisiteFailure(merit.value, prereq, holds),
+        ),
+      )
       if (Option.isSome(failure)) {
         return yield* failure.value
       }
-    }
-  }
+    }),
+  )
 })

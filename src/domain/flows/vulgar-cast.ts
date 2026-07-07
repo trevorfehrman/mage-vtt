@@ -1,4 +1,4 @@
-import { Effect, Option, Schema } from "effect"
+import { Array as Arr, Effect, Option, Schema } from "effect"
 import {
   requireMember,
   requireRepairAuthority,
@@ -30,7 +30,12 @@ import {
 import { GameStore } from "../ports/game-store"
 import { DocumentNotFound } from "../ports/errors"
 import { Mana } from "../quantities"
-import { ArcanumTooWeak, InvalidCastDeclaration, outcomeOf } from "./casting"
+import {
+  ArcanumTooWeak,
+  InvalidCastDeclaration,
+  modifierComponents,
+  outcomeOf,
+} from "./casting"
 
 /**
  * The Vulgar Cast ladder (issue #43, PRD #39, ADR-0016): one flow per dramatic
@@ -163,20 +168,6 @@ const stamped = <A>(value: A | undefined, field: string): Effect.Effect<A> =>
   value === undefined
     ? Effect.die(new Error(`Cast document missing ${field} at its status rung`))
     : Effect.succeed(value)
-
-/**
- * A named dice modifier as pool components, chunked to the ±10 a component
- * holds (a deep-Scene accumulator can outgrow one box).
- */
-const modifierComponents = (name: string, dots: number): Array<RawPoolComponent> => {
-  const components: Array<RawPoolComponent> = []
-  for (let rest = dots; rest !== 0; ) {
-    const chunk = rest > 0 ? Math.min(rest, 10) : Math.max(rest, -10)
-    components.push({ type: "modifier", name, dots: chunk })
-    rest -= chunk
-  }
-  return components
-}
 
 /**
  * The Paradox pool's inputs as the engage beat stamped them and the
@@ -734,10 +725,12 @@ export const containParadox = Effect.fn("Flows.vulgarCast.containParadox")(funct
     })
   }
 
-  let track = sheet.healthTrack
-  for (let i = 0; i < contained; i++) {
-    track = applyDamage(track, "bashing", { resistant: true })
-  }
+  const track =
+    contained === 0
+      ? sheet.healthTrack
+      : Arr.reduce(Arr.makeBy(contained, (i) => i), sheet.healthTrack, (t) =>
+          applyDamage(t, "bashing", { resistant: true }),
+        )
   if (contained > 0) {
     yield* store.patchSheet(sheet.id, { healthTrack: track })
   }

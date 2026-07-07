@@ -1,4 +1,4 @@
-import { Schema } from "effect"
+import { Array as Arr, Order, Schema } from "effect"
 import type { HealthTrack } from "./damage"
 import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "./ids"
 import type { GnosisRank } from "./mana-economy"
@@ -189,21 +189,23 @@ export interface ScenePip {
  * (grace and all), ordered heaviest first (ties by name, a stable strip).
  * The name rides the latest resolved Cast. No Scene, no pips.
  */
+const byUpdatedAt = Order.mapInput(Order.Number, (c: AccumulatorCast) => c.updatedAt)
+
 export const sceneParadoxPips = (
   casts: ReadonlyArray<AccumulatorCast>,
   sceneId: string | undefined,
 ): Array<ScenePip> => {
   if (sceneId === undefined) return []
-  const latestNames = new Map<string, string>()
-  for (const c of [...casts].sort((a, b) => a.updatedAt - b.updatedAt)) {
-    if (c.status === "resolved" && c.sceneId === sceneId) {
-      latestNames.set(c.characterId, c.casterName)
-    }
-  }
-  return [...latestNames.entries()]
-    .map(([characterId, casterName]) => ({
+  const resolvedInScene = Arr.sort(
+    casts.filter((c) => c.status === "resolved" && c.sceneId === sceneId),
+    byUpdatedAt,
+  )
+  const byCharacter = Arr.groupBy(resolvedInScene, (c) => c.characterId)
+  return Object.entries(byCharacter)
+    .map(([characterId, group]) => ({
       characterId,
-      casterName,
+      // The name rides the latest resolved Cast.
+      casterName: Arr.lastNonEmpty(group).casterName,
       accumulator: deriveAccumulator(casts, sceneId, characterId),
     }))
     .filter((pip) => pip.accumulator > 0)

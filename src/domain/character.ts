@@ -102,6 +102,7 @@ export type PathName = typeof PathName.Type
 const OrderName = Schema.Literals([
   "Adamantine Arrow", "Free Council", "Guardians of the Veil", "Mysterium", "Silver Ladder",
 ])
+type OrderName = typeof OrderName.Type
 
 const Virtue = Schema.Literals([
   "Charity", "Faith", "Fortitude", "Hope", "Justice", "Prudence", "Temperance",
@@ -153,8 +154,9 @@ const CharacterInput = Schema.Struct({
 const GNOSIS_MAX_MANA = [10, 11, 12, 13, 14, 15, 20, 30, 50, 100] as const
 const DEFAULT_SIZE = 5
 
-// Path resistance bonuses
-const PATH_RESISTANCE: Record<string, { attribute: "composure" | "resolve"; bonus: number }> = {
+// Path resistance bonuses — total over the closed Path vocabulary (ADR-0014):
+// the compiler proves every Path present, so no fallback can synthesize a row.
+const PATH_RESISTANCE: Record<PathName, { attribute: "composure" | "resolve"; bonus: number }> = {
   Acanthus: { attribute: "composure", bonus: 1 },
   Mastigos: { attribute: "resolve", bonus: 1 },
   Moros: { attribute: "composure", bonus: 1 },
@@ -162,8 +164,8 @@ const PATH_RESISTANCE: Record<string, { attribute: "composure" | "resolve"; bonu
   Thyrsus: { attribute: "composure", bonus: 1 },
 }
 
-// Path ruling arcana
-const PATH_RULING_ARCANA: Record<string, readonly string[]> = {
+// Path ruling arcana — total over the closed vocabularies on both axes.
+const PATH_RULING_ARCANA: Record<PathName, ReadonlyArray<ArcanumName>> = {
   Acanthus: ["time", "fate"],
   Mastigos: ["space", "mind"],
   Moros: ["matter", "death"],
@@ -171,9 +173,9 @@ const PATH_RULING_ARCANA: Record<string, readonly string[]> = {
   Thyrsus: ["life", "spirit"],
 }
 
-/** The Path's two ruling Arcana; a path outside the book rules nothing. */
-export const rulingArcanaOf = (path: string): ReadonlyArray<string> =>
-  PATH_RULING_ARCANA[path] ?? []
+/** The Path's two ruling Arcana; callers decode free strings to `PathName` first. */
+export const rulingArcanaOf = (path: PathName): ReadonlyArray<ArcanumName> =>
+  PATH_RULING_ARCANA[path]
 
 // --- Derived-stat formulas (issue #27) ---
 //
@@ -183,7 +185,7 @@ export const rulingArcanaOf = (path: string): ReadonlyArray<string> =>
 // decoded character shape satisfies structurally.
 
 const DerivationTraits = Schema.Struct({
-  path: Schema.String,
+  path: PathName,
   gnosis: Schema.Number,
   attributes: Schema.Struct({
     mental: Schema.Struct({ resolve: Schema.Number }),
@@ -193,8 +195,7 @@ const DerivationTraits = Schema.Struct({
 })
 type DerivationTraits = typeof DerivationTraits.Type
 
-const resistanceBonusOf = (path: string) =>
-  PATH_RESISTANCE[path] ?? { attribute: "composure" as const, bonus: 0 }
+const resistanceBonusOf = (path: PathName) => PATH_RESISTANCE[path]
 
 const effectiveResolveOf = (traits: DerivationTraits): number => {
   const resistance = resistanceBonusOf(traits.path)
@@ -407,7 +408,7 @@ export const createCharacter = Effect.fn("Character.create")(function* (
 const RatedCategory = Schema.Record(Schema.String, Schema.Number)
 
 const CreationTraits = Schema.Struct({
-  path: Schema.String,
+  path: PathName,
   attributes: Schema.Struct({
     mental: RatedCategory,
     physical: RatedCategory,
@@ -437,7 +438,7 @@ export const validateCreationRules = Effect.fn("Character.validateCreationRules"
     .sort((a, b) => b - a) // descending
 
   if (attrAllocated[0] !== 5 || attrAllocated[1] !== 4 || attrAllocated[2] !== 3) {
-    yield* new CreationRuleViolation({
+    return yield* new CreationRuleViolation({
       message: `Attribute allocation must be 5/4/3, got ${attrAllocated.join("/")}`,
     })
   }
@@ -454,7 +455,7 @@ export const validateCreationRules = Effect.fn("Character.validateCreationRules"
     .sort((a, b) => b - a)
 
   if (skillAllocated[0] !== 11 || skillAllocated[1] !== 7 || skillAllocated[2] !== 4) {
-    yield* new CreationRuleViolation({
+    return yield* new CreationRuleViolation({
       message: `Skill allocation must be 11/7/4, got ${skillAllocated.join("/")}`,
     })
   }
@@ -466,32 +467,33 @@ export const validateCreationRules = Effect.fn("Character.validateCreationRules"
 
   const totalArcanaDots = arcanaEntries.reduce((sum, [_, dots]) => sum + dots, 0)
   if (totalArcanaDots !== 6) {
-    yield* new CreationRuleViolation({
+    return yield* new CreationRuleViolation({
       message: `Starting arcana must total 6 dots, got ${totalArcanaDots}`,
     })
   }
 
   if (arcanaEntries.length < 2) {
-    yield* new CreationRuleViolation({
+    return yield* new CreationRuleViolation({
       message: `Must have at least 2 arcana, got ${arcanaEntries.length}`,
     })
   }
 
   // Check ruling requirement: 2 of the first 3 arcana must be ruling for the path
-  const ruling = rulingArcanaOf(character.path)
+  const ruling: ReadonlyArray<string> = rulingArcanaOf(character.path)
   const topThree = arcanaEntries.slice(0, 3).map(([name]) => name)
   const rulingInTopThree = topThree.filter((name) => ruling.includes(name)).length
 
   if (rulingInTopThree < 2) {
-    yield* new CreationRuleViolation({
+    return yield* new CreationRuleViolation({
       message: `2 of first 3 arcana must be Path ruling arcana (${ruling.join(", ")}), only ${rulingInTopThree} found`,
     })
   }
 })
 
 // --- Order rote skills reference ---
+// Total over the closed Order vocabulary (ADR-0014).
 
-const ORDER_ROTE_SKILLS: Record<string, readonly string[]> = {
+const ORDER_ROTE_SKILLS: Record<OrderName, ReadonlyArray<string>> = {
   "Adamantine Arrow": ["Athletics", "Intimidation", "Medicine"],
   "Free Council": ["Crafts", "Persuasion", "Science"],
   "Guardians of the Veil": ["Investigation", "Stealth", "Subterfuge"],
@@ -503,25 +505,25 @@ export const validateRoteSpecialties = Effect.fn("Character.validateRoteSpecialt
   order: string,
   specialties: ReadonlyArray<{ skill: string; specialty: string }>,
 ) {
-  const allowedSkills = ORDER_ROTE_SKILLS[order]
-  if (!allowedSkills) {
-    yield* new CreationRuleViolation({ message: `Unknown order: ${order}` })
-    return
+  // The order arrives as a free string (ingested data), so the miss is real.
+  if (!Schema.is(OrderName)(order)) {
+    return yield* new CreationRuleViolation({ message: `Unknown order: ${order}` })
   }
+  const allowedSkills = ORDER_ROTE_SKILLS[order]
 
   if (specialties.length !== 3) {
-    yield* new CreationRuleViolation({
+    return yield* new CreationRuleViolation({
       message: `Must choose exactly 3 rote specialties, got ${specialties.length}`,
     })
   }
 
-  for (const spec of specialties) {
-    if (!allowedSkills.includes(spec.skill)) {
-      yield* new CreationRuleViolation({
-        message: `"${spec.skill}" is not a rote skill for ${order}. Valid: ${allowedSkills.join(", ")}`,
-      })
-    }
-  }
+  yield* Effect.forEach(specialties, (spec) =>
+    allowedSkills.includes(spec.skill)
+      ? Effect.void
+      : new CreationRuleViolation({
+          message: `"${spec.skill}" is not a rote skill for ${order}. Valid: ${allowedSkills.join(", ")}`,
+        }),
+  )
 })
 
 export const validateSkillSpecialties = Effect.fn("Character.validateSkillSpecialties")(function* (
@@ -529,19 +531,18 @@ export const validateSkillSpecialties = Effect.fn("Character.validateSkillSpecia
   skillDots: Record<string, number>,
 ) {
   if (specialties.length !== 3) {
-    yield* new CreationRuleViolation({
+    return yield* new CreationRuleViolation({
       message: `Must choose exactly 3 skill specialties, got ${specialties.length}`,
     })
   }
 
-  for (const spec of specialties) {
-    const dots = skillDots[spec.skill.toLowerCase()] ?? 0
-    if (dots === 0) {
-      yield* new CreationRuleViolation({
-        message: `Cannot specialize in ${spec.skill} — character has 0 dots`,
-      })
-    }
-  }
+  yield* Effect.forEach(specialties, (spec) =>
+    (skillDots[spec.skill.toLowerCase()] ?? 0) > 0
+      ? Effect.void
+      : new CreationRuleViolation({
+          message: `Cannot specialize in ${spec.skill} — character has 0 dots`,
+        }),
+  )
 })
 
 export const applyWisdomTradeoff = Effect.fn("Character.applyWisdomTradeoff")(function* (
@@ -553,7 +554,7 @@ export const applyWisdomTradeoff = Effect.fn("Character.applyWisdomTradeoff")(fu
 
   const newWisdom = startingWisdom - dotsToSacrifice
   if (newWisdom < MIN_WISDOM) {
-    yield* new CreationRuleViolation({
+    return yield* new CreationRuleViolation({
       message: `Wisdom cannot go below ${MIN_WISDOM}. Starting ${startingWisdom} - ${dotsToSacrifice} = ${newWisdom}`,
     })
   }

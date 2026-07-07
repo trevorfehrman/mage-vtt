@@ -101,9 +101,7 @@ export const calculateParadoxPool = (input: {
     modifiers.push({ source: "Sleeper witnesses", dice: 2 })
   }
 
-  for (const m of input.discretionaryModifiers ?? []) {
-    modifiers.push({ source: m.source, dice: m.dice })
-  }
+  modifiers.push(...(input.discretionaryModifiers ?? []))
 
   if (input.manaMitigation && input.manaMitigation > 0) {
     modifiers.push({ source: "Mana mitigation", dice: -input.manaMitigation })

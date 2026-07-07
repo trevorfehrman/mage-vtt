@@ -131,9 +131,8 @@ describe("Character Sheet", () => {
     expect(state.manaCurrent).toBe(10)
   })
 
-  it("rulingArcanaOf names the Path's ruling pair; an unknown path rules nothing", () => {
+  it("rulingArcanaOf names the Path's ruling pair (total over PathName — an unknown path is a compile error, not a fallback)", () => {
     expect(rulingArcanaOf("Moros")).toEqual(["matter", "death"])
-    expect(rulingArcanaOf("Atlantean")).toEqual([])
   })
 
   it.effect("CharacterSheet path resistance bonus applies correctly", () =>

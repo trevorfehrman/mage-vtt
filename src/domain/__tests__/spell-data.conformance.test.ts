@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs"
-import { Effect, Schema } from "effect"
+import { Effect, Result, Schema } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import { formatRotePool, parseRotePool, RotePool } from "../rote-pool"
 
@@ -50,14 +50,14 @@ describe("spells.json conformance (issue #14)", () => {
   })
 
   it("every Rote carries a structured pool that decodes as RotePool", () => {
-    const failures: string[] = []
-    for (const { spell, rote } of allRotes) {
-      try {
-        Schema.decodeUnknownSync(RotePool)(rote.pool)
-      } catch {
-        failures.push(`${spell.name} [${rote.order}]: ${JSON.stringify(rote.pool)}`)
-      }
-    }
+    const failures = allRotes
+      .filter(({ rote }) =>
+        Result.isFailure(Schema.decodeUnknownResult(RotePool)(rote.pool)),
+      )
+      .map(
+        ({ spell, rote }) =>
+          `${spell.name} [${rote.order}]: ${JSON.stringify(rote.pool)}`,
+      )
     expect(failures).toEqual([])
   })
 
