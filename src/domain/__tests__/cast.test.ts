@@ -4,6 +4,7 @@ import {
   Cast,
   castPoolAfterParadox,
   containmentCap,
+  containmentOutlook,
   mitigationCap,
   deriveAccumulator,
   isCommitted,
@@ -232,6 +233,74 @@ describe("castPoolAfterParadox", () => {
 
   it("may fall to zero or below — the chance die is rollPool's contract", () => {
     expect(castPoolAfterParadox(2, 4, 0)).toBe(-2)
+  })
+})
+
+describe("containmentOutlook (issue #45: the informed bet, double shrink and all)", () => {
+  const track = (empties: number, filled: number): HealthTrack => [
+    ...Array.from({ length: filled }, () => healthBox("bashing")),
+    ...Array.from({ length: empties }, () => healthBox("empty")),
+  ]
+
+  it("containing nothing shrinks the pool once — uncontained successes only", () => {
+    const outlook = containmentOutlook({
+      track: track(7, 0),
+      declaredPool: 5,
+      paradoxSuccesses: 3,
+      contained: 0,
+    })
+    expect(outlook.damage).toBe(0)
+    expect(outlook.uncontained).toBe(3)
+    expect(outlook.penaltyAfter).toBe(0)
+    expect(outlook.newPenalty).toBe(0)
+    expect(outlook.castPool).toBe(2)
+    expect(outlook.martyr).toBe(false)
+  })
+
+  it("containment into the last three boxes shrinks the pool twice", () => {
+    // 4 of 7 boxes filled already: one contained wound lands in the 5th box —
+    // the third-from-last — so the bet buys back one uncontained die but
+    // costs a new −1 wound penalty: 5 − 2 − 1 = 2.
+    const outlook = containmentOutlook({
+      track: track(3, 4),
+      declaredPool: 5,
+      paradoxSuccesses: 3,
+      contained: 1,
+    })
+    expect(outlook.damage).toBe(1)
+    expect(outlook.uncontained).toBe(2)
+    expect(outlook.penaltyBefore).toBe(0)
+    expect(outlook.penaltyAfter).toBe(-1)
+    expect(outlook.newPenalty).toBe(-1)
+    expect(outlook.castPool).toBe(2)
+  })
+
+  it("a pre-existing penalty only counts its worsening as new", () => {
+    // 5 of 7 filled: already at −1. Two more contained wounds reach the last
+    // box: penalty −3, of which −2 is new. Pool: 6 − 1 − 3 = 2.
+    const outlook = containmentOutlook({
+      track: track(2, 5),
+      declaredPool: 6,
+      paradoxSuccesses: 3,
+      contained: 2,
+    })
+    expect(outlook.penaltyBefore).toBe(-1)
+    expect(outlook.penaltyAfter).toBe(-3)
+    expect(outlook.newPenalty).toBe(-2)
+    expect(outlook.castPool).toBe(2)
+    expect(outlook.martyr).toBe(true)
+  })
+
+  it("the martyr play: filling the last box flags the unconsciousness rule", () => {
+    const outlook = containmentOutlook({
+      track: track(1, 6),
+      declaredPool: 4,
+      paradoxSuccesses: 2,
+      contained: 1,
+    })
+    expect(outlook.martyr).toBe(true)
+    // Double shrink to the floor and below: 4 − 1 − 3 = 0 — the chance die.
+    expect(outlook.castPool).toBe(0)
   })
 })
 

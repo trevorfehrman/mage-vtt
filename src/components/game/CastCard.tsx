@@ -4,6 +4,7 @@ import { useMachine } from "@xstate/react"
 import type { CastEntry } from "#/domain/activity"
 import {
   containmentCap,
+  containmentOutlook,
   mitigationCap,
   effectiveWitnessCount,
   isRoteCast,
@@ -12,7 +13,9 @@ import {
   type CastStatus,
 } from "#/domain/cast"
 import type { CharacterSheet } from "#/domain/character"
+import type { HealthTrack } from "#/domain/damage"
 import { calculateParadoxPool } from "#/domain/paradox"
+import { rollOdds } from "#/domain/probability"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { castLadderMachine, ladderControls } from "#/machines/cast-ladder"
 import { ArcanaGlyph } from "./ArcanaGlyph"
@@ -370,6 +373,32 @@ export function CastCard({
         </div>
       )}
 
+      {/* The blind insurance, priced (issue #45): every affordable Mana spend,
+          the Paradox pool it buys, and exact odds — before the caster commits. */}
+      {controls.includes("lockIntention") && poolInputs !== null && (
+        <MitigationPreview
+          poolInputs={poolInputs}
+          cap={mitigateCap}
+          selected={mitigation}
+          onSelect={setMitigation}
+          disabled={busy}
+        />
+      )}
+
+      {/* The informed bet (issue #45): drag the slider, watch the double
+          shrink — uncontained dice bought back, wound penalties paid for. */}
+      {controls.includes("contain") && mySheet !== null && (
+        <ContainmentBet
+          track={mySheet.healthTrack}
+          declaredPool={cast.declaredPool}
+          paradoxSuccesses={cast.paradoxSuccesses ?? 0}
+          cap={containCap}
+          contained={Math.min(contained, containCap)}
+          onChange={setContained}
+          disabled={busy}
+        />
+      )}
+
       {/* the viewer's controls — and only theirs */}
       {controls.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -455,13 +484,15 @@ export function CastCard({
           )}
           {controls.includes("contain") && (
             <>
-              <NumberInput
-                label="contain"
-                value={contained}
-                cap={containCap}
-                onChange={setContained}
-                disabled={busy}
-              />
+              {mySheet === null && (
+                <NumberInput
+                  label="contain"
+                  value={contained}
+                  cap={containCap}
+                  onChange={setContained}
+                  disabled={busy}
+                />
+              )}
               <button
                 onClick={() =>
                   run(() => contain({ ...step, containedSuccesses: contained }))
@@ -516,9 +547,10 @@ export function CastCard({
 }
 
 /**
- * A plain number input (issue #43: previews come in a later slice). With a
- * `cap` it clamps and shows the ceiling; without one it counts freely from 0
- * — the ST's liability counts have no rules ceiling (issue #44).
+ * A plain number input. With a `cap` it clamps and shows the ceiling; without
+ * one it counts freely from 0 — the ST's liability counts have no rules
+ * ceiling (issue #44). The caster's betting controls pair it with (mitigate)
+ * or trade it for (contain) the live previews above (issue #45).
  */
 function NumberInput({
   label,
@@ -558,6 +590,163 @@ function NumberInput({
         <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
           / {cap}
         </span>
+      )}
+    </div>
+  )
+}
+
+/** Exact odds, table-legible: one decimal, tiny-but-real never rounds to 0. */
+const pct = (p: number): string => {
+  if (p <= 0) return "0%"
+  if (p < 0.001) return "<0.1%"
+  return `${(p * 100).toFixed(1)}%`
+}
+
+const diceLabel = (dice: number): string =>
+  dice <= 0 ? "chance die" : dice === 1 ? "1 die" : `${dice} dice`
+
+/**
+ * Pricing the blind insurance (issue #45): one row per affordable Mana spend —
+ * the shrunken Paradox pool and its exact odds, live off the same leaves the
+ * server rolls with. Rows select; the lock button commits.
+ */
+function MitigationPreview({
+  poolInputs,
+  cap,
+  selected,
+  onSelect,
+  disabled,
+}: {
+  poolInputs: Omit<Parameters<typeof calculateParadoxPool>[0], "manaMitigation">
+  cap: number
+  selected: number
+  onSelect: (spend: number) => void
+  disabled: boolean
+}) {
+  const rows = Array.from({ length: cap + 1 }, (_, spend) => {
+    const dice = calculateParadoxPool({ ...poolInputs, manaMitigation: spend }).totalDice
+    return { spend, dice, odds: rollOdds(dice) }
+  })
+  return (
+    <div
+      className="mt-2 grid gap-1 rounded-[3px] p-2"
+      style={{ border: "1px dashed var(--line)" }}
+    >
+      <span className="mv-eyebrow">Blind insurance — each Mana buys off one Paradox die</span>
+      {rows.map(({ spend, dice, odds }) => {
+        const here = spend === Math.min(selected, cap)
+        return (
+          <button
+            key={spend}
+            onClick={() => onSelect(spend)}
+            disabled={disabled}
+            className="mv-data grid grid-cols-[3.5rem_5rem_1fr_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[10px] disabled:opacity-40"
+            style={{
+              border: here ? "1px solid var(--accent)" : "1px solid transparent",
+              color: here ? "var(--ink)" : "var(--dim)",
+            }}
+          >
+            <span>{spend} Mana</span>
+            <span style={{ color: here ? "var(--accent)" : undefined }}>
+              {diceLabel(dice)}
+            </span>
+            <span>
+              bites <b style={{ color: "var(--bad)" }}>{pct(odds.success)}</b>
+            </span>
+            <span>~{odds.expected.toFixed(2)} successes</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * The informed bet (issue #45): per slider stop, the Resistant bashing to be
+ * taken, the wound penalty it newly causes, the surviving cast pool — shrunk
+ * twice, by uncontained successes and by that self-inflicted penalty — and
+ * the pool's exact odds, recomputing at every stop. The martyr stop announces
+ * the full-track unconsciousness rule before the caster takes it.
+ */
+function ContainmentBet({
+  track,
+  declaredPool,
+  paradoxSuccesses,
+  cap,
+  contained,
+  onChange,
+  disabled,
+}: {
+  track: HealthTrack
+  declaredPool: number
+  paradoxSuccesses: number
+  cap: number
+  contained: number
+  onChange: (value: number) => void
+  disabled: boolean
+}) {
+  const outlook = containmentOutlook({ track, declaredPool, paradoxSuccesses, contained })
+  const odds = rollOdds(outlook.castPool)
+  return (
+    <div
+      className="mt-2 grid gap-1.5 rounded-[3px] p-2"
+      style={{ border: "1px dashed var(--line)" }}
+    >
+      <span className="mv-eyebrow">The bet — flesh against dice</span>
+      <div className="flex items-center gap-2">
+        <span className="mv-data text-[10px] uppercase tracking-wider" style={{ color: "var(--dim)" }}>
+          contain
+        </span>
+        <input
+          type="range"
+          min={0}
+          max={cap}
+          step={1}
+          value={contained}
+          onChange={(e) => onChange(Number(e.target.value))}
+          disabled={disabled || cap === 0}
+          className="flex-1 accent-[var(--accent)]"
+        />
+        <span className="mv-data w-10 text-center text-[13px] font-bold">
+          {contained} / {cap}
+        </span>
+      </div>
+      <div className="mv-data grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] sm:grid-cols-4" style={{ color: "var(--dim)" }}>
+        <span>
+          takes <b style={{ color: outlook.damage > 0 ? "var(--bad)" : "var(--ink)" }}>
+            {outlook.damage} Resistant bashing
+          </b>
+        </span>
+        <span>
+          wound penalty <b style={{ color: outlook.newPenalty < 0 ? "var(--bad)" : "var(--ink)" }}>
+            {outlook.penaltyAfter}
+          </b>
+          {outlook.newPenalty < 0 ? ` (${outlook.newPenalty} new)` : ""}
+        </span>
+        <span>
+          casts on <b style={{ color: "var(--accent)" }}>{diceLabel(outlook.castPool)}</b>
+        </span>
+        <span>
+          {outlook.uncontained} {outlook.uncontained === 1 ? "success" : "successes"} loose
+        </span>
+      </div>
+      <div className="mv-data flex flex-wrap gap-x-3 gap-y-0.5 text-[10px]" style={{ color: "var(--dim)" }}>
+        <span>
+          success <b style={{ color: "var(--accent)" }}>{pct(odds.success)}</b>
+        </span>
+        <span>~{odds.expected.toFixed(2)} successes</span>
+        <span>exceptional {pct(odds.exceptional)}</span>
+        {odds.isChanceDie && (
+          <span style={{ color: "var(--bad)" }}>
+            dramatic failure {pct(odds.dramaticFailure)}
+          </span>
+        )}
+      </div>
+      {outlook.martyr && (
+        <p className="text-[10px] italic" style={{ color: "var(--bad)" }}>
+          This fills your last health box with bashing — the book calls that
+          unconsciousness (Storyteller adjudicates). The cast still completes.
+        </p>
       )}
     </div>
   )

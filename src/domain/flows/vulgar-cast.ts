@@ -7,8 +7,8 @@ import {
 } from "../authz"
 import {
   CastStatus,
-  castPoolAfterParadox,
   containmentCap,
+  finalCastPool,
   deriveAccumulator,
   effectiveWitnessCount,
   isCommitted,
@@ -20,7 +20,7 @@ import {
 } from "../cast"
 import { ArcanumName } from "../character"
 import { buildPool, rollPool, type RawPoolComponent } from "../dice"
-import { applyDamage, healResistantBashing, isIncapacitated } from "../health"
+import { applyDamage, healResistantBashing, isIncapacitated, woundPenalty } from "../health"
 import { CastId, CharacterId, SessionId } from "../ids"
 import { improvisedManaCost, spendMana } from "../mana-economy"
 import {
@@ -848,9 +848,14 @@ export const containParadox = Effect.fn("Flows.vulgarCast.containParadox")(funct
 
 /**
  * The climax: the caster's own cast-roll button, a separate beat from
- * containment — picking up the dice is its own moment. Pool = declared −
- * uncontained successes (chance die at zero or below); resolution records both
- * rolls' outcomes and the Paradox severity, and frees the stage.
+ * containment — picking up the dice is its own moment. The pool shrinks twice
+ * (issue #45): declared − uncontained successes (p. 124) and the wound
+ * penalty of the track as it stands — containment's self-inflicted Resistant
+ * bashing included (chance die at zero or below). Resolution records both
+ * rolls' outcomes and the Paradox severity, frees the stage, and — when
+ * containment filled the last box — surfaces the full-bashing-track
+ * unconsciousness rule for the Storyteller to adjudicate: the martyr's
+ * fireball still flies, the aftermath is a human ruling.
  */
 export const rollCastDice = Effect.fn("Flows.vulgarCast.rollCastDice")(function* (
   args: CastStepArgs,
@@ -860,20 +865,29 @@ export const rollCastDice = Effect.fn("Flows.vulgarCast.rollCastDice")(function*
   const store = yield* GameStore
 
   const cast = yield* requireCast(sessionId, castId)
-  yield* requireSessionCharacter(sessionId, cast.characterId)
+  const sheet = yield* requireSessionCharacter(sessionId, cast.characterId)
   yield* requireStatus(cast, "contained")
 
   const paradoxSuccesses = yield* stamped(cast.paradoxSuccesses, "paradoxSuccesses")
   const contained = yield* stamped(cast.containedSuccesses, "containedSuccesses")
   const uncontained = paradoxSuccesses - contained
-  const castPool = castPoolAfterParadox(cast.declaredPool, paradoxSuccesses, contained)
+  const penalty = woundPenalty(sheet.healthTrack)
+  const castPool = finalCastPool({
+    declaredPool: cast.declaredPool,
+    paradoxSuccesses,
+    contained,
+    woundPenalty: penalty,
+  })
 
   // Zero and fewer dice are the same chance die, so record only the effective
-  // penalty (the factor-penalty precedent in `flows/casting.ts`).
-  const effectivePenalty = Math.max(-uncontained, -cast.declaredPool)
+  // portion of each penalty (the factor-penalty precedent in
+  // `flows/casting.ts`), uncontained Paradox eating the pool first.
+  const paradoxPenalty = Math.max(-uncontained, -cast.declaredPool)
+  const woundPortion = Math.max(penalty, -(cast.declaredPool + paradoxPenalty))
   const components: ReadonlyArray<RawPoolComponent> = [
     ...cast.declaredComponents,
-    ...modifierComponents("Uncontained Paradox", effectivePenalty),
+    ...modifierComponents("Uncontained Paradox", paradoxPenalty),
+    ...modifierComponents("Wound penalty", woundPortion),
   ]
   const dicePool = yield* buildPool(components)
   const result = yield* rollPool(dicePool)
@@ -899,6 +913,17 @@ export const rollCastDice = Effect.fn("Flows.vulgarCast.rollCastDice")(function*
         ? " Reality lets it pass."
         : ` The uncontained Paradox manifests as ${capitalize(severity)}.`),
   })
+
+  // The martyr's aftermath (PRD #39 story 28): the spell is away; now the
+  // full bashing track's unconsciousness rule is the Storyteller's to call.
+  if (contained > 0 && isIncapacitated(sheet.healthTrack)) {
+    yield* store.insertMessage({
+      sessionId,
+      sender: { userId: member.userId, displayName: member.displayName },
+      text: `${cast.casterName}'s health track is full, the last box bashing — the book calls that unconsciousness. The spell is already loose; the Storyteller adjudicates what the body does next.`,
+      visibility: "system",
+    })
+  }
 
   return castId
 })

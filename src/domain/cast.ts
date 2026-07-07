@@ -1,5 +1,6 @@
 import { Array as Arr, Match, Order, Schema } from "effect"
 import type { HealthTrack } from "./damage"
+import { applyDamage, isIncapacitated, woundPenalty } from "./health"
 import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "./ids"
 import type { GnosisRank } from "./mana-economy"
 import { ParadoxPoolModifier, ParadoxSeverity } from "./paradox"
@@ -267,6 +268,74 @@ export const castPoolAfterParadox = (
   paradoxSuccesses: number,
   containedSuccesses: number,
 ): number => declaredPool - (paradoxSuccesses - containedSuccesses)
+
+/**
+ * The pool the cast roll actually throws (issue #45): the double shrink —
+ * uncontained successes and the track's wound penalty — composed in one
+ * place, so the containment preview and `rollCastDice` cannot drift.
+ */
+export const finalCastPool = (input: {
+  declaredPool: number
+  paradoxSuccesses: number
+  contained: number
+  woundPenalty: number
+}): number =>
+  castPoolAfterParadox(input.declaredPool, input.paradoxSuccesses, input.contained) +
+  input.woundPenalty
+
+/**
+ * One stop on the containment slider, fully priced (issue #45): what the bet
+ * costs and what pool survives it. Containment shrinks the cast pool twice —
+ * each uncontained success is −1 die (p. 124), and the self-inflicted
+ * Resistant bashing can push the track into wound-penalty territory, which
+ * the cast roll also pays. A Schema (ADR-0017): a data shape, not a contract.
+ */
+export const ContainmentOutlook = Schema.Struct({
+  /** Resistant bashing wounds this stop writes — one per contained success. */
+  damage: Schema.Number,
+  /** Paradox successes left to mar the cast and pick its severity. */
+  uncontained: Schema.Number,
+  /** The track's wound penalty before and after the containment lands (≤ 0). */
+  penaltyBefore: Schema.Number,
+  penaltyAfter: Schema.Number,
+  /** The worsening this stop causes — the second shrink's price tag. */
+  newPenalty: Schema.Number,
+  /** Declared − uncontained + penaltyAfter; zero or below rolls a chance die. */
+  castPool: Schema.Number,
+  /** The stop fills the last box: the full-track unconsciousness rule looms. */
+  martyr: Schema.Boolean,
+})
+export type ContainmentOutlook = typeof ContainmentOutlook.Type
+
+export const containmentOutlook = (input: {
+  track: HealthTrack
+  declaredPool: number
+  paradoxSuccesses: number
+  contained: number
+}): ContainmentOutlook => {
+  const after = Arr.reduce(
+    Arr.makeBy(input.contained, (i) => i),
+    input.track,
+    (track) => applyDamage(track, "bashing", { resistant: true }),
+  )
+  const penaltyBefore = woundPenalty(input.track)
+  const penaltyAfter = woundPenalty(after)
+  const uncontained = input.paradoxSuccesses - input.contained
+  return {
+    damage: input.contained,
+    uncontained,
+    penaltyBefore,
+    penaltyAfter,
+    newPenalty: penaltyAfter - penaltyBefore,
+    castPool: finalCastPool({
+      declaredPool: input.declaredPool,
+      paradoxSuccesses: input.paradoxSuccesses,
+      contained: input.contained,
+      woundPenalty: penaltyAfter,
+    }),
+    martyr: input.contained > 0 && isIncapacitated(after),
+  }
+}
 
 /**
  * The sheet stores Gnosis as 0–10 dots (representability, ADR-0011); the

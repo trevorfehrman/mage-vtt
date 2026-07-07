@@ -312,15 +312,47 @@ describe("Flows.vulgarCast — the whole handshake (issue #43)", () => {
       expect(track.every((b) => b.severity !== "empty")).toBe(true)
       expect(store.messages[0]!.text).toContain("going down with the spell")
 
-      // The martyr's fireball still flies: 4 declared − 2 uncontained = 2 dice.
+      // The martyr's fireball still flies — as a chance die: 4 declared −
+      // 2 uncontained − 3 wound penalty (full track) = −1 (issue #45).
       yield* rollCastDice({ sessionId: SESSION, castId }).pipe(
         as(PLAYER),
         Effect.provide(store.layer),
       )
       expect(store.casts[0]!.status).toBe("resolved")
-      expect(store.casts[0]!.castPool).toBe(2)
+      expect(store.casts[0]!.castPool).toBe(-1)
+      expect(store.rolls[0]!.result.isChanceDie).toBe(true)
       expect(store.casts[0]!.severity).toBe("bedlam") // 2 uncontained
+
+      // Resolution surfaces the full-bashing-track rule for the ST (PRD #39
+      // story 28): the system message lands after the cast completes.
+      expect(store.messages[1]!.text).toContain("unconscious")
     }).pipe(Random.withSeed("martyr-seed")),
+  )
+
+  it.effect("wound penalties shrink the cast pool a second time (issue #45)", () =>
+    Effect.gen(function* () {
+      // Five of seven boxes filled — the caster casts at −1. Declared 4 −
+      // 1 uncontained − 1 wound penalty = 2 dice, the penalty on the entry.
+      const wounded = makeSheet({
+        healthTrack: ["bashing", "bashing", "bashing", "bashing", "bashing", "empty", "empty"],
+      })
+      const store = seed({
+        sheet: wounded,
+        casts: [castAt("contained", { paradoxSuccesses: 2, containedSuccesses: 1 })],
+      })
+
+      yield* rollCastDice({
+        sessionId: SESSION,
+        castId: CastId.make("cast-prior"),
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      expect(store.casts[0]!.castPool).toBe(2)
+      expect(store.rolls[0]!.result.poolSize).toBe(2)
+      const penalty = store.rolls[0]!.components.find((c) => c.name === "Wound penalty")
+      expect(penalty?.dots).toBe(-1)
+      // Short of a full track, no unconsciousness message accompanies the roll.
+      expect(store.messages).toHaveLength(0)
+    }),
   )
 
   it.effect("containing zero is a legal choice — everything manifests", () =>
