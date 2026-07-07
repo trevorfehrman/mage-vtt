@@ -5,11 +5,17 @@
  * parser couldn't handle automatically. Also merges in the review
  * queue items with manually provided data.
  *
+ * On the script runtime (issue #55): the input decodes through a Schema
+ * (each stored `pool` through the domain `RotePool` itself) and failure
+ * paths exit through `runScript` with a typed cause instead of
+ * `process.exit`.
+ *
  * Usage: bun scripts/apply-corrections.ts
  */
 
-import { Effect, Exit } from "effect"
-import { formatRotePool, parseRotePool, type RotePool } from "../src/domain/rote-pool"
+import { Effect, Result, Schema } from "effect"
+import { formatRotePool, parseRotePool, RotePool } from "../src/domain/rote-pool"
+import { loadJson, runScript } from "./lib/script-runtime"
 
 const DATA_DIR = new URL("../data/", import.meta.url).pathname
 
@@ -52,7 +58,13 @@ const ROTE_POOL_CORRECTIONS: Record<string, string> = {
   "Labyrinth|Space|Silver Ladder": "Intelligence + Medicine or Crafts or Science + Space",
 }
 
-const FIELD_CORRECTIONS: Record<string, Record<string, string>> = {
+/** The fields a FIELD_CORRECTIONS entry may fill — filled only over "Unknown". */
+const CORRECTABLE_FIELDS = ["practice", "action", "duration", "aspect"] as const
+
+const FIELD_CORRECTIONS: Record<
+  string,
+  Partial<Record<(typeof CORRECTABLE_FIELDS)[number], string>>
+> = {
   "Unseen Spy|Prime": { aspect: "Covert" },
   "Sculpt Ephemera|Death": { action: "Instant" },
   "Revenant|Death": { duration: "Prolonged (one scene)", aspect: "Vulgar" },
@@ -91,7 +103,7 @@ const VALID_ASPECTS = new Set(["Covert", "Vulgar"])
 const MANUAL_SPELLS = [
   {
     name: "Conditional Duration",
-    arcanum: "Fate" as const,
+    arcanum: "Fate",
     level: 2,
     practice: "Ruling",
     action: "Instant (added to another spell)",
@@ -104,7 +116,7 @@ const MANUAL_SPELLS = [
   },
   {
     name: "Target Exemption",
-    arcanum: "Fate" as const,
+    arcanum: "Fate",
     level: 2,
     practice: "Shielding",
     action: "Instant (added to another spell)",
@@ -117,7 +129,7 @@ const MANUAL_SPELLS = [
   },
   {
     name: "Unfettered",
-    arcanum: "Fate" as const,
+    arcanum: "Fate",
     level: 4,
     practice: "Patterning",
     action: "Instant",
@@ -130,7 +142,7 @@ const MANUAL_SPELLS = [
   },
   {
     name: "Transform Base Life",
-    arcanum: "Life" as const,
+    arcanum: "Life",
     level: 2,
     practice: "Ruling",
     action: "Instant",
@@ -143,7 +155,7 @@ const MANUAL_SPELLS = [
   },
   {
     name: "Unseen Aegis",
-    arcanum: "Matter" as const,
+    arcanum: "Matter",
     level: 2,
     practice: "Shielding",
     action: "Instant",
@@ -156,7 +168,7 @@ const MANUAL_SPELLS = [
   },
   {
     name: "Soul Jar",
-    arcanum: "Spirit" as const,
+    arcanum: "Spirit",
     level: 2,
     practice: "Ruling",
     action: "Instant and contested",
@@ -169,9 +181,53 @@ const MANUAL_SPELLS = [
   },
 ]
 
-async function applyCorrections() {
-  const spellsFile = Bun.file(`${DATA_DIR}spells.json`)
-  const spells = await spellsFile.json()
+// --- Input shape (issue #55) ---
+// Field order mirrors the file so the rewrite is byte-stable on a re-run.
+// Free-text columns stay open strings (this script is what cleans them); the
+// structured `pool` decodes through the domain `RotePool` itself and is only
+// present on already-corrected data — this script wrote it from parseRotePool.
+const SpellRote = Schema.Struct({
+  order: Schema.String,
+  name: Schema.String,
+  dicePool: Schema.optionalKey(Schema.String),
+  pool: Schema.optionalKey(RotePool),
+})
+
+const SpellRecord = Schema.Struct({
+  name: Schema.String,
+  arcanum: Schema.String,
+  level: Schema.Number,
+  practice: Schema.String,
+  action: Schema.String,
+  duration: Schema.String,
+  aspect: Schema.String,
+  cost: Schema.String,
+  description: Schema.String,
+  rotes: Schema.Array(SpellRote),
+  pageStart: Schema.Number,
+})
+
+// --- Errors (rendered by runScript as the exit cause) ---
+
+/** Spells whose Aspect is still not a clean Covert/Vulgar after corrections. */
+class DirtyAspectsRemain extends Schema.TaggedErrorClass<DirtyAspectsRemain>()(
+  "DirtyAspectsRemain",
+  { count: Schema.Number },
+) {}
+
+/** Rote pools that parse to no structure even after ROTE_POOL_CORRECTIONS. */
+class UnparseableRotePoolsRemain extends Schema.TaggedErrorClass<UnparseableRotePoolsRemain>()(
+  "UnparseableRotePoolsRemain",
+  { count: Schema.Number },
+) {}
+
+const applyCorrections = Effect.fn("ApplyCorrections.run")(function* () {
+  const decoded = yield* loadJson(`${DATA_DIR}spells.json`, Schema.Array(SpellRecord))
+  // Mutable working copies — the corrections below edit in place.
+  const spells = decoded.map((spell) => ({
+    ...spell,
+    rotes: spell.rotes.map((rote) => ({ ...rote })),
+  }))
 
   let nameFixed = 0
   let fieldsFixed = 0
@@ -179,21 +235,21 @@ async function applyCorrections() {
 
   // Apply name corrections
   for (const spell of spells) {
-    const key = `${spell.name}|${spell.arcanum}|${spell.level}`
-    if (NAME_CORRECTIONS[key]) {
-      console.log(`  Name: "${spell.name}" → "${NAME_CORRECTIONS[key]}"`)
-      spell.name = NAME_CORRECTIONS[key]
+    const corrected = NAME_CORRECTIONS[`${spell.name}|${spell.arcanum}|${spell.level}`]
+    if (corrected !== undefined) {
+      console.log(`  Name: "${spell.name}" → "${corrected}"`)
+      spell.name = corrected
       nameFixed++
     }
   }
 
   // Apply field corrections
   for (const spell of spells) {
-    const key = `${spell.name}|${spell.arcanum}`
-    if (FIELD_CORRECTIONS[key]) {
-      const fixes = FIELD_CORRECTIONS[key]
-      for (const [field, value] of Object.entries(fixes)) {
-        if (spell[field] === "Unknown" || !spell[field]) {
+    const fixes = FIELD_CORRECTIONS[`${spell.name}|${spell.arcanum}`]
+    if (fixes) {
+      for (const field of CORRECTABLE_FIELDS) {
+        const value = fixes[field]
+        if (value !== undefined && (spell[field] === "Unknown" || !spell[field])) {
           console.log(`  Field: ${spell.name} → ${field} = "${value}"`)
           spell[field] = value
           fieldsFixed++
@@ -206,19 +262,19 @@ async function applyCorrections() {
   let aspectsFixed = 0
   for (const spell of spells) {
     const correction = ASPECT_CORRECTIONS[`${spell.name}|${spell.arcanum}`]
-    if (correction && spell.aspect !== correction) {
-      console.log(`  Aspect: ${spell.name} "${String(spell.aspect).slice(0, 40)}" → "${correction}"`)
+    if (correction !== undefined && spell.aspect !== correction) {
+      console.log(`  Aspect: ${spell.name} "${spell.aspect.slice(0, 40)}" → "${correction}"`)
       spell.aspect = correction
       aspectsFixed++
     }
   }
-  const dirtyAspects = spells.filter((s: any) => !VALID_ASPECTS.has(s.aspect))
+  const dirtyAspects = spells.filter((s) => !VALID_ASPECTS.has(s.aspect))
   if (dirtyAspects.length > 0) {
     console.error(`\n✗ ${dirtyAspects.length} spells still carry a dirty aspect:`)
     for (const s of dirtyAspects) {
-      console.error(`    ${s.name} (${s.arcanum} ${s.level}): "${String(s.aspect).slice(0, 60)}"`)
+      console.error(`    ${s.name} (${s.arcanum} ${s.level}): "${s.aspect.slice(0, 60)}"`)
     }
-    process.exit(1)
+    return yield* new DirtyAspectsRemain({ count: dirtyAspects.length })
   }
 
   // Structured rote pools (issue #14): parse every prose pool into Traits and
@@ -229,33 +285,23 @@ async function applyCorrections() {
   const unparseable: Array<{ spell: string; order: string; pool: string; reason: string }> = []
   for (const spell of spells) {
     for (const rote of spell.rotes) {
-      let exit = Effect.runSyncExit(parseRotePool(rote.dicePool ?? ""))
-      const correctionKey = `${spell.name}|${spell.arcanum}|${rote.order}`
-      const correction = ROTE_POOL_CORRECTIONS[correctionKey]
-      if (!Exit.isSuccess(exit) && correction) {
+      let parsed = yield* Effect.result(parseRotePool(rote.dicePool ?? ""))
+      const correction = ROTE_POOL_CORRECTIONS[`${spell.name}|${spell.arcanum}|${rote.order}`]
+      if (Result.isFailure(parsed) && correction !== undefined) {
         console.log(`  Rote pool: ${spell.name} (${rote.order}) → "${correction}"`)
-        exit = Effect.runSyncExit(parseRotePool(correction))
+        parsed = yield* Effect.result(parseRotePool(correction))
         fieldsFixed++
       }
-      if (Exit.isSuccess(exit)) {
-        const pool: RotePool = exit.value
-        rote.pool = {
-          attribute: pool.attribute,
-          skills: [...pool.skills],
-          arcanum: pool.arcanum,
-          ...(pool.vs ? { vs: [...pool.vs] } : {}),
-        }
-        rote.dicePool = formatRotePool(pool)
+      if (Result.isSuccess(parsed)) {
+        rote.pool = parsed.success
+        rote.dicePool = formatRotePool(parsed.success)
         poolsParsed++
       } else {
-        const fail = exit.cause.reasons.find((r: any) => r._tag === "Fail") as
-          | { error: { reason: string } }
-          | undefined
         unparseable.push({
           spell: `${spell.name} (${spell.arcanum} ${spell.level})`,
           order: rote.order,
           pool: rote.dicePool ?? "",
-          reason: fail?.error.reason ?? "unknown",
+          reason: parsed.failure.reason,
         })
       }
     }
@@ -265,14 +311,14 @@ async function applyCorrections() {
     for (const u of unparseable) {
       console.error(`    ${u.spell} [${u.order}]: "${u.pool}" — ${u.reason}`)
     }
-    process.exit(1)
+    return yield* new UnparseableRotePoolsRemain({ count: unparseable.length })
   }
 
   // Add manual spells from review queue
   for (const manual of MANUAL_SPELLS) {
     // Check if already exists (avoid duplicates)
     const exists = spells.some(
-      (s: any) => s.name === manual.name && s.arcanum === manual.arcanum && s.level === manual.level,
+      (s) => s.name === manual.name && s.arcanum === manual.arcanum && s.level === manual.level,
     )
     if (!exists) {
       spells.push(manual)
@@ -282,22 +328,24 @@ async function applyCorrections() {
   }
 
   // Sort by arcanum then level then name
-  spells.sort((a: any, b: any) => {
+  spells.sort((a, b) => {
     if (a.arcanum !== b.arcanum) return a.arcanum.localeCompare(b.arcanum)
     if (a.level !== b.level) return a.level - b.level
     return a.name.localeCompare(b.name)
   })
 
   // Write corrected output
-  await Bun.write(`${DATA_DIR}spells.json`, JSON.stringify(spells, null, 2))
+  yield* Effect.promise(() =>
+    Bun.write(`${DATA_DIR}spells.json`, JSON.stringify(spells, null, 2)),
+  )
 
   // Re-audit
   const unknownFields = spells.filter(
-    (s: any) => s.practice === "Unknown" || s.action === "Unknown" ||
+    (s) => s.practice === "Unknown" || s.action === "Unknown" ||
       s.duration === "Unknown" || s.aspect === "Unknown",
   )
   const emptyPools = spells.reduce(
-    (sum: number, s: any) => sum + s.rotes.filter((r: any) => !r.dicePool || r.dicePool.length < 5).length,
+    (sum, s) => sum + s.rotes.filter((r) => !r.dicePool || r.dicePool.length < 5).length,
     0,
   )
 
@@ -314,14 +362,10 @@ async function applyCorrections() {
   if (unknownFields.length > 0) {
     console.log(`\n  Still Unknown:`)
     for (const s of unknownFields) {
-      const missing = []
-      if (s.practice === "Unknown") missing.push("practice")
-      if (s.action === "Unknown") missing.push("action")
-      if (s.duration === "Unknown") missing.push("duration")
-      if (s.aspect === "Unknown") missing.push("aspect")
+      const missing = CORRECTABLE_FIELDS.filter((field) => s[field] === "Unknown")
       console.log(`    ${s.name} (${s.arcanum} ${s.level}) — ${missing.join(", ")}`)
     }
   }
-}
+})
 
-applyCorrections()
+await runScript(applyCorrections())
