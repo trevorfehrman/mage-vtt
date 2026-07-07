@@ -1,13 +1,21 @@
-import { Context, Effect } from "effect"
+import { Context, Effect, type Option } from "effect"
 import type { CharacterSheet } from "../character"
 import type { HealthBox } from "../damage"
 import type { DiceRollResult, RawPoolComponent } from "../dice"
-import type { CharacterId, MessageId, PlayerId, RollId, SessionId } from "../ids"
+import type {
+  CharacterId,
+  MessageId,
+  PlayerId,
+  RollId,
+  SceneId,
+  SessionId,
+} from "../ids"
 import type { Membership } from "../membership"
 import type { NotAMember } from "../authz"
 import type { Mana, Willpower } from "../quantities"
 import type { SpellRef } from "../rote-cast"
 import type { RoteArcanumName } from "../rote-pool"
+import type { Scene } from "../scene"
 import type { DocumentNotFound } from "./errors"
 
 /**
@@ -50,6 +58,26 @@ export interface SheetPatch {
 }
 
 /**
+ * Intent-level draft of a new `scenes` row (issue #42): always born `active`
+ * — the adapter stamps status and the open timestamp (from `Clock`).
+ */
+export interface SceneDraft {
+  readonly sessionId: SessionId
+  readonly name: string
+  readonly sleeperWitnesses: boolean
+}
+
+/**
+ * The only writes a flow can express against a Scene: its lifecycle end and
+ * the witnesses default. The name is immutable after open — renaming a Scene
+ * is a door no flow has earned yet.
+ */
+export interface ScenePatch {
+  readonly status?: "closed"
+  readonly sleeperWitnesses?: boolean
+}
+
+/**
  * The write-side persistence port (ADR-0004).
  *
  * Domain-specific write helpers hide the wide field maps; typed reads fail with a
@@ -86,5 +114,16 @@ export class GameStore extends Context.Service<
     ) => Effect.Effect<SpellRef, DocumentNotFound>
     readonly insertRoll: (draft: RollDraft) => Effect.Effect<RollId>
     readonly insertMessage: (draft: MessageDraft) => Effect.Effect<MessageId>
+    /**
+     * The session's at-most-one active Scene (issue #42). `Option`, not a
+     * tagged error: no Scene open is a legal state (downtime), so absence is
+     * an answer, never a failure — flows that need one raise their own
+     * precondition error.
+     */
+    readonly getActiveScene: (
+      sessionId: SessionId,
+    ) => Effect.Effect<Option.Option<Scene>>
+    readonly insertScene: (draft: SceneDraft) => Effect.Effect<SceneId>
+    readonly patchScene: (sceneId: SceneId, patch: ScenePatch) => Effect.Effect<void>
   }
 >()("GameStore") {}

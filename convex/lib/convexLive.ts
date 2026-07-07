@@ -7,13 +7,14 @@
  * mirrors, decoded here — the domain never sees Convex's `Doc<T>`.
  */
 
-import { Clock, Effect, Layer, Schema } from "effect"
+import { Clock, Effect, Layer, Option, Schema } from "effect"
 import type { Doc, Id } from "../_generated/dataModel"
 import type { MutationCtx } from "../_generated/server"
 import { CharacterSheet } from "../../src/domain/character"
-import { PlayerId, MessageId, RollId, SessionId } from "../../src/domain/ids"
+import { PlayerId, MessageId, RollId, SceneId, SessionId } from "../../src/domain/ids"
 import { NotAMember } from "../../src/domain/authz"
 import { Membership } from "../../src/domain/membership"
+import { Scene } from "../../src/domain/scene"
 import {
   OverrideMarker,
   OverrideStamp,
@@ -26,6 +27,8 @@ import {
   GameStore,
   type MessageDraft,
   type RollDraft,
+  type SceneDraft,
+  type ScenePatch,
 } from "../../src/domain/ports/game-store"
 import { isDevUser } from "./dev"
 
@@ -223,6 +226,70 @@ export const convexLive = (
           }),
         )
         return MessageId.make(id)
+      }),
+
+    getActiveScene: (sessionId) =>
+      Effect.gen(function* () {
+        const rows = yield* Effect.promise(() =>
+          ctx.db
+            .query("scenes")
+            .withIndex("by_sessionId_status", (q) =>
+              q.eq("sessionId", sessionRef(sessionId)).eq("status", "active"),
+            )
+            .collect(),
+        )
+        // At most one active per session is the open flow's invariant, not the
+        // table's; should it ever fork, the oldest row is "the" active Scene so
+        // repeated closes can drain the surplus rather than crash every read.
+        const row = rows[0]
+        if (!row) return Option.none()
+        // A stored row that fails the vocabulary decode is corrupt data — a
+        // bug, not a client-actionable failure (ADR-0010's Fail/Die split).
+        return Option.some(
+          yield* Schema.decodeUnknownEffect(Scene)({
+            id: row._id,
+            sessionId: row.sessionId,
+            name: row.name,
+            status: row.status,
+            sleeperWitnesses: row.sleeperWitnesses,
+          }).pipe(Effect.orDie),
+        )
+      }),
+
+    insertScene: (draft: SceneDraft) =>
+      Effect.gen(function* () {
+        const openedAt = yield* Clock.currentTimeMillis
+        const id = yield* Effect.promise(() =>
+          ctx.db.insert("scenes", {
+            sessionId: sessionRef(draft.sessionId),
+            name: draft.name,
+            status: "active",
+            sleeperWitnesses: draft.sleeperWitnesses,
+            openedAt,
+          }),
+        )
+        return SceneId.make(id)
+      }),
+
+    patchScene: (sceneId: SceneId, patch: ScenePatch) =>
+      Effect.gen(function* () {
+        const id = ctx.db.normalizeId("scenes", sceneId)
+        if (id === null) {
+          // patchScene follows a successful getActiveScene in every flow; a
+          // malformed id here is a bug, so fail loudly like sessionRef does.
+          throw new Error(`Not a valid scenes id: ${sceneId}`)
+        }
+        const closedAt = yield* Clock.currentTimeMillis
+        yield* Effect.promise(() =>
+          ctx.db.patch(id, {
+            ...(patch.status !== undefined
+              ? { status: patch.status, closedAt }
+              : {}),
+            ...(patch.sleeperWitnesses !== undefined
+              ? { sleeperWitnesses: patch.sleeperWitnesses }
+              : {}),
+          }),
+        )
       }),
   })
 

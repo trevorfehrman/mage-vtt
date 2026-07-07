@@ -33,6 +33,8 @@ interface SessionLayoutProps {
   presence?: ReactNode
   /** The Second Seat control + marker (ADR-0013) — Dev-only, absent otherwise. */
   secondSeat?: ReactNode
+  /** The Scene strip (issue #42): one line of header-adjacent chrome, not a panel. */
+  sceneStrip?: ReactNode
   videoRail?: ReactNode
   characterSheet?: ReactNode
   activityLog: ReactNode
@@ -48,6 +50,7 @@ export function SessionLayout({
   inviteCode,
   presence,
   secondSeat,
+  sceneStrip,
   videoRail,
   characterSheet,
   activityLog,
@@ -139,6 +142,9 @@ export function SessionLayout({
           </TooltipProvider>
         </div>
       </header>
+
+      {/* Scene strip — the narrative container's one line (issue #42) */}
+      {sceneStrip}
 
       {/* Main content — Character center · Activity/pool/chat right rail */}
       <ResizablePanelGroup

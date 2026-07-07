@@ -4,6 +4,7 @@ import { InvalidPoolComponent } from "./dice"
 import { ArcanumTooWeak, InvalidCastDeclaration } from "./flows/casting"
 import { InvalidHandEdit } from "./flows/hand-edit"
 import { RoteNotKnown } from "./flows/rote-cast"
+import { InvalidSceneName, NoActiveScene, SceneAlreadyOpen } from "./flows/scene"
 import { InvalidSheetlessCast } from "./flows/sheetless-cast"
 import { InsufficientMana } from "./mana-economy"
 import { DocumentNotFound } from "./ports/errors"
@@ -35,7 +36,10 @@ export const SeamError = Schema.Union([
   VulgarCastingNotYetSupported,
   RoteNotKnown,
   RoteSkillChoiceRequired,
+  SceneAlreadyOpen,
+  NoActiveScene,
   // Validation
+  InvalidSceneName,
   InvalidCastDeclaration,
   InvalidSheetlessCast,
   InvalidHandEdit,

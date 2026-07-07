@@ -21,6 +21,7 @@ import type * as lib_enforce from "../lib/enforce.js";
 import type * as messages from "../messages.js";
 import type * as presence from "../presence.js";
 import type * as rolls from "../rolls.js";
+import type * as scenes from "../scenes.js";
 import type * as search from "../search.js";
 import type * as seat from "../seat.js";
 import type * as sessions from "../sessions.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   messages: typeof messages;
   presence: typeof presence;
   rolls: typeof rolls;
+  scenes: typeof scenes;
   search: typeof search;
   seat: typeof seat;
   sessions: typeof sessions;

@@ -5,6 +5,7 @@ import {
   CharacterDoc,
   DiceRollDoc,
   MessageDoc,
+  SceneDoc,
   SessionMemberDoc,
 } from "../src/domain/tables"
 
@@ -127,4 +128,11 @@ export default defineSchema({
   messages: defineTable(schemaToConvexValidator(MessageDoc)).index("by_sessionId", [
     "sessionId",
   ]),
+
+  // --- Scenes (derived from the `SceneDoc` mirror, ADR-0005; issue #42) ---
+  // The compound index serves the one hot read: "this session's active Scene".
+  scenes: defineTable(schemaToConvexValidator(SceneDoc)).index(
+    "by_sessionId_status",
+    ["sessionId", "status"],
+  ),
 })

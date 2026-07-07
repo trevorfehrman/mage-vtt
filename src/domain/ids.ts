@@ -25,5 +25,8 @@ export type RollId = typeof RollId.Type
 export const RoteId = Schema.String.pipe(Schema.brand("RoteId"))
 export type RoteId = typeof RoteId.Type
 
+export const SceneId = Schema.String.pipe(Schema.brand("SceneId"))
+export type SceneId = typeof SceneId.Type
+
 export const RuleChunkId = Schema.String.pipe(Schema.brand("RuleChunkId"))
 export type RuleChunkId = typeof RuleChunkId.Type

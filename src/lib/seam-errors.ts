@@ -35,6 +35,9 @@ const describe = (error: SeamError): string =>
     Match.tag("VulgarCastingNotYetSupported", (e) => `${e.spellName} is Vulgar — Vulgar casting awaits the Paradox phase.`),
     Match.tag("RoteNotKnown", (e) => `Your character hasn't trained the Rote "${e.roteName}".`),
     Match.tag("RoteSkillChoiceRequired", (e) => `Pick one skill for this Rote: ${e.alternatives.join(" or ")}.`),
+    Match.tag("SceneAlreadyOpen", (e) => `"${e.activeSceneName}" is still open — close it first.`),
+    Match.tag("NoActiveScene", () => "No Scene is open."),
+    Match.tag("InvalidSceneName", (e) => e.message),
     Match.exhaustive,
   )
 

@@ -14,6 +14,7 @@ import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { SheetlessCastForm } from "#/components/game/SheetlessCastForm"
 import { Roster } from "#/components/game/Roster"
 import { HandEditForm } from "#/components/game/HandEditForm"
+import { SceneStrip } from "#/components/game/SceneStrip"
 import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { SecondSeatControl } from "#/components/game/SecondSeatControl"
@@ -299,6 +300,14 @@ function SessionPage() {
             onSeat={takeSeat}
           />
         ) : undefined
+      }
+      sceneStrip={
+        // Chrome follows the seat (ADR-0013): a seated ST-Dev in a player's
+        // chair sees player chrome; the server refuses non-ST writes anyway.
+        <SceneStrip
+          sessionId={sessionId as Id<"sessions">}
+          isStoryteller={isStoryteller}
+        />
       }
       characterSheet={characterSheet}
       activityLog={

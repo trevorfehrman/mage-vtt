@@ -212,6 +212,21 @@ export const CharacterDoc = Schema.Struct({
   ...CharacterData.fields,
 })
 
+/**
+ * Stored shape of a Scene (issue #42): the ST-controlled narrative container.
+ * At most one row per session is `active` — an invariant the open flow
+ * enforces, not the table. Raw primitives here (ADR-0011); the vocabulary
+ * decode lives in `scene.ts`. `closedAt` is present only once closed.
+ */
+export const SceneDoc = Schema.Struct({
+  sessionId: ConvexId("sessions"),
+  name: Schema.String,
+  status: Schema.Literals(["active", "closed"]),
+  sleeperWitnesses: Schema.Boolean,
+  openedAt: Schema.Number,
+  closedAt: Schema.optionalKey(Schema.Number),
+})
+
 export const MessageDoc = Schema.Struct({
   sessionId: ConvexId("sessions"),
   senderId: Schema.String,

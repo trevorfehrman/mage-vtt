@@ -1,17 +1,27 @@
-import { Clock, Effect, Layer } from "effect"
+import { Clock, Effect, Layer, Option } from "effect"
 import { CharacterSheet } from "../character"
 import type { DiceRollResult, RawPoolComponent, RollVisibility } from "../dice"
-import { MessageId, PlayerId, RollId, type CharacterId, type SessionId } from "../ids"
+import {
+  MessageId,
+  PlayerId,
+  RollId,
+  SceneId,
+  type CharacterId,
+  type SessionId,
+} from "../ids"
 import type { Membership } from "../membership"
 import { NotAMember } from "../authz"
 import { OverrideMarker, OverrideStamp, makeOverrideStamp } from "../override"
 import { CurrentActor, type Actor } from "../ports/current-actor"
 import { DocumentNotFound } from "../ports/errors"
 import type { SpellRef } from "../rote-cast"
+import { Scene, type SceneStatus } from "../scene"
 import {
   GameStore,
   type MessageDraft,
   type RollDraft,
+  type SceneDraft,
+  type ScenePatch,
   type SheetPatch,
 } from "../ports/game-store"
 
@@ -55,6 +65,17 @@ export interface StoredSheetPatch {
   readonly patch: SheetPatch
 }
 
+/** A `scenes` row as stored (issue #42) — timestamps stamped like the rolls'. */
+export interface StoredScene {
+  readonly id: SceneId
+  readonly sessionId: SessionId
+  readonly name: string
+  readonly status: SceneStatus
+  readonly sleeperWitnesses: boolean
+  readonly openedAt: number
+  readonly closedAt?: number
+}
+
 export interface InMemory {
   readonly layer: Layer.Layer<GameStore | CurrentActor | OverrideStamp>
   readonly rolls: ReadonlyArray<StoredRoll>
@@ -62,6 +83,8 @@ export interface InMemory {
   /** Live sheet state by character id — patches apply here, as in a real store. */
   readonly sheets: ReadonlyMap<CharacterId, CharacterSheet>
   readonly sheetPatches: ReadonlyArray<StoredSheetPatch>
+  /** Live Scene state — inserts append, patches apply in place (issue #42). */
+  readonly scenes: ReadonlyArray<StoredScene>
 }
 
 export const makeInMemory = (seed: {
@@ -70,6 +93,8 @@ export const makeInMemory = (seed: {
   sheets?: ReadonlyArray<CharacterSheet>
   /** Spell reference rows the read side resolves (issue #18). */
   spells?: ReadonlyArray<SpellRef>
+  /** Pre-existing Scene rows (issue #42) — e.g. an already-active Scene. */
+  scenes?: ReadonlyArray<StoredScene>
 }): InMemory => {
   const rolls: Array<StoredRoll> = []
   const messages: Array<StoredMessage> = []
@@ -77,6 +102,7 @@ export const makeInMemory = (seed: {
     (seed.sheets ?? []).map((sheet) => [sheet.id, sheet]),
   )
   const sheetPatches: Array<StoredSheetPatch> = []
+  const scenes: Array<StoredScene> = [...(seed.scenes ?? [])]
   const override = makeOverrideStamp()
 
   const gameStore = GameStore.of({
@@ -165,6 +191,50 @@ export const makeInMemory = (seed: {
         })
         return id
       }),
+
+    getActiveScene: (sessionId) => {
+      const row = scenes.find(
+        (s) => s.sessionId === sessionId && s.status === "active",
+      )
+      return Effect.succeed(
+        row ? Option.some(new Scene({ ...row })) : Option.none(),
+      )
+    },
+
+    insertScene: (draft: SceneDraft) =>
+      Effect.gen(function* () {
+        const openedAt = yield* Clock.currentTimeMillis
+        const id = SceneId.make(`scene_${scenes.length}`)
+        scenes.push({
+          id,
+          sessionId: draft.sessionId,
+          name: draft.name,
+          status: "active",
+          sleeperWitnesses: draft.sleeperWitnesses,
+          openedAt,
+        })
+        return id
+      }),
+
+    patchScene: (sceneId: SceneId, patch: ScenePatch) =>
+      Effect.gen(function* () {
+        const index = scenes.findIndex((s) => s.id === sceneId)
+        if (index === -1) {
+          // patchScene follows a successful getActiveScene in every flow; a
+          // missing row is a bug — fail loudly, as the live adapter does.
+          throw new Error(`patch of missing scene ${sceneId}`)
+        }
+        const closedAt = yield* Clock.currentTimeMillis
+        scenes[index] = {
+          ...scenes[index]!,
+          ...(patch.status !== undefined
+            ? { status: patch.status, closedAt }
+            : {}),
+          ...(patch.sleeperWitnesses !== undefined
+            ? { sleeperWitnesses: patch.sleeperWitnesses }
+            : {}),
+        }
+      }),
   })
 
   const layer = Layer.mergeAll(
@@ -173,5 +243,5 @@ export const makeInMemory = (seed: {
     Layer.succeed(OverrideStamp, override.stamp),
   )
 
-  return { layer, rolls, messages, sheets, sheetPatches }
+  return { layer, rolls, messages, sheets, sheetPatches, scenes }
 }
