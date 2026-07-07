@@ -18,28 +18,44 @@ const decodeSeamError = Schema.decodeUnknownOption(SeamError)
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-/** Table language for each refusal — total over the union by construction. */
-const describe = (error: SeamError): string =>
-  Match.value(error).pipe(
-    Match.tag("ArcanumTooWeak", (e) => `You need ${capitalize(e.arcanum)} ${e.level} — you have ${e.dots}.`),
-    Match.tag("InsufficientMana", (e) => `Not enough Mana: need ${e.required}, have ${e.current}.`),
-    Match.tag("InsufficientWillpower", () => "No Willpower left to spend."),
-    Match.tag("NotYourCharacter", () => "That's not your character."),
-    Match.tag("NotAMember", () => "You're not a member of this session."),
-    Match.tag("NotStoryteller", () => "Sheet-less casting is the Storyteller's door."),
-    Match.tag("DocumentNotFound", () => "Character not found."),
-    Match.tag("InvalidCastDeclaration", () => "That declaration isn't castable."),
-    Match.tag("InvalidSheetlessCast", () => `That pool isn't castable (0–${MAX_DECLARED_POOL} dice).`),
-    Match.tag("InvalidHandEdit", (e) => e.message),
-    Match.tag("InvalidPoolComponent", () => "That pool isn't rollable."),
-    Match.tag("VulgarCastingNotYetSupported", (e) => `${e.spellName} is Vulgar — Vulgar casting awaits the Paradox phase.`),
-    Match.tag("RoteNotKnown", (e) => `Your character hasn't trained the Rote "${e.roteName}".`),
-    Match.tag("RoteSkillChoiceRequired", (e) => `Pick one skill for this Rote: ${e.alternatives.join(" or ")}.`),
-    Match.tag("SceneAlreadyOpen", (e) => `"${e.activeSceneName}" is still open — close it first.`),
-    Match.tag("NoActiveScene", () => "No Scene is open."),
-    Match.tag("InvalidSceneName", (e) => e.message),
-    Match.exhaustive,
-  )
+/** Table language for the generic not-found (ADR-0010: one tag, many tables). */
+const NOT_FOUND_NOUNS: Record<string, string> = {
+  characters: "Character",
+  casts: "Cast",
+  scenes: "Scene",
+  spells: "Spell",
+}
+
+/** Table language for each refusal — total over the union by construction
+ * (`tagsExhaustive`: a missing or renamed tag is a compile error here). */
+const describe = Match.type<SeamError>().pipe(
+  Match.tagsExhaustive({
+    ArcanumTooWeak: (e) => `You need ${capitalize(e.arcanum)} ${e.level} — you have ${e.dots}.`,
+    InsufficientMana: (e) => `Not enough Mana: need ${e.required}, have ${e.current}.`,
+    InsufficientWillpower: () => "No Willpower left to spend.",
+    NotYourCharacter: () => "That's not your character.",
+    NotAMember: () => "You're not a member of this session.",
+    NotStoryteller: () => "That door is the Storyteller's.",
+    DocumentNotFound: (e) =>
+      `${NOT_FOUND_NOUNS[e.table] ?? "That record"} not found.`,
+    InvalidCastDeclaration: () => "That declaration isn't castable.",
+    InvalidSheetlessCast: () => `That pool isn't castable (0–${MAX_DECLARED_POOL} dice).`,
+    InvalidHandEdit: (e) => e.message,
+    InvalidPoolComponent: () => "That pool isn't rollable.",
+    VulgarCastingNotYetSupported: (e) => `${e.spellName} is Vulgar — Vulgar casting awaits the Paradox phase.`,
+    RoteNotKnown: (e) => `Your character hasn't trained the Rote "${e.roteName}".`,
+    RoteSkillChoiceRequired: (e) => `Pick one skill for this Rote: ${e.alternatives.join(" or ")}.`,
+    SceneAlreadyOpen: (e) => `"${e.activeSceneName}" is still open — close it first.`,
+    NoActiveScene: () => "No Scene is open.",
+    InvalidSceneName: (e) => e.message,
+    CastOnStage: (e) => `${e.casterName}'s cast is still on stage — resolve, cancel, or void it first.`,
+    CastAlreadyPending: () => "This character already has an unresolved Cast.",
+    StageOccupied: (e) => `The stage is taken — ${e.casterName}'s cast is still playing out.`,
+    CastStatusConflict: () => "The Cast has moved on — that beat is no longer available.",
+    InvalidMitigation: (e) => e.message,
+    InvalidContainment: (e) => e.message,
+  }),
+)
 
 /** A seam refusal the UI can dispatch on: the typed tag plus its table language. */
 export interface SeamFailure {

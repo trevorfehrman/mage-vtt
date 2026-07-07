@@ -314,6 +314,11 @@ function SessionPage() {
         <ActivityLog
           sessionId={sessionId as Id<"sessions">}
           isRolling={pool.state === "rolling" || rawCast.state === "casting"}
+          // The live Cast card's role gates (issue #43): chrome follows the
+          // seat (ADR-0013); the server refuses wrong actors regardless.
+          isStoryteller={isStoryteller}
+          viewerUserId={effectiveMember?.userId ?? user._id}
+          mySheet={mySheet}
           {...seatArg}
         />
       }

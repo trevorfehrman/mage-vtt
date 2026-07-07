@@ -6,6 +6,7 @@ import {
   applyDamage,
   woundPenalty,
   healDamage,
+  healResistantBashing,
   isIncapacitated,
 } from "../health"
 
@@ -197,6 +198,41 @@ describe("Health Track", () => {
     track = healDamage(track, "bashing")
 
     expect(track).toEqual([healthBox("empty"), healthBox("empty"), healthBox("empty")])
+  })
+
+  // --- Void's containment undo (issue #43) ---
+
+  it("healResistantBashing clears only Resistant bashing, up to the count", () => {
+    const track: ReadonlyArray<HealthBox> = [
+      healthBox("lethal"),
+      healthBox("bashing", true),
+      healthBox("bashing"),
+      healthBox("bashing", true),
+      healthBox("empty"),
+    ]
+
+    const healed = healResistantBashing(track, 2)
+
+    // Both resistant bashing wounds cleared; the plain one and the lethal stay.
+    expect(healed).toEqual([
+      healthBox("lethal"),
+      healthBox("bashing"),
+      healthBox("empty"),
+      healthBox("empty"),
+      healthBox("empty"),
+    ])
+  })
+
+  it("healResistantBashing clears what exists when asked for more", () => {
+    const track: ReadonlyArray<HealthBox> = [
+      healthBox("bashing", true),
+      healthBox("empty"),
+    ]
+
+    expect(healResistantBashing(track, 3)).toEqual([
+      healthBox("empty"),
+      healthBox("empty"),
+    ])
   })
 
   // --- Stored-shape decoding (issue #41): legacy strings and the pair ---

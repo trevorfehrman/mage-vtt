@@ -10,6 +10,7 @@
 
 import type * as activity from "../activity.js";
 import type * as auth from "../auth.js";
+import type * as casts from "../casts.js";
 import type * as characters from "../characters.js";
 import type * as http from "../http.js";
 import type * as ingest from "../ingest.js";
@@ -35,6 +36,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   activity: typeof activity;
   auth: typeof auth;
+  casts: typeof casts;
   characters: typeof characters;
   http: typeof http;
   ingest: typeof ingest;

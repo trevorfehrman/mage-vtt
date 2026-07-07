@@ -126,6 +126,28 @@ export const healDamage = (track: HealthTrack, damageType: DamageType): HealthTr
     .sort(bySeverity)
 }
 
+/**
+ * Undo containment damage (issue #43): clear up to `count` Resistant bashing
+ * boxes, rightmost first — the void flow restoring exactly the wounds the
+ * containment beat wrote. Non-resistant bashing and worsened wounds are left
+ * alone; if fewer such boxes remain than asked, what exists is cleared.
+ */
+export const healResistantBashing = (
+  track: HealthTrack,
+  count: number,
+): HealthTrack => {
+  const next = [...track]
+  let remaining = count
+  for (let i = next.length - 1; i >= 0 && remaining > 0; i--) {
+    const box = next[i]!
+    if (box.severity === "bashing" && box.resistant) {
+      next[i] = healthBox("empty")
+      remaining--
+    }
+  }
+  return next.sort(bySeverity)
+}
+
 export const isIncapacitated = (track: HealthTrack): boolean =>
   track.every((b) => b.severity !== "empty")
 

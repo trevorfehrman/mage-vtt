@@ -227,6 +227,60 @@ export const SceneDoc = Schema.Struct({
   closedAt: Schema.optionalKey(Schema.Number),
 })
 
+/**
+ * Stored shape of a Cast (issue #43, ADR-0016): the Vulgar-casting handshake's
+ * single source of truth, walking the status ladder one mutation per dramatic
+ * beat. Raw primitives here (ADR-0011); the vocabulary decode lives in
+ * `cast.ts`. Beat fields are present only once their beat lands, so the
+ * document alone rehydrates a reconnecting client mid-ladder. `override`
+ * carries void's repair provenance (ADR-0006/0015); resolved rows are the
+ * system of record for the per-(Scene, caster) Paradox accumulator (ADR-0012).
+ */
+export const CastDoc = Schema.Struct({
+  sessionId: ConvexId("sessions"),
+  characterId: ConvexId("characters"),
+  casterUserId: Schema.String,
+  casterName: Schema.String,
+  status: Schema.Literals([
+    "draft",
+    "engaged",
+    "liabilitiesLocked",
+    "intentionLocked",
+    "paradoxRolled",
+    "contained",
+    "resolved",
+    "cancelled",
+    "voided",
+  ]),
+  // Declaration (the draft beat)
+  arcanum: Schema.String,
+  level: Schema.Number,
+  intent: Schema.optionalKey(Schema.String),
+  usesMagicalTool: Schema.Boolean,
+  declaredComponents: Schema.Array(DiceRollComponentDoc),
+  declaredPool: Schema.Number,
+  spellManaCost: Schema.Number,
+  // The stage (the engage beat)
+  sceneId: Schema.optionalKey(ConvexId("scenes")),
+  gnosis: Schema.optionalKey(Schema.Number),
+  sleeperWitnesses: Schema.optionalKey(Schema.Boolean),
+  priorParadoxRolls: Schema.optionalKey(Schema.Number),
+  // Commitment (the caster's point-of-no-return lock)
+  manaMitigation: Schema.optionalKey(Schema.Number),
+  // The Paradox roll
+  paradoxSuccesses: Schema.optionalKey(Schema.Number),
+  paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
+  // Containment
+  containedSuccesses: Schema.optionalKey(Schema.Number),
+  // The cast roll and resolution
+  castPool: Schema.optionalKey(Schema.Number),
+  castSuccesses: Schema.optionalKey(Schema.Number),
+  severity: Schema.optionalKey(Schema.String),
+  override: Schema.optionalKey(OverrideMarkerDoc),
+  createdAt: Schema.Number,
+  updatedAt: Schema.Number,
+})
+
 export const MessageDoc = Schema.Struct({
   sessionId: ConvexId("sessions"),
   senderId: Schema.String,

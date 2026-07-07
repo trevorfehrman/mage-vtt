@@ -3,8 +3,10 @@ import { Match } from "effect"
 import { ScrollArea } from "#/components/ui/scroll-area"
 import { useActivity } from "#/hooks/use-activity"
 import type { MessageEntry, OverrideMark, RollEntry } from "#/domain/activity"
+import type { CharacterSheet } from "#/domain/character"
 import { isDieDramaticFailure, isDieExplosive, isDieSuccess } from "#/domain/dice"
 import { ArcanaGlyph } from "./ArcanaGlyph"
+import { CastCard } from "./CastCard"
 import type { Id } from "../../../convex/_generated/dataModel"
 
 interface ActivityLogProps {
@@ -12,6 +14,11 @@ interface ActivityLogProps {
   isRolling?: boolean
   /** The Second Seat (ADR-0013): read the log as this member instead. */
   seat?: Id<"sessionMembers">
+  /** The live Cast card's role gates (issue #43): chrome follows the seat. */
+  isStoryteller: boolean
+  viewerUserId: string
+  /** The viewer's own decoded sheet — the Cast card's input caps read it. */
+  mySheet: CharacterSheet | null
 }
 
 /**
@@ -19,7 +26,14 @@ interface ActivityLogProps {
  * carry the corner-tick framing; system lines read as narration; the first
  * system line gets the single illuminated drop-cap.
  */
-export function ActivityLog({ sessionId, isRolling, seat }: ActivityLogProps) {
+export function ActivityLog({
+  sessionId,
+  isRolling,
+  seat,
+  isStoryteller,
+  viewerUserId,
+  mySheet,
+}: ActivityLogProps) {
   const activity = useActivity(sessionId, seat)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -49,6 +63,18 @@ export function ActivityLog({ sessionId, isRolling, seat }: ActivityLogProps) {
                 />
               )),
               Match.tag("roll", (roll) => <RollItem key={roll._id} roll={roll} />),
+              // The live Cast card (issue #43): a projection of the Cast
+              // document, climbing its ladder in place among the beats.
+              Match.tag("cast", (cast) => (
+                <CastCard
+                  key={cast._id}
+                  cast={cast}
+                  sessionId={sessionId}
+                  isStoryteller={isStoryteller}
+                  viewerUserId={viewerUserId}
+                  mySheet={mySheet}
+                />
+              )),
               Match.exhaustive,
             ),
           )}

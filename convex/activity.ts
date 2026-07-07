@@ -50,6 +50,14 @@ const rollEntry = (r: Doc<"diceRolls">) => ({
   ...(r.override !== undefined && { override: r.override }),
 })
 
+// The live Cast card (issue #43, ADR-0016): the whole document, projected —
+// the card is a live feed item climbing its ladder in place, timestamped by
+// `updatedAt` so it rides at the action's edge. All Casts are public.
+const castEntry = (c: Doc<"casts">) => {
+  const { _id, _creationTime, sessionId: _sessionId, ...fields } = c
+  return { _tag: "cast" as const, _id, timestamp: c.updatedAt, ...fields }
+}
+
 export const list = query({
   args: {
     sessionId: v.id("sessions"),
@@ -68,7 +76,7 @@ export const list = query({
     const reader = { userId: member.userId, role: member.role }
 
     // Fetch caps are storage concerns; the feed's own cap lives in mergeFeed.
-    const [messages, rolls] = await Promise.all([
+    const [messages, rolls, casts] = await Promise.all([
       ctx.db
         .query("messages")
         .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
@@ -79,9 +87,18 @@ export const list = query({
         .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
         .order("desc")
         .take(50),
+      ctx.db
+        .query("casts")
+        .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+        .order("desc")
+        .take(25),
     ])
 
-    const entries = [...messages.map(messageEntry), ...rolls.map(rollEntry)]
+    const entries = [
+      ...messages.map(messageEntry),
+      ...rolls.map(rollEntry),
+      ...casts.map(castEntry),
+    ]
     return mergeFeed(visibleEntries(reader, entries))
   },
 })

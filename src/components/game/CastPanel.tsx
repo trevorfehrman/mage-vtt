@@ -1,5 +1,6 @@
-import { useMemo, type ReactNode } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { Effect, Exit } from "effect"
+import { useMutation } from "convex/react"
 import {
   previewImprovisedCast,
   previewRoteCast,
@@ -7,9 +8,12 @@ import {
 } from "#/domain/cast-preview"
 import type { CharacterSheet } from "#/domain/character"
 import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy"
+import { seamErrorMessage } from "#/lib/seam-errors"
 import { declaredFactors } from "#/machines/cast"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import type { useCast } from "#/hooks/use-cast"
+import { api } from "../../../convex/_generated/api"
+import type { Id } from "../../../convex/_generated/dataModel"
 
 type CastAPI = ReturnType<typeof useCast>
 
@@ -30,6 +34,31 @@ export function CastPanel({
 }) {
   const { selection, skillChoice } = cast.context
   const casting = cast.state === "casting"
+
+  // The Vulgar door (issue #43, ADR-0016): the same improvised declaration,
+  // drafted into the Cast ladder instead of cast atomically — the handshake
+  // then lives on the Cast card in the feed. Covert stays fire-and-forget.
+  const draftVulgar = useMutation(api.casts.draft)
+  const [drafting, setDrafting] = useState(false)
+  const [draftError, setDraftError] = useState<string | null>(null)
+  const submitVulgarDraft = async () => {
+    if (selection?.method !== "improvised") return
+    setDrafting(true)
+    setDraftError(null)
+    try {
+      await draftVulgar({
+        sessionId: character.sessionId as string as Id<"sessions">,
+        characterId: character.id as string as Id<"characters">,
+        arcanum: selection.arcanum,
+        level: cast.context.level,
+      })
+      cast.cancel() // the draft is in the wings; the card takes over
+    } catch (err) {
+      setDraftError(seamErrorMessage(err))
+    } finally {
+      setDrafting(false)
+    }
+  }
 
   const preview = useMemo((): CastPreview | null => {
     if (!selection) return null
@@ -242,6 +271,16 @@ export function CastPanel({
                 ? "Cast a chance die"
                 : `Cast ${preview.dice} dice`}
         </button>
+        {selection.method === "improvised" && (
+          <button
+            onClick={submitVulgarDraft}
+            disabled={casting || drafting}
+            className="mv-btn rounded-[3px] px-3 text-[12px] disabled:opacity-40"
+            title="Draft a Vulgar cast into the wings — the Paradox handshake plays out on the Cast card."
+          >
+            {drafting ? "Drafting…" : "Draft Vulgar"}
+          </button>
+        )}
         <button
           onClick={cast.cancel}
           disabled={casting}
@@ -250,6 +289,12 @@ export function CastPanel({
           Cancel
         </button>
       </div>
+
+      {draftError && (
+        <p className="px-3 pb-2 text-[12px]" style={{ color: "var(--bad)" }}>
+          {draftError}
+        </p>
+      )}
 
       {/* error — the seam's typed refusal, mapped to table language; its
           tag rides in context for UI that wants to dispatch on it */}

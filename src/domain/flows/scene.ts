@@ -1,6 +1,7 @@
 import { Effect, Option, Schema } from "effect"
 import { requireStoryteller } from "../authz"
-import { SessionId } from "../ids"
+import { isOnStage } from "../cast"
+import { CastId, SessionId } from "../ids"
 import { GameStore } from "../ports/game-store"
 
 /**
@@ -41,6 +42,20 @@ export class SceneAlreadyOpen extends Schema.TaggedErrorClass<SceneAlreadyOpen>(
 export class NoActiveScene extends Schema.TaggedErrorClass<NoActiveScene>()(
   "NoActiveScene",
   { sessionId: SessionId },
+) {}
+
+/**
+ * Rules/precondition (issue #43): the Scene cannot close over a Cast on
+ * stage — a dangling negotiation would corrupt the accumulator record. Play
+ * it out, cancel it, or void it first.
+ */
+export class CastOnStage extends Schema.TaggedErrorClass<CastOnStage>()(
+  "CastOnStage",
+  {
+    sessionId: SessionId,
+    castId: CastId,
+    casterName: Schema.String,
+  },
 ) {}
 
 // --- Flows ---
@@ -103,12 +118,36 @@ export const closeScene = Effect.fn("Flows.scene.closeScene")(function* (
   const store = yield* GameStore
   const scene = yield* requireActiveScene(sessionId)
 
+  // The stage must be clear (issue #43): a Cast mid-handshake blocks the
+  // close; Drafts have no mechanical weight, so they die with the Scene.
+  const casts = yield* store.listCasts(sessionId)
+  const onStage = casts.find((c) => isOnStage(c.status))
+  if (onStage) {
+    return yield* new CastOnStage({
+      sessionId,
+      castId: onStage.id,
+      casterName: onStage.casterName,
+    })
+  }
+  const drafts = casts.filter((c) => c.status === "draft")
+  yield* Effect.forEach(drafts, (draft) =>
+    store.patchCast(draft.id, { status: "cancelled" }),
+  )
+
   yield* store.patchScene(scene.id, { status: "closed" })
 
+  // One close entry narrates the whole beat, cancelled wings included
+  // (ADR-0009: atomic and self-describing, no shadow entries per draft).
+  const wings =
+    drafts.length === 0
+      ? ""
+      : drafts.length === 1
+        ? ` The draft in the wings was cancelled.`
+        : ` ${drafts.length} drafts in the wings were cancelled.`
   yield* store.insertMessage({
     sessionId,
     sender: { userId: storyteller.userId, displayName: storyteller.displayName },
-    text: `${storyteller.displayName} closed the Scene "${scene.name}".`,
+    text: `${storyteller.displayName} closed the Scene "${scene.name}".${wings}`,
     visibility: "system",
   })
 

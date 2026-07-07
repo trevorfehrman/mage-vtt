@@ -10,8 +10,16 @@
 import { Clock, Effect, Layer, Option, Schema } from "effect"
 import type { Doc, Id } from "../_generated/dataModel"
 import type { MutationCtx } from "../_generated/server"
+import { Cast } from "../../src/domain/cast"
 import { CharacterSheet } from "../../src/domain/character"
-import { PlayerId, MessageId, RollId, SceneId, SessionId } from "../../src/domain/ids"
+import {
+  CastId,
+  PlayerId,
+  MessageId,
+  RollId,
+  SceneId,
+  SessionId,
+} from "../../src/domain/ids"
 import { NotAMember } from "../../src/domain/authz"
 import { Membership } from "../../src/domain/membership"
 import { Scene } from "../../src/domain/scene"
@@ -25,6 +33,8 @@ import { DocumentNotFound } from "../../src/domain/ports/errors"
 import { SpellRef } from "../../src/domain/rote-cast"
 import {
   GameStore,
+  type CastDraft,
+  type CastPatch,
   type MessageDraft,
   type RollDraft,
   type SceneDraft,
@@ -57,6 +67,18 @@ const decodeSheet = Effect.fn("ConvexLive.decodeSheet")(function* (
 ) {
   const { _id, _creationTime, ...fields } = doc
   return yield* Schema.decodeUnknownEffect(CharacterSheet)({ id: _id, ...fields }).pipe(
+    Effect.orDie,
+  )
+})
+
+/**
+ * Doc → Cast, once, at the adapter (issue #43): provenance columns stay in the
+ * row; a stored Cast that fails the vocabulary decode is corrupt data — a bug,
+ * not a client-actionable failure (ADR-0010's Fail/Die split).
+ */
+const decodeCast = Effect.fn("ConvexLive.decodeCast")(function* (doc: Doc<"casts">) {
+  const { _id, _creationTime, override: _override, createdAt: _createdAt, ...fields } = doc
+  return yield* Schema.decodeUnknownEffect(Cast)({ id: _id, ...fields }).pipe(
     Effect.orDie,
   )
 })
@@ -269,6 +291,115 @@ export const convexLive = (
           }),
         )
         return SceneId.make(id)
+      }),
+
+    insertCast: (draft: CastDraft) =>
+      Effect.gen(function* () {
+        const timestamp = yield* Clock.currentTimeMillis
+        const marker = overrideToDoc(override.current())
+        const characterId = ctx.db.normalizeId("characters", draft.characterId)
+        if (characterId === null) {
+          // The draft flow just read this sheet; a malformed id here is a bug.
+          throw new Error(`Not a valid characters id: ${draft.characterId}`)
+        }
+        const id = yield* Effect.promise(() =>
+          ctx.db.insert("casts", {
+            sessionId: sessionRef(draft.sessionId),
+            characterId,
+            casterUserId: draft.casterUserId,
+            casterName: draft.casterName,
+            status: "draft",
+            arcanum: draft.arcanum,
+            level: draft.level,
+            ...(draft.intent !== undefined ? { intent: draft.intent } : {}),
+            usesMagicalTool: draft.usesMagicalTool,
+            declaredComponents: draft.declaredComponents.map((c) => ({ ...c })),
+            declaredPool: draft.declaredPool,
+            spellManaCost: draft.spellManaCost,
+            ...(marker ? { override: marker } : {}),
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          }),
+        )
+        return CastId.make(id)
+      }),
+
+    getCast: (castId) =>
+      Effect.gen(function* () {
+        const id = ctx.db.normalizeId("casts", castId)
+        if (id === null) {
+          // Malformed for the table — as absent as an unknown id.
+          return yield* new DocumentNotFound({ table: "casts", id: castId })
+        }
+        const doc = yield* Effect.promise(() => ctx.db.get(id))
+        if (!doc) {
+          return yield* new DocumentNotFound({ table: "casts", id: castId })
+        }
+        return yield* decodeCast(doc)
+      }),
+
+    patchCast: (castId: CastId, patch: CastPatch) =>
+      Effect.gen(function* () {
+        const id = ctx.db.normalizeId("casts", castId)
+        if (id === null) {
+          // patchCast follows a successful getCast in every flow; a malformed
+          // id here is a bug, so fail loudly like sessionRef does.
+          throw new Error(`Not a valid casts id: ${castId}`)
+        }
+        const updatedAt = yield* Clock.currentTimeMillis
+        const marker = overrideToDoc(override.current())
+        const sceneId =
+          patch.sceneId !== undefined
+            ? ctx.db.normalizeId("scenes", patch.sceneId)
+            : undefined
+        if (patch.sceneId !== undefined && sceneId === null) {
+          throw new Error(`Not a valid scenes id: ${patch.sceneId}`)
+        }
+        yield* Effect.promise(() =>
+          ctx.db.patch(id, {
+            ...(patch.status !== undefined ? { status: patch.status } : {}),
+            ...(sceneId ? { sceneId } : {}),
+            ...(patch.gnosis !== undefined ? { gnosis: patch.gnosis } : {}),
+            ...(patch.sleeperWitnesses !== undefined
+              ? { sleeperWitnesses: patch.sleeperWitnesses }
+              : {}),
+            ...(patch.priorParadoxRolls !== undefined
+              ? { priorParadoxRolls: patch.priorParadoxRolls }
+              : {}),
+            ...(patch.manaMitigation !== undefined
+              ? { manaMitigation: patch.manaMitigation }
+              : {}),
+            ...(patch.paradoxSuccesses !== undefined
+              ? { paradoxSuccesses: patch.paradoxSuccesses }
+              : {}),
+            ...(patch.paradoxIsDramaticFailure !== undefined
+              ? { paradoxIsDramaticFailure: patch.paradoxIsDramaticFailure }
+              : {}),
+            ...(patch.containedSuccesses !== undefined
+              ? { containedSuccesses: patch.containedSuccesses }
+              : {}),
+            ...(patch.castPool !== undefined ? { castPool: patch.castPool } : {}),
+            ...(patch.castSuccesses !== undefined
+              ? { castSuccesses: patch.castSuccesses }
+              : {}),
+            ...(patch.severity !== undefined ? { severity: patch.severity } : {}),
+            ...(marker ? { override: marker } : {}),
+            updatedAt,
+          }),
+        )
+      }),
+
+    listCasts: (sessionId) =>
+      Effect.gen(function* () {
+        const rows = yield* Effect.promise(() =>
+          ctx.db
+            .query("casts")
+            .withIndex("by_sessionId", (q) =>
+              q.eq("sessionId", sessionRef(sessionId)),
+            )
+            .collect(),
+        )
+        return yield* Effect.forEach(rows, decodeCast)
       }),
 
     patchScene: (sceneId: SceneId, patch: ScenePatch) =>

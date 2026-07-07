@@ -1,7 +1,9 @@
 import { Clock, Effect, Layer, Option } from "effect"
+import { Cast } from "../cast"
 import { CharacterSheet } from "../character"
 import type { DiceRollResult, RawPoolComponent, RollVisibility } from "../dice"
 import {
+  CastId,
   MessageId,
   PlayerId,
   RollId,
@@ -18,6 +20,8 @@ import type { SpellRef } from "../rote-cast"
 import { Scene, type SceneStatus } from "../scene"
 import {
   GameStore,
+  type CastDraft,
+  type CastPatch,
   type MessageDraft,
   type RollDraft,
   type SceneDraft,
@@ -76,6 +80,41 @@ export interface StoredScene {
   readonly closedAt?: number
 }
 
+/**
+ * A `casts` row as stored (issue #43): the draft plus whatever beats have
+ * stamped. `override` carries void's repair provenance, patched in the same
+ * way the live adapter stamps it.
+ */
+export interface StoredCast {
+  readonly id: CastId
+  readonly sessionId: SessionId
+  readonly characterId: CharacterId
+  readonly casterUserId: PlayerId
+  readonly casterName: string
+  readonly status: Cast["status"]
+  readonly arcanum: string
+  readonly level: number
+  readonly intent?: string
+  readonly usesMagicalTool: boolean
+  readonly declaredComponents: ReadonlyArray<RawPoolComponent>
+  readonly declaredPool: number
+  readonly spellManaCost: number
+  readonly sceneId?: SceneId
+  readonly gnosis?: number
+  readonly sleeperWitnesses?: boolean
+  readonly priorParadoxRolls?: number
+  readonly manaMitigation?: number
+  readonly paradoxSuccesses?: number
+  readonly paradoxIsDramaticFailure?: boolean
+  readonly containedSuccesses?: number
+  readonly castPool?: number
+  readonly castSuccesses?: number
+  readonly severity?: Cast["severity"]
+  readonly override: OverrideMarker | null
+  readonly createdAt: number
+  readonly updatedAt: number
+}
+
 export interface InMemory {
   readonly layer: Layer.Layer<GameStore | CurrentActor | OverrideStamp>
   readonly rolls: ReadonlyArray<StoredRoll>
@@ -85,6 +124,8 @@ export interface InMemory {
   readonly sheetPatches: ReadonlyArray<StoredSheetPatch>
   /** Live Scene state — inserts append, patches apply in place (issue #42). */
   readonly scenes: ReadonlyArray<StoredScene>
+  /** Live Cast state — inserts append, patches apply in place (issue #43). */
+  readonly casts: ReadonlyArray<StoredCast>
 }
 
 export const makeInMemory = (seed: {
@@ -95,6 +136,8 @@ export const makeInMemory = (seed: {
   spells?: ReadonlyArray<SpellRef>
   /** Pre-existing Scene rows (issue #42) — e.g. an already-active Scene. */
   scenes?: ReadonlyArray<StoredScene>
+  /** Pre-existing Cast rows (issue #43) — e.g. a ladder already mid-climb. */
+  casts?: ReadonlyArray<StoredCast>
 }): InMemory => {
   const rolls: Array<StoredRoll> = []
   const messages: Array<StoredMessage> = []
@@ -103,7 +146,19 @@ export const makeInMemory = (seed: {
   )
   const sheetPatches: Array<StoredSheetPatch> = []
   const scenes: Array<StoredScene> = [...(seed.scenes ?? [])]
+  const casts: Array<StoredCast> = [...(seed.casts ?? [])]
   const override = makeOverrideStamp()
+
+  // The artifact the flows read: the stored row minus its provenance columns,
+  // present-only fields picked so `optionalKey` decode sees absent, not undefined.
+  const castOf = (row: StoredCast): Cast => {
+    const { override: _override, createdAt: _createdAt, ...fields } = row
+    return new Cast(
+      Object.fromEntries(
+        Object.entries(fields).filter(([, value]) => value !== undefined),
+      ) as ConstructorParameters<typeof Cast>[0],
+    )
+  }
 
   const gameStore = GameStore.of({
     getMembership: (sessionId, userId) => {
@@ -216,6 +271,64 @@ export const makeInMemory = (seed: {
         return id
       }),
 
+    insertCast: (draft: CastDraft) =>
+      Effect.gen(function* () {
+        const timestamp = yield* Clock.currentTimeMillis
+        const id = CastId.make(`cast_${casts.length}`)
+        casts.push({
+          id,
+          sessionId: draft.sessionId,
+          characterId: draft.characterId,
+          casterUserId: draft.casterUserId,
+          casterName: draft.casterName,
+          status: "draft",
+          arcanum: draft.arcanum,
+          level: draft.level,
+          ...(draft.intent !== undefined ? { intent: draft.intent } : {}),
+          usesMagicalTool: draft.usesMagicalTool,
+          declaredComponents: draft.declaredComponents,
+          declaredPool: draft.declaredPool,
+          spellManaCost: draft.spellManaCost,
+          override: override.current(),
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        })
+        return id
+      }),
+
+    getCast: (castId) => {
+      const row = casts.find((c) => c.id === castId)
+      return row
+        ? Effect.succeed(castOf(row))
+        : Effect.fail(new DocumentNotFound({ table: "casts", id: castId }))
+    },
+
+    patchCast: (castId: CastId, patch: CastPatch) =>
+      Effect.gen(function* () {
+        const index = casts.findIndex((c) => c.id === castId)
+        if (index === -1) {
+          // patchCast follows a successful getCast in every flow; a missing
+          // row is a bug — fail loudly, as the live adapter does.
+          throw new Error(`patch of missing cast ${castId}`)
+        }
+        const updatedAt = yield* Clock.currentTimeMillis
+        const marker = override.current()
+        const defined = Object.fromEntries(
+          Object.entries(patch).filter(([, value]) => value !== undefined),
+        )
+        casts[index] = {
+          ...casts[index]!,
+          ...defined,
+          ...(marker ? { override: marker } : {}),
+          updatedAt,
+        }
+      }),
+
+    listCasts: (sessionId) =>
+      Effect.succeed(
+        casts.filter((c) => c.sessionId === sessionId).map(castOf),
+      ),
+
     patchScene: (sceneId: SceneId, patch: ScenePatch) =>
       Effect.gen(function* () {
         const index = scenes.findIndex((s) => s.id === sceneId)
@@ -243,5 +356,5 @@ export const makeInMemory = (seed: {
     Layer.succeed(OverrideStamp, override.stamp),
   )
 
-  return { layer, rolls, messages, sheets, sheetPatches, scenes }
+  return { layer, rolls, messages, sheets, sheetPatches, scenes, casts }
 }

@@ -2,6 +2,7 @@ import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
 import { schemaToConvexValidator } from "../src/domain/schema-bridge"
 import {
+  CastDoc,
   CharacterDoc,
   DiceRollDoc,
   MessageDoc,
@@ -135,4 +136,11 @@ export default defineSchema({
     "by_sessionId_status",
     ["sessionId", "status"],
   ),
+
+  // --- Casts (derived from the `CastDoc` mirror, ADR-0005; issue #43) ---
+  // One index: every read is session-scoped (the wings, the stage, the
+  // accumulator), and sessions hold few Casts — flows filter in memory.
+  casts: defineTable(schemaToConvexValidator(CastDoc)).index("by_sessionId", [
+    "sessionId",
+  ]),
 })

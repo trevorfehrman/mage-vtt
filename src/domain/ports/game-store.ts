@@ -1,8 +1,10 @@
 import { Context, Effect, type Option } from "effect"
+import type { Cast, CastStatus } from "../cast"
 import type { CharacterSheet } from "../character"
 import type { HealthBox } from "../damage"
 import type { DiceRollResult, RawPoolComponent } from "../dice"
 import type {
+  CastId,
   CharacterId,
   MessageId,
   PlayerId,
@@ -10,6 +12,7 @@ import type {
   SceneId,
   SessionId,
 } from "../ids"
+import type { ParadoxSeverity } from "../paradox"
 import type { Membership } from "../membership"
 import type { NotAMember } from "../authz"
 import type { Mana, Willpower } from "../quantities"
@@ -78,6 +81,46 @@ export interface ScenePatch {
 }
 
 /**
+ * Intent-level draft of a new `casts` row (issue #43, ADR-0016): the
+ * declaration beat's whole knowledge. Always born a `draft` — the adapter
+ * stamps status and both timestamps (from `Clock`).
+ */
+export interface CastDraft {
+  readonly sessionId: SessionId
+  readonly characterId: CharacterId
+  readonly casterUserId: PlayerId
+  readonly casterName: string
+  readonly arcanum: string
+  readonly level: number
+  readonly intent?: string
+  readonly usesMagicalTool: boolean
+  readonly declaredComponents: ReadonlyArray<RawPoolComponent>
+  readonly declaredPool: number
+  readonly spellManaCost: number
+}
+
+/**
+ * The writes the beat flows can express against a Cast: each beat stamps its
+ * own fields plus the status rung it lands on. The declaration is immutable
+ * after draft; the adapter stamps `updatedAt` and any recorded `Override`
+ * marker (void's repair provenance) structurally.
+ */
+export interface CastPatch {
+  readonly status?: CastStatus
+  readonly sceneId?: SceneId
+  readonly gnosis?: number
+  readonly sleeperWitnesses?: boolean
+  readonly priorParadoxRolls?: number
+  readonly manaMitigation?: number
+  readonly paradoxSuccesses?: number
+  readonly paradoxIsDramaticFailure?: boolean
+  readonly containedSuccesses?: number
+  readonly castPool?: number
+  readonly castSuccesses?: number
+  readonly severity?: ParadoxSeverity
+}
+
+/**
  * The write-side persistence port (ADR-0004).
  *
  * Domain-specific write helpers hide the wide field maps; typed reads fail with a
@@ -125,5 +168,14 @@ export class GameStore extends Context.Service<
     ) => Effect.Effect<Option.Option<Scene>>
     readonly insertScene: (draft: SceneDraft) => Effect.Effect<SceneId>
     readonly patchScene: (sceneId: SceneId, patch: ScenePatch) => Effect.Effect<void>
+    readonly insertCast: (draft: CastDraft) => Effect.Effect<CastId>
+    readonly getCast: (castId: CastId) => Effect.Effect<Cast, DocumentNotFound>
+    readonly patchCast: (castId: CastId, patch: CastPatch) => Effect.Effect<void>
+    /**
+     * Every Cast in the session (issue #43): the wings, the stage, and the
+     * resolved history the accumulator derives from (ADR-0012). One read, not
+     * three — sessions hold few Casts and the flows' filters are the rules.
+     */
+    readonly listCasts: (sessionId: SessionId) => Effect.Effect<ReadonlyArray<Cast>>
   }
 >()("GameStore") {}
