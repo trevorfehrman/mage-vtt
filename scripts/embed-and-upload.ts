@@ -17,6 +17,7 @@ import OpenAI from "openai"
 import { ConvexHttpClient } from "convex/browser"
 import { Effect, Redacted, Ref, Schema, Semaphore } from "effect"
 import { api } from "../convex/_generated/api"
+import { RotePool } from "../src/domain/rote-pool"
 import {
   embedAndUploadChunks,
   embeddingEnv,
@@ -46,15 +47,10 @@ const SpellRecord = Schema.Struct({
       order: Schema.String,
       name: Schema.String,
       dicePool: Schema.String,
-      // Mirrors convex/schema.ts's rotePoolValidator.
-      pool: Schema.optionalKey(
-        Schema.Struct({
-          attribute: Schema.String,
-          skills: Schema.Array(Schema.String),
-          arcanum: Schema.String,
-          vs: Schema.optionalKey(Schema.Array(Schema.String)),
-        }),
-      ),
+      // The domain `RotePool` itself (issue #54) — the same schema the table
+      // validator derives from, so an out-of-vocabulary pool fails here, not
+      // at the Convex write.
+      pool: Schema.optionalKey(RotePool),
     }),
   ),
 })

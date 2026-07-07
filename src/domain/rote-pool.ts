@@ -57,8 +57,10 @@ export class RotePool extends Schema.Class<RotePool>("RotePool")({
   /** ≥1; more than one means the book offered "or" alternatives. */
   skills: Schema.NonEmptyArray(SkillSlotTraitName),
   arcanum: RoteArcanumName,
-  /** Present on contested pools: the target's resistance traits. */
-  vs: Schema.optional(Schema.NonEmptyArray(ResistanceTraitName)),
+  /** Present on contested pools: the target's resistance traits. `optionalKey`
+   * (absent, never `undefined`/`null`) so the derived Convex column is exactly
+   * `v.optional(v.array(...))` — the persisted shape (issue #54). */
+  vs: Schema.optionalKey(Schema.NonEmptyArray(ResistanceTraitName)),
 }) {}
 
 // --- Errors (ADR-0010) ---

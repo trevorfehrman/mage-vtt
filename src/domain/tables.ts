@@ -81,7 +81,9 @@ export const DiceRollDoc = Schema.Struct({
 
 /** Raw persisted shape of a structured Rote pool — the Doc-layer mirror of
  * `RotePool` (rote-pool.ts): plain strings, `vs` present only on contested
- * pools. Matches the hand-written `rotePoolValidator` on the `rotes` table. */
+ * pools. Deliberately looser than the `rotes` table's `pool` column (derived
+ * from `RotePool` itself, issue #54): character docs stay raw primitives
+ * (ADR-0011), and the character equivalence test pins this shape. */
 const RotePoolDoc = Schema.Struct({
   attribute: Schema.String,
   skills: Schema.Array(Schema.String),

@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
 import { schemaToConvexValidator } from "../src/domain/schema-bridge"
+import { RotePool } from "../src/domain/rote-pool"
 import {
   CastDoc,
   CharacterDoc,
@@ -12,17 +13,13 @@ import {
 } from "../src/domain/tables"
 
 /**
- * A Rote's structured dice pool (issue #14), mirroring
- * src/domain/rote-pool.ts `RotePool`: `skills` ≥1 (more than one = the book's
- * "or" alternatives), `vs` present = a contested pool. Shared with the
- * `insertRote` ingest mutation.
+ * A Rote's structured dice pool (issue #14), derived from the domain `RotePool`
+ * (ADR-0005, issue #54): `skills` ≥1 (more than one = the book's "or"
+ * alternatives), `vs` present = a contested pool. Columns are the closed trait
+ * vocabularies — an equivalence test pins the compiled shape against the
+ * previous hand-written validator. Shared with the `insertRote` ingest mutation.
  */
-export const rotePoolValidator = v.object({
-  attribute: v.string(),
-  skills: v.array(v.string()),
-  arcanum: v.string(),
-  vs: v.optional(v.array(v.string())),
-})
+export const rotePoolValidator = schemaToConvexValidator(RotePool)
 
 export default defineSchema({
   // --- RAG: Rule chunks with vector embeddings ---
