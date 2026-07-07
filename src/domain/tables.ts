@@ -1,8 +1,9 @@
 /**
  * Effect-Schema mirrors of the enforcement-seam tables (ADR-0005).
  *
- * These are the single source of truth for the stored shape of `sessionMembers`,
- * `diceRolls`, and `messages`. `convex/schema.ts` derives each table's Convex
+ * These are the single source of truth for the stored shape of every derived
+ * game table — `sessions`, `sessionMembers`, `characters`, `diceRolls`,
+ * `messages`, `scenes`, `casts`. `convex/schema.ts` derives each table's Convex
  * validator from the mirror here via `schemaToConvexValidator`, so the `v.*`
  * column list is never hand-maintained alongside the domain shape.
  *
