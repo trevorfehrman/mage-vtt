@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect"
+import { Effect, Option, Schema } from "effect"
 import type { CharacterSheet, KnownRote } from "./character"
 import {
   ROTE_ATTRIBUTES,
@@ -152,47 +152,55 @@ export const ResolvedRotePool = Schema.Struct({
 })
 export type ResolvedRotePool = typeof ResolvedRotePool.Type
 
-export const resolveRotePool = Effect.fn("RoteCast.resolveRotePool")(function* (
+/**
+ * The plain core (ADR-0014, issue #51): resolve the pool, `None` when the
+ * "or" choice is missing or one the book never offered. The Effect door below
+ * names that absence `RoteSkillChoiceRequired` for the flows; the cast
+ * preview consumes the Option directly.
+ */
+export const resolveRotePoolChoice = (
   sheet: SheetRatings,
   rote: KnownRote,
   skillChoice?: string,
-) {
+): Option.Option<ResolvedRotePool> => {
   const pool: RotePool = rote.pool
 
   // The skill slot: a declared choice must be one the book offered; an "or"
   // pool with no declaration is unpickable by the engine — the caster decides.
-  let skillName: (typeof pool.skills)[number]
-  if (skillChoice !== undefined) {
-    const chosen = pool.skills.find((s) => s === skillChoice)
-    if (!chosen) {
-      return yield* new RoteSkillChoiceRequired({
-        roteName: rote.name,
-        alternatives: pool.skills,
-      })
-    }
-    skillName = chosen
-  } else if (pool.skills.length > 1) {
-    return yield* new RoteSkillChoiceRequired({
-      roteName: rote.name,
-      alternatives: pool.skills,
-    })
-  } else {
-    skillName = pool.skills[0]
-  }
+  const skillName =
+    skillChoice !== undefined
+      ? Option.fromUndefinedOr(pool.skills.find((s) => s === skillChoice))
+      : pool.skills.length > 1
+        ? Option.none<(typeof pool.skills)[number]>()
+        : Option.some(pool.skills[0])
 
-  const resolved: ResolvedRotePool = {
+  return Option.map(skillName, (name) => ({
     attribute: {
       name: pool.attribute,
       dots: ATTRIBUTE_DOTS[pool.attribute](sheet),
     },
     skill: {
-      name: skillName,
-      ...skillSlotDots(sheet, skillName),
+      name,
+      ...skillSlotDots(sheet, name),
     },
     arcanum: {
       name: pool.arcanum,
       dots: sheet.arcana[pool.arcanum.toLowerCase() as keyof typeof sheet.arcana] ?? 0,
     },
+  }))
+}
+
+export const resolveRotePool = Effect.fn("RoteCast.resolveRotePool")(function* (
+  sheet: SheetRatings,
+  rote: KnownRote,
+  skillChoice?: string,
+) {
+  const resolved = resolveRotePoolChoice(sheet, rote, skillChoice)
+  if (Option.isNone(resolved)) {
+    return yield* new RoteSkillChoiceRequired({
+      roteName: rote.name,
+      alternatives: rote.pool.skills,
+    })
   }
-  return resolved
+  return resolved.value
 })

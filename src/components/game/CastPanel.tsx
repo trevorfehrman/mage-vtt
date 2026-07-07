@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react"
-import { Effect, Exit } from "effect"
+import { Option } from "effect"
 import { useMutation } from "convex/react"
 import {
   previewImprovisedCast,
@@ -65,28 +65,23 @@ export function CastPanel({
     const factors = declaredFactors(cast.context)
     // An "or" pool with no pick has no pool yet — the caster decides first.
     if (selection.method === "rote" && skillChoice === null) return null
-    // A failed preview degrades to no readout — the server recomputes and
-    // refuses with its typed tag; a readout must never crash the panel.
-    if (selection.method === "improvised") {
-      try {
-        return previewImprovisedCast({
-          sheet: character,
-          arcanum: selection.arcanum,
-          ...factors,
-        })
-      } catch {
-        return null
-      }
-    }
-    const exit: Exit.Exit<CastPreview, unknown> = Effect.runSyncExit(
-      previewRoteCast({
-        sheet: character,
-        rote: selection.rote,
-        ...(skillChoice !== null ? { skillChoice } : {}),
-        ...factors,
-      }),
+    // Both leaves are plain Option returners (issue #51): a failed preview is
+    // None and degrades to no readout — the server recomputes and refuses
+    // with its typed tag; a readout must never crash the panel.
+    return Option.getOrNull(
+      selection.method === "improvised"
+        ? previewImprovisedCast({
+            sheet: character,
+            arcanum: selection.arcanum,
+            ...factors,
+          })
+        : previewRoteCast({
+            sheet: character,
+            rote: selection.rote,
+            ...(skillChoice !== null ? { skillChoice } : {}),
+            ...factors,
+          }),
     )
-    return Exit.isSuccess(exit) ? exit.value : null
   }, [cast.context, selection, skillChoice, character])
 
   if (!selection) return null

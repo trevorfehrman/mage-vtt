@@ -1,8 +1,8 @@
-import { Effect } from "effect"
+import { Option } from "effect"
 import type { ArcanumName, CharacterSheet, KnownRote } from "./character"
 import { factorPenaltyComponents } from "./flows/casting"
 import { improvisedManaCost } from "./mana-economy"
-import { resolveRotePool } from "./rote-cast"
+import { resolveRotePoolChoice, type ResolvedRotePool } from "./rote-cast"
 import {
   applySpellFactors,
   calculateImprovisedPool,
@@ -33,9 +33,16 @@ export interface CastPreview {
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
+/**
+ * Both leaves are plain functions returning `Option` (issue #51, ADR-0014):
+ * `None` marks a preview that cannot be computed — a missing "or" pick, or a
+ * leaf refusing degenerate input. The panel degrades to no readout either
+ * way; the server recomputes and refuses with its typed tag.
+ */
+
 // A pure preview (ADR-0014): every leaf it composes is a plain function, so
 // the improvised readout is one itself.
-export const previewImprovisedCast = (input: {
+export const previewImprovisedCast: (input: {
   sheet: Pick<CharacterSheet, "path" | "gnosis" | "arcana">
   arcanum: ArcanumName
   potency?: number
@@ -43,7 +50,7 @@ export const previewImprovisedCast = (input: {
   highSpeech?: boolean
   extraManaCost?: number
   spendWillpower?: boolean
-}): CastPreview => {
+}) => Option.Option<CastPreview> = Option.liftThrowable((input) => {
   const dots = input.sheet.arcana[input.arcanum] ?? 0
   const basePool = calculateImprovisedPool({
     gnosis: input.sheet.gnosis,
@@ -77,9 +84,9 @@ export const previewImprovisedCast = (input: {
     isChanceDie: dice === 0,
     manaCost: pathCost + pool.manaCost + (input.extraManaCost ?? 0),
   }
-}
+})
 
-export const previewRoteCast = Effect.fn("CastPreview.rote")(function* (input: {
+export const previewRoteCast = (input: {
   sheet: Pick<CharacterSheet, "attributes" | "skills" | "arcana">
   rote: KnownRote
   skillChoice?: string
@@ -88,9 +95,16 @@ export const previewRoteCast = Effect.fn("CastPreview.rote")(function* (input: {
   highSpeech?: boolean
   extraManaCost?: number
   spendWillpower?: boolean
-}) {
-  const resolved = yield* resolveRotePool(input.sheet, input.rote, input.skillChoice)
+}): Option.Option<CastPreview> =>
+  Option.flatMap(
+    resolveRotePoolChoice(input.sheet, input.rote, input.skillChoice),
+    Option.liftThrowable((resolved: ResolvedRotePool) => rotePreview(input, resolved)),
+  )
 
+const rotePreview = (
+  input: Parameters<typeof previewRoteCast>[0],
+  resolved: ResolvedRotePool,
+): CastPreview => {
   const basePool = calculateRotePool({
     attributeDots: resolved.attribute.dots,
     skillDots: resolved.skill.dots,
@@ -125,4 +139,4 @@ export const previewRoteCast = Effect.fn("CastPreview.rote")(function* (input: {
     manaCost: pool.manaCost + (input.extraManaCost ?? 0),
     ...(input.rote.pool.vs ? { contestedVs: input.rote.pool.vs } : {}),
   } satisfies CastPreview
-})
+}
