@@ -21,7 +21,11 @@ import {
 } from "./flows/vulgar-cast"
 import { InsufficientMana } from "./mana-economy"
 import { DocumentNotFound } from "./ports/errors"
-import { RoteSkillChoiceRequired, VulgarCastingNotYetSupported } from "./rote-cast"
+import {
+  RoteSkillChoiceRequired,
+  SpellNotVulgar,
+  VulgarCastingNotYetSupported,
+} from "./rote-cast"
 import { InsufficientWillpower } from "./willpower-economy"
 
 /**
@@ -47,6 +51,7 @@ export const SeamError = Schema.Union([
   InsufficientWillpower,
   ArcanumTooWeak,
   VulgarCastingNotYetSupported,
+  SpellNotVulgar,
   RoteNotKnown,
   RoteSkillChoiceRequired,
   SceneAlreadyOpen,

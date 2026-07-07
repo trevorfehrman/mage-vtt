@@ -35,22 +35,28 @@ export function CastPanel({
   const { selection, skillChoice } = cast.context
   const casting = cast.state === "casting"
 
-  // The Vulgar door (issue #43, ADR-0016): the same improvised declaration,
-  // drafted into the Cast ladder instead of cast atomically — the handshake
-  // then lives on the Cast card in the feed. Covert stays fire-and-forget.
+  // The Vulgar door (issue #43, ADR-0016): the same declaration, drafted into
+  // the Cast ladder instead of cast atomically — the handshake then lives on
+  // the Cast card in the feed. Covert stays fire-and-forget. Both routes pass
+  // (issue #47): an improvised effect by arcanum + level, a Rote by name (the
+  // server resolves its pool and stamps isRote for the Paradox pricing).
   const draftVulgar = useMutation(api.casts.draft)
   const [drafting, setDrafting] = useState(false)
   const [draftError, setDraftError] = useState<string | null>(null)
   const submitVulgarDraft = async () => {
-    if (selection?.method !== "improvised") return
+    if (!selection) return
     setDrafting(true)
     setDraftError(null)
     try {
       await draftVulgar({
         sessionId: character.sessionId as string as Id<"sessions">,
         characterId: character.id as string as Id<"characters">,
-        arcanum: selection.arcanum,
-        level: cast.context.level,
+        ...(selection.method === "improvised"
+          ? { arcanum: selection.arcanum, level: cast.context.level }
+          : {
+              roteName: selection.rote.name,
+              ...(skillChoice !== null ? { skillChoice } : {}),
+            }),
       })
       cast.cancel() // the draft is in the wings; the card takes over
     } catch (err) {
@@ -266,16 +272,14 @@ export function CastPanel({
                 ? "Cast a chance die"
                 : `Cast ${preview.dice} dice`}
         </button>
-        {selection.method === "improvised" && (
-          <button
-            onClick={submitVulgarDraft}
-            disabled={casting || drafting}
-            className="mv-btn rounded-[3px] px-3 text-[12px] disabled:opacity-40"
-            title="Draft a Vulgar cast into the wings — the Paradox handshake plays out on the Cast card."
-          >
-            {drafting ? "Drafting…" : "Draft Vulgar"}
-          </button>
-        )}
+        <button
+          onClick={submitVulgarDraft}
+          disabled={casting || drafting || needsSkillChoice}
+          className="mv-btn rounded-[3px] px-3 text-[12px] disabled:opacity-40"
+          title="Draft a Vulgar cast into the wings — the Paradox handshake plays out on the Cast card."
+        >
+          {drafting ? "Drafting…" : "Draft Vulgar"}
+        </button>
         <button
           onClick={cast.cancel}
           disabled={casting}

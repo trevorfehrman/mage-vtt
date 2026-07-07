@@ -100,10 +100,12 @@ const skillSlotDots = (
 // --- Errors (ADR-0010) ---
 
 /**
- * Rules/precondition: the spell is Vulgar-aspected, and Vulgar casting awaits
- * the Paradox phase (`vulgar-paradox-design`) — refusing loudly beats silently
- * skipping Paradox. Aspect gates; method does not: this is the same refusal
- * for a Rote or an improvised effect of the spell.
+ * Rules/precondition: the spell is Vulgar-aspected, and the atomic covert
+ * flows must not silently skip Paradox — Vulgar casting routes through the
+ * Cast ladder instead (`draftCast`'s rote lane, issue #47). Aspect gates;
+ * method does not: this is the same refusal for a Rote or an improvised
+ * effect of the spell. The tag's name outlived its "not yet" (it predates
+ * the ladder); it stays because renaming a wire vocabulary is its own issue.
  */
 export class VulgarCastingNotYetSupported extends Schema.TaggedErrorClass<VulgarCastingNotYetSupported>()(
   "VulgarCastingNotYetSupported",
@@ -133,6 +135,34 @@ export const requireCovertSpell = Effect.fn("RoteCast.requireCovertSpell")(funct
 ) {
   if (spell.aspect === "Vulgar") {
     return yield* new VulgarCastingNotYetSupported({
+      spellName: spell.name,
+      arcanum: spell.arcanum,
+    })
+  }
+})
+
+/**
+ * Rules/precondition: the spell is Covert-aspected — it casts atomically,
+ * never through the Vulgar ladder's Paradox handshake. The mirror of
+ * `VulgarCastingNotYetSupported`: together the two gates keep the lanes
+ * disjoint (issue #47).
+ */
+export class SpellNotVulgar extends Schema.TaggedErrorClass<SpellNotVulgar>()(
+  "SpellNotVulgar",
+  {
+    spellName: Schema.String,
+    arcanum: RoteArcanumName,
+  },
+) {}
+
+/** The Vulgar-ladder gate (issue #47): the draft's rote lane consults the
+ * spell's Aspect — reference data, never client input (PRD #11) — and
+ * refuses Covert: covert magic faces no Paradox. */
+export const requireVulgarSpell = Effect.fn("RoteCast.requireVulgarSpell")(function* (
+  spell: SpellRef,
+) {
+  if (spell.aspect === "Covert") {
+    return yield* new SpellNotVulgar({
       spellName: spell.name,
       arcanum: spell.arcanum,
     })

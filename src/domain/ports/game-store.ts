@@ -97,6 +97,9 @@ export const CastDraft = Schema.Struct({
   casterName: Schema.String,
   arcanum: Schema.String,
   level: Schema.Number,
+  /** The rote lane's stamp (issue #47): −1 Paradox die and the Rote's name. */
+  isRote: Schema.optionalKey(Schema.Boolean),
+  roteName: Schema.optionalKey(Schema.String),
   intent: Schema.optionalKey(Schema.String),
   usesMagicalTool: Schema.Boolean,
   declaredComponents: Schema.Array(RawPoolComponent),

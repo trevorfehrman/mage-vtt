@@ -266,9 +266,12 @@ export const CastDoc = Schema.Struct({
     "cancelled",
     "voided",
   ]),
-  // Declaration (the draft beat)
+  // Declaration (the draft beat). The rote lane (issue #47) stamps `isRote`
+  // and the Rote's name; absent on improvised rows and on pre-lane rows.
   arcanum: Schema.String,
   level: Schema.Number,
+  isRote: Schema.optionalKey(Schema.Boolean),
+  roteName: Schema.optionalKey(Schema.String),
   intent: Schema.optionalKey(Schema.String),
   usesMagicalTool: Schema.Boolean,
   declaredComponents: Schema.Array(DiceRollComponentDoc),

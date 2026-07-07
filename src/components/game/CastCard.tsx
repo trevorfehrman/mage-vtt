@@ -6,6 +6,7 @@ import {
   containmentCap,
   mitigationCap,
   effectiveWitnessCount,
+  isRoteCast,
   toGnosisRank,
   waitingOn,
   type CastStatus,
@@ -118,6 +119,7 @@ export function CastCard({
     cast.gnosis !== undefined
       ? {
           gnosis: toGnosisRank(cast.gnosis),
+          isRote: isRoteCast(cast),
           usesMagicalTool: cast.usesMagicalTool,
           witnessCount: effectiveWitnessCount(cast),
           priorParadoxRollsThisScene: cast.priorParadoxRolls ?? 0,
@@ -163,6 +165,7 @@ export function CastCard({
           </span>
           <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
             vulgar {capitalize(cast.arcanum)} {cast.level}
+            {cast.roteName ? ` · Rote “${cast.roteName}”` : ""}
           </span>
         </div>
         <div className="flex gap-1">

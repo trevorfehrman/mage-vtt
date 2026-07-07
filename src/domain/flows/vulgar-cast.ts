@@ -13,6 +13,7 @@ import {
   effectiveWitnessCount,
   isCommitted,
   isOnStage,
+  isRoteCast,
   isUnresolved,
   toGnosisRank,
   type Cast,
@@ -30,12 +31,15 @@ import {
 import { GameStore } from "../ports/game-store"
 import { DocumentNotFound } from "../ports/errors"
 import { Mana } from "../quantities"
+import { requireVulgarSpell, resolveRotePool } from "../rote-cast"
+import type { CharacterSheet } from "../character"
 import {
   ArcanumTooWeak,
   InvalidCastDeclaration,
   modifierComponents,
   outcomeOf,
 } from "./casting"
+import { requireKnownRote } from "./rote-cast"
 
 /**
  * The Vulgar Cast ladder (issue #43, PRD #39, ADR-0016): one flow per dramatic
@@ -182,6 +186,7 @@ const paradoxInputs = Effect.fn("Flows.vulgarCast.paradoxInputs")(function* (
   const priorParadoxRolls = yield* stamped(cast.priorParadoxRolls, "priorParadoxRolls")
   return {
     gnosis: toGnosisRank(gnosis),
+    isRote: isRoteCast(cast),
     usesMagicalTool: cast.usesMagicalTool,
     witnessCount: effectiveWitnessCount(cast),
     priorParadoxRollsThisScene: priorParadoxRolls,
@@ -202,8 +207,12 @@ const casterMembership = Effect.fn("Flows.vulgarCast.casterMembership")(function
 export const DraftCastArgs = Schema.Struct({
   sessionId: Schema.String,
   characterId: Schema.String,
-  arcanum: Schema.String,
-  level: Schema.Number,
+  /** Improvised lane: the declared Arcanum and effect level (its Practice). */
+  arcanum: Schema.optionalKey(Schema.String),
+  level: Schema.optionalKey(Schema.Number),
+  /** Rote lane (issue #47): the trained Rote, plus the "or"-pool pick. */
+  roteName: Schema.optionalKey(Schema.String),
+  skillChoice: Schema.optionalKey(Schema.String),
   intent: Schema.optionalKey(Schema.String),
   usesMagicalTool: Schema.optionalKey(Schema.Boolean),
 })
@@ -218,42 +227,120 @@ const DraftDeclaration = Schema.Struct({
 })
 
 /**
+ * The improvised lane's frozen declaration: Gnosis + Arcanum off the sheet,
+ * gated by the caster's dots, priced by the Path (PRD #39 story 8).
+ */
+const improvisedDeclaration = Effect.fn("Flows.vulgarCast.improvisedDeclaration")(
+  function* (sheet: CharacterSheet, arcanum: string | undefined, level: number | undefined) {
+    const declaration = yield* Schema.decodeUnknownEffect(DraftDeclaration)({
+      arcanum,
+      level,
+    }).pipe(
+      Effect.mapError(
+        () =>
+          new InvalidCastDeclaration({
+            message: `Not a castable declaration: ${arcanum} ${level}`,
+          }),
+      ),
+    )
+
+    const dots = sheet.arcana[declaration.arcanum] ?? 0
+    if (dots < declaration.level) {
+      return yield* new ArcanumTooWeak({
+        arcanum: declaration.arcanum,
+        level: declaration.level,
+        dots,
+      })
+    }
+
+    const declaredComponents: ReadonlyArray<RawPoolComponent> = [
+      { type: "gnosis", name: "Gnosis", dots: sheet.gnosis },
+      { type: "arcanum", name: capitalize(declaration.arcanum), dots },
+    ]
+    return {
+      isRote: false as const,
+      arcanum: declaration.arcanum,
+      level: declaration.level,
+      declaredComponents,
+      declaredPool: sheet.gnosis + dots,
+      spellManaCost: improvisedManaCost(sheet.path, declaration.arcanum),
+    }
+  },
+)
+
+/**
+ * The rote lane's frozen declaration (issue #47): the trained Rote's
+ * structured pool resolved against the sheet — the same leaf `castRote`
+ * casts from, "or"-skill choice included — with the Arcanum and level read
+ * off the spell's reference row, never off client numbers or the sheet's
+ * denormalized copy. The Aspect gate mirrors the covert flow's: a Covert
+ * rote casts atomically and refuses the ladder, so the lanes stay disjoint.
+ * The knownRotes list is the qualification, not a dot check (ADR-0011: a
+ * fudged sheet still casts), and a Rote skips the improvised Path cost (the
+ * castRote convention).
+ */
+const roteDeclaration = Effect.fn("Flows.vulgarCast.roteDeclaration")(function* (
+  sheet: CharacterSheet,
+  roteName: string,
+  skillChoice: string | undefined,
+) {
+  const store = yield* GameStore
+  const rote = yield* requireKnownRote(sheet, roteName)
+  const spell = yield* store.getSpell(rote.spellName, rote.spellArcanum)
+  yield* requireVulgarSpell(spell)
+  const resolved = yield* resolveRotePool(sheet, rote, skillChoice)
+
+  const declaredComponents: ReadonlyArray<RawPoolComponent> = [
+    { type: "attribute", name: resolved.attribute.name, dots: resolved.attribute.dots },
+    { type: resolved.skill.kind, name: resolved.skill.name, dots: resolved.skill.dots },
+    { type: "arcanum", name: resolved.arcanum.name, dots: resolved.arcanum.dots },
+  ]
+  return {
+    isRote: true as const,
+    roteName: rote.name,
+    arcanum: spell.arcanum.toLowerCase(),
+    level: spell.level,
+    declaredComponents,
+    declaredPool:
+      resolved.attribute.dots + resolved.skill.dots + resolved.arcanum.dots,
+    spellManaCost: 0,
+  }
+})
+
+/**
  * The caster declares a Vulgar Cast into the wings: free, no Storyteller
- * attention needed, no mechanical weight until engaged. The declared pool
- * (Gnosis + Arcanum) and spell Mana cost freeze here — the sheet as it stands
- * at declaration is the sheet the Cast plays from.
+ * attention needed, no mechanical weight until engaged. The declared pool and
+ * spell Mana cost freeze here — the sheet as it stands at declaration is the
+ * sheet the Cast plays from. Two lanes, one door (issue #47): an improvised
+ * effect (Gnosis + Arcanum) or a trained Rote (its resolved pool, `isRote`
+ * stamped for the Paradox pricing) — exactly one per draft.
  */
 export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
   args: DraftCastArgs,
 ) {
   const sessionId = SessionId.make(args.sessionId)
 
-  const declaration = yield* Schema.decodeUnknownEffect(DraftDeclaration)({
-    arcanum: args.arcanum,
-    level: args.level,
-  }).pipe(
-    Effect.mapError(
-      () =>
-        new InvalidCastDeclaration({
-          message: `Not a castable declaration: ${args.arcanum} ${args.level}`,
-        }),
-    ),
-  )
-
   const store = yield* GameStore
+  // Authority before validation: a stranger learns nothing about the lanes.
   const sheet = yield* requireSessionCharacter(
     sessionId,
     CharacterId.make(args.characterId),
   )
 
-  const dots = sheet.arcana[declaration.arcanum] ?? 0
-  if (dots < declaration.level) {
-    return yield* new ArcanumTooWeak({
-      arcanum: declaration.arcanum,
-      level: declaration.level,
-      dots,
+  if (args.roteName !== undefined && (args.arcanum !== undefined || args.level !== undefined)) {
+    return yield* new InvalidCastDeclaration({
+      message: "A draft declares an improvised effect or a Rote — not both.",
     })
   }
+  if (args.roteName === undefined && args.skillChoice !== undefined) {
+    return yield* new InvalidCastDeclaration({
+      message: "A skill pick belongs to a Rote declaration.",
+    })
+  }
+  const declaration =
+    args.roteName !== undefined
+      ? yield* roteDeclaration(sheet, args.roteName, args.skillChoice)
+      : yield* improvisedDeclaration(sheet, args.arcanum, args.level)
 
   // One unresolved Cast per character — the queue means something (PRD #39).
   const casts = yield* store.listCasts(sessionId)
@@ -268,11 +355,6 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
   }
 
   const member = yield* store.getMembership(sheet.sessionId, sheet.userId)
-
-  const declaredComponents: ReadonlyArray<RawPoolComponent> = [
-    { type: "gnosis", name: "Gnosis", dots: sheet.gnosis },
-    { type: "arcanum", name: capitalize(declaration.arcanum), dots },
-  ]
   const intent = args.intent?.trim()
 
   const castId = yield* store.insertCast({
@@ -282,17 +364,23 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
     casterName: member.displayName,
     arcanum: declaration.arcanum,
     level: declaration.level,
+    ...(declaration.isRote
+      ? { isRote: true, roteName: declaration.roteName }
+      : {}),
     ...(intent ? { intent } : {}),
     usesMagicalTool: args.usesMagicalTool ?? false,
-    declaredComponents,
-    declaredPool: sheet.gnosis + dots,
-    spellManaCost: improvisedManaCost(sheet.path, declaration.arcanum),
+    declaredComponents: declaration.declaredComponents,
+    declaredPool: declaration.declaredPool,
+    spellManaCost: declaration.spellManaCost,
   })
 
+  const declared = declaration.isRote
+    ? `drafts the Rote "${declaration.roteName}" as a vulgar ${capitalize(declaration.arcanum)} ${declaration.level} cast`
+    : `drafts a vulgar ${capitalize(declaration.arcanum)} ${declaration.level} cast`
   yield* store.insertMessage({
     sessionId,
     sender: { userId: member.userId, displayName: member.displayName },
-    text: `${member.displayName} drafts a vulgar ${capitalize(declaration.arcanum)} ${declaration.level} cast${intent ? ` — "${intent}"` : ""}. It waits in the wings.`,
+    text: `${member.displayName} ${declared}${intent ? ` — "${intent}"` : ""}. It waits in the wings.`,
     visibility: "system",
   })
 

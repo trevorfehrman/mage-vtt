@@ -83,9 +83,14 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   casterUserId: PlayerId,
   casterName: Schema.String,
   status: CastStatus,
-  // Declaration (the draft beat)
+  // Declaration (the draft beat). A rote declaration (issue #47) stamps
+  // `isRote` (−1 Paradox die, p. 127) and the trained Rote's name; the
+  // arcanum/level pair derives from the Rote's spell. Absent on improvised
+  // rows and on rows written before the rote lane existed — both mean false.
   arcanum: Schema.String,
   level: Schema.Number,
+  isRote: Schema.optionalKey(Schema.Boolean),
+  roteName: Schema.optionalKey(Schema.String),
   intent: Schema.optionalKey(Schema.String),
   usesMagicalTool: Schema.Boolean,
   declaredComponents: Schema.Array(
@@ -164,6 +169,15 @@ export const deriveAccumulator = (
   const grace = resolved[resolved.length - 1]!.paradoxIsDramaticFailure === true
   return Math.max(0, resolved.length - (grace ? 1 : 0))
 }
+
+/**
+ * Whether the Cast plays as a trained Rote (issue #47) — −1 Paradox die,
+ * page 127. Rows written before the rote lane existed are improvised drafts.
+ * Structural like `effectiveWitnessCount`: the card reads raw rows too.
+ */
+export const isRoteCast = (cast: {
+  readonly isRote?: boolean | undefined
+}): boolean => cast.isRote ?? false
 
 /**
  * The witness count a Cast's pool reads (issue #44): rows written before the

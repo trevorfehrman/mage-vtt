@@ -311,6 +311,8 @@ export const convexLive = (
             status: "draft",
             arcanum: draft.arcanum,
             level: draft.level,
+            ...(draft.isRote !== undefined ? { isRote: draft.isRote } : {}),
+            ...(draft.roteName !== undefined ? { roteName: draft.roteName } : {}),
             ...(draft.intent !== undefined ? { intent: draft.intent } : {}),
             usesMagicalTool: draft.usesMagicalTool,
             declaredComponents: draft.declaredComponents.map((c) => ({ ...c })),

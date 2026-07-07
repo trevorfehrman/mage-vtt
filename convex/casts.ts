@@ -29,12 +29,17 @@ import {
 
 const step = { sessionId: v.id("sessions"), castId: v.id("casts") }
 
+// Two lanes, one door (issue #47): an improvised declaration (arcanum +
+// level) or a trained Rote (roteName, plus the "or"-pool pick) — the flow
+// refuses a draft that names both lanes or neither.
 export const draft = enforcedMutation({
   args: {
     sessionId: v.id("sessions"),
     characterId: v.id("characters"),
-    arcanum: v.string(),
-    level: v.number(),
+    arcanum: v.optional(v.string()),
+    level: v.optional(v.number()),
+    roteName: v.optional(v.string()),
+    skillChoice: v.optional(v.string()),
     intent: v.optional(v.string()),
     usesMagicalTool: v.optional(v.boolean()),
   },

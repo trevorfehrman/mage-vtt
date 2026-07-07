@@ -95,6 +95,8 @@ export interface StoredCast {
   readonly status: Cast["status"]
   readonly arcanum: string
   readonly level: number
+  readonly isRote?: boolean
+  readonly roteName?: string
   readonly intent?: string
   readonly usesMagicalTool: boolean
   readonly declaredComponents: ReadonlyArray<RawPoolComponent>
@@ -287,6 +289,8 @@ export const makeInMemory = (seed: {
           status: "draft",
           arcanum: draft.arcanum,
           level: draft.level,
+          ...(draft.isRote !== undefined ? { isRote: draft.isRote } : {}),
+          ...(draft.roteName !== undefined ? { roteName: draft.roteName } : {}),
           ...(draft.intent !== undefined ? { intent: draft.intent } : {}),
           usesMagicalTool: draft.usesMagicalTool,
           declaredComponents: draft.declaredComponents,

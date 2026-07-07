@@ -8,7 +8,7 @@ import { Mana } from "../quantities"
 import { requireCovertSpell, resolveRotePool, type SpellRef } from "../rote-cast"
 import { applySpellFactors, calculateRotePool } from "../spellcasting"
 import { spendWillpower, WILLPOWER_BONUS_DICE } from "../willpower-economy"
-import type { KnownRote } from "../character"
+import type { CharacterSheet, KnownRote } from "../character"
 import type { DiceRollResult } from "../dice"
 import { factorPenaltyComponents, InvalidCastDeclaration, outcomeOf } from "./casting"
 
@@ -65,6 +65,22 @@ export class RoteNotKnown extends Schema.TaggedErrorClass<RoteNotKnown>()(
     roteName: Schema.String,
   },
 ) {}
+
+/**
+ * The move rule shared by every rote lane (here and the vulgar draft's,
+ * issue #47): the character casts the Rotes they trained — the sheet's
+ * knownRotes list is the qualification, not a dot check (ADR-0011: a fudged
+ * sheet still casts).
+ */
+export const requireKnownRote = Effect.fn("Flows.roteCast.requireKnownRote")(
+  function* (sheet: CharacterSheet, roteName: string) {
+    const rote = sheet.rotes.find((r) => r.name === roteName)
+    if (!rote) {
+      return yield* new RoteNotKnown({ characterId: sheet.id, roteName })
+    }
+    return rote
+  },
+)
 
 /** The declared shape of the cast: which Rote, the pick, the factors. */
 const RoteDeclaration = Schema.Struct({
@@ -141,16 +157,7 @@ export const castRote = Effect.fn("Flows.roteCast.castRote")(function* (
     CharacterId.make(args.characterId),
   )
 
-  // Move rule: the character casts the Rotes they trained — the sheet's
-  // knownRotes list is the qualification, not a dot check (ADR-0011: a fudged
-  // sheet still casts).
-  const rote = sheet.rotes.find((r) => r.name === declaration.roteName)
-  if (!rote) {
-    return yield* new RoteNotKnown({
-      characterId: sheet.id,
-      roteName: declaration.roteName,
-    })
-  }
+  const rote = yield* requireKnownRote(sheet, declaration.roteName)
 
   // Attribution follows the character's owner (ADR-0006).
   const member = yield* store.getMembership(sheet.sessionId, sheet.userId)

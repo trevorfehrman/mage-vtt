@@ -1,7 +1,8 @@
 import { Effect, Layer, Random } from "effect"
 import { describe, expect, it } from "@effect/vitest"
-import type { CharacterSheet } from "../character"
+import { KnownRote, type CharacterSheet } from "../character"
 import { closeScene } from "../flows/scene"
+import { RotePool } from "../rote-pool"
 import {
   cancelCast,
   containParadox,
@@ -20,6 +21,7 @@ import {
 import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "../ids"
 import { Membership } from "../membership"
 import { CurrentActor } from "../ports/current-actor"
+import { SpellRef } from "../rote-cast"
 import { failureTag, makeAldousSheet as makeSheet } from "../testing/fixtures"
 import {
   makeInMemory,
@@ -71,6 +73,7 @@ const seed = (opts: {
   sheet?: CharacterSheet
   scenes?: ReadonlyArray<StoredScene>
   casts?: ReadonlyArray<StoredCast>
+  spells?: ReadonlyArray<SpellRef>
 } = {}) =>
   makeInMemory({
     members: [aldous, briar, stella],
@@ -79,6 +82,7 @@ const seed = (opts: {
     sheets: [opts.sheet ?? makeSheet()],
     ...(opts.scenes ? { scenes: opts.scenes } : {}),
     ...(opts.casts ? { casts: opts.casts } : {}),
+    ...(opts.spells ? { spells: opts.spells } : {}),
   })
 
 const activeScene = (overrides?: Partial<StoredScene>): StoredScene => ({
@@ -995,6 +999,235 @@ describe("Flows.vulgarCast — the refusal matrix", () => {
 
       expect(failureTag(exit)).toBe("DocumentNotFound")
     }),
+  )
+})
+
+describe("Flows.vulgarCast — the rote lane (issue #47)", () => {
+  // Presence 2 + Occult 4 + Death 3 = 9 dice on Aldous's sheet.
+  const sealOfBone = new KnownRote({
+    name: "Seal of Bone",
+    spellName: "Ectoplasmic Shaping",
+    spellArcanum: "Death",
+    spellLevel: 1,
+    order: "Mysterium",
+    pool: new RotePool({ attribute: "Presence", skills: ["Occult"], arcanum: "Death" }),
+  })
+
+  // An "or" pool — the caster picks at declaration. Its spell rates level 4
+  // against Aldous's Death 3: a trained Rote is the qualification, not a dot
+  // check (the castRote convention; ADR-0011's fudged sheet still casts).
+  const twoDoors = new KnownRote({
+    name: "Two Doors",
+    spellName: "Quicken Corpse",
+    spellArcanum: "Death",
+    spellLevel: 4,
+    order: "Mysterium",
+    pool: new RotePool({
+      attribute: "Wits",
+      skills: ["Athletics", "Larceny"],
+      arcanum: "Death",
+    }),
+  })
+
+  // A Covert spell behind a trained Rote: casts atomically, refuses the ladder.
+  const graveMien = new KnownRote({
+    name: "Grave Mien",
+    spellName: "Speak with the Dead",
+    spellArcanum: "Death",
+    spellLevel: 2,
+    order: "Mysterium",
+    pool: new RotePool({ attribute: "Presence", skills: ["Occult"], arcanum: "Death" }),
+  })
+
+  // The reference rows the Aspect gate reads — never client input (PRD #11).
+  const SPELLS = [
+    new SpellRef({ name: "Ectoplasmic Shaping", arcanum: "Death", level: 1, aspect: "Vulgar" }),
+    new SpellRef({ name: "Quicken Corpse", arcanum: "Death", level: 4, aspect: "Vulgar" }),
+    new SpellRef({ name: "Speak with the Dead", arcanum: "Death", level: 2, aspect: "Covert" }),
+  ]
+
+  const roteSeed = (opts: Parameters<typeof seed>[0] = {}) =>
+    seed({
+      sheet: makeSheet({ knownRotes: [sealOfBone, twoDoors, graveMien] }),
+      spells: SPELLS,
+      ...opts,
+    })
+
+  it.effect("a rote draft freezes the resolved pool and stamps isRote", () =>
+    Effect.gen(function* () {
+      const store = roteSeed()
+
+      yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        roteName: "Seal of Bone",
+        intent: "Seal the crypt with grave-wax",
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      const cast = store.casts[0]!
+      expect(cast.status).toBe("draft")
+      expect(cast.isRote).toBe(true)
+      expect(cast.roteName).toBe("Seal of Bone")
+      // The declaration derives from the Rote's spell, not client numbers.
+      expect(cast.arcanum).toBe("death")
+      expect(cast.level).toBe(1)
+      // The pool freezes from the sheet through the same leaf castRote uses.
+      expect(cast.declaredComponents).toEqual([
+        { type: "attribute", name: "Presence", dots: 2 },
+        { type: "skill", name: "Occult", dots: 4 },
+        { type: "arcanum", name: "Death", dots: 3 },
+      ])
+      expect(cast.declaredPool).toBe(9)
+      // A Rote skips the improvised Path cost (the castRote convention).
+      expect(cast.spellManaCost).toBe(0)
+      expect(store.messages[0]!.text).toContain('drafts the Rote "Seal of Bone"')
+      expect(store.messages[0]!.text).toContain("vulgar")
+    }),
+  )
+
+  it.effect("an \"or\" pool needs the caster's pick — refused without, frozen with", () =>
+    Effect.gen(function* () {
+      const store = roteSeed()
+
+      const unpicked = yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        roteName: "Two Doors",
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+      expect(failureTag(unpicked)).toBe("RoteSkillChoiceRequired")
+      expect(store.casts).toHaveLength(0)
+
+      yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        roteName: "Two Doors",
+        skillChoice: "Larceny",
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      const cast = store.casts[0]!
+      expect(cast.declaredComponents).toContainEqual({
+        type: "skill",
+        name: "Larceny",
+        dots: 2,
+      })
+      expect(cast.declaredPool).toBe(7) // Wits 2 + Larceny 2 + Death 3
+      expect(cast.level).toBe(4) // no ArcanumTooWeak gate on the rote lane
+    }),
+  )
+
+  it.effect("an untrained Rote is refused", () =>
+    Effect.gen(function* () {
+      const store = roteSeed()
+
+      const exit = yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        roteName: "Borrowed Thunder",
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("RoteNotKnown")
+      expect(store.casts).toHaveLength(0)
+    }),
+  )
+
+  it.effect("a Covert rote refuses the ladder — the lanes stay disjoint", () =>
+    Effect.gen(function* () {
+      const store = roteSeed()
+
+      const exit = yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        roteName: "Grave Mien",
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("SpellNotVulgar")
+      expect(store.casts).toHaveLength(0)
+    }),
+  )
+
+  it.effect("a draft declares exactly one lane — mixed or empty is refused", () =>
+    Effect.gen(function* () {
+      const store = roteSeed()
+
+      const mixed = yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        roteName: "Seal of Bone",
+        arcanum: "death",
+        level: 1,
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+      const empty = yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+      const halfImprovised = yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        arcanum: "death",
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+      const strayPick = yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        arcanum: "death",
+        level: 1,
+        skillChoice: "Larceny",
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+
+      for (const exit of [mixed, empty, halfImprovised, strayPick]) {
+        expect(failureTag(exit)).toBe("InvalidCastDeclaration")
+      }
+      expect(store.casts).toHaveLength(0)
+    }),
+  )
+
+  it.effect("one unresolved Cast per character counts across both lanes", () =>
+    Effect.gen(function* () {
+      const store = roteSeed({ casts: [castAt("engaged")] })
+
+      const exit = yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        roteName: "Seal of Bone",
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("CastAlreadyPending")
+      expect(store.casts).toHaveLength(1)
+    }),
+  )
+
+  it.effect("the rote flag prices the Paradox pool: −1 die (p. 127)", () =>
+    Effect.gen(function* () {
+      const store = roteSeed({
+        casts: [
+          castAt("engaged", {
+            isRote: true,
+            roteName: "Seal of Bone",
+            witnessCount: 1,
+          }),
+        ],
+      })
+      const castId = CastId.make("cast-prior")
+
+      // Base 1 (Gnosis 1) + 2 witnesses − 1 rote = 2 dice, narrated at the lock.
+      yield* lockLiabilities({ sessionId: SESSION, castId }).pipe(
+        as(ST_USER),
+        Effect.provide(store.layer),
+      )
+      expect(store.messages[0]!.text).toContain("2-die Paradox pool")
+
+      yield* lockIntention({ sessionId: SESSION, castId, manaMitigation: 0 }).pipe(
+        as(PLAYER),
+        Effect.provide(store.layer),
+      )
+
+      // The roll itself wears the modifier, readable in the entry's components.
+      yield* rollParadox({ sessionId: SESSION, castId }).pipe(
+        as(ST_USER),
+        Effect.provide(store.layer),
+      )
+      expect(store.rolls[0]!.result.poolSize).toBe(2)
+      expect(store.rolls[0]!.components.map((c) => c.name)).toContain("Rote casting")
+    }).pipe(Random.withSeed("rote-paradox")),
   )
 })
 
