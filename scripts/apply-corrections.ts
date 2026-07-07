@@ -221,6 +221,12 @@ class UnparseableRotePoolsRemain extends Schema.TaggedErrorClass<UnparseableRote
   { count: Schema.Number },
 ) {}
 
+/** The corrected output could not be written back to disk. */
+class WriteFailed extends Schema.TaggedErrorClass<WriteFailed>()(
+  "WriteFailed",
+  { path: Schema.String, message: Schema.String },
+) {}
+
 const applyCorrections = Effect.fn("ApplyCorrections.run")(function* () {
   const decoded = yield* loadJson(`${DATA_DIR}spells.json`, Schema.Array(SpellRecord))
   // Mutable working copies — the corrections below edit in place.
@@ -335,8 +341,16 @@ const applyCorrections = Effect.fn("ApplyCorrections.run")(function* () {
   })
 
   // Write corrected output
-  yield* Effect.promise(() =>
+  yield* Effect.tryPromise(() =>
     Bun.write(`${DATA_DIR}spells.json`, JSON.stringify(spells, null, 2)),
+  ).pipe(
+    Effect.mapError(
+      (error) =>
+        new WriteFailed({
+          path: `${DATA_DIR}spells.json`,
+          message: error instanceof Error ? error.message : String(error),
+        }),
+    ),
   )
 
   // Re-audit
