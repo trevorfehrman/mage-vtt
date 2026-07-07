@@ -174,12 +174,15 @@ export const effectiveWitnessCount = (cast: {
   readonly sleeperWitnesses?: boolean | undefined
 }): number => cast.witnessCount ?? (cast.sleeperWitnesses ? 1 : 0)
 
-/** One caster's standing on the strip: who, and how hard they're pushing. */
-export interface ScenePip {
-  readonly characterId: string
-  readonly casterName: string
-  readonly accumulator: number
-}
+/** One caster's standing on the strip: who, and how hard they're pushing.
+ * A Schema (ADR-0017): it crosses the wire from `api.casts.paradoxPips` and
+ * the strip decodes against it (issue #49). */
+export const ScenePip = Schema.Struct({
+  characterId: Schema.String,
+  casterName: Schema.String,
+  accumulator: Schema.Number,
+})
+export type ScenePip = typeof ScenePip.Type
 
 /**
  * The strip's per-caster Paradox pips (issue #44): every caster with a

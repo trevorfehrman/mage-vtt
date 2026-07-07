@@ -3,16 +3,13 @@ import { useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Button } from "#/components/ui/button"
 import { Input } from "#/components/ui/input"
+import type { SessionMemberRow } from "#/domain/session"
 import type { Id } from "../../../convex/_generated/dataModel"
 
 interface ChatInputProps {
   sessionId: Id<"sessions">
-  members: Array<{
-    _id: string
-    displayName: string
-    userId: string
-    role: string
-  }>
+  /** Decoded at the seam (issue #49): one shared row mirror, typed role. */
+  members: ReadonlyArray<SessionMemberRow>
   currentUserId: string
 }
 

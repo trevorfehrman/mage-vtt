@@ -5,14 +5,12 @@ import {
   TooltipTrigger,
 } from "#/components/ui/tooltip"
 
+import type { SessionMemberRow } from "#/domain/session"
+
 interface PresenceIndicatorProps {
   presenceState: Array<{ userId: string; online: boolean }> | undefined
-  members: Array<{
-    _id: string
-    displayName: string
-    userId: string
-    role: string
-  }>
+  /** Decoded at the seam (issue #49): one shared row mirror, typed role. */
+  members: ReadonlyArray<SessionMemberRow>
 }
 
 export function PresenceIndicator({

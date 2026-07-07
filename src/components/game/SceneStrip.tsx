@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import type { ScenePip } from "#/domain/cast"
+import { useScene } from "#/hooks/use-scene"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import type { Id } from "../../../convex/_generated/dataModel"
 
@@ -27,8 +28,9 @@ export function SceneStrip({
   sessionId: Id<"sessions">
   isStoryteller: boolean
 }) {
-  const scene = useQuery(api.scenes.getActive, { sessionId })
-  const pips = useQuery(api.casts.paradoxPips, { sessionId })
+  // Decoded at the seam (issue #49): the strip reads the domain Scene
+  // artifact and typed pips, never the raw Convex documents.
+  const { scene, pips } = useScene(sessionId)
   const openScene = useMutation(api.scenes.open)
   const closeScene = useMutation(api.scenes.close)
   const setWitnesses = useMutation(api.scenes.setWitnesses)
@@ -45,7 +47,7 @@ export function SceneStrip({
       ? "loading"
       : scene === null
         ? "none"
-        : `${scene._id}:${scene.status}:${scene.sleeperWitnesses}`
+        : `${scene.id}:${scene.status}:${scene.sleeperWitnesses}`
   useEffect(() => {
     setError(null)
   }, [liveKey])

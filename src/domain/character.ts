@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect"
+import { Effect, Result, Schema } from "effect"
 import { HealthTrack, healthBox, type HealthBox } from "./damage"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "./ids"
 import { Dots, Mana, Willpower } from "./quantities"
@@ -383,6 +383,24 @@ export class CreationRuleViolation extends Schema.TaggedErrorClass<CreationRuleV
   "CreationRuleViolation",
   { message: Schema.String },
 ) {}
+
+const decodeSheetResult = Schema.decodeUnknownResult(CharacterSheet)
+
+/**
+ * Doc → Sheet at the client boundary (ADR-0005, issue #49) — the same
+ * translation the server adapter does: the UI speaks the checked domain
+ * artifact, never the raw Convex document. A corrupt document degrades to
+ * `null` with a warning (rendered as a message) rather than taking the
+ * session page down.
+ */
+export const decodeSheet = (input: unknown): CharacterSheet | null => {
+  const result = decodeSheetResult(input)
+  if (Result.isFailure(result)) {
+    console.warn("Character: dropped an unreadable sheet document", result.failure)
+    return null
+  }
+  return result.success
+}
 
 // --- Public API ---
 

@@ -1,6 +1,8 @@
-import { Effect, Random, Schema } from "effect"
+import { Effect, Random, Result, Schema } from "effect"
 import { CharacterId, PlayerId, SessionId } from "./ids"
 import { SessionRole } from "./roles"
+import { ConvexId } from "./schema-bridge"
+import { SessionDoc, SessionMemberDoc } from "./tables"
 
 // --- Types ---
 
@@ -24,6 +26,47 @@ export class Session extends Schema.Class<Session>("Session")({
   inviteCode: Schema.String,
   members: Schema.Array(SessionMember),
 }) {}
+
+// --- Seam mirrors (ADR-0005, issue #49) ---
+
+/**
+ * A `sessionMembers` row as the client reads it off `api.sessions.get` — the
+ * one home of the member-row shape the header components share (issue #49
+ * killed three inline copies). `role` is the `SessionRole` literal union, not
+ * a raw string.
+ */
+export const SessionMemberRow = Schema.Struct({
+  _id: ConvexId("sessionMembers"),
+  _creationTime: Schema.Number,
+  ...SessionMemberDoc.fields,
+})
+export type SessionMemberRow = typeof SessionMemberRow.Type
+
+/** The `api.sessions.get` payload: the session row plus its roster. */
+export const SessionSnapshot = Schema.Struct({
+  _id: ConvexId("sessions"),
+  _creationTime: Schema.Number,
+  ...SessionDoc.fields,
+  members: Schema.Array(SessionMemberRow),
+})
+export type SessionSnapshot = typeof SessionSnapshot.Type
+
+const decodeSnapshot = Schema.decodeUnknownResult(SessionSnapshot)
+
+/**
+ * Decode the session query off the wire. `null` passes through (no such
+ * session); a corrupt payload degrades to `null` with a warning rather than
+ * taking the session page down (the same posture as `decodeFeed`).
+ */
+export const decodeSessionSnapshot = (input: unknown): SessionSnapshot | null => {
+  if (input === null || input === undefined) return null
+  const result = decodeSnapshot(input)
+  if (Result.isFailure(result)) {
+    console.warn("Session: dropped an unreadable session snapshot", result.failure)
+    return null
+  }
+  return result.success
+}
 
 // --- Errors ---
 

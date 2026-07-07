@@ -7,6 +7,7 @@ import {
   DiceRollDoc,
   MessageDoc,
   SceneDoc,
+  SessionDoc,
   SessionMemberDoc,
 } from "../src/domain/tables"
 
@@ -96,13 +97,8 @@ export default defineSchema({
     description: v.string(),
   }).index("by_name", ["name"]),
 
-  // --- Game Sessions ---
-  sessions: defineTable({
-    name: v.string(),
-    storytellerId: v.string(),
-    inviteCode: v.string(),
-    status: v.union(v.literal("lobby"), v.literal("active"), v.literal("ended")),
-  })
+  // --- Game Sessions (derived from the `SessionDoc` mirror, ADR-0005) ---
+  sessions: defineTable(schemaToConvexValidator(SessionDoc))
     .index("by_inviteCode", ["inviteCode"])
     .index("by_storytellerId", ["storytellerId"]),
 

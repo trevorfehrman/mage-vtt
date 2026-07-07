@@ -6,18 +6,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "#/components/ui/select"
+import type { SessionMemberRow } from "#/domain/session"
 import type { Id } from "../../../convex/_generated/dataModel"
 
 /** Sentinel Select value for "your own seat" — a member `_id` never collides. */
 const OWN_SEAT = "own-seat"
 
 interface SecondSeatControlProps {
-  members: Array<{
-    _id: string
-    displayName: string
-    userId: string
-    role: string
-  }>
+  /** Decoded at the seam (issue #49): one shared row mirror, typed role. */
+  members: ReadonlyArray<SessionMemberRow>
   ownUserId: string
   seatId: Id<"sessionMembers"> | null
   onSeat: (seatId: Id<"sessionMembers"> | null) => void

@@ -19,11 +19,21 @@ import { Schema } from "effect"
 import { ConvexId } from "./schema-bridge"
 import { OverrideKind } from "./override"
 import { ParadoxPoolModifier } from "./paradox"
+import { SessionRole } from "./roles"
+
+/** Stored shape of a `sessions` row (issue #49): the one home of the session
+ * columns, so the table validator and the client's snapshot mirror agree. */
+export const SessionDoc = Schema.Struct({
+  name: Schema.String,
+  storytellerId: Schema.String,
+  inviteCode: Schema.String,
+  status: Schema.Literals(["lobby", "active", "ended"]),
+})
 
 export const SessionMemberDoc = Schema.Struct({
   sessionId: ConvexId("sessions"),
   userId: Schema.String,
-  role: Schema.Literals(["storyteller", "player"]),
+  role: SessionRole,
   displayName: Schema.String,
 })
 

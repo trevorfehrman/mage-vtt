@@ -6,6 +6,7 @@ import { api } from "../../../convex/_generated/api"
 import type { PoolComponentInput } from "#/domain/dice"
 import { useCast } from "#/hooks/use-cast"
 import { useDicePool } from "#/hooks/use-dice-pool"
+import { useSession } from "#/hooks/use-session"
 import { SessionLayout } from "#/components/game/SessionLayout"
 import { ActivityLog } from "#/components/game/ActivityLog"
 import { CastPanel } from "#/components/game/CastPanel"
@@ -19,23 +20,13 @@ import { SceneStrip } from "#/components/game/SceneStrip"
 import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { SecondSeatControl } from "#/components/game/SecondSeatControl"
-import { Schema } from "effect"
 import { seamErrorMessage } from "#/lib/seam-errors"
-import { CharacterSheet as CharacterSheetData } from "#/domain/character"
+import {
+  decodeSheet,
+  type CharacterSheet as CharacterSheetData,
+} from "#/domain/character"
 import { arctusData } from "#/domain/fixtures/arctus"
 import type { Id } from "../../../convex/_generated/dataModel"
-
-// Doc → Sheet at the client boundary, same translation the server adapter does:
-// the UI speaks the checked domain artifact, never the raw Convex document.
-// Failure degrades to null (rendered as a message) — a corrupt document must
-// not take the whole session page down with it.
-const decodeSheet = (input: unknown): CharacterSheetData | null => {
-  try {
-    return Schema.decodeUnknownSync(CharacterSheetData)(input)
-  } catch {
-    return null
-  }
-}
 
 // Remount-key fragment for the hand-edit form: one token per box, `*` marking
 // a Resistant dot, so any remote track change resets the form's draft.
@@ -65,9 +56,9 @@ export const Route = createFileRoute("/sessions/$sessionId")({
 
 function SessionPage() {
   const { sessionId } = Route.useParams()
-  const session = useQuery(api.sessions.get, {
-    sessionId: sessionId as Id<"sessions">,
-  })
+  // Decoded at the seam (issue #49): members carry the SessionRole literal
+  // union, not raw strings, and every consumer below shares the one mirror.
+  const session = useSession(sessionId as Id<"sessions">)
   const user = useQuery(api.auth.getCurrentUser)
 
   // Presence — heartbeat for this session room. Untouched by the Second Seat:

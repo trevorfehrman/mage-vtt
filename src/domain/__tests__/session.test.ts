@@ -5,6 +5,7 @@ import {
   joinSession,
   getMembers,
   assignCharacter,
+  decodeSessionSnapshot,
 } from "../session"
 import { CharacterId, PlayerId } from "../ids"
 
@@ -152,4 +153,48 @@ describe("Session", () => {
       expect(error._tag).toBe("SessionNotFound")
     }),
   )
+})
+
+// The client seam (ADR-0005, issue #49): `api.sessions.get` decodes through
+// the SessionSnapshot mirror before any component reads it — plain `it()`,
+// pure decode leaves.
+describe("SessionSnapshot decode (issue #49)", () => {
+  const memberRow = {
+    _id: "mem-1",
+    _creationTime: 1,
+    sessionId: "ses-1",
+    userId: "user-1",
+    role: "storyteller",
+    displayName: "Trevor",
+  }
+  const payload = {
+    _id: "ses-1",
+    _creationTime: 1,
+    name: "Riverside",
+    storytellerId: "user-1",
+    inviteCode: "ABCD-EF23",
+    status: "lobby",
+    members: [memberRow],
+  }
+
+  it("decodes the sessions.get payload; role is the literal union", () => {
+    const snapshot = decodeSessionSnapshot(payload)
+    expect(snapshot?.name).toBe("Riverside")
+    expect(snapshot?.members[0]?.role).toBe("storyteller")
+    expect(snapshot?.members[0]?.displayName).toBe("Trevor")
+  })
+
+  it("null passes through — no session is an answer, not a failure", () => {
+    expect(decodeSessionSnapshot(null)).toBeNull()
+  })
+
+  it("a corrupt payload degrades to null, never a crash", () => {
+    expect(decodeSessionSnapshot({ ...payload, members: "nope" })).toBeNull()
+    expect(
+      decodeSessionSnapshot({
+        ...payload,
+        members: [{ ...memberRow, role: "archmage" }],
+      }),
+    ).toBeNull()
+  })
 })
