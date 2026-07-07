@@ -86,7 +86,7 @@ export const previewImprovisedCast: (input: {
   }
 })
 
-export const previewRoteCast = (input: {
+type RotePreviewInput = {
   sheet: Pick<CharacterSheet, "attributes" | "skills" | "arcana">
   rote: KnownRote
   skillChoice?: string
@@ -95,16 +95,15 @@ export const previewRoteCast = (input: {
   highSpeech?: boolean
   extraManaCost?: number
   spendWillpower?: boolean
-}): Option.Option<CastPreview> =>
+}
+
+export const previewRoteCast = (input: RotePreviewInput): Option.Option<CastPreview> =>
   Option.flatMap(
     resolveRotePoolChoice(input.sheet, input.rote, input.skillChoice),
     Option.liftThrowable((resolved: ResolvedRotePool) => rotePreview(input, resolved)),
   )
 
-const rotePreview = (
-  input: Parameters<typeof previewRoteCast>[0],
-  resolved: ResolvedRotePool,
-): CastPreview => {
+const rotePreview = (input: RotePreviewInput, resolved: ResolvedRotePool): CastPreview => {
   const basePool = calculateRotePool({
     attributeDots: resolved.attribute.dots,
     skillDots: resolved.skill.dots,

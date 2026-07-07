@@ -6,7 +6,7 @@ import {
   type KnownRote,
 } from "#/domain/character"
 import type { BoxSeverity } from "#/domain/damage"
-import type { PoolComponentType } from "#/domain/dice"
+import type { PoolComponentInput, PoolComponentType } from "#/domain/dice"
 import { formatRotePool } from "#/domain/rote-pool"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import { DotRating } from "./DotRating"
@@ -66,9 +66,9 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
     pool !== undefined && (pool.state === "idle" || pool.state === "building")
   const ruling = rulingArcanaOf(character.path)
 
-  const toggle = (type: PoolComponentType, name: string, dots: number) => {
+  const toggle = (component: PoolComponentInput) => {
     if (!pool || !canToggle) return
-    pool.toggleComponent({ type, name, dots })
+    pool.toggleComponent(component)
   }
 
   const isActive = (type: PoolComponentType, name: string) =>
@@ -358,7 +358,7 @@ function StatColumn({
   label: string
   stats: [string, number][]
   type: PoolComponentType
-  onToggle: (type: PoolComponentType, name: string, dots: number) => void
+  onToggle: (component: PoolComponentInput) => void
   isActive: (type: PoolComponentType, name: string) => boolean
   canToggle: boolean
   interactive: boolean
@@ -376,7 +376,7 @@ function StatColumn({
             interactive={interactive}
             canToggle={canToggle}
             active={active}
-            onToggle={() => onToggle(type, name, dots)}
+            onToggle={() => onToggle({ type, name, dots })}
             className="flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
           >
             <span className="text-[12px]">{name}</span>
@@ -398,7 +398,7 @@ function SkillColumn({
 }: {
   label: string
   skills: [string, number][]
-  onToggle: (type: PoolComponentType, name: string, dots: number) => void
+  onToggle: (component: PoolComponentInput) => void
   isActive: (type: PoolComponentType, name: string) => boolean
   canToggle: boolean
   interactive: boolean
@@ -420,7 +420,7 @@ function SkillColumn({
             interactive={interactive}
             canToggle={canToggle}
             active={active}
-            onToggle={() => onToggle("skill", displayName, dots)}
+            onToggle={() => onToggle({ type: "skill", name: displayName, dots })}
             className="flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
           >
             <span className="text-[12px]">{displayName}</span>
@@ -443,7 +443,7 @@ function ArcanaList({
 }: {
   arcana: Record<string, number | undefined>
   ruling: readonly string[]
-  onToggle: (type: PoolComponentType, name: string, dots: number) => void
+  onToggle: (component: PoolComponentInput) => void
   isActive: (type: PoolComponentType, name: string) => boolean
   canToggle: boolean
   interactive: boolean
@@ -470,7 +470,7 @@ function ArcanaList({
               interactive={interactive}
               canToggle={canToggle}
               active={active}
-              onToggle={() => onToggle("arcanum", displayName, dots)}
+              onToggle={() => onToggle({ type: "arcanum", name: displayName, dots })}
               className="flex flex-1 items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-left"
             >
               <ArcanaGlyph arcanum={name} size={19} className={active ? "mv-accent" : ""} />

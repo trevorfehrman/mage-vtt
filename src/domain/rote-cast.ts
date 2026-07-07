@@ -167,12 +167,11 @@ export const resolveRotePoolChoice = (
 
   // The skill slot: a declared choice must be one the book offered; an "or"
   // pool with no declaration is unpickable by the engine — the caster decides.
-  const skillName =
-    skillChoice !== undefined
-      ? Option.fromUndefinedOr(pool.skills.find((s) => s === skillChoice))
-      : pool.skills.length > 1
-        ? Option.none<(typeof pool.skills)[number]>()
-        : Option.some(pool.skills[0])
+  const offeredChoice = (choice: string) =>
+    Option.fromUndefinedOr(pool.skills.find((s) => s === choice))
+  const soleSkill = () =>
+    Option.filter(Option.some(pool.skills[0]), () => pool.skills.length === 1)
+  const skillName = skillChoice !== undefined ? offeredChoice(skillChoice) : soleSkill()
 
   return Option.map(skillName, (name) => ({
     attribute: {
