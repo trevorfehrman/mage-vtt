@@ -1,6 +1,6 @@
 import { Effect, Schema } from "effect"
 import { requireStoryteller } from "../authz"
-import { buildPool, rollPool, type RawPoolComponent, type RollVisibility } from "../dice"
+import { buildPool, RollVisibility, rollPool, type RawPoolComponent } from "../dice"
 import { SessionId } from "../ids"
 import { GameStore } from "../ports/game-store"
 import { outcomeOf } from "./casting"
@@ -20,13 +20,14 @@ import { outcomeOf } from "./casting"
 /** The book never asks for more; anything bigger is a typo, not a titan. */
 export const MAX_DECLARED_POOL = 30
 
-export interface SheetlessCastArgs {
-  readonly sessionId: string
+export const SheetlessCastArgs = Schema.Struct({
+  sessionId: Schema.String,
   /** The hand-declared final pool — the ST did the math. */
-  readonly poolSize: number
+  poolSize: Schema.Number,
   /** Table visibility; a sheet-less cast is Hidden unless declared otherwise. */
-  readonly visibility?: RollVisibility
-}
+  visibility: Schema.optionalKey(RollVisibility),
+})
+export type SheetlessCastArgs = typeof SheetlessCastArgs.Type
 
 // --- Errors (ADR-0010) ---
 

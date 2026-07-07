@@ -190,13 +190,15 @@ export const demesneBonus = (_path: string): DemesneInfo =>
 // DERANGEMENTS (WoD Core pp. 97-101)
 // ================================================================
 
-interface DerangementDef {
-  name: string
-  mild: boolean // mild or severe
-  resistPool: string
-  penalty: string
-  trigger: string
-}
+const DerangementDef = Schema.Struct({
+  name: Schema.String,
+  /** mild or severe */
+  mild: Schema.Boolean,
+  resistPool: Schema.String,
+  penalty: Schema.String,
+  trigger: Schema.String,
+})
+type DerangementDef = typeof DerangementDef.Type
 
 export const DERANGEMENTS: ReadonlyArray<DerangementDef> = [
   { name: "Depression", mild: true, resistPool: "Resolve + Composure", penalty: "Lose 1 WP, can't spend WP for scene", trigger: "Failure or setback" },

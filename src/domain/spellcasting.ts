@@ -8,21 +8,24 @@ import { WILLPOWER_BONUS_DICE } from "./willpower-economy"
 
 // --- Types ---
 
-interface DiceBonus {
-  source: string
-  dice: number
-}
+const DiceBonus = Schema.Struct({
+  source: Schema.String,
+  dice: Schema.Number,
+})
+type DiceBonus = typeof DiceBonus.Type
 
-interface DicePenalty {
-  source: string
-  dice: number // negative
-}
+/** `dice` is negative. */
+const DicePenalty = Schema.Struct({
+  source: Schema.String,
+  dice: Schema.Number,
+})
+type DicePenalty = typeof DicePenalty.Type
 
 export class CastingPool extends Schema.Class<CastingPool>("CastingPool")({
   method: Schema.Literals(["improvised", "rote"]),
   baseDice: Schema.Number.check(Schema.isInt()),
-  bonuses: Schema.Array(Schema.Struct({ source: Schema.String, dice: Schema.Number })),
-  penalties: Schema.Array(Schema.Struct({ source: Schema.String, dice: Schema.Number })),
+  bonuses: Schema.Array(DiceBonus),
+  penalties: Schema.Array(DicePenalty),
   factorPenalty: Schema.Number.check(Schema.isInt()),
   totalDice: Schema.Number.check(Schema.isInt()),
   isVulgar: Schema.Boolean,

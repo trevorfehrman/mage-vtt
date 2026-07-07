@@ -1,5 +1,5 @@
-import { Context } from "effect"
-import type { PlayerId } from "../ids"
+import { Context, Schema } from "effect"
+import { PlayerId } from "../ids"
 
 /**
  * The authenticated principal behind the current request (ADR-0004).
@@ -8,10 +8,11 @@ import type { PlayerId } from "../ids"
  * — orthogonal to Session role. This tracer bullet only plumbs the identity;
  * `rolls.create` never exercises a bypass.
  */
-export interface Actor {
-  readonly userId: PlayerId
-  readonly isDev: boolean
-}
+export const Actor = Schema.Struct({
+  userId: PlayerId,
+  isDev: Schema.Boolean,
+})
+export type Actor = typeof Actor.Type
 
 export class CurrentActor extends Context.Service<CurrentActor, Actor>()(
   "CurrentActor",

@@ -138,14 +138,15 @@ export class Cast extends Schema.Class<Cast>("Cast")({
  * rows outside the enforcement seam, and the derivation needs only these
  * fields — a decoded `Cast` satisfies the shape, a `Doc<"casts">` too.
  */
-export interface AccumulatorCast {
-  readonly status: CastStatus
-  readonly sceneId?: string | undefined
-  readonly characterId: string
-  readonly casterName: string
-  readonly paradoxIsDramaticFailure?: boolean | undefined
-  readonly updatedAt: number
-}
+export const AccumulatorCast = Schema.Struct({
+  status: CastStatus,
+  sceneId: Schema.optional(Schema.String),
+  characterId: Schema.String,
+  casterName: Schema.String,
+  paradoxIsDramaticFailure: Schema.optional(Schema.Boolean),
+  updatedAt: Schema.Number,
+})
+export type AccumulatorCast = typeof AccumulatorCast.Type
 
 export const deriveAccumulator = (
   casts: ReadonlyArray<AccumulatorCast>,

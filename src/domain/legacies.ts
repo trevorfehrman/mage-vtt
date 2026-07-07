@@ -6,20 +6,22 @@ import { Option, Schema } from "effect"
 
 // --- Types ---
 
-export interface Attainment {
-  name: string
-  gnosisRequirement: number
-  arcanaRequirements: Record<string, number>
-  description: string
-}
+export const Attainment = Schema.Struct({
+  name: Schema.String,
+  gnosisRequirement: Schema.Number,
+  arcanaRequirements: Schema.Record(Schema.String, Schema.Number),
+  description: Schema.String,
+})
+export type Attainment = typeof Attainment.Type
 
-export interface LegacyDef {
-  name: string
-  parentPath: string
-  parentOrder: string
-  primaryArcanum: string
-  attainments: ReadonlyArray<Attainment>
-}
+export const LegacyDef = Schema.Struct({
+  name: Schema.String,
+  parentPath: Schema.String,
+  parentOrder: Schema.String,
+  primaryArcanum: Schema.String,
+  attainments: Schema.Array(Attainment),
+})
+export type LegacyDef = typeof LegacyDef.Type
 
 export class JoinResult extends Schema.Class<JoinResult>("JoinResult")({
   canJoin: Schema.Boolean,

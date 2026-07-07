@@ -1,6 +1,6 @@
 import { Effect, Schema } from "effect"
 import { requireSessionCharacter } from "../authz"
-import { buildPool, rollPool, type RawPoolComponent, type RollVisibility } from "../dice"
+import { buildPool, RollVisibility, rollPool, type RawPoolComponent } from "../dice"
 import { CharacterId, SessionId } from "../ids"
 import { spendMana } from "../mana-economy"
 import { GameStore } from "../ports/game-store"
@@ -32,27 +32,28 @@ import { factorPenaltyComponents, InvalidCastDeclaration, outcomeOf } from "./ca
  * table adjudication, same convention as the improvised flow).
  */
 
-export interface CastRoteArgs {
-  readonly sessionId: string
-  readonly characterId: string
+export const CastRoteArgs = Schema.Struct({
+  sessionId: Schema.String,
+  characterId: Schema.String,
   /** The Rote's name as the sheet's `knownRotes` carries it. */
-  readonly roteName: string
+  roteName: Schema.String,
   /** Required when the Rote's pool offers "or" alternatives. */
-  readonly skillChoice?: string
+  skillChoice: Schema.optionalKey(Schema.String),
   /** Spell factor: effect Potency beyond 1 costs dice (book table). */
-  readonly potency?: number
-  /** Spell factor: targets beyond 1 cost dice (book table). */
-  readonly targets?: number
+  potency: Schema.optionalKey(Schema.Number),
+  /** Spell factor: targets beyond 1 costs dice (book table). */
+  targets: Schema.optionalKey(Schema.Number),
   /** High Speech: +2 dice. */
-  readonly highSpeech?: boolean
+  highSpeech: Schema.optionalKey(Schema.Boolean),
   /** Declared additional Mana for spells listing a cost — table adjudication,
    * mechanical deduction once declared. */
-  readonly extraManaCost?: number
+  extraManaCost: Schema.optionalKey(Schema.Number),
   /** Willpower spend: +3 dice, one point off the sheet (issue #12). */
-  readonly spendWillpower?: boolean
+  spendWillpower: Schema.optionalKey(Schema.Boolean),
   /** Table visibility of the roll — orthogonal to the Covert Aspect. */
-  readonly visibility?: RollVisibility
-}
+  visibility: Schema.optionalKey(RollVisibility),
+})
+export type CastRoteArgs = typeof CastRoteArgs.Type
 
 // --- Errors (ADR-0010) ---
 

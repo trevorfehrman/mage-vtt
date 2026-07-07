@@ -24,8 +24,8 @@ import { CastId, CharacterId, SessionId } from "../ids"
 import { improvisedManaCost, spendMana } from "../mana-economy"
 import {
   calculateParadoxPool,
+  ParadoxPoolModifier,
   resolveParadox,
-  type ParadoxPoolModifier,
 } from "../paradox"
 import { GameStore } from "../ports/game-store"
 import { DocumentNotFound } from "../ports/errors"
@@ -119,6 +119,15 @@ export class InvalidContainment extends Schema.TaggedErrorClass<InvalidContainme
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
+/** A whole, non-negative count — the shape every negotiated tally must fit. */
+const WholeCount = Schema.Number.check(
+  Schema.isInt(),
+  Schema.isGreaterThanOrEqualTo(0),
+)
+
+/** A whole (possibly negative) die count — discretionary modifiers swing both ways. */
+const WholeDice = Schema.Number.check(Schema.isInt())
+
 /** The session-scoped Cast read: a Cast outside this session isn't there. */
 const requireCast = Effect.fn("Flows.vulgarCast.requireCast")(function* (
   sessionId: SessionId,
@@ -199,14 +208,15 @@ const casterMembership = Effect.fn("Flows.vulgarCast.casterMembership")(function
 
 // --- The beats ---
 
-export interface DraftCastArgs {
-  readonly sessionId: string
-  readonly characterId: string
-  readonly arcanum: string
-  readonly level: number
-  readonly intent?: string
-  readonly usesMagicalTool?: boolean
-}
+export const DraftCastArgs = Schema.Struct({
+  sessionId: Schema.String,
+  characterId: Schema.String,
+  arcanum: Schema.String,
+  level: Schema.Number,
+  intent: Schema.optionalKey(Schema.String),
+  usesMagicalTool: Schema.optionalKey(Schema.Boolean),
+})
+export type DraftCastArgs = typeof DraftCastArgs.Type
 
 const DraftDeclaration = Schema.Struct({
   arcanum: ArcanumName,
@@ -298,10 +308,11 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
   return castId
 })
 
-export interface CastStepArgs {
-  readonly sessionId: string
-  readonly castId: string
-}
+export const CastStepArgs = Schema.Struct({
+  sessionId: Schema.String,
+  castId: Schema.String,
+})
+export type CastStepArgs = typeof CastStepArgs.Type
 
 /** The owner kills their own draft: free, changing your mind costs nothing. */
 export const killDraft = Effect.fn("Flows.vulgarCast.killDraft")(function* (
@@ -409,14 +420,16 @@ export const engageCast = Effect.fn("Flows.vulgarCast.engageCast")(function* (
   return castId
 })
 
-export interface EditLiabilitiesArgs extends CastStepArgs {
+export const EditLiabilitiesArgs = Schema.Struct({
+  ...CastStepArgs.fields,
   /** Sleeper head count; dice stay the book's flat +2 for one-or-more. */
-  readonly witnessCount?: number
+  witnessCount: Schema.optionalKey(WholeCount),
   /** The ST's override of the derived accumulator default (ADR-0015). */
-  readonly priorParadoxRolls?: number
+  priorParadoxRolls: Schema.optionalKey(WholeCount),
   /** The whole discretionary list as it should now read — replace, not merge. */
-  readonly discretionaryModifiers?: ReadonlyArray<ParadoxPoolModifier>
-}
+  discretionaryModifiers: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
+})
+export type EditLiabilitiesArgs = typeof EditLiabilitiesArgs.Type
 
 /**
  * The Storyteller's liability buttons (issue #44, PRD #39 stories 14/17): each
@@ -437,34 +450,32 @@ export const editLiabilities = Effect.fn("Flows.vulgarCast.editLiabilities")(
     const cast = yield* requireCast(sessionId, castId)
     yield* requireStatus(cast, "engaged")
 
-    if (
-      args.witnessCount !== undefined &&
-      (!Number.isInteger(args.witnessCount) || args.witnessCount < 0)
-    ) {
+    if (args.witnessCount !== undefined && !Schema.is(WholeCount)(args.witnessCount)) {
       return yield* new InvalidLiability({
         message: `Witnesses must be a whole count of Sleepers, got ${args.witnessCount}.`,
       })
     }
     if (
       args.priorParadoxRolls !== undefined &&
-      (!Number.isInteger(args.priorParadoxRolls) || args.priorParadoxRolls < 0)
+      !Schema.is(WholeCount)(args.priorParadoxRolls)
     ) {
       return yield* new InvalidLiability({
         message: `The accumulator must be a whole count of prior rolls, got ${args.priorParadoxRolls}.`,
       })
     }
-    for (const modifier of args.discretionaryModifiers ?? []) {
+    yield* Effect.forEach(args.discretionaryModifiers ?? [], (modifier) => {
       if (modifier.source.trim().length === 0) {
-        return yield* new InvalidLiability({
+        return new InvalidLiability({
           message: "A discretionary modifier needs a name the table can read.",
         })
       }
-      if (!Number.isInteger(modifier.dice) || modifier.dice === 0) {
-        return yield* new InvalidLiability({
+      if (!Schema.is(WholeDice)(modifier.dice) || modifier.dice === 0) {
+        return new InvalidLiability({
           message: `A discretionary modifier must be a whole nonzero die count, got ${modifier.dice}.`,
         })
       }
-    }
+      return Effect.void
+    })
 
     yield* store.patchCast(castId, {
       ...(args.witnessCount !== undefined
@@ -482,9 +493,11 @@ export const editLiabilities = Effect.fn("Flows.vulgarCast.editLiabilities")(
   },
 )
 
-export interface SetMagicalToolArgs extends CastStepArgs {
-  readonly usesMagicalTool: boolean
-}
+export const SetMagicalToolArgs = Schema.Struct({
+  ...CastStepArgs.fields,
+  usesMagicalTool: Schema.Boolean,
+})
+export type SetMagicalToolArgs = typeof SetMagicalToolArgs.Type
 
 /**
  * The caster's side of the negotiation (issue #44): the magical-tool flag is
@@ -541,10 +554,12 @@ export const lockLiabilities = Effect.fn("Flows.vulgarCast.lockLiabilities")(
   },
 )
 
-export interface LockIntentionArgs extends CastStepArgs {
+export const LockIntentionArgs = Schema.Struct({
+  ...CastStepArgs.fields,
   /** Mana spent shrinking the Paradox pool, 1 per die — blind insurance. */
-  readonly manaMitigation: number
-}
+  manaMitigation: Schema.Number,
+})
+export type LockIntentionArgs = typeof LockIntentionArgs.Type
 
 /**
  * The caster locks intention — THE POINT OF NO RETURN. Mitigation and the
@@ -563,7 +578,7 @@ export const lockIntention = Effect.fn("Flows.vulgarCast.lockIntention")(functio
   yield* requireStatus(cast, "liabilitiesLocked")
 
   const mitigation = args.manaMitigation
-  if (!Number.isInteger(mitigation) || mitigation < 0) {
+  if (!Schema.is(WholeCount)(mitigation)) {
     return yield* new InvalidMitigation({
       message: `Mitigation must be a whole number of Mana, got ${mitigation}.`,
     })
@@ -686,10 +701,12 @@ export const rollParadox = Effect.fn("Flows.vulgarCast.rollParadox")(function* (
   return castId
 })
 
-export interface ContainParadoxArgs extends CastStepArgs {
+export const ContainParadoxArgs = Schema.Struct({
+  ...CastStepArgs.fields,
   /** Paradox successes absorbed as Resistant bashing, one wound per success. */
-  readonly containedSuccesses: number
-}
+  containedSuccesses: Schema.Number,
+})
+export type ContainParadoxArgs = typeof ContainParadoxArgs.Type
 
 /**
  * The caster bets their flesh: each contained success writes one Resistant
@@ -710,7 +727,7 @@ export const containParadox = Effect.fn("Flows.vulgarCast.containParadox")(funct
   const successes = yield* stamped(cast.paradoxSuccesses, "paradoxSuccesses")
   const contained = args.containedSuccesses
   const cap = containmentCap(sheet.healthTrack, successes)
-  if (!Number.isInteger(contained) || contained < 0 || contained > cap) {
+  if (!Schema.is(WholeCount)(contained) || contained > cap) {
     return yield* new InvalidContainment({
       message: `Containment must be between 0 and ${cap} (successes rolled, Health remaining), got ${contained}.`,
       cap,

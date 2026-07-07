@@ -40,9 +40,11 @@ export const XpTrait = Schema.Literals([
 ])
 export type XpTrait = typeof XpTrait.Type
 
-type XpCostRule =
-  | { readonly _tag: "perDot"; readonly multiplier: number }
-  | { readonly _tag: "flat"; readonly points: number }
+const XpCostRule = Schema.Union([
+  Schema.TaggedStruct("perDot", { multiplier: Schema.Number }),
+  Schema.TaggedStruct("flat", { points: Schema.Number }),
+])
+type XpCostRule = typeof XpCostRule.Type
 
 const XP_COSTS: Record<XpTrait, XpCostRule> = {
   attribute: { _tag: "perDot", multiplier: 5 },

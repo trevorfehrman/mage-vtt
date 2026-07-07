@@ -2,13 +2,14 @@ import { Schema } from "effect"
 
 // --- Spirit Rank Table (page 319) ---
 
-interface SpiritRankDef {
-  rank: number
-  title: string
-  attributeDots: number
-  traitRange: string
-  maxEssence: number
-}
+const SpiritRankDef = Schema.Struct({
+  rank: Schema.Number,
+  title: Schema.String,
+  attributeDots: Schema.Number,
+  traitRange: Schema.String,
+  maxEssence: Schema.Number,
+})
+type SpiritRankDef = typeof SpiritRankDef.Type
 
 export const SPIRIT_RANKS: ReadonlyArray<SpiritRankDef> = [
   { rank: 1, title: "Squire/Page", attributeDots: 5, traitRange: "5-8", maxEssence: 10 },
@@ -20,11 +21,12 @@ export const SPIRIT_RANKS: ReadonlyArray<SpiritRankDef> = [
 
 // --- Numina (pages 323-325) ---
 
-interface NumenDef {
-  name: string
-  description: string
-  dicePool: string
-}
+const NumenDef = Schema.Struct({
+  name: Schema.String,
+  description: Schema.String,
+  dicePool: Schema.String,
+})
+type NumenDef = typeof NumenDef.Type
 
 export const NUMINA: ReadonlyArray<NumenDef> = [
   { name: "Blast", description: "Spirit attacks a target with a damaging supernatural assault.", dicePool: "Power + Finesse - target's Defense" },

@@ -27,19 +27,21 @@ import { Mana, Willpower } from "../quantities"
  * here as layer-3 move rules per ADR-0011's tightening prescription.
  */
 
-export interface HandEditArgs {
-  readonly sessionId: string
-  readonly characterId: string
-  readonly manaCurrent?: number
-  readonly willpowerCurrent?: number
+export const HandEditArgs = Schema.Struct({
+  sessionId: Schema.String,
+  characterId: Schema.String,
+  manaCurrent: Schema.optionalKey(Schema.Number),
+  willpowerCurrent: Schema.optionalKey(Schema.Number),
   /** Boxes arrive as (severity, resistant) pairs (issue #41). Legacy bare
    * strings live only in stored documents, normalized at the sheet decode —
    * the wire speaks the pair. */
-  readonly healthTrack?: ReadonlyArray<{
-    readonly severity: string
-    readonly resistant: boolean
-  }>
-}
+  healthTrack: Schema.optionalKey(
+    Schema.Array(
+      Schema.Struct({ severity: Schema.String, resistant: Schema.Boolean }),
+    ),
+  ),
+})
+export type HandEditArgs = typeof HandEditArgs.Type
 
 // --- Errors (ADR-0010) ---
 

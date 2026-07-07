@@ -1,28 +1,33 @@
-import { Effect, Match, Option } from "effect"
+import { Effect, Match, Option, Schema } from "effect"
 import { MeritValidationError } from "./merits"
 
 // --- Types ---
 
-type Prerequisite =
-  | { readonly _tag: "attribute"; readonly name: string; readonly minDots: number }
-  | { readonly _tag: "skill"; readonly name: string; readonly minDots: number }
-  | { readonly _tag: "merit"; readonly name: string; readonly minDots: number }
+const RatedPrerequisite = { name: Schema.String, minDots: Schema.Number }
 
-interface FightingStyleTier {
-  dot: number
-  name: string
-  description: string
-}
+const Prerequisite = Schema.Union([
+  Schema.TaggedStruct("attribute", RatedPrerequisite),
+  Schema.TaggedStruct("skill", RatedPrerequisite),
+  Schema.TaggedStruct("merit", RatedPrerequisite),
+])
+type Prerequisite = typeof Prerequisite.Type
 
-interface GeneralMeritDef {
-  name: string
-  category: "mental" | "physical" | "social"
-  minDots: number
-  maxDots: number
-  prerequisites: ReadonlyArray<Prerequisite>
-  description: string
-  tiers?: ReadonlyArray<FightingStyleTier>
-}
+const FightingStyleTier = Schema.Struct({
+  dot: Schema.Number,
+  name: Schema.String,
+  description: Schema.String,
+})
+
+const GeneralMeritDef = Schema.Struct({
+  name: Schema.String,
+  category: Schema.Literals(["mental", "physical", "social"]),
+  minDots: Schema.Number,
+  maxDots: Schema.Number,
+  prerequisites: Schema.Array(Prerequisite),
+  description: Schema.String,
+  tiers: Schema.optionalKey(Schema.Array(FightingStyleTier)),
+})
+type GeneralMeritDef = typeof GeneralMeritDef.Type
 
 // --- WoD Core General Merits (pages 109-117) ---
 
@@ -94,11 +99,12 @@ export const WOD_GENERAL_MERITS: ReadonlyArray<GeneralMeritDef> = [
 
 // --- Pure rules leaves (ADR-0014) ---
 
-interface CharacterTraits {
-  readonly attributes: Record<string, number>
-  readonly skills: Record<string, number>
-  readonly currentMerits: ReadonlyArray<{ name: string; dots: number }>
-}
+const CharacterTraits = Schema.Struct({
+  attributes: Schema.Record(Schema.String, Schema.Number),
+  skills: Schema.Record(Schema.String, Schema.Number),
+  currentMerits: Schema.Array(Schema.Struct({ name: Schema.String, dots: Schema.Number })),
+})
+type CharacterTraits = typeof CharacterTraits.Type
 
 /** An unrated trait is zero dots — genuine WoD semantics, not a lookup fallback. */
 const traitDots = (traits: Record<string, number>, name: string): number =>

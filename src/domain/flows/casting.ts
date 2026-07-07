@@ -1,7 +1,7 @@
 import { Effect, Schema } from "effect"
 import { requireSessionCharacter } from "../authz"
 import { ArcanumName } from "../character"
-import { buildPool, rollPool, type RawPoolComponent, type RollVisibility } from "../dice"
+import { buildPool, RollVisibility, rollPool, type RawPoolComponent } from "../dice"
 import { CharacterId, SessionId } from "../ids"
 import { improvisedManaCost, spendMana } from "../mana-economy"
 import { Mana } from "../quantities"
@@ -31,28 +31,29 @@ import type { DiceRollResult } from "../dice"
  * against silently casting Vulgar with no Paradox (ADR-0008).
  */
 
-export interface CastSpellArgs {
-  readonly sessionId: string
-  readonly characterId: string
-  readonly arcanum: string
-  readonly level: number
+export const CastSpellArgs = Schema.Struct({
+  sessionId: Schema.String,
+  characterId: Schema.String,
+  arcanum: Schema.String,
+  level: Schema.Number,
   /** Spell factor: effect Potency beyond 1 costs dice (book table). */
-  readonly potency?: number
-  /** Spell factor: targets beyond 1 cost dice (book table). */
-  readonly targets?: number
+  potency: Schema.optionalKey(Schema.Number),
+  /** Spell factor: targets beyond 1 costs dice (book table). */
+  targets: Schema.optionalKey(Schema.Number),
   /** High Speech: +2 dice. */
-  readonly highSpeech?: boolean
+  highSpeech: Schema.optionalKey(Schema.Boolean),
   /**
    * Declared additional Mana, for improvised effects replicating book spells
    * that list a cost. Whether it applies is table adjudication; once declared,
    * the deduction is mechanical — on top of the server-computed Path cost.
    */
-  readonly extraManaCost?: number
+  extraManaCost: Schema.optionalKey(Schema.Number),
   /** Willpower spend: +3 dice, one point off the sheet (issue #12). */
-  readonly spendWillpower?: boolean
+  spendWillpower: Schema.optionalKey(Schema.Boolean),
   /** Table visibility of the roll (a Hidden roll) — orthogonal to the Covert Aspect. */
-  readonly visibility?: RollVisibility
-}
+  visibility: Schema.optionalKey(RollVisibility),
+})
+export type CastSpellArgs = typeof CastSpellArgs.Type
 
 // --- Errors (ADR-0010) ---
 

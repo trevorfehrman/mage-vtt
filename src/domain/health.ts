@@ -92,10 +92,11 @@ export const createHealthTrack = Effect.fn("HealthTrack.create")(function* (
   return track
 })
 
-export interface ApplyDamageOptions {
+export const ApplyDamageOptions = Schema.Struct({
   /** Resistant damage — Paradox Backlash — writes the dot beneath the box. */
-  readonly resistant?: boolean
-}
+  resistant: Schema.optionalKey(Schema.Boolean),
+})
+export type ApplyDamageOptions = typeof ApplyDamageOptions.Type
 
 export const applyDamage = (
   track: HealthTrack,

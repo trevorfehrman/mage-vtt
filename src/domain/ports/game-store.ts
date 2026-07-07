@@ -1,21 +1,21 @@
-import { Context, Effect, type Option } from "effect"
-import type { Cast, CastStatus } from "../cast"
+import { Context, Effect, Schema, type Option } from "effect"
+import { CastStatus, type Cast } from "../cast"
 import type { CharacterSheet } from "../character"
-import type { HealthBox } from "../damage"
-import type { DiceRollResult, RawPoolComponent } from "../dice"
-import type {
-  CastId,
+import { HealthBox } from "../damage"
+import { DiceRollResult, RawPoolComponent } from "../dice"
+import {
   CharacterId,
-  MessageId,
   PlayerId,
-  RollId,
   SceneId,
   SessionId,
+  type CastId,
+  type MessageId,
+  type RollId,
 } from "../ids"
-import type { ParadoxPoolModifier, ParadoxSeverity } from "../paradox"
-import type { Membership } from "../membership"
+import { ParadoxPoolModifier, ParadoxSeverity } from "../paradox"
+import { Membership } from "../membership"
 import type { NotAMember } from "../authz"
-import type { Mana, Willpower } from "../quantities"
+import { Mana, Willpower } from "../quantities"
 import type { SpellRef } from "../rote-cast"
 import type { RoteArcanumName } from "../rote-pool"
 import type { Scene } from "../scene"
@@ -30,22 +30,24 @@ import type { DocumentNotFound } from "./errors"
  * atomic and self-describing: it carries its `summary` narrative and intrinsic
  * `visibility` (inside `result`), so no shadow `messages` row is needed.
  */
-export interface RollDraft {
-  readonly sessionId: SessionId
-  readonly member: Membership
-  readonly components: ReadonlyArray<RawPoolComponent>
-  readonly result: DiceRollResult
-  readonly summary: string
-}
+export const RollDraft = Schema.Struct({
+  sessionId: SessionId,
+  member: Membership,
+  components: Schema.Array(RawPoolComponent),
+  result: DiceRollResult,
+  summary: Schema.String,
+})
+export type RollDraft = typeof RollDraft.Type
 
 /** Intent-level draft of a chat / system `messages` row. */
-export interface MessageDraft {
-  readonly sessionId: SessionId
-  readonly sender: { readonly userId: PlayerId; readonly displayName: string }
-  readonly text: string
-  readonly visibility: "public" | "whisper" | "system"
-  readonly whisperTargetId?: PlayerId
-}
+export const MessageDraft = Schema.Struct({
+  sessionId: SessionId,
+  sender: Schema.Struct({ userId: PlayerId, displayName: Schema.String }),
+  text: Schema.String,
+  visibility: Schema.Literals(["public", "whisper", "system"]),
+  whisperTargetId: Schema.optionalKey(PlayerId),
+})
+export type MessageDraft = typeof MessageDraft.Type
 
 /**
  * The only writes a flow can express against a character sheet: the fields play
@@ -54,50 +56,54 @@ export interface MessageDraft {
  * (advancement, ST sheet-edit) earns them a door with its own authority story.
  * Widening this type is a design decision, not a convenience edit.
  */
-export interface SheetPatch {
-  readonly manaCurrent?: Mana
-  readonly willpowerCurrent?: Willpower
-  readonly healthTrack?: ReadonlyArray<HealthBox>
-}
+export const SheetPatch = Schema.Struct({
+  manaCurrent: Schema.optionalKey(Mana),
+  willpowerCurrent: Schema.optionalKey(Willpower),
+  healthTrack: Schema.optionalKey(Schema.Array(HealthBox)),
+})
+export type SheetPatch = typeof SheetPatch.Type
 
 /**
  * Intent-level draft of a new `scenes` row (issue #42): always born `active`
  * — the adapter stamps status and the open timestamp (from `Clock`).
  */
-export interface SceneDraft {
-  readonly sessionId: SessionId
-  readonly name: string
-  readonly sleeperWitnesses: boolean
-}
+export const SceneDraft = Schema.Struct({
+  sessionId: SessionId,
+  name: Schema.String,
+  sleeperWitnesses: Schema.Boolean,
+})
+export type SceneDraft = typeof SceneDraft.Type
 
 /**
  * The only writes a flow can express against a Scene: its lifecycle end and
  * the witnesses default. The name is immutable after open — renaming a Scene
  * is a door no flow has earned yet.
  */
-export interface ScenePatch {
-  readonly status?: "closed"
-  readonly sleeperWitnesses?: boolean
-}
+export const ScenePatch = Schema.Struct({
+  status: Schema.optionalKey(Schema.Literals(["closed"])),
+  sleeperWitnesses: Schema.optionalKey(Schema.Boolean),
+})
+export type ScenePatch = typeof ScenePatch.Type
 
 /**
  * Intent-level draft of a new `casts` row (issue #43, ADR-0016): the
  * declaration beat's whole knowledge. Always born a `draft` — the adapter
  * stamps status and both timestamps (from `Clock`).
  */
-export interface CastDraft {
-  readonly sessionId: SessionId
-  readonly characterId: CharacterId
-  readonly casterUserId: PlayerId
-  readonly casterName: string
-  readonly arcanum: string
-  readonly level: number
-  readonly intent?: string
-  readonly usesMagicalTool: boolean
-  readonly declaredComponents: ReadonlyArray<RawPoolComponent>
-  readonly declaredPool: number
-  readonly spellManaCost: number
-}
+export const CastDraft = Schema.Struct({
+  sessionId: SessionId,
+  characterId: CharacterId,
+  casterUserId: PlayerId,
+  casterName: Schema.String,
+  arcanum: Schema.String,
+  level: Schema.Number,
+  intent: Schema.optionalKey(Schema.String),
+  usesMagicalTool: Schema.Boolean,
+  declaredComponents: Schema.Array(RawPoolComponent),
+  declaredPool: Schema.Number,
+  spellManaCost: Schema.Number,
+})
+export type CastDraft = typeof CastDraft.Type
 
 /**
  * The writes the beat flows can express against a Cast: each beat stamps its
@@ -107,23 +113,24 @@ export interface CastDraft {
  * stamps `updatedAt` and any recorded `Override` marker (void's repair
  * provenance) structurally.
  */
-export interface CastPatch {
-  readonly status?: CastStatus
-  readonly usesMagicalTool?: boolean
-  readonly sceneId?: SceneId
-  readonly gnosis?: number
-  readonly sleeperWitnesses?: boolean
-  readonly witnessCount?: number
-  readonly priorParadoxRolls?: number
-  readonly discretionaryModifiers?: ReadonlyArray<ParadoxPoolModifier>
-  readonly manaMitigation?: number
-  readonly paradoxSuccesses?: number
-  readonly paradoxIsDramaticFailure?: boolean
-  readonly containedSuccesses?: number
-  readonly castPool?: number
-  readonly castSuccesses?: number
-  readonly severity?: ParadoxSeverity
-}
+export const CastPatch = Schema.Struct({
+  status: Schema.optionalKey(CastStatus),
+  usesMagicalTool: Schema.optionalKey(Schema.Boolean),
+  sceneId: Schema.optionalKey(SceneId),
+  gnosis: Schema.optionalKey(Schema.Number),
+  sleeperWitnesses: Schema.optionalKey(Schema.Boolean),
+  witnessCount: Schema.optionalKey(Schema.Number),
+  priorParadoxRolls: Schema.optionalKey(Schema.Number),
+  discretionaryModifiers: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
+  manaMitigation: Schema.optionalKey(Schema.Number),
+  paradoxSuccesses: Schema.optionalKey(Schema.Number),
+  paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
+  containedSuccesses: Schema.optionalKey(Schema.Number),
+  castPool: Schema.optionalKey(Schema.Number),
+  castSuccesses: Schema.optionalKey(Schema.Number),
+  severity: Schema.optionalKey(ParadoxSeverity),
+})
+export type CastPatch = typeof CastPatch.Type
 
 /**
  * The write-side persistence port (ADR-0004).

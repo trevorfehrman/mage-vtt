@@ -69,12 +69,13 @@ export const DrugName = Schema.Literals([
 ])
 export type DrugName = typeof DrugName.Type
 
-interface DrugDef {
-  name: string
-  poolPenalty: number
-  affectedPools: readonly string[]
-  duration: string
-}
+const DrugDef = Schema.Struct({
+  name: Schema.String,
+  poolPenalty: Schema.Number,
+  affectedPools: Schema.Array(Schema.String),
+  duration: Schema.String,
+})
+type DrugDef = typeof DrugDef.Type
 
 const DRUGS: Record<DrugName, DrugDef> = {
   alcohol: { name: "Alcohol", poolPenalty: -1, affectedPools: ["dexterity", "intelligence", "wits"], duration: "1 die fades per hour" },

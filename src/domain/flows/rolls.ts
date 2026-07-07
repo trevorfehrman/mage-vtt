@@ -1,11 +1,11 @@
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { requireMember, requireSessionCharacter } from "../authz"
 import {
   buildPool,
+  RawPoolComponent,
+  RollVisibility,
   rollPool,
   type DiceRollResult,
-  type RawPoolComponent,
-  type RollVisibility,
 } from "../dice"
 import { CharacterId, SessionId } from "../ids"
 import { GameStore } from "../ports/game-store"
@@ -26,22 +26,23 @@ import type { Willpower } from "../quantities"
  * server-added — never client-declared.
  */
 
-export interface CreateRollArgs {
-  readonly sessionId: string
-  readonly components: ReadonlyArray<RawPoolComponent>
-  readonly againThreshold?: number
-  readonly roteAction?: boolean
-  readonly visibility?: RollVisibility
+export const CreateRollArgs = Schema.Struct({
+  sessionId: Schema.String,
+  components: Schema.Array(RawPoolComponent),
+  againThreshold: Schema.optionalKey(Schema.Number),
+  roteAction: Schema.optionalKey(Schema.Boolean),
+  visibility: Schema.optionalKey(RollVisibility),
   /**
    * The sheet this pool was built from. Anchoring a roll walks the authority
    * ladder over that sheet (ADR-0006: owner unmarked, ST/Dev Override-marked)
    * and attribution follows the sheet's owner, exactly as casting does.
    * Absent = a free pool, the roller's own act.
    */
-  readonly characterId?: string
+  characterId: Schema.optionalKey(Schema.String),
   /** Declared Willpower spend: +3 dice, funded by this character's sheet. */
-  readonly willpower?: { readonly characterId: string }
-}
+  willpower: Schema.optionalKey(Schema.Struct({ characterId: Schema.String })),
+})
+export type CreateRollArgs = typeof CreateRollArgs.Type
 
 const rollSummary = (displayName: string, result: DiceRollResult): string => {
   const outcome = result.isDramaticFailure

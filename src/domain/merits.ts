@@ -2,24 +2,28 @@ import { Effect, Match, Option, Schema } from "effect"
 
 // --- Types ---
 
-interface MeritDefinition {
-  readonly name: string
-  readonly minDots: number
-  readonly maxDots: number
-  readonly prerequisites: ReadonlyArray<Prerequisite>
-  readonly description: string
-  readonly page: number
-}
+const Prerequisite = Schema.Union([
+  Schema.TaggedStruct("awakened", {}),
+  Schema.TaggedStruct("noMerit", { meritName: Schema.String }),
+  Schema.TaggedStruct("hasMerit", { meritName: Schema.String }),
+])
+type Prerequisite = typeof Prerequisite.Type
 
-type Prerequisite =
-  | { readonly _tag: "awakened" }
-  | { readonly _tag: "noMerit"; readonly meritName: string }
-  | { readonly _tag: "hasMerit"; readonly meritName: string }
+const MeritDefinition = Schema.Struct({
+  name: Schema.String,
+  minDots: Schema.Number,
+  maxDots: Schema.Number,
+  prerequisites: Schema.Array(Prerequisite),
+  description: Schema.String,
+  page: Schema.Number,
+})
+type MeritDefinition = typeof MeritDefinition.Type
 
-interface MeritSelection {
-  meritName: string
-  dots: number
-}
+const MeritSelection = Schema.Struct({
+  meritName: Schema.String,
+  dots: Schema.Number,
+})
+type MeritSelection = typeof MeritSelection.Type
 
 // --- Errors ---
 

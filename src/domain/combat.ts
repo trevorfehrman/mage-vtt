@@ -2,13 +2,14 @@ import { Effect, Match, Option, Schema } from "effect"
 
 // --- Weapon Data (from WoD Core pages 169-171) ---
 
-interface WeaponDef {
-  name: string
-  damage: number
-  damageType: "bashing" | "lethal"
-  size: number
-  special?: string
-}
+const WeaponDef = Schema.Struct({
+  name: Schema.String,
+  damage: Schema.Number,
+  damageType: Schema.Literals(["bashing", "lethal"]),
+  size: Schema.Number,
+  special: Schema.optionalKey(Schema.String),
+})
+type WeaponDef = typeof WeaponDef.Type
 
 export const MELEE_WEAPONS: ReadonlyArray<WeaponDef> = [
   { name: "Sap", damage: 1, damageType: "bashing", size: 1, special: "Knockout" },
@@ -27,10 +28,13 @@ export const MELEE_WEAPONS: ReadonlyArray<WeaponDef> = [
   { name: "Spear", damage: 3, damageType: "lethal", size: 4, special: "+1 Defense" },
 ]
 
-export const RANGED_WEAPONS: ReadonlyArray<WeaponDef & {
-  ranges: { short: number; medium: number; long: number }
-  clip: number
-}> = [
+const RangedWeaponDef = Schema.Struct({
+  ...WeaponDef.fields,
+  ranges: Schema.Struct({ short: Schema.Number, medium: Schema.Number, long: Schema.Number }),
+  clip: Schema.Number,
+})
+
+export const RANGED_WEAPONS: ReadonlyArray<typeof RangedWeaponDef.Type> = [
   { name: "Revolver, Lt.", damage: 2, damageType: "lethal", size: 1, ranges: { short: 20, medium: 40, long: 80 }, clip: 6 },
   { name: "Revolver, Hvy.", damage: 3, damageType: "lethal", size: 1, ranges: { short: 35, medium: 70, long: 140 }, clip: 6 },
   { name: "Pistol, Lt.", damage: 2, damageType: "lethal", size: 1, ranges: { short: 20, medium: 40, long: 80 }, clip: 18 },
@@ -45,12 +49,13 @@ export const RANGED_WEAPONS: ReadonlyArray<WeaponDef & {
 
 // --- Armor Data (from WoD Core page 171) ---
 
-interface ArmorDef {
-  name: string
-  rating: number
-  defense: number
-  speed: number
-}
+const ArmorDef = Schema.Struct({
+  name: Schema.String,
+  rating: Schema.Number,
+  defense: Schema.Number,
+  speed: Schema.Number,
+})
+type ArmorDef = typeof ArmorDef.Type
 
 export const ARMOR: ReadonlyArray<ArmorDef> = [
   { name: "Reinforced clothing", rating: 1, defense: 0, speed: 0 },

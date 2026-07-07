@@ -182,15 +182,16 @@ export const rulingArcanaOf = (path: string): ReadonlyArray<string> =>
 // the tables above. They read only the traits the formulas need, which any
 // decoded character shape satisfies structurally.
 
-interface DerivationTraits {
-  readonly path: string
-  readonly gnosis: number
-  readonly attributes: {
-    readonly mental: { readonly resolve: number }
-    readonly physical: { readonly stamina: number }
-    readonly social: { readonly composure: number }
-  }
-}
+const DerivationTraits = Schema.Struct({
+  path: Schema.String,
+  gnosis: Schema.Number,
+  attributes: Schema.Struct({
+    mental: Schema.Struct({ resolve: Schema.Number }),
+    physical: Schema.Struct({ stamina: Schema.Number }),
+    social: Schema.Struct({ composure: Schema.Number }),
+  }),
+})
+type DerivationTraits = typeof DerivationTraits.Type
 
 const resistanceBonusOf = (path: string) =>
   PATH_RESISTANCE[path] ?? { attribute: "composure" as const, bonus: 0 }
@@ -403,20 +404,23 @@ export const createCharacter = Effect.fn("Character.create")(function* (
 
 /** The traits the creation-rules move inspects — structural, so both the strict
  * creation input and a decoded `CharacterSheet` satisfy it. */
-interface CreationTraits {
-  readonly path: string
-  readonly attributes: {
-    readonly mental: Record<string, number>
-    readonly physical: Record<string, number>
-    readonly social: Record<string, number>
-  }
-  readonly skills: {
-    readonly mental: Record<string, number>
-    readonly physical: Record<string, number>
-    readonly social: Record<string, number>
-  }
-  readonly arcana: Partial<Record<string, number>>
-}
+const RatedCategory = Schema.Record(Schema.String, Schema.Number)
+
+const CreationTraits = Schema.Struct({
+  path: Schema.String,
+  attributes: Schema.Struct({
+    mental: RatedCategory,
+    physical: RatedCategory,
+    social: RatedCategory,
+  }),
+  skills: Schema.Struct({
+    mental: RatedCategory,
+    physical: RatedCategory,
+    social: RatedCategory,
+  }),
+  arcana: Schema.Record(Schema.String, Schema.UndefinedOr(Schema.Number)),
+})
+type CreationTraits = typeof CreationTraits.Type
 
 export const validateCreationRules = Effect.fn("Character.validateCreationRules")(function* (
   character: CreationTraits,

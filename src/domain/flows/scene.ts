@@ -60,10 +60,11 @@ export class CastOnStage extends Schema.TaggedErrorClass<CastOnStage>()(
 
 // --- Flows ---
 
-export interface OpenSceneArgs {
-  readonly sessionId: string
-  readonly name: string
-}
+export const OpenSceneArgs = Schema.Struct({
+  sessionId: Schema.String,
+  name: Schema.String,
+})
+export type OpenSceneArgs = typeof OpenSceneArgs.Type
 
 export const openScene = Effect.fn("Flows.scene.openScene")(function* (
   args: OpenSceneArgs,
@@ -105,9 +106,10 @@ export const openScene = Effect.fn("Flows.scene.openScene")(function* (
   return sceneId
 })
 
-export interface CloseSceneArgs {
-  readonly sessionId: string
-}
+export const CloseSceneArgs = Schema.Struct({
+  sessionId: Schema.String,
+})
+export type CloseSceneArgs = typeof CloseSceneArgs.Type
 
 export const closeScene = Effect.fn("Flows.scene.closeScene")(function* (
   args: CloseSceneArgs,
@@ -154,10 +156,11 @@ export const closeScene = Effect.fn("Flows.scene.closeScene")(function* (
   return scene.id
 })
 
-export interface SetSceneWitnessesArgs {
-  readonly sessionId: string
-  readonly sleeperWitnesses: boolean
-}
+export const SetSceneWitnessesArgs = Schema.Struct({
+  sessionId: Schema.String,
+  sleeperWitnesses: Schema.Boolean,
+})
+export type SetSceneWitnessesArgs = typeof SetSceneWitnessesArgs.Type
 
 export const setSceneWitnesses = Effect.fn("Flows.scene.setSceneWitnesses")(
   function* (args: SetSceneWitnessesArgs) {

@@ -140,16 +140,17 @@ export const requireCovertSpell = Effect.fn("RoteCast.requireCovertSpell")(funct
 })
 
 /** The resolved casting traits: names straight off the Rote, dots off the sheet. */
-export interface ResolvedRotePool {
-  readonly attribute: { readonly name: string; readonly dots: number }
+export const ResolvedRotePool = Schema.Struct({
+  attribute: Schema.Struct({ name: Schema.String, dots: Schema.Number }),
   /** The skill slot may hold a second Attribute ("Wits + Composure + Forces"). */
-  readonly skill: {
-    readonly name: string
-    readonly dots: number
-    readonly kind: "skill" | "attribute"
-  }
-  readonly arcanum: { readonly name: string; readonly dots: number }
-}
+  skill: Schema.Struct({
+    name: Schema.String,
+    dots: Schema.Number,
+    kind: Schema.Literals(["skill", "attribute"]),
+  }),
+  arcanum: Schema.Struct({ name: Schema.String, dots: Schema.Number }),
+})
+export type ResolvedRotePool = typeof ResolvedRotePool.Type
 
 export const resolveRotePool = Effect.fn("RoteCast.resolveRotePool")(function* (
   sheet: SheetRatings,
