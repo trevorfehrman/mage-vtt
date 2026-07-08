@@ -9,6 +9,9 @@ import { ArcanaGlyph } from "./ArcanaGlyph"
 import { CastCard } from "./CastCard"
 import type { Id } from "../../../convex/_generated/dataModel"
 
+/** Within this distance of the log's foot still counts as "at the foot". */
+const PIN_THRESHOLD_PX = 48
+
 interface ActivityLogProps {
   sessionId: Id<"sessions">
   isRolling?: boolean
@@ -35,12 +38,42 @@ export function ActivityLog({
   mySheet,
 }: ActivityLogProps) {
   const activity = useActivity(sessionId, seat)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  // Pinned = reading the live end of the log. Leaving the foot (e.g. scrolling
+  // up to a Cast card's controls, issue #65) releases the pin so new beats and
+  // in-place card growth don't yank the viewport; returning to the foot
+  // re-engages it.
+  const pinnedRef = useRef(true)
 
-  // Auto-scroll on new items or rolling state change
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [activity?.length, isRolling])
+    const content = contentRef.current
+    const viewport = content?.closest("[data-slot=scroll-area-viewport]")
+    if (!content || !viewport) return
+
+    const onScroll = () => {
+      pinnedRef.current =
+        viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <
+        PIN_THRESHOLD_PX
+    }
+    viewport.addEventListener("scroll", onScroll)
+
+    // Growth of any kind — new entries, the rolling indicator, a Cast card
+    // climbing its ladder in place — follows the foot only while pinned.
+    // The follow is instant, not smooth: a smooth scroll fires intermediate
+    // scroll events that read as "away from the foot" and would release the
+    // pin if more growth landed mid-animation.
+    const observer = new ResizeObserver(() => {
+      if (pinnedRef.current) {
+        viewport.scrollTo({ top: viewport.scrollHeight })
+      }
+    })
+    observer.observe(content)
+
+    return () => {
+      viewport.removeEventListener("scroll", onScroll)
+      observer.disconnect()
+    }
+  }, [])
 
   // Activity comes in desc order — reverse for chronological display
   const sorted = activity ? [...activity].reverse() : []
@@ -51,8 +84,11 @@ export function ActivityLog({
         <h2 className="mv-eyebrow">Chronicle</h2>
       </div>
 
-      <ScrollArea className="flex-1 px-3 py-2">
-        <div className="grid gap-2">
+      {/* min-h-0: without it the flex item's auto minimum tracks content
+          height, so a tall entry (the live Cast card, issue #65) grows the
+          rail past its box instead of scrolling. */}
+      <ScrollArea className="min-h-0 flex-1 px-3 py-2">
+        <div ref={contentRef} className="grid gap-2">
           {sorted.map((item, i) =>
             Match.value(item).pipe(
               Match.tag("message", (message) => (
@@ -81,8 +117,6 @@ export function ActivityLog({
 
           {/* Rolling indicator — appears immediately when dice are in flight */}
           {isRolling && <RollingIndicator />}
-
-          <div ref={bottomRef} />
         </div>
       </ScrollArea>
     </div>
