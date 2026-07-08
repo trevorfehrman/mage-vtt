@@ -33,6 +33,19 @@ const snapshot = (status: CastStatus): CastEntry => ({
 })
 
 describe("castLadderMachine — a projection of the document", () => {
+  test("an unstarted actor's snapshot — the card's first render — already sits on the rung", () => {
+    // @xstate/react reads getSnapshot() before the actor starts (the start
+    // lands in an effect), so the first render must never see `deriving` —
+    // the card dispatches the rung through Match.exhaustive and an
+    // off-vocabulary value would throw into the route boundary (issue #67).
+    for (const status of CastStatus.literals) {
+      const actor = createActor(castLadderMachine, {
+        input: { cast: snapshot(status) },
+      })
+      expect(actor.getSnapshot().value).toBe(status)
+    }
+  })
+
   test("rehydrates onto every rung directly from a snapshot", () => {
     for (const status of CastStatus.literals) {
       const actor = createActor(castLadderMachine, {

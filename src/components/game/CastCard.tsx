@@ -67,7 +67,13 @@ export function CastCard({
   // the machine's rung — the document remains the only owner of state.
   const [state, send] = useMachine(castLadderMachine, { input: { cast } })
   useEffect(() => send({ type: "SYNC", cast }), [cast, send])
-  const status = state.value as CastStatus
+  // The machine may sit in `deriving` for the microtask its `always` fork
+  // takes (its own contract; unobserved in any render we could produce —
+  // issue #67). The fork's target is the document's status by definition, so
+  // a mid-derive frame renders that rather than feeding an off-vocabulary
+  // value to the Match.exhaustive dispatches below and killing the route.
+  const status: CastStatus =
+    state.value === "deriving" ? cast.status : (state.value as CastStatus)
 
   const isCaster = cast.casterUserId === viewerUserId
   const controls = ladderControls(status, { isStoryteller, isCaster })
