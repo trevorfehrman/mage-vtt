@@ -43,6 +43,11 @@ export function CastPanel({
   const draftVulgar = useMutation(api.casts.draft)
   const [drafting, setDrafting] = useState(false)
   const [draftError, setDraftError] = useState<string | null>(null)
+  // The vulgar declaration's extras (issue #66): the caster's one-line intent
+  // and the steadying tool, both accepted by the seam since #43 but never
+  // sent. They ride casts.draft only — the covert Cast button takes neither.
+  const [intent, setIntent] = useState("")
+  const [usesMagicalTool, setUsesMagicalTool] = useState(false)
   const submitVulgarDraft = async () => {
     if (!selection) return
     setDrafting(true)
@@ -51,6 +56,8 @@ export function CastPanel({
       await draftVulgar({
         sessionId: character.sessionId as string as Id<"sessions">,
         characterId: character.id as string as Id<"characters">,
+        ...(intent.trim() ? { intent: intent.trim() } : {}),
+        ...(usesMagicalTool ? { usesMagicalTool } : {}),
         ...(selection.method === "improvised"
           ? { arcanum: selection.arcanum, level: cast.context.level }
           : {
@@ -256,6 +263,29 @@ export function CastPanel({
           the Storyteller&apos;s to roll
         </p>
       )}
+
+      {/* the vulgar declaration (issue #66): intent and tool ride the draft
+          into the wings; the tool stays the caster's to flip on the card
+          until the Storyteller locks liabilities — one field, two doors */}
+      <div className="mt-2 flex flex-wrap items-center gap-2 px-3">
+        <input
+          value={intent}
+          onChange={(e) => setIntent(e.target.value)}
+          placeholder="Intent — what's the spell for? (Vulgar)"
+          disabled={casting || drafting}
+          className="mv-data min-w-0 flex-1 rounded-[3px] border bg-transparent px-2 py-1 text-[11px] outline-none focus:border-[var(--accent)]"
+          style={{ borderColor: "var(--line)" }}
+        />
+        <button
+          type="button"
+          onClick={() => setUsesMagicalTool(!usesMagicalTool)}
+          disabled={casting || drafting}
+          className={`mv-mini ${usesMagicalTool ? "mv-mini-on" : ""}`}
+          title="−1 Paradox die on a Vulgar draft — yours to change until the Storyteller locks"
+        >
+          Magical tool
+        </button>
+      </div>
 
       {/* action */}
       <div className="flex gap-2 p-3">
