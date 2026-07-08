@@ -3,6 +3,9 @@ import { HealthTrack, healthBox, type HealthBox } from "./damage"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "./ids"
 import { Dots, Mana, Willpower } from "./quantities"
 import { RoteArcanumName, RotePool } from "./rote-pool"
+// Value-only import; rote-cast's import of this module is type-only, so the
+// module graph stays acyclic at runtime.
+import { SpellAspect } from "./rote-cast"
 
 // --- Constrained number types ---
 //
@@ -293,6 +296,11 @@ export class KnownRote extends Schema.Class<KnownRote>("KnownRote")({
   spellLevel: Dots1to5,
   order: OrderName,
   pool: RotePool,
+  // The spell's Covert/Vulgar aspect, stamped at ingest from spells.json
+  // (issue #68) — it gates the Draft Vulgar / Cast buttons client-side.
+  // Optional: rows ingested before the stamp have none; absent means unknown,
+  // so the gate stays open and the server's refusal remains the authority.
+  spellAspect: Schema.optionalKey(SpellAspect),
 }) {}
 
 /**

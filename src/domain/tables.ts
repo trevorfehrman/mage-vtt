@@ -105,6 +105,8 @@ export const KnownRoteDoc = Schema.Struct({
   spellLevel: Schema.Number,
   order: Schema.String,
   pool: RotePoolDoc,
+  // Optional column: rows ingested before issue #68 carry no aspect stamp.
+  spellAspect: Schema.optionalKey(Schema.String),
 })
 
 /**

@@ -30,6 +30,7 @@ interface SpellSource {
   name: string
   arcanum: string
   level: number
+  aspect: string
   rotes?: Array<{ order: string; pool?: unknown }>
 }
 
@@ -96,6 +97,7 @@ const program = Effect.gen(function* () {
     () => Bun.file(SPELLS_PATH).json() as Promise<unknown>,
   ).pipe(Effect.mapError((e) => refuse("reading spells.json", e)))) as SpellSource[]
 
+  const aspects: string[] = []
   for (const rote of sheet.rotes) {
     const spell = spells.find(
       (s) => s.name === rote.spellName && s.arcanum === rote.spellArcanum,
@@ -123,6 +125,22 @@ const program = Effect.gen(function* () {
         `"${rote.name}": ${rote.spellName} has no ${rote.order} rote with pool "${formatRotePool(rote.pool)}"`,
       )
     }
+    aspects.push(spell.aspect)
+  }
+
+  // The aspect stamp (issue #68): spells.json is the aspect's one source of
+  // truth, so the ingested rows are stamped here — the character file never
+  // declares it (and a hand-written aspect would be silently corrected).
+  const stamped = {
+    ...data,
+    ...(data.knownRotes
+      ? {
+          knownRotes: data.knownRotes.map((rote, i) => ({
+            ...rote,
+            spellAspect: aspects[i],
+          })),
+        }
+      : {}),
   }
 
   console.log(
@@ -130,7 +148,7 @@ const program = Effect.gen(function* () {
       `${sheet.rotes.length} known rote(s) — into session ${sessionId} for user ${userId}`,
   )
 
-  const out = yield* convexRun("ingest:upsertCharacter", { sessionId, userId, data })
+  const out = yield* convexRun("ingest:upsertCharacter", { sessionId, userId, data: stamped })
   if (out) console.log(out)
   console.log("Done — the character document was created or replaced.")
 })

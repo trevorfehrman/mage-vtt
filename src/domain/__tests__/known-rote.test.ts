@@ -97,6 +97,24 @@ describe("KnownRote on the Character Sheet", () => {
     expect(sheet.rotes).toEqual([])
   })
 
+  it("carries the spell's aspect when stamped, stays decodable without it (pre-#68 rows)", () => {
+    // The aspect gates the Draft Vulgar / Cast buttons client-side (issue
+    // #68); absent means unknown — the gate stays open, the server refuses.
+    const stamped = decode({
+      ...baseDoc,
+      knownRotes: [{ ...contestedRote, spellAspect: "Covert" }],
+    })
+    expect(stamped.rotes[0].spellAspect).toBe("Covert")
+
+    const unstamped = decode({ ...baseDoc, knownRotes: [contestedRote] })
+    expect(unstamped.rotes[0].spellAspect).toBeUndefined()
+  })
+
+  it("rejects an aspect outside the vocabulary", () => {
+    const bad = { ...contestedRote, spellAspect: "covert" }
+    expect(() => decode({ ...baseDoc, knownRotes: [bad] })).toThrow()
+  })
+
   it("rejects a rote whose Arcanum is outside the vocabulary", () => {
     const bad = { ...contestedRote, spellArcanum: "death" }
     expect(() => decode({ ...baseDoc, knownRotes: [bad] })).toThrow()

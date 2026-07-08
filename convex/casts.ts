@@ -2,7 +2,7 @@ import { v } from "convex/values"
 import { query } from "./_generated/server"
 import { requireMember } from "./lib/auth"
 import { enforcedMutation } from "./lib/enforce"
-import { sceneParadoxPips } from "../src/domain/cast"
+import { isUnresolved, sceneParadoxPips } from "../src/domain/cast"
 import {
   cancelCast as cancelCastFlow,
   containParadox as containParadoxFlow,
@@ -101,6 +101,25 @@ export const voidCast = enforcedMutation({ args: step, flow: voidCastFlow })
 // this Scene, derived live from resolved Cast history through the same leaf
 // the engage beat prefills defaults with (ADR-0012 — never a stored tally).
 // Member-gated like the Scene read; empty in downtime.
+// Whether a character already has an unresolved Cast (issue #68) — the same
+// domain leaf the draft flow refuses `CastAlreadyPending` with, read plainly
+// (ADR-0004) so the Draft Vulgar button can gate instead of round-tripping.
+export const hasPending = query({
+  args: { sessionId: v.id("sessions"), characterId: v.id("characters") },
+  handler: async (ctx, args) => {
+    await requireMember(ctx, args.sessionId)
+
+    const casts = await ctx.db
+      .query("casts")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .collect()
+    return casts.some(
+      (cast) =>
+        cast.characterId === args.characterId && isUnresolved(cast.status),
+    )
+  },
+})
+
 export const paradoxPips = query({
   args: { sessionId: v.id("sessions") },
   handler: async (ctx, args) => {
