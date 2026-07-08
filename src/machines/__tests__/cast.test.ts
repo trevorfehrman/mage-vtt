@@ -1,6 +1,12 @@
 import { describe, test, expect } from "@effect/vitest"
 import { createActor, fromPromise, waitFor } from "xstate"
-import { buildSubmission, castMachine, type CastSubmission } from "../cast"
+import {
+  buildDraftSubmission,
+  buildSubmission,
+  castMachine,
+  type CastSubmission,
+  type DraftSubmission,
+} from "../cast"
 import { KnownRote } from "#/domain/character"
 import { RotePool } from "#/domain/rote-pool"
 
@@ -26,12 +32,23 @@ const orPoolRote = new KnownRote({
   }),
 })
 
-function startMachine(submit?: (input: CastSubmission) => Promise<void>) {
-  const machine = submit
-    ? castMachine.provide({
-        actors: { submitCast: fromPromise(({ input }) => submit(input)) },
-      })
-    : castMachine
+function startMachine(
+  submit?: (input: CastSubmission) => Promise<void>,
+  draft?: (input: DraftSubmission) => Promise<void>,
+) {
+  const machine =
+    submit || draft
+      ? castMachine.provide({
+          actors: {
+            ...(submit
+              ? { submitCast: fromPromise(({ input }) => submit(input)) }
+              : {}),
+            ...(draft
+              ? { submitDraft: fromPromise(({ input }) => draft(input)) }
+              : {}),
+          },
+        })
+      : castMachine
   const actor = createActor(machine)
   actor.start()
   return actor
@@ -167,6 +184,71 @@ describe("cast machine", () => {
     expect(snap.context.extraMana).toBe(2) // fix the declaration, not retype it
   })
 
+  test("re-arming resets the vulgar declaration's extras (issue #69's bug)", () => {
+    // Intent typed for spell A must not ride into spell B's draft.
+    const actor = startMachine()
+    actor.send({ type: "ARM_ROTE", rote: graveMien })
+    actor.send({ type: "SET_INTENT", value: "melt the lock" })
+    actor.send({ type: "SET_USES_MAGICAL_TOOL", value: true })
+
+    actor.send({ type: "ARM_ROTE", rote: orPoolRote })
+    const snap = actor.getSnapshot()
+    expect(snap.context.intent).toBe("")
+    expect(snap.context.usesMagicalTool).toBe(false)
+  })
+
+  test("an 'or'-pool Rote cannot DRAFT_VULGAR until a skill is picked", () => {
+    const actor = startMachine(undefined, () => new Promise(() => {}))
+    actor.send({ type: "ARM_ROTE", rote: orPoolRote })
+
+    actor.send({ type: "DRAFT_VULGAR" })
+    expect(actor.getSnapshot().value).toBe("declaring") // guard refused
+
+    actor.send({ type: "SET_SKILL_CHOICE", value: "Occult" })
+    actor.send({ type: "DRAFT_VULGAR" })
+    expect(actor.getSnapshot().value).toBe("drafting")
+  })
+
+  test("a successful draft stands down to idle — the Cast card takes over", async () => {
+    const drafted: DraftSubmission[] = []
+    const actor = startMachine(undefined, async (input) => {
+      drafted.push(input)
+    })
+    actor.send({ type: "ARM_ROTE", rote: graveMien })
+    actor.send({ type: "SET_INTENT", value: "  melt the lock  " })
+    actor.send({ type: "SET_USES_MAGICAL_TOOL", value: true })
+    actor.send({ type: "DRAFT_VULGAR" })
+
+    await waitFor(actor, (s) => s.matches("idle"))
+    expect(actor.getSnapshot().context.selection).toBeNull()
+    expect(drafted).toEqual([
+      {
+        method: "rote",
+        roteName: "Grave Mien",
+        skillChoice: "Occult",
+        intent: "melt the lock",
+        usesMagicalTool: true,
+      },
+    ])
+  })
+
+  test("a refused draft returns to declaring with the typed error, declaration intact", async () => {
+    const actor = startMachine(undefined, async () => {
+      throw {
+        tag: "SpellNotVulgar",
+        message: "Speak with the Dead is Covert — cast it directly; the ladder is for Vulgar magic.",
+      }
+    })
+    actor.send({ type: "ARM_ROTE", rote: graveMien })
+    actor.send({ type: "SET_INTENT", value: "melt the lock" })
+    actor.send({ type: "DRAFT_VULGAR" })
+
+    await waitFor(actor, (s) => s.matches("declaring"))
+    const snap = actor.getSnapshot()
+    expect(snap.context.error?.tag).toBe("SpellNotVulgar")
+    expect(snap.context.intent).toBe("melt the lock") // fix, don't retype
+  })
+
   test("a non-seam failure lands as prose without a tag", async () => {
     const actor = startMachine(async () => {
       throw new Error("Network hiccup.")
@@ -178,6 +260,30 @@ describe("cast machine", () => {
     expect(actor.getSnapshot().context.error).toEqual({
       tag: null,
       message: "Network hiccup.",
+    })
+  })
+})
+
+describe("buildDraftSubmission", () => {
+  test("improvised: arcanum and level ride; blank extras stay off the wire", () => {
+    const actor = startMachine()
+    actor.send({ type: "ARM_IMPROVISED", arcanum: "forces", dots: 2 })
+    actor.send({ type: "SET_LEVEL", value: 2 })
+    expect(buildDraftSubmission(actor.getSnapshot().context)).toEqual({
+      method: "improvised",
+      arcanum: "forces",
+      level: 2,
+    })
+  })
+
+  test("whitespace-only intent stays off the wire", () => {
+    const actor = startMachine()
+    actor.send({ type: "ARM_ROTE", rote: graveMien })
+    actor.send({ type: "SET_INTENT", value: "   " })
+    expect(buildDraftSubmission(actor.getSnapshot().context)).toEqual({
+      method: "rote",
+      roteName: "Grave Mien",
+      skillChoice: "Occult",
     })
   })
 })

@@ -126,6 +126,14 @@ function SessionPage() {
   const pool = useDicePool(sessionId, viewed?._id)
   const rawCast = useCast(sessionId, character?._id)
 
+  // One unresolved Cast per character (issue #68): the same domain leaf the
+  // draft flow refuses with, read plainly so the Draft Vulgar button can gate
+  // instead of round-tripping into CastAlreadyPending.
+  const hasPendingCast = useQuery(
+    api.casts.hasPending,
+    character ? { sessionId, characterId: character._id } : "skip",
+  )
+
   // Switching sheets clears the pool: its components carry the previous
   // sheet's dots while the roll would anchor to the new one — a stale mix
   // must never travel. Ref-guarded so it fires only on an actual change.
@@ -327,7 +335,11 @@ function SessionPage() {
         // The foot of the rail is the readout: the pre-roll factor panel
         // while a cast is armed, the plain dice pool otherwise (issue #20).
         rawCast.state !== "idle" && mySheet ? (
-          <CastPanel cast={cast} character={mySheet} />
+          <CastPanel
+            cast={cast}
+            character={mySheet}
+            hasPendingCast={hasPendingCast === true}
+          />
         ) : (
           <DicePoolBuilder pool={pool} />
         )

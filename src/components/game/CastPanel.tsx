@@ -1,6 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react"
+import { useMemo, type ReactNode } from "react"
 import { Option } from "effect"
-import { useMutation } from "convex/react"
 import {
   previewImprovisedCast,
   previewRoteCast,
@@ -8,12 +7,9 @@ import {
 } from "#/domain/cast-preview"
 import type { CharacterSheet } from "#/domain/character"
 import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy"
-import { seamErrorMessage } from "#/lib/seam-errors"
 import { declaredFactors } from "#/machines/cast"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import type { useCast } from "#/hooks/use-cast"
-import { api } from "../../../convex/_generated/api"
-import type { Id } from "../../../convex/_generated/dataModel"
 
 type CastAPI = ReturnType<typeof useCast>
 
@@ -28,50 +24,22 @@ type CastAPI = ReturnType<typeof useCast>
 export function CastPanel({
   cast,
   character,
+  hasPendingCast = false,
 }: {
   cast: CastAPI
   character: CharacterSheet
+  /** One unresolved Cast per character (issue #68): gates Draft Vulgar. */
+  hasPendingCast?: boolean
 }) {
   const { selection, skillChoice } = cast.context
   const casting = cast.state === "casting"
-
   // The Vulgar door (issue #43, ADR-0016): the same declaration, drafted into
   // the Cast ladder instead of cast atomically — the handshake then lives on
-  // the Cast card in the feed. Covert stays fire-and-forget. Both routes pass
-  // (issue #47): an improvised effect by arcanum + level, a Rote by name (the
-  // server resolves its pool and stamps isRote for the Paradox pricing).
-  const draftVulgar = useMutation(api.casts.draft)
-  const [drafting, setDrafting] = useState(false)
-  const [draftError, setDraftError] = useState<string | null>(null)
-  // The vulgar declaration's extras (issue #66): the caster's one-line intent
-  // and the steadying tool, both accepted by the seam since #43 but never
-  // sent. They ride casts.draft only — the covert Cast button takes neither.
-  const [intent, setIntent] = useState("")
-  const [usesMagicalTool, setUsesMagicalTool] = useState(false)
-  const submitVulgarDraft = async () => {
-    if (!selection) return
-    setDrafting(true)
-    setDraftError(null)
-    try {
-      await draftVulgar({
-        sessionId: character.sessionId as string as Id<"sessions">,
-        characterId: character.id as string as Id<"characters">,
-        ...(intent.trim() ? { intent: intent.trim() } : {}),
-        ...(usesMagicalTool ? { usesMagicalTool } : {}),
-        ...(selection.method === "improvised"
-          ? { arcanum: selection.arcanum, level: cast.context.level }
-          : {
-              roteName: selection.rote.name,
-              ...(skillChoice !== null ? { skillChoice } : {}),
-            }),
-      })
-      cast.cancel() // the draft is in the wings; the card takes over
-    } catch (err) {
-      setDraftError(seamErrorMessage(err))
-    } finally {
-      setDrafting(false)
-    }
-  }
+  // the Cast card in the feed. The whole working copy, intent and tool
+  // included, lives in machine context (issue #69, ADR-0020): one owner, so
+  // re-arming resets everything atomically.
+  const drafting = cast.state === "drafting"
+  const busy = casting || drafting
 
   const preview = useMemo((): CastPreview | null => {
     if (!selection) return null
@@ -101,6 +69,25 @@ export function CastPanel({
 
   const needsSkillChoice = selection.method === "rote" && skillChoice === null
   const manaShort = preview !== null && preview.manaCost > character.manaCurrent
+
+  // Button gates (issue #68): each mirrors a server refusal through shared
+  // domain data, so a refusable click is unclickable — the server stays
+  // authoritative. An absent aspect (pre-#68 rows) means unknown: the gate
+  // stays open and the server's typed refusal still lands in the error slot.
+  const roteAspect =
+    selection.method === "rote" ? selection.rote.spellAspect : undefined
+  const castGate =
+    selection.method === "rote" && roteAspect === "Vulgar"
+      ? `${selection.rote.spellName} is Vulgar — draft it into the Cast ladder with "Draft Vulgar".`
+      : preview !== null && preview.manaCost > character.manaCurrent
+        ? `Not enough Mana: need ${preview.manaCost}, have ${character.manaCurrent}.`
+        : null
+  const draftGate =
+    selection.method === "rote" && roteAspect === "Covert"
+      ? `${selection.rote.spellName} is Covert — cast it directly; the ladder is for Vulgar magic.`
+      : hasPendingCast
+        ? "This character already has an unresolved Cast."
+        : null
 
   return (
     <div className="border-t" style={{ borderColor: "var(--line)" }}>
@@ -151,7 +138,7 @@ export function CastPanel({
             <button
               key={n}
               onClick={() => cast.setLevel(n)}
-              disabled={casting}
+              disabled={busy}
               className={`mv-mini ${cast.context.level === n ? "mv-mini-on" : ""}`}
             >
               {n}
@@ -167,7 +154,7 @@ export function CastPanel({
             <button
               key={skill}
               onClick={() => cast.setSkillChoice(skill)}
-              disabled={casting}
+              disabled={busy}
               className={`mv-mini ${skillChoice === skill ? "mv-mini-on" : ""}`}
             >
               {skill}
@@ -205,35 +192,35 @@ export function CastPanel({
         <Stepper
           value={cast.context.potency}
           onChange={cast.setPotency}
-          disabled={casting}
+          disabled={busy}
         />
       </FactorRow>
       <FactorRow label="targets">
         <Stepper
           value={cast.context.targets}
           onChange={cast.setTargets}
-          disabled={casting}
+          disabled={busy}
         />
       </FactorRow>
       <FactorRow label="mana +">
         <Stepper
           value={cast.context.extraMana}
           onChange={cast.setExtraMana}
-          disabled={casting}
+          disabled={busy}
         />
       </FactorRow>
 
       <div className="mt-2 flex flex-wrap items-center gap-2 px-3">
         <button
           onClick={() => cast.setHighSpeech(!cast.context.highSpeech)}
-          disabled={casting}
+          disabled={busy}
           className={`mv-mini ${cast.context.highSpeech ? "mv-mini-on" : ""}`}
         >
           High Speech
         </button>
         <button
           onClick={() => cast.setSpendWillpower(!cast.context.spendWillpower)}
-          disabled={casting}
+          disabled={busy}
           className={`mv-mini ${cast.context.spendWillpower ? "mv-mini-on" : ""}`}
         >
           Willpower +{WILLPOWER_BONUS_DICE}
@@ -244,7 +231,7 @@ export function CastPanel({
               cast.context.visibility === "hidden" ? "public" : "hidden",
             )
           }
-          disabled={casting}
+          disabled={busy}
           className={`mv-mini ${cast.context.visibility === "hidden" ? "mv-mini-on" : ""}`}
         >
           Hidden
@@ -269,18 +256,18 @@ export function CastPanel({
           until the Storyteller locks liabilities — one field, two doors */}
       <div className="mt-2 flex flex-wrap items-center gap-2 px-3">
         <input
-          value={intent}
-          onChange={(e) => setIntent(e.target.value)}
+          value={cast.context.intent}
+          onChange={(e) => cast.setIntent(e.target.value)}
           placeholder="Intent — what's the spell for? (Vulgar)"
-          disabled={casting || drafting}
+          disabled={busy}
           className="mv-data min-w-0 flex-1 rounded-[3px] border bg-transparent px-2 py-1 text-[11px] outline-none focus:border-[var(--accent)]"
           style={{ borderColor: "var(--line)" }}
         />
         <button
           type="button"
-          onClick={() => setUsesMagicalTool(!usesMagicalTool)}
-          disabled={casting || drafting}
-          className={`mv-mini ${usesMagicalTool ? "mv-mini-on" : ""}`}
+          onClick={() => cast.setUsesMagicalTool(!cast.context.usesMagicalTool)}
+          disabled={busy}
+          className={`mv-mini ${cast.context.usesMagicalTool ? "mv-mini-on" : ""}`}
           title="−1 Paradox die on a Vulgar draft — yours to change until the Storyteller locks"
         >
           Magical tool
@@ -291,7 +278,8 @@ export function CastPanel({
       <div className="flex gap-2 p-3">
         <button
           onClick={cast.cast}
-          disabled={casting || needsSkillChoice}
+          disabled={busy || needsSkillChoice || castGate !== null}
+          title={castGate ?? undefined}
           className="mv-roll flex-1 rounded-[3px] py-2 text-[13px] disabled:opacity-40"
         >
           {casting
@@ -303,30 +291,28 @@ export function CastPanel({
                 : `Cast ${preview.dice} dice`}
         </button>
         <button
-          onClick={submitVulgarDraft}
-          disabled={casting || drafting || needsSkillChoice}
+          onClick={cast.draftVulgar}
+          disabled={busy || needsSkillChoice || draftGate !== null}
+          title={
+            draftGate ??
+            "Draft a Vulgar cast into the wings — the Paradox handshake plays out on the Cast card."
+          }
           className="mv-btn rounded-[3px] px-3 text-[12px] disabled:opacity-40"
-          title="Draft a Vulgar cast into the wings — the Paradox handshake plays out on the Cast card."
         >
           {drafting ? "Drafting…" : "Draft Vulgar"}
         </button>
         <button
           onClick={cast.cancel}
-          disabled={casting}
+          disabled={busy}
           className="mv-btn rounded-[3px] px-3 text-[12px]"
         >
           Cancel
         </button>
       </div>
 
-      {draftError && (
-        <p className="px-3 pb-2 text-[12px]" style={{ color: "var(--bad)" }}>
-          {draftError}
-        </p>
-      )}
-
-      {/* error — the seam's typed refusal, mapped to table language; its
-          tag rides in context for UI that wants to dispatch on it */}
+      {/* error — the seam's typed refusal (cast or draft, one channel),
+          mapped to table language; its tag rides in context for UI that
+          wants to dispatch on it */}
       {cast.context.error && (
         <p className="px-3 pb-2 text-[12px]" style={{ color: "var(--bad)" }}>
           {cast.context.error.message}

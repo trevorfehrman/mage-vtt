@@ -3,7 +3,12 @@ import { useMachine } from "@xstate/react"
 import { useMutation } from "convex/react"
 import { fromPromise } from "xstate"
 import { api } from "../../convex/_generated/api"
-import { castMachine, type CastError, type CastSubmission } from "#/machines/cast"
+import {
+  castMachine,
+  type CastError,
+  type CastSubmission,
+  type DraftSubmission,
+} from "#/machines/cast"
 import { seamFailure } from "#/lib/seam-errors"
 import type { ArcanumName, KnownRote } from "#/domain/character"
 import type { Id } from "../../convex/_generated/dataModel"
@@ -28,9 +33,10 @@ export function useCast(
 ) {
   const castSpell = useMutation(api.characters.castSpell)
   const castRote = useMutation(api.characters.castRote)
+  const draftCast = useMutation(api.casts.draft)
 
-  // The machine is created once; the actor reads through this ref so it always
-  // sees the current characterId (which arrives after first render) and
+  // The machine is created once; the actors read through these refs so they
+  // always see the current characterId (which arrives after first render) and
   // mutation handles.
   const submitRef = useRef<(input: CastSubmission) => Promise<void>>(null)
   submitRef.current = async (input) => {
@@ -48,17 +54,31 @@ export function useCast(
     }
   }
 
+  // The Vulgar draft (issue #43/#69): one mutation for both routes — the
+  // server resolves the Rote's pool and stamps isRote for Paradox pricing.
+  const draftRef = useRef<(input: DraftSubmission) => Promise<void>>(null)
+  draftRef.current = async (input) => {
+    if (!characterId) throw new Error("No character to draft from.")
+    try {
+      const { method: _, ...args } = input
+      await draftCast({ sessionId, characterId, ...args })
+    } catch (err) {
+      throw castError(err)
+    }
+  }
+
   const [machine] = useState(() =>
     castMachine.provide({
       actors: {
         submitCast: fromPromise(({ input }) => submitRef.current!(input)),
+        submitDraft: fromPromise(({ input }) => draftRef.current!(input)),
       },
     }),
   )
   const [snapshot, send] = useMachine(machine)
 
   return {
-    state: snapshot.value as "idle" | "declaring" | "casting",
+    state: snapshot.value as "idle" | "declaring" | "casting" | "drafting",
     context: snapshot.context,
     armRote: (rote: KnownRote) => send({ type: "ARM_ROTE", rote }),
     armImprovised: (arcanum: ArcanumName, dots: number) =>
@@ -73,7 +93,11 @@ export function useCast(
       send({ type: "SET_SPEND_WILLPOWER", value }),
     setVisibility: (value: "public" | "hidden") =>
       send({ type: "SET_VISIBILITY", value }),
+    setIntent: (value: string) => send({ type: "SET_INTENT", value }),
+    setUsesMagicalTool: (value: boolean) =>
+      send({ type: "SET_USES_MAGICAL_TOOL", value }),
     cast: () => send({ type: "CAST" }),
+    draftVulgar: () => send({ type: "DRAFT_VULGAR" }),
     cancel: () => send({ type: "CANCEL" }),
   }
 }

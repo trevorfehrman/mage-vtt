@@ -37,6 +37,10 @@ export interface CastContext {
   extraMana: number
   spendWillpower: boolean
   visibility: "public" | "hidden"
+  /** Vulgar draft only (issue #66/#69): the caster's one-line intent. */
+  intent: string
+  /** Vulgar draft only: the steadying tool (−1 Paradox die), caster's until the ST locks. */
+  usesMagicalTool: boolean
   error: CastError | null
 }
 
@@ -51,7 +55,10 @@ type CastEvent =
   | { type: "SET_EXTRA_MANA"; value: number }
   | { type: "SET_SPEND_WILLPOWER"; value: boolean }
   | { type: "SET_VISIBILITY"; value: "public" | "hidden" }
+  | { type: "SET_INTENT"; value: string }
+  | { type: "SET_USES_MAGICAL_TOOL"; value: boolean }
   | { type: "CAST" }
+  | { type: "DRAFT_VULGAR" }
   | { type: "CANCEL" }
 
 /** What the submit actor sends over the wire — the mutation args minus ids. */
@@ -79,6 +86,26 @@ export type CastSubmission =
       visibility?: "hidden"
     }
 
+/**
+ * The wire shape of a Vulgar draft (issue #43/#66/#69) — `casts.draft`'s args
+ * minus ids: the declaration by route, plus the caster's extras when they act.
+ */
+export type DraftSubmission =
+  | {
+      method: "improvised"
+      arcanum: ArcanumName
+      level: number
+      intent?: string
+      usesMagicalTool?: boolean
+    }
+  | {
+      method: "rote"
+      roteName: string
+      skillChoice?: string
+      intent?: string
+      usesMagicalTool?: boolean
+    }
+
 const IDLE_CONTEXT: CastContext = {
   selection: null,
   level: 1,
@@ -89,8 +116,20 @@ const IDLE_CONTEXT: CastContext = {
   extraMana: 0,
   spendWillpower: false,
   visibility: "public",
+  intent: "",
+  usesMagicalTool: false,
   error: null,
 }
+
+/** The submit actors throw a CastError (see use-cast.ts); anything else —
+ * e.g. the unprovided-actor guard — is prose without a tag. */
+const toCastError = (error: unknown): CastError =>
+  typeof error === "object" && error !== null && "tag" in error && "message" in error
+    ? (error as CastError)
+    : {
+        tag: null,
+        message: error instanceof Error ? error.message : String(error),
+      }
 
 export const castMachine = setup({
   types: {
@@ -100,6 +139,9 @@ export const castMachine = setup({
   actors: {
     submitCast: fromPromise<void, CastSubmission>(() => {
       throw new Error("submitCast actor must be provided (see use-cast.ts)")
+    }),
+    submitDraft: fromPromise<void, DraftSubmission>(() => {
+      throw new Error("submitDraft actor must be provided (see use-cast.ts)")
     }),
   },
   actions: {
@@ -179,7 +221,14 @@ export const castMachine = setup({
         SET_VISIBILITY: {
           actions: assign({ visibility: ({ event }) => event.value }),
         },
+        SET_INTENT: {
+          actions: assign({ intent: ({ event }) => event.value }),
+        },
+        SET_USES_MAGICAL_TOOL: {
+          actions: assign({ usesMagicalTool: ({ event }) => event.value }),
+        },
         CAST: { target: "casting", guard: "canSubmit" },
+        DRAFT_VULGAR: { target: "drafting", guard: "canSubmit" },
         CANCEL: { target: "idle", actions: assign(() => IDLE_CONTEXT) },
       },
     },
@@ -191,23 +240,20 @@ export const castMachine = setup({
         onDone: { target: "idle", actions: assign(() => IDLE_CONTEXT) },
         onError: {
           target: "declaring",
-          actions: assign({
-            // The submit actor throws a CastError (see use-cast.ts); anything
-            // else — e.g. the unprovided-actor guard — is prose without a tag.
-            error: ({ event }): CastError =>
-              typeof event.error === "object" &&
-              event.error !== null &&
-              "tag" in event.error &&
-              "message" in event.error
-                ? (event.error as CastError)
-                : {
-                    tag: null,
-                    message:
-                      event.error instanceof Error
-                        ? event.error.message
-                        : String(event.error),
-                  },
-          }),
+          actions: assign({ error: ({ event }) => toCastError(event.error) }),
+        },
+      },
+    },
+    drafting: {
+      invoke: {
+        src: "submitDraft",
+        input: ({ context }: { context: CastContext }) =>
+          buildDraftSubmission(context),
+        // The draft is in the wings; the Cast card takes over (ADR-0016).
+        onDone: { target: "idle", actions: assign(() => IDLE_CONTEXT) },
+        onError: {
+          target: "declaring",
+          actions: assign({ error: ({ event }) => toCastError(event.error) }),
         },
       },
     },
@@ -231,6 +277,33 @@ export function declaredFactors(context: CastContext): {
     ...(context.highSpeech ? { highSpeech: true } : {}),
     ...(context.extraMana > 0 ? { extraManaCost: context.extraMana } : {}),
     ...(context.spendWillpower ? { spendWillpower: true } : {}),
+  }
+}
+
+/** The wire shape of a Vulgar draft — the declaration by route, extras only
+ * when they act (a blank or whitespace intent stays off the wire). */
+export function buildDraftSubmission(context: CastContext): DraftSubmission {
+  if (context.selection === null) {
+    throw new Error("Cannot build a draft submission with nothing armed")
+  }
+  const intent = context.intent.trim()
+  const extras = {
+    ...(intent !== "" ? { intent } : {}),
+    ...(context.usesMagicalTool ? { usesMagicalTool: true } : {}),
+  }
+  if (context.selection.method === "improvised") {
+    return {
+      method: "improvised",
+      arcanum: context.selection.arcanum,
+      level: context.level,
+      ...extras,
+    }
+  }
+  return {
+    method: "rote",
+    roteName: context.selection.rote.name,
+    ...(context.skillChoice !== null ? { skillChoice: context.skillChoice } : {}),
+    ...extras,
   }
 }
 
