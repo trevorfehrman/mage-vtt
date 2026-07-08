@@ -2,7 +2,7 @@ import { describe, expect, test } from "@effect/vitest"
 import { createActor } from "xstate"
 import type { CastEntry } from "#/domain/activity"
 import { CastStatus } from "#/domain/cast"
-import { castLadderMachine, ladderControls } from "../cast-ladder"
+import { castLadderMachine, ladderControls, ladderRung } from "../cast-ladder"
 import type { Id } from "../../../convex/_generated/dataModel"
 
 /**
@@ -44,6 +44,13 @@ describe("castLadderMachine — a projection of the document", () => {
       })
       expect(actor.getSnapshot().value).toBe(status)
     }
+  })
+
+  test("ladderRung passes rungs through and resolves a mid-derive frame to the document", () => {
+    for (const status of CastStatus.literals) {
+      expect(ladderRung(status, snapshot(status))).toBe(status)
+    }
+    expect(ladderRung("deriving", snapshot("engaged"))).toBe("engaged")
   })
 
   test("rehydrates onto every rung directly from a snapshot", () => {

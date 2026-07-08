@@ -1,5 +1,5 @@
 import { Match } from "effect"
-import { assign, setup } from "xstate"
+import { assign, setup, type StateValue } from "xstate"
 import type { CastEntry } from "#/domain/activity"
 import { CastStatus, isOnStage } from "#/domain/cast"
 
@@ -57,6 +57,17 @@ export const castLadderMachine = setup({
     ...Object.fromEntries(CastStatus.literals.map((status) => [status, {}])),
   },
 })
+
+/**
+ * The rung a render dispatches on. The machine's vocabulary is one state
+ * wider than the ladder's — it may sit in `deriving` for the microtask its
+ * `always` fork takes (unobserved in any render produced so far, issue #67).
+ * The fork's target is the document's status by definition, so that frame
+ * reads the document directly rather than feeding an off-vocabulary value
+ * to a Match.exhaustive dispatch and killing the route.
+ */
+export const ladderRung = (value: StateValue, cast: CastEntry): CastStatus =>
+  value === "deriving" ? cast.status : (value as CastStatus)
 
 /**
  * The card's controls for one (rung, viewer) pair — the pure heart of
