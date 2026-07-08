@@ -33,11 +33,21 @@ export { DocumentNotFound }
  */
 function isValue(v: unknown): v is Value {
   if (v === null) return true
-  const t = typeof v
-  if (t === "string" || t === "number" || t === "boolean" || t === "bigint") return true
+  // Direct `typeof v` checks, not a hoisted variable: TypeScript only
+  // narrows on the direct form, and the object branch needs `v: object`
+  // for `Object.values` — this line was the tsc failure that silently
+  // blocked every `convex dev` deploy.
+  if (
+    typeof v === "string" ||
+    typeof v === "number" ||
+    typeof v === "boolean" ||
+    typeof v === "bigint"
+  ) {
+    return true
+  }
   if (v instanceof ArrayBuffer) return true
   if (Array.isArray(v)) return v.every(isValue)
-  if (t === "object") {
+  if (typeof v === "object") {
     const proto = Object.getPrototypeOf(v)
     if (proto !== Object.prototype && proto !== null) return false
     return Object.values(v).every((x) => x === undefined || isValue(x))
