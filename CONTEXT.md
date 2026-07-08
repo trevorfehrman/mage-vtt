@@ -209,6 +209,14 @@ Mana); players change their own sheet only through actions, never by hand.
 _Avoid_: Manual edit meaning "player self-service" — players do not hand-edit,
 even their own sheet.
 
+**Working copy**:
+Client-held, unsent edits that exist nowhere until submitted — the state behind
+a form. Discarding one is free and invisible to every other actor; submitting
+one is a single write the server validates whole. A working copy belongs to one
+person on one screen. Contrast a **Draft**, which is a durable server document
+(a Cast in the wings) that other actors can already see and act on.
+_Avoid_: Draft for unsent client state — Draft is taken by the Cast ladder.
+
 ### The feed
 
 **Activity**:
