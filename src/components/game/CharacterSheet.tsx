@@ -501,7 +501,7 @@ function ArcanaDashboard({
             <span className="mv-arcana-glyph absolute inset-0 grid place-items-center">
               <ArcanaGlyph arcanum={name} size={34} variant={gross ? "seal" : "line"} />
             </span>
-            <span className="absolute inset-x-0 bottom-2 grid justify-items-center gap-1">
+            <span className="absolute inset-x-0 bottom-3.5 grid justify-items-center gap-1">
               <span className="mv-arcana-name text-[12px]" style={{ color: "var(--ink)" }}>
                 {displayName}
               </span>

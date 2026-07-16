@@ -12,8 +12,11 @@ import { useReducedMotion } from "motion/react"
  *
  * BENCH (2026-07-16): two contrasting substances only — Prime (Subtle,
  * emission: God Rays radiating from the glyph) and Matter (Gross, absorption:
- * liquid metal as the medallion's surface). The other eight keep pure CSS
- * until the owner rules on these.
+ * molten lead flooding the tile, masked out of the center so it gathers at
+ * the rim while the medallion holds the clear middle). The other eight keep
+ * pure CSS until the owner rules on these. Caption legibility is structural,
+ * not tuned: every substance is masked out of the caption band (styles.css
+ * .mv-substance-field / -absorb), so shaders can go loud above it.
  */
 
 /** Mirror of the --realm-* tokens (styles.css ~42): shader colors are WebGL
@@ -27,9 +30,11 @@ const REALM_HEX = {
 } as const
 
 interface SubstanceDef {
-  /** "field" fills the tile behind the glyph (emission); "seal" sits over
-   * the medallion disc (absorption). */
-  placement: "field" | "seal"
+  /** Both fill the tile behind the glyph. "field" is the emission read
+   * (strongest at the glyph, fading outward); "absorb" is the absorption
+   * read (masked out of the center — mass gathers toward the rim while the
+   * medallion holds the clear middle). */
+  placement: "field" | "absorb"
   /** speed is 0 under prefers-reduced-motion — the shader renders one
    * static frame and cancels its rAF loop. */
   node: (speed: number) => ReactNode
@@ -57,24 +62,25 @@ const SUBSTANCES: Record<string, SubstanceDef> = {
       />
     ),
   },
-  // solid matter — the struck lead coin runs liquid while the magic holds
+  // solid matter — molten lead flooding the tile, drawn in toward the coin
   matter: {
-    placement: "seal",
+    placement: "absorb",
     node: (speed) => (
       <LiquidMetal
         shape="circle"
+        scale={1.5}
         colorBack="#00000000"
         colorTint={REALM_HEX.stygia}
         repetition={4}
-        softness={0.7}
-        distortion={0.1}
-        contour={0.7}
+        softness={0.6}
+        distortion={0.12}
+        contour={0.9}
         shiftRed={0}
         shiftBlue={0}
         speed={speed * 0.4}
         width="100%"
         height="100%"
-        maxPixelCount={120 * 120}
+        maxPixelCount={200 * 200}
       />
     ),
   },
@@ -95,7 +101,7 @@ export function ArcanaSubstance({ arcanum }: { arcanum: string }) {
     <span
       aria-hidden
       className={`mv-arcana-substance ${
-        def.placement === "seal" ? "mv-substance-seal" : "mv-substance-field"
+        def.placement === "absorb" ? "mv-substance-absorb" : "mv-substance-field"
       }`}
     >
       {def.node(reduced ? 0 : 1)}
