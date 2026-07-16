@@ -494,6 +494,40 @@ pre code {
   }
 }
 
+/* The substance layer (#84 audition) — a shader mounted only while the tile
+ * is lit (see ArcanaSubstance.tsx). The fade-in shares the bloom's 0.45s
+ * beat and hides the WebGL mount latency. "field" is the emission placement
+ * (fills the tile behind the glyph); "seal" is the absorption placement
+ * (rides the medallion disc as its surface). */
+.mv-arcana-substance {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  animation: mv-substance-in 0.45s ease forwards;
+}
+.mv-substance-field {
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.mv-substance-seal {
+  left: 50%;
+  top: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  overflow: hidden;
+  z-index: 10; /* above the glyph SVG: the coin's surface, not its underlay */
+  mix-blend-mode: soft-light; /* modulate the coin, never bury the knockout */
+  opacity: 0.9;
+}
+@keyframes mv-substance-in {
+  to {
+    opacity: 1;
+  }
+}
+
 .mv-roll {
   font-family: var(--font-mono);
   text-transform: uppercase;

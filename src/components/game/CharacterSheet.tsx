@@ -19,6 +19,7 @@ import {
   isPreciousArcanum,
   pathTint,
 } from "./ArcanaGlyph"
+import { ArcanaSubstance, hasSubstance } from "./ArcanaSubstance"
 import { Separator } from "#/components/ui/separator"
 import { DotRating } from "./DotRating"
 import type { useCast } from "#/hooks/use-cast"
@@ -490,7 +491,10 @@ function ArcanaDashboard({
             style={tileVar}
           >
             <span aria-hidden className="mv-arcana-bloom" />
-            {isLit && isPreciousArcanum(name) && (
+            {/* substance bench (#84): Prime + Matter mount a shader while
+             * lit; the CSS glint stands down where a substance takes over */}
+            {isLit && <ArcanaSubstance arcanum={name} />}
+            {isLit && isPreciousArcanum(name) && !hasSubstance(name) && (
               <span aria-hidden className="mv-arcana-fx" />
             )}
             {/* the glyph owns the tile's true center; name and dots hang below */}
