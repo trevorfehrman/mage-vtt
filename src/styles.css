@@ -518,11 +518,17 @@ pre code {
 }
 
 /* the caption — name and dots ride above any substance, bare (the frosted
- * plate was auditioned 2026-07-16 and pulled; the brightened dot rings
- * below carry the legibility instead) */
+ * plate was auditioned 2026-07-16 and pulled). While lit, a tight dark
+ * halo hugs the caption's own shapes — text glyphs and dots alike — so it
+ * occludes only where a bright substance passes directly beneath, and is
+ * invisible on dark ground. */
 .mv-arcana-caption {
   position: relative;
   z-index: 1;
+}
+.mv-arcana-lit .mv-arcana-caption {
+  filter: drop-shadow(0 0 2px rgba(8, 8, 10, 0.95)) drop-shadow(0 0 5px rgba(8, 8, 10, 0.75))
+    drop-shadow(0 2px 9px rgba(8, 8, 10, 0.55));
 }
 /* lit tiles brighten the empty dots' rings — realm-tinted light instead of
  * the near-invisible line color against a running substance */
