@@ -25,7 +25,10 @@ export function DotRating({
           className="inline-block size-[7px] rounded-full"
           style={{
             background: i < current ? (active ? "var(--accent)" : color) : "transparent",
-            boxShadow: i < current ? undefined : "inset 0 0 0 1px var(--line)",
+            // ring color routes through --mv-dot-ring so a context (a lit
+            // Arcana tile) can brighten empty dots without an API change
+            boxShadow:
+              i < current ? undefined : "inset 0 0 0 1px var(--mv-dot-ring, var(--line))",
           }}
         />
       ))}
