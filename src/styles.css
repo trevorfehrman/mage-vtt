@@ -24,6 +24,12 @@
   --line: #1e2b27;
   --glow: rgba(111, 174, 151, 0.12);
   --bad: #b56d60;
+  /* The trait-zone pair (settled 2026-07-16) — innate Attributes warm
+   * (ivory), trained Skills cool (blue): temperature separates the sheet's
+   * two click-zones, and both stay distinct from the Verdigris accent,
+   * which means "selected". */
+  --zone-attr: #d4c7a3;
+  --zone-skill: #7fa3d8;
 
   /* Legacy aliases — pre-identity class/var names still referenced by the
    * marketing routes; recolored onto the identity rather than re-plumbed. */

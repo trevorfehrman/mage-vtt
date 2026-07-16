@@ -152,73 +152,30 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
         </div>
       </div>
 
-      {/* Attributes and Skills — stacked full-width sections so the boundary
-          between them is the sheet's own section grammar (eyebrow + rule),
-          while the aligned category columns + hairlines show that both run
-          Mental/Physical/Social. Full width keeps names from ever breaking
-          (the census's worst legibility defect). */}
-      <Section title="Attributes">
-        <div className="grid grid-cols-3">
-          <TraitColumn
-            className="pr-5"
-            label="Mental"
-            type="attribute"
-            traits={[
-              ["Intelligence", character.attributes.mental.intelligence],
-              ["Wits", character.attributes.mental.wits],
-              ["Resolve", character.attributes.mental.resolve],
-            ]}
-            onToggle={toggle}
-            isActive={isActive}
-            canToggle={canToggle}
-            interactive={interactive}
-          />
-          <TraitColumn
-            className="border-l border-[var(--line)] px-5"
-            label="Physical"
-            type="attribute"
-            traits={[
-              ["Strength", character.attributes.physical.strength],
-              ["Dexterity", character.attributes.physical.dexterity],
-              ["Stamina", character.attributes.physical.stamina],
-            ]}
-            onToggle={toggle}
-            isActive={isActive}
-            canToggle={canToggle}
-            interactive={interactive}
-          />
-          <TraitColumn
-            className="border-l border-[var(--line)] pl-5"
-            label="Social"
-            type="attribute"
-            traits={[
-              ["Presence", character.attributes.social.presence],
-              ["Manipulation", character.attributes.social.manipulation],
-              ["Composure", character.attributes.social.composure],
-            ]}
-            onToggle={toggle}
-            isActive={isActive}
-            canToggle={canToggle}
-            interactive={interactive}
-          />
-        </div>
-      </Section>
-
-      <Section title="Skills">
-        <div className="grid grid-cols-3">
-          {(["mental", "physical", "social"] as const).map((category, i) => (
-            <TraitColumn
+      {/* The trait matrix — three shared category columns ("social is column
+          3" holds for both zones), two zones told apart by color alone:
+          innate Attributes wear gold, trained Skills wear ink. The section
+          header doubles as the legend. One label set, no hairlines — the
+          muscle memory is "click once in the gold zone, once in the ink
+          zone, that's the pool." Full width keeps names from ever breaking. */}
+      <Section
+        title={
+          <>
+            <span style={{ color: "var(--zone-attr)" }}>Attributes</span>
+            <span style={{ color: "var(--dim)" }}> & </span>
+            <span style={{ color: "var(--zone-skill)" }}>Skills</span>
+          </>
+        }
+      >
+        <div className="grid grid-cols-3 gap-x-6">
+          {(["mental", "physical", "social"] as const).map((category) => (
+            <CategoryColumn
               key={category}
-              className={
-                i === 0
-                  ? "pr-5"
-                  : i === 1
-                    ? "border-l border-[var(--line)] px-5"
-                    : "border-l border-[var(--line)] pl-5"
-              }
               label={category.charAt(0).toUpperCase() + category.slice(1)}
-              type="skill"
-              traits={(Object.entries(character.skills[category]) as [string, number][])
+              attributes={CATEGORY_ATTRIBUTES[category].map(
+                ([name, pick]): [string, number] => [name, pick(character)],
+              )}
+              skills={(Object.entries(character.skills[category]) as [string, number][])
                 .filter(([, dots]) => dots > 0)
                 .map(([key, dots]): [string, number] => [formatSkillName(key), dots])}
               onToggle={toggle}
@@ -294,7 +251,7 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
 
 // --- Sub-components ---
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, children }: { title: ReactNode; children: ReactNode }) {
   return (
     <section>
       <div className="mb-2 flex items-center gap-2">
@@ -370,51 +327,86 @@ function TraitRow({
   )
 }
 
+/** The nine attributes by category, with their sheet accessors. */
+const CATEGORY_ATTRIBUTES: Record<
+  "mental" | "physical" | "social",
+  [string, (c: CharacterSheetData) => number][]
+> = {
+  mental: [
+    ["Intelligence", (c) => c.attributes.mental.intelligence],
+    ["Wits", (c) => c.attributes.mental.wits],
+    ["Resolve", (c) => c.attributes.mental.resolve],
+  ],
+  physical: [
+    ["Strength", (c) => c.attributes.physical.strength],
+    ["Dexterity", (c) => c.attributes.physical.dexterity],
+    ["Stamina", (c) => c.attributes.physical.stamina],
+  ],
+  social: [
+    ["Presence", (c) => c.attributes.social.presence],
+    ["Manipulation", (c) => c.attributes.social.manipulation],
+    ["Composure", (c) => c.attributes.social.composure],
+  ],
+}
+
 /**
- * One category column of a trait section: the category label, then its rated
- * traits as pool toggles. Trait names never wrap — the full-width sections
- * give every column room. Trait names arrive as display names.
+ * One category column of the trait matrix: the category label, the gold
+ * attribute zone, a breath, the ink skill zone. Color is the only zone
+ * signifier — no rules, no repeated labels. Names arrive as display names
+ * and never wrap.
  */
-function TraitColumn({
+function CategoryColumn({
   label,
-  traits,
-  type,
+  attributes,
+  skills,
   onToggle,
   isActive,
   canToggle,
   interactive,
-  className = "",
 }: {
   label: string
-  traits: [string, number][]
-  type: PoolComponentType
+  attributes: [string, number][]
+  skills: [string, number][]
   onToggle: (component: PoolComponentInput) => void
   isActive: (type: PoolComponentType, name: string) => boolean
   canToggle: boolean
   interactive: boolean
-  className?: string
 }) {
+  const zone = (
+    type: PoolComponentType,
+    traits: [string, number][],
+    color?: string,
+  ) =>
+    traits.map(([name, dots]) => {
+      const active = isActive(type, name)
+      return (
+        <TraitRow
+          key={name}
+          interactive={interactive}
+          canToggle={canToggle}
+          active={active}
+          onToggle={() => onToggle({ type, name, dots })}
+          className="-mx-2 flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
+        >
+          <span
+            className="whitespace-nowrap text-[14px]"
+            style={color ? { color } : undefined}
+          >
+            {name}
+          </span>
+          <DotRating current={dots} active={active} {...(color ? { color } : {})} />
+        </TraitRow>
+      )
+    })
+
   return (
-    <div className={`grid content-start gap-1 ${className}`}>
+    <div className="grid content-start gap-1">
       <span className="mv-data text-[11px] uppercase tracking-wider" style={{ color: "var(--dim)" }}>
         {label}
       </span>
-      {traits.map(([name, dots]) => {
-        const active = isActive(type, name)
-        return (
-          <TraitRow
-            key={name}
-            interactive={interactive}
-            canToggle={canToggle}
-            active={active}
-            onToggle={() => onToggle({ type, name, dots })}
-            className="flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
-          >
-            <span className="whitespace-nowrap text-[14px]">{name}</span>
-            <DotRating current={dots} active={active} />
-          </TraitRow>
-        )
-      })}
+      {zone("attribute", attributes, "var(--zone-attr)")}
+      {skills.length > 0 && <span aria-hidden className="h-2" />}
+      {zone("skill", skills, "var(--zone-skill)")}
     </div>
   )
 }

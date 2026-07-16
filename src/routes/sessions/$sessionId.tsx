@@ -262,11 +262,12 @@ function SessionPage() {
     )
   }
 
-  // The roster strip — your own PC first, then cabal-mates by name.
+  // The roster strip — your own PC first, then cabal-mates by name. Chips
+  // wear the mage name (shadow name); the given name is the sheet's business.
   const rosterEntries = (roster ?? [])
     .map((c) => ({
       id: c._id,
-      name: c.name,
+      name: c.shadowName ?? c.name,
       isMine: c._id === character?._id,
     }))
     .sort(

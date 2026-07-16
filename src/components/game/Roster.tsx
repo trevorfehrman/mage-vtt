@@ -23,8 +23,7 @@ export function Roster({ entries, selectedId, onSelect }: RosterProps) {
   const selected = entries.find((e) => e.id === selectedId)
 
   return (
-    <div className="mx-auto mb-4 flex max-w-3xl items-center gap-2">
-      <span className="mv-eyebrow shrink-0">Roster</span>
+    <div className="mx-auto mb-4 flex w-full max-w-3xl items-center gap-2">
       <div className="flex flex-1 flex-wrap gap-1.5">
         {entries.map((entry) => {
           const active = entry.id === selectedId
