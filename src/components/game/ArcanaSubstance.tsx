@@ -1,5 +1,15 @@
 import type { ReactNode } from "react"
-import { GodRays, LiquidMetal } from "@paper-design/shaders-react"
+import {
+  DotOrbit,
+  GemSmoke,
+  GodRays,
+  LiquidMetal,
+  Metaballs,
+  NeuroNoise,
+  SmokeRing,
+  Spiral,
+  Warp,
+} from "@paper-design/shaders-react"
 import { useReducedMotion } from "motion/react"
 
 /**
@@ -10,13 +20,13 @@ import { useReducedMotion } from "motion/react"
  * bounded (Chromium caps 16 desktop / 8 Android). The 0.45s fade-in rides the
  * same beat as the bloom and covers context-create + compile latency.
  *
- * BENCH (2026-07-16): two contrasting substances only — Prime (Subtle,
- * emission: God Rays radiating from the glyph) and Matter (Gross, absorption:
- * molten lead flooding the tile, masked out of the center so it gathers at
- * the rim while the medallion holds the clear middle). The other eight keep
- * pure CSS until the owner rules on these. Caption legibility is structural,
- * not tuned: every substance is masked out of the caption band (styles.css
- * .mv-substance-field / -absorb), so shaders can go loud above it.
+ * All ten Arcana carry a substance (bench approved 2026-07-16 on Prime +
+ * Matter; the other eight follow the research report's mapping). The row
+ * grammar decides the placement: Subtle substances radiate from the glyph
+ * ("field"), Gross substances flood the tile and gather at the rim while the
+ * solid medallion holds the clear middle ("absorb"). Caption legibility is
+ * structural, not tuned: every substance is masked out of the caption band
+ * (styles.css .mv-substance-field / -absorb), so shaders can go loud above.
  */
 
 /** Mirror of the --realm-* tokens (styles.css ~42): shader colors are WebGL
@@ -41,6 +51,69 @@ interface SubstanceDef {
 }
 
 const SUBSTANCES: Record<string, SubstanceDef> = {
+  // ── Subtle row: the substance radiates out from the glyph ──
+
+  // destiny — KNOWN GAP: no catalog shader reads as the weave's threads
+  // (SimplexNoise auditioned 2026-07-16 and rendered as blobs, not threads).
+  // The right substance is React Bits' `Threads` GLSL ported into a custom
+  // ShaderMount (research report §2) — until then Fate stays pure CSS, which
+  // also keeps one lit CSS-only tile on the wall for comparison.
+  // thought — glowing web-lines of rusted iron firing behind the ripples
+  mind: {
+    placement: "field",
+    node: (speed) => (
+      <NeuroNoise
+        colorBack="#00000000"
+        colorMid="#5c3a24"
+        colorFront={REALM_HEX.pandemonium}
+        brightness={0.25}
+        contrast={0.45}
+        scale={0.5}
+        speed={speed * 0.35}
+        width="100%"
+        height="100%"
+        maxPixelCount={320 * 320}
+      />
+    ),
+  },
+  // the veil — a mossy smoke ring breathing around the gateway glyph
+  spirit: {
+    placement: "field",
+    node: (speed) => (
+      <SmokeRing
+        colorBack="#00000000"
+        colors={[REALM_HEX.wild, "#c3cba0"]}
+        radius={0.32}
+        thickness={0.55}
+        noiseScale={1.4}
+        innerShape={0.4}
+        speed={speed * 0.35}
+        width="100%"
+        height="100%"
+        maxPixelCount={320 * 320}
+      />
+    ),
+  },
+  // entropy — a lead-grey smoke veil, barely moving
+  death: {
+    placement: "field",
+    node: (speed) => (
+      <GemSmoke
+        colorBack="#00000000"
+        colors={[REALM_HEX.stygia, "#4a4f58"]}
+        colorInner="#2a2d33"
+        size={0.62}
+        innerDistortion={0.2}
+        outerDistortion={0.35}
+        innerGlow={0.25}
+        outerGlow={0.3}
+        speed={speed * 0.25}
+        width="100%"
+        height="100%"
+        maxPixelCount={320 * 320}
+      />
+    ),
+  },
   // the supernal source — light rays breathing out from the glyph's center
   prime: {
     placement: "field",
@@ -58,7 +131,79 @@ const SUBSTANCES: Record<string, SubstanceDef> = {
         speed={speed * 0.5}
         width="100%"
         height="100%"
-        maxPixelCount={200 * 200}
+        maxPixelCount={320 * 320}
+      />
+    ),
+  },
+  // ── Gross row: the substance floods the tile and gathers at the rim ──
+
+  // energy — molten gold turbulence licking in from the edges
+  forces: {
+    placement: "absorb",
+    node: (speed) => (
+      <Warp
+        colors={["#0d0b08", REALM_HEX.aether, "#8a6a2a"]}
+        distortion={0.3}
+        swirl={0.8}
+        swirlIterations={8}
+        softness={0.35}
+        scale={0.7}
+        speed={speed * 0.6}
+        width="100%"
+        height="100%"
+        maxPixelCount={320 * 320}
+      />
+    ),
+  },
+  // recurrence — a lunargent spiral turning slow around the still coin
+  time: {
+    placement: "absorb",
+    node: (speed) => (
+      <Spiral
+        colorBack="#00000000"
+        colorFront={REALM_HEX.arcadia}
+        density={0.5}
+        strokeWidth={0.2}
+        strokeTaper={0.4}
+        distortion={0.12}
+        softness={0.1}
+        speed={speed * 0.25}
+        width="100%"
+        height="100%"
+        maxPixelCount={320 * 320}
+      />
+    ),
+  },
+  // folded space — sparse iron sparks orbiting cell centers, a starfield ring
+  space: {
+    placement: "absorb",
+    node: (speed) => (
+      <DotOrbit
+        colorBack="#00000000"
+        colors={[REALM_HEX.pandemonium, "#d9a06a", "#6a4a3a"]}
+        size={0.28}
+        sizeRange={0.5}
+        spreading={0.7}
+        speed={speed * 0.35}
+        width="100%"
+        height="100%"
+        maxPixelCount={320 * 320}
+      />
+    ),
+  },
+  // the vesica seed — gooey stone-green mass merging and dividing at the rim
+  life: {
+    placement: "absorb",
+    node: (speed) => (
+      <Metaballs
+        colorBack="#00000000"
+        colors={[REALM_HEX.wild, "#7a8657", "#b9c48f"]}
+        count={6}
+        size={0.72}
+        speed={speed * 0.35}
+        width="100%"
+        height="100%"
+        maxPixelCount={320 * 320}
       />
     ),
   },
@@ -80,7 +225,7 @@ const SUBSTANCES: Record<string, SubstanceDef> = {
         speed={speed * 0.4}
         width="100%"
         height="100%"
-        maxPixelCount={200 * 200}
+        maxPixelCount={320 * 320}
       />
     ),
   },
