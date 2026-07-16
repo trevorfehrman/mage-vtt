@@ -11,6 +11,7 @@ import { SessionLayout } from "#/components/game/SessionLayout"
 import { ActivityLog } from "#/components/game/ActivityLog"
 import { CastPanel } from "#/components/game/CastPanel"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
+import { ResourceStrip } from "#/components/game/ResourceStrip"
 import { ChatInput } from "#/components/game/ChatInput"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { SheetlessCastForm } from "#/components/game/SheetlessCastForm"
@@ -332,17 +333,21 @@ function SessionPage() {
         />
       }
       dicePoolBuilder={
-        // The foot of the rail is the readout: the pre-roll factor panel
-        // while a cast is armed, the plain dice pool otherwise (issue #20).
-        rawCast.state !== "idle" && mySheet ? (
-          <CastPanel
-            cast={cast}
-            character={mySheet}
-            hasPendingCast={hasPendingCast === true}
-          />
-        ) : (
-          <DicePoolBuilder pool={pool} />
-        )
+        // The foot of the rail is the readout: the seat's resource meters,
+        // then the pre-roll factor panel while a cast is armed, the plain
+        // dice pool otherwise (issue #20).
+        <>
+          {mySheet && <ResourceStrip character={mySheet} />}
+          {rawCast.state !== "idle" && mySheet ? (
+            <CastPanel
+              cast={cast}
+              character={mySheet}
+              hasPendingCast={hasPendingCast === true}
+            />
+          ) : (
+            <DicePoolBuilder pool={pool} />
+          )}
+        </>
       }
       storytellerTools={
         isStoryteller ? (

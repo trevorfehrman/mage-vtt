@@ -14,7 +14,7 @@ export function DotRating({ current, max = 5, active, className }: DotRatingProp
       {Array.from({ length: max }, (_, i) => (
         <span
           key={i}
-          className="inline-block size-1.5 rounded-full"
+          className="inline-block size-[7px] rounded-full"
           style={{
             background:
               i < current ? (active ? "var(--accent)" : "var(--ink)") : "transparent",

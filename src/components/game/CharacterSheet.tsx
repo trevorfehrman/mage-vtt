@@ -8,7 +8,8 @@ import {
 import type { BoxSeverity } from "#/domain/damage"
 import type { PoolComponentInput, PoolComponentType } from "#/domain/dice"
 import { formatRotePool } from "#/domain/rote-pool"
-import { ArcanaGlyph } from "./ArcanaGlyph"
+import { ArcanaGlyph, OrderGlyph, PathGlyph } from "./ArcanaGlyph"
+import { Separator } from "#/components/ui/separator"
 import { DotRating } from "./DotRating"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
@@ -61,7 +62,7 @@ interface CharacterSheetProps {
  * rated Attribute / Skill / Arcanum is a toggle button feeding the pool.
  */
 export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
-  const { healthTrack, willpowerCurrent, manaCurrent } = character
+  const { healthTrack } = character
   const canToggle =
     pool !== undefined && (pool.state === "idle" || pool.state === "building")
   const ruling = rulingArcanaOf(character.path)
@@ -77,124 +78,157 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
   const interactive = pool !== undefined
 
   return (
-    <div className="mx-auto grid max-w-3xl gap-6">
-      {/* Header — corner-ticked: one of the two "important" surfaces */}
-      <div className="mv-cornered mv-panel flex items-start justify-between gap-4 p-4">
-        <div>
-          <h2 className="mv-h text-3xl leading-none">{character.name}</h2>
-          {character.shadowName && (
-            <p className="mv-data mt-1 text-[12px] italic" style={{ color: "var(--dim)" }}>
-              &ldquo;{character.shadowName}&rdquo;
+    <div className="mx-auto grid w-full max-w-3xl gap-6">
+      {/* Header — corner-ticked: one of the two "important" surfaces. Pure
+          identity (owner call 2026-07-08): the mage name leads, the given name
+          seconds it, and the at-a-glance resource meters live in the rail's
+          ResourceStrip, not here. Gnosis stays — it's who the mage is, not a
+          meter that drains. */}
+      <div className="mv-cornered mv-panel flex items-stretch justify-between gap-6 p-4">
+        {/* Left column: who (name · description) atop the identity emblems
+            (Path | Order | ruling Arcana, hairline-divided). */}
+        <div className="flex min-w-0 flex-col justify-between gap-4">
+          <div className="grid gap-1.5">
+            <h2 className="mv-h text-[30px] leading-none">
+              {character.shadowName ?? character.name}
+            </h2>
+            <p className="text-[13px]" style={{ color: "var(--dim)" }}>
+              {character.shadowName ? (
+                <>
+                  {character.name} &middot; {character.concept}
+                </>
+              ) : (
+                character.concept
+              )}
             </p>
-          )}
-          <p className="mt-2 text-[13px]" style={{ color: "var(--ink)" }}>
-            {character.path} <span style={{ color: "var(--dim)" }}>&middot;</span>{" "}
-            {character.order}
-            <span className="ml-1.5 inline-flex translate-y-[3px] gap-1">
+          </div>
+          <div className="flex items-stretch gap-4">
+            <EmblemGroup label="Path">
+              <Emblem
+                glyph={<PathGlyph path={character.path} size={22} className="mv-accent" />}
+                name={character.path}
+              />
+            </EmblemGroup>
+            <Separator orientation="vertical" className="!h-auto self-stretch" />
+            <EmblemGroup label="Order">
+              <Emblem
+                glyph={<OrderGlyph order={character.order} size={22} className="mv-accent" />}
+                name={character.order}
+              />
+            </EmblemGroup>
+            <Separator orientation="vertical" className="!h-auto self-stretch" />
+            <EmblemGroup label="Ruling Arcana">
               {ruling.map((a) => (
-                <ArcanaGlyph key={a} arcanum={a} size={15} className="mv-accent" />
+                <Emblem
+                  key={a}
+                  glyph={<ArcanaGlyph arcanum={a} size={22} className="mv-accent" />}
+                  name={a.charAt(0).toUpperCase() + a.slice(1)}
+                />
               ))}
-            </span>
-          </p>
-          <p className="text-[12px]" style={{ color: "var(--dim)" }}>
-            {character.concept} &middot; {character.virtue}/{character.vice}
-          </p>
+            </EmblemGroup>
+          </div>
         </div>
-        {/* Resource readouts — instrument style */}
-        <div className="grid shrink-0 gap-1 text-right">
-          <Resource
-            label="GNOSIS"
-            node={<span className="mv-accent font-semibold">{character.gnosis}</span>}
-          />
-          <Resource
-            label="MANA"
-            node={<Pips filled={manaCurrent} max={Math.min(character.maxMana, 10)} />}
-            sub={`${manaCurrent}/${character.maxMana}`}
-          />
-          <Resource
-            label="WILL"
-            node={<Pips filled={willpowerCurrent} max={character.willpower} />}
-            sub={`${willpowerCurrent}/${character.willpower}`}
-          />
+
+        {/* Right column: three rows, evenly distributed — Gnosis (the level,
+            dominant), its ceilings, the soul's poles. Live currents tick in
+            the rail's ResourceStrip. */}
+        <div className="mv-data flex shrink-0 flex-col items-end justify-between gap-2 text-right">
+          <span className="flex items-baseline gap-2 leading-none">
+            <span className="text-[15px]" style={{ color: "var(--dim)" }}>GNOSIS</span>
+            <span className="mv-accent text-[32px] font-semibold">{character.gnosis}</span>
+          </span>
+          <span className="text-[12px]">
+            <span style={{ color: "var(--dim)" }}>MANA </span>
+            <span style={{ color: "var(--ink)" }}>{character.maxMana}</span>
+            <span style={{ color: "var(--dim)" }}> · WILL </span>
+            <span style={{ color: "var(--ink)" }}>{character.willpower}</span>
+          </span>
+          <span className="text-[12px]">
+            <span style={{ color: "var(--dim)" }}>VIRTUE </span>
+            <span style={{ color: "var(--ink)" }}>{character.virtue}</span>
+            <span style={{ color: "var(--dim)" }}> · VICE </span>
+            <span style={{ color: "var(--ink)" }}>{character.vice}</span>
+          </span>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Attributes */}
-        <Section title="Attributes">
-          <div className="grid grid-cols-3 gap-x-4 gap-y-3">
-            <StatColumn
-              label="Mental"
-              stats={[
-                ["Intelligence", character.attributes.mental.intelligence],
-                ["Wits", character.attributes.mental.wits],
-                ["Resolve", character.attributes.mental.resolve],
-              ]}
-              type="attribute"
-              onToggle={toggle}
-              isActive={isActive}
-              canToggle={canToggle}
-              interactive={interactive}
-            />
-            <StatColumn
-              label="Physical"
-              stats={[
-                ["Strength", character.attributes.physical.strength],
-                ["Dexterity", character.attributes.physical.dexterity],
-                ["Stamina", character.attributes.physical.stamina],
-              ]}
-              type="attribute"
-              onToggle={toggle}
-              isActive={isActive}
-              canToggle={canToggle}
-              interactive={interactive}
-            />
-            <StatColumn
-              label="Social"
-              stats={[
-                ["Presence", character.attributes.social.presence],
-                ["Manipulation", character.attributes.social.manipulation],
-                ["Composure", character.attributes.social.composure],
-              ]}
-              type="attribute"
-              onToggle={toggle}
-              isActive={isActive}
-              canToggle={canToggle}
-              interactive={interactive}
-            />
-          </div>
-        </Section>
+      {/* Attributes and Skills — stacked full-width sections so the boundary
+          between them is the sheet's own section grammar (eyebrow + rule),
+          while the aligned category columns + hairlines show that both run
+          Mental/Physical/Social. Full width keeps names from ever breaking
+          (the census's worst legibility defect). */}
+      <Section title="Attributes">
+        <div className="grid grid-cols-3">
+          <TraitColumn
+            className="pr-5"
+            label="Mental"
+            type="attribute"
+            traits={[
+              ["Intelligence", character.attributes.mental.intelligence],
+              ["Wits", character.attributes.mental.wits],
+              ["Resolve", character.attributes.mental.resolve],
+            ]}
+            onToggle={toggle}
+            isActive={isActive}
+            canToggle={canToggle}
+            interactive={interactive}
+          />
+          <TraitColumn
+            className="border-l border-[var(--line)] px-5"
+            label="Physical"
+            type="attribute"
+            traits={[
+              ["Strength", character.attributes.physical.strength],
+              ["Dexterity", character.attributes.physical.dexterity],
+              ["Stamina", character.attributes.physical.stamina],
+            ]}
+            onToggle={toggle}
+            isActive={isActive}
+            canToggle={canToggle}
+            interactive={interactive}
+          />
+          <TraitColumn
+            className="border-l border-[var(--line)] pl-5"
+            label="Social"
+            type="attribute"
+            traits={[
+              ["Presence", character.attributes.social.presence],
+              ["Manipulation", character.attributes.social.manipulation],
+              ["Composure", character.attributes.social.composure],
+            ]}
+            onToggle={toggle}
+            isActive={isActive}
+            canToggle={canToggle}
+            interactive={interactive}
+          />
+        </div>
+      </Section>
 
-        {/* Skills */}
-        <Section title="Skills">
-          <div className="grid grid-cols-3 gap-x-4 gap-y-3">
-            <SkillColumn
-              label="Mental"
-              skills={Object.entries(character.skills.mental) as [string, number][]}
+      <Section title="Skills">
+        <div className="grid grid-cols-3">
+          {(["mental", "physical", "social"] as const).map((category, i) => (
+            <TraitColumn
+              key={category}
+              className={
+                i === 0
+                  ? "pr-5"
+                  : i === 1
+                    ? "border-l border-[var(--line)] px-5"
+                    : "border-l border-[var(--line)] pl-5"
+              }
+              label={category.charAt(0).toUpperCase() + category.slice(1)}
+              type="skill"
+              traits={(Object.entries(character.skills[category]) as [string, number][])
+                .filter(([, dots]) => dots > 0)
+                .map(([key, dots]): [string, number] => [formatSkillName(key), dots])}
               onToggle={toggle}
               isActive={isActive}
               canToggle={canToggle}
               interactive={interactive}
             />
-            <SkillColumn
-              label="Physical"
-              skills={Object.entries(character.skills.physical) as [string, number][]}
-              onToggle={toggle}
-              isActive={isActive}
-              canToggle={canToggle}
-              interactive={interactive}
-            />
-            <SkillColumn
-              label="Social"
-              skills={Object.entries(character.skills.social) as [string, number][]}
-              onToggle={toggle}
-              isActive={isActive}
-              canToggle={canToggle}
-              interactive={interactive}
-            />
-          </div>
-        </Section>
-      </div>
+          ))}
+        </div>
+      </Section>
 
       {/* Arcana */}
       <Section title="Arcana">
@@ -247,7 +281,7 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
               ))}
             </div>
           </div>
-          <div className="mv-data flex gap-6 text-[12px]">
+          <div className="mv-data flex gap-6 text-[13px]">
             <Stat label="Defense" value={character.defense} />
             <Stat label="Initiative" value={character.initiative} />
             <Stat label="Speed" value={character.speed} />
@@ -272,37 +306,27 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-function Resource({ label, node, sub }: { label: string; node: ReactNode; sub?: string }) {
+function EmblemGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-center justify-end gap-2">
+    <div className="grid content-start gap-1.5">
       <span className="mv-eyebrow">{label}</span>
-      <span className="mv-data text-[12px]">{node}</span>
-      {sub && (
-        <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
-          {sub}
-        </span>
-      )}
+      <span className="flex items-center gap-4">{children}</span>
     </div>
   )
 }
 
-function Pips({ filled, max }: { filled: number; max: number }) {
+function Emblem({ glyph, name }: { glyph: ReactNode; name: string }) {
   return (
-    <span className="inline-flex gap-0.5 align-middle">
-      {Array.from({ length: max }, (_, i) => (
-        <span
-          key={i}
-          className="text-[10px]"
-          style={{ color: i < filled ? "var(--accent)" : "var(--line)" }}
-        >
-          ◆
-        </span>
-      ))}
+    <span className="inline-flex items-center gap-1.5">
+      {glyph}
+      <span className="whitespace-nowrap text-[13px]" style={{ color: "var(--ink)" }}>
+        {name}
+      </span>
     </span>
   )
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value }: { label: string; value: number | string }) {
   return (
     <span>
       <span style={{ color: "var(--dim)" }}>{label} </span>
@@ -346,29 +370,36 @@ function TraitRow({
   )
 }
 
-function StatColumn({
+/**
+ * One category column of a trait section: the category label, then its rated
+ * traits as pool toggles. Trait names never wrap — the full-width sections
+ * give every column room. Trait names arrive as display names.
+ */
+function TraitColumn({
   label,
-  stats,
+  traits,
   type,
   onToggle,
   isActive,
   canToggle,
   interactive,
+  className = "",
 }: {
   label: string
-  stats: [string, number][]
+  traits: [string, number][]
   type: PoolComponentType
   onToggle: (component: PoolComponentInput) => void
   isActive: (type: PoolComponentType, name: string) => boolean
   canToggle: boolean
   interactive: boolean
+  className?: string
 }) {
   return (
-    <div className="grid gap-1">
-      <span className="mv-data text-[10px] uppercase tracking-wider" style={{ color: "var(--dim)" }}>
+    <div className={`grid content-start gap-1 ${className}`}>
+      <span className="mv-data text-[11px] uppercase tracking-wider" style={{ color: "var(--dim)" }}>
         {label}
       </span>
-      {stats.map(([name, dots]) => {
+      {traits.map(([name, dots]) => {
         const active = isActive(type, name)
         return (
           <TraitRow
@@ -379,51 +410,7 @@ function StatColumn({
             onToggle={() => onToggle({ type, name, dots })}
             className="flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
           >
-            <span className="text-[12px]">{name}</span>
-            <DotRating current={dots} active={active} />
-          </TraitRow>
-        )
-      })}
-    </div>
-  )
-}
-
-function SkillColumn({
-  label,
-  skills,
-  onToggle,
-  isActive,
-  canToggle,
-  interactive,
-}: {
-  label: string
-  skills: [string, number][]
-  onToggle: (component: PoolComponentInput) => void
-  isActive: (type: PoolComponentType, name: string) => boolean
-  canToggle: boolean
-  interactive: boolean
-}) {
-  const nonZero = skills.filter(([, dots]) => dots > 0)
-  if (nonZero.length === 0) return null
-
-  return (
-    <div className="grid gap-1">
-      <span className="mv-data text-[10px] uppercase tracking-wider" style={{ color: "var(--dim)" }}>
-        {label}
-      </span>
-      {nonZero.map(([key, dots]) => {
-        const displayName = formatSkillName(key)
-        const active = isActive("skill", displayName)
-        return (
-          <TraitRow
-            key={key}
-            interactive={interactive}
-            canToggle={canToggle}
-            active={active}
-            onToggle={() => onToggle({ type: "skill", name: displayName, dots })}
-            className="flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
-          >
-            <span className="text-[12px]">{displayName}</span>
+            <span className="whitespace-nowrap text-[14px]">{name}</span>
             <DotRating current={dots} active={active} />
           </TraitRow>
         )
@@ -474,7 +461,7 @@ function ArcanaList({
               className="flex flex-1 items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-left"
             >
               <ArcanaGlyph arcanum={name} size={19} className={active ? "mv-accent" : ""} />
-              <span className="flex-1 text-[13px]">
+              <span className="flex-1 whitespace-nowrap text-[14px]">
                 {displayName}
                 {isRuling && (
                   <span className="mv-accent ml-1" title="Ruling Arcanum">
@@ -526,13 +513,13 @@ function RoteRow({ rote, cast }: { rote: KnownRote; cast?: CastAPI | undefined }
         size={19}
         className={armed ? "mv-accent" : ""}
       />
-      <span className="flex-1 text-[13px]">
+      <span className="flex-1 text-[14px]">
         {rote.name}
-        <span className="ml-1.5 text-[11px]" style={{ color: "var(--dim)" }}>
+        <span className="ml-1.5 text-[12px]" style={{ color: "var(--dim)" }}>
           {rote.spellName} · {rote.spellArcanum} {rote.spellLevel}
         </span>
       </span>
-      <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
+      <span className="mv-data text-[11px]" style={{ color: "var(--dim)" }}>
         {formatRotePool(rote.pool)}
       </span>
     </TraitRow>
