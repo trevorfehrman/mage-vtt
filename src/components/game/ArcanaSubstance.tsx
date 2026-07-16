@@ -1,11 +1,11 @@
 import type { ReactNode } from "react"
 import {
+  DotGrid,
   GemSmoke,
   GodRays,
   GrainGradient,
   LiquidMetal,
   MeshGradient,
-  Metaballs,
   NeuroNoise,
   Warp,
   Water,
@@ -48,29 +48,30 @@ interface SubstanceDef {
   /** speed is 0 under prefers-reduced-motion — the shader renders one
    * static frame and cancels its rAF loop. */
   node: (speed: number) => ReactNode
-  /** The whole layer turns slowly (reduced-motion gated in CSS). */
-  rotate?: boolean
+  /** Whole-layer CSS motion (reduced-motion gated in styles.css):
+   * "turn" rotates slowly (Death); "converge" breathes inward with a
+   * slight angular drift (Space — distances shrinking). */
+  motion?: "turn" | "converge"
 }
 
 const SUBSTANCES: Record<string, SubstanceDef> = {
   // ── Subtle row: the substance radiates out from the glyph ──
 
-  // destiny — branching silver pathways, forever redrawing themselves.
-  // Same engine as Mind in a different dress (thin lunargent filament vs
-  // fire-web); it's the catalog's only true branching-filament shader.
-  // (SimplexNoise and Swirl both auditioned 2026-07-16 and failed; if the
-  // shared engine bothers, next is porting React Bits' Threads/Lightning
-  // GLSL into a custom ShaderMount — research report §2.)
+  // destiny — truchet pipework: angular silver pathways forever regenerating
+  // (owner spec: "the pipe screensaver". SimplexNoise, Swirl, and NeuroNoise
+  // all auditioned 2026-07-16 and retired — the last for rendering
+  // literally-Mind.)
   fate: {
     placement: "field",
     node: (speed) => (
-      <NeuroNoise
-        colorBack="#00000000"
-        colorMid="#4a525e"
-        colorFront={REALM_HEX.arcadia}
-        brightness={0.16}
-        contrast={0.6}
-        scale={0.65}
+      <GrainGradient
+        colorBack="#0d0f12"
+        colors={[REALM_HEX.arcadia, "#7e8896", "#3a4149"]}
+        shape="truchet"
+        scale={0.16}
+        softness={0}
+        intensity={0.2}
+        noise={1}
         speed={speed * 0.3}
         width="100%"
         height="100%"
@@ -117,7 +118,7 @@ const SUBSTANCES: Record<string, SubstanceDef> = {
   // call: geometry restored, rotation instead of retreat from the caption)
   death: {
     placement: "field",
-    rotate: true,
+    motion: "turn",
     node: (speed) => (
       <GemSmoke
         colorBack="#00000000"
@@ -196,18 +197,25 @@ const SUBSTANCES: Record<string, SubstanceDef> = {
       />
     ),
   },
-  // space is closing distances — two bodies apart, drawn together, merging
-  // (owner reframe 2026-07-16: not outer space; convergence itself. DotOrbit
-  // and the accretion ring both retired.)
+  // space — the coordinate lattice itself, slowly drawing inward: a static
+  // iron dot-grid under a CSS convergence pulse (owner spec: coordinates,
+  // relativity graphs, distances shrinking, angular momentum. DotOrbit, the
+  // accretion ring, metaballs, and warped checks all retired — the checks
+  // dissolve into camo under any distortion.)
   space: {
     placement: "absorb",
-    node: (speed) => (
-      <Metaballs
+    motion: "converge",
+    node: () => (
+      <DotGrid
         colorBack="#00000000"
-        colors={[REALM_HEX.pandemonium, "#d9a06a"]}
-        count={2}
-        size={0.88}
-        speed={speed * 0.22}
+        colorFill={REALM_HEX.pandemonium}
+        colorStroke="#e0a068"
+        size={1.6}
+        gapX={18}
+        gapY={18}
+        strokeWidth={0}
+        sizeRange={0.35}
+        opacityRange={0.55}
         width="100%"
         height="100%"
         maxPixelCount={320 * 320}
@@ -286,8 +294,14 @@ export function ArcanaSubstance({ arcanum }: { arcanum: string }) {
         def.placement === "absorb" ? "mv-substance-absorb" : "mv-substance-field"
       }`}
     >
-      {def.rotate ? (
-        <span className="mv-substance-rotate">{def.node(reduced ? 0 : 1)}</span>
+      {def.motion ? (
+        <span
+          className={
+            def.motion === "turn" ? "mv-substance-rotate" : "mv-substance-converge"
+          }
+        >
+          {def.node(reduced ? 0 : 1)}
+        </span>
       ) : (
         def.node(reduced ? 0 : 1)
       )}
