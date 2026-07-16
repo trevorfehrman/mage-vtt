@@ -1,12 +1,12 @@
 import type { ReactNode } from "react"
 import {
-  DotGrid,
   GemSmoke,
   GodRays,
   GrainGradient,
   LiquidMetal,
   MeshGradient,
   NeuroNoise,
+  ShaderMount,
   Warp,
   Water,
 } from "@paper-design/shaders-react"
@@ -39,6 +39,87 @@ const REALM_HEX = {
   stygia: "#868e9c",
 } as const
 
+/* ── Custom GLSL (ShaderMount conventions: GLSL ES 3.00, u_time seconds and
+ * u_resolution px provided by the mount, premultiplied-alpha output) ── */
+
+/** Fate: a network of jagged light-paths, crossing and forever re-routing.
+ * Noise/fbm machinery ported from React Bits' Lightning (MIT + Commons
+ * Clause, vendoring permitted), extended from one bolt to three crossing
+ * bolts so the paths branch instead of snaking. */
+const FATE_PATHS_FRAG = /* glsl */ `#version 300 es
+precision mediump float;
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform vec4 u_color;
+uniform float u_intensity;
+out vec4 fragColor;
+
+float hash11(float p) { p = fract(p * .1031); p *= p + 33.33; p *= p + p; return fract(p); }
+float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+mat2 rot(float th) { float c = cos(th); float s = sin(th); return mat2(c, -s, s, c); }
+float vnoise(vec2 p) {
+  vec2 ip = floor(p); vec2 fp = fract(p);
+  float a = hash12(ip); float b = hash12(ip + vec2(1., 0.));
+  float c = hash12(ip + vec2(0., 1.)); float d = hash12(ip + vec2(1., 1.));
+  vec2 t = smoothstep(0., 1., fp);
+  return mix(mix(a, b, t.x), mix(c, d, t.x), t.y);
+}
+float fbm(vec2 p) {
+  float v = 0.; float amp = .5;
+  for (int i = 0; i < 6; i++) { v += amp * vnoise(p); p = rot(.45) * p * 2.; amp *= .5; }
+  return v;
+}
+float bolt(vec2 uv, float seed, float t) {
+  vec2 p = uv;
+  p += 2. * fbm(p * 1.8 + seed + .6 * t) - 1.;
+  float d = abs(p.x);
+  float flicker = .55 + .45 * hash11(floor(t * 2.) + seed);
+  return .04 * flicker / (d + .02);
+}
+void main() {
+  vec2 uv = (2. * gl_FragCoord.xy - u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+  float t = u_time;
+  float g = bolt(uv, 1.7, t);
+  g += bolt(rot(2.094) * uv + vec2(.35, -.2), 4.3, t * .85);
+  g += bolt(rot(-2.094) * uv + vec2(-.3, .25), 7.9, t * 1.15);
+  vec3 col = u_color.rgb * min(g, 2.5) * u_intensity;
+  float a = clamp(max(col.r, max(col.g, col.b)), 0., 1.);
+  fragColor = vec4(min(col, vec3(1.)), a);
+}
+`
+
+/** Space: the spacetime graph itself — a coordinate grid compressed toward
+ * a central mass and differentially dragged around it (inner space rotates
+ * faster than outer: angular momentum, distances shrinking near the well). */
+const SPACE_WELL_FRAG = /* glsl */ `#version 300 es
+precision mediump float;
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform vec4 u_color;
+uniform float u_intensity;
+out vec4 fragColor;
+
+mat2 rot(float th) { float c = cos(th); float s = sin(th); return mat2(c, -s, s, c); }
+void main() {
+  vec2 uv = (2. * gl_FragCoord.xy - u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+  float r = length(uv);
+  float ang = u_time * .05 * (1.2 / (r + .35));
+  vec2 p = rot(ang) * uv;
+  p *= 1. + .85 * exp(-r * 2.2);
+  vec2 gp = p * 5.;
+  vec2 aa = max(fwidth(gp), vec2(1e-4));
+  vec2 gd = abs(fract(gp - .5) - .5) / aa;
+  float line = 1. - min(min(gd.x, gd.y), 1.);
+  float glow = .35 + .65 * exp(-r * 1.8);
+  float a = clamp(line * glow * u_intensity, 0., 1.) * u_color.a;
+  fragColor = vec4(u_color.rgb * a, a);
+}
+`
+
+/** Shader colors are WebGL uniforms: [r,g,b,a] in 0–1, premultiply-ready. */
+const LUNARGENT_VEC4 = [0.804, 0.839, 0.886, 1]
+const IRON_VEC4 = [0.706, 0.412, 0.235, 1]
+
 interface SubstanceDef {
   /** Both fill the tile behind the glyph. "field" is the emission read
    * (strongest at the glyph, fading outward); "absorb" is the absorption
@@ -57,21 +138,15 @@ interface SubstanceDef {
 const SUBSTANCES: Record<string, SubstanceDef> = {
   // ── Subtle row: the substance radiates out from the glyph ──
 
-  // destiny — truchet pipework: angular silver pathways forever regenerating
-  // (owner spec: "the pipe screensaver". SimplexNoise, Swirl, and NeuroNoise
-  // all auditioned 2026-07-16 and retired — the last for rendering
-  // literally-Mind.)
+  // destiny — a web of jagged silver paths, crossing and forever re-routing
+  // (custom GLSL; SimplexNoise, Swirl, NeuroNoise, and truchet all
+  // auditioned 2026-07-16 and retired — blobs, snakes, or literally-Mind)
   fate: {
     placement: "field",
     node: (speed) => (
-      <GrainGradient
-        colorBack="#0d0f12"
-        colors={[REALM_HEX.arcadia, "#7e8896", "#3a4149"]}
-        shape="truchet"
-        scale={0.16}
-        softness={0}
-        intensity={0.2}
-        noise={1}
+      <ShaderMount
+        fragmentShader={FATE_PATHS_FRAG}
+        uniforms={{ u_color: LUNARGENT_VEC4, u_intensity: 0.85 }}
         speed={speed * 0.3}
         width="100%"
         height="100%"
@@ -197,25 +272,17 @@ const SUBSTANCES: Record<string, SubstanceDef> = {
       />
     ),
   },
-  // space — the coordinate lattice itself, slowly drawing inward: a static
-  // iron dot-grid under a CSS convergence pulse (owner spec: coordinates,
-  // relativity graphs, distances shrinking, angular momentum. DotOrbit, the
-  // accretion ring, metaballs, and warped checks all retired — the checks
-  // dissolve into camo under any distortion.)
+  // space — the spacetime graph: an iron coordinate grid compressed toward
+  // the coin's mass, inner space dragged around it faster than outer
+  // (custom GLSL; DotOrbit, accretion ring, metaballs, warped checks, and
+  // the zooming dot-grid all auditioned 2026-07-16 and retired)
   space: {
     placement: "absorb",
-    motion: "converge",
-    node: () => (
-      <DotGrid
-        colorBack="#00000000"
-        colorFill={REALM_HEX.pandemonium}
-        colorStroke="#e0a068"
-        size={1.6}
-        gapX={18}
-        gapY={18}
-        strokeWidth={0}
-        sizeRange={0.35}
-        opacityRange={0.55}
+    node: (speed) => (
+      <ShaderMount
+        fragmentShader={SPACE_WELL_FRAG}
+        uniforms={{ u_color: IRON_VEC4, u_intensity: 0.8 }}
+        speed={speed}
         width="100%"
         height="100%"
         maxPixelCount={320 * 320}
