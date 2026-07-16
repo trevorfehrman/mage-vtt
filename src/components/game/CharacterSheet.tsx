@@ -180,6 +180,19 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
         <ArcanaDashboard arcana={character.arcana} ruling={ruling} cast={cast} />
       </Section>
 
+      {/* Rotes — practiced spells, directly under the Arcana they belong to:
+          the sheet's magic stays contiguous (owner call 2026-07-16). Castable
+          entries (issue #20); inert rows on read-only sheets. */}
+      {character.rotes.length > 0 && (
+        <Section title="Rotes">
+          <div className="grid gap-1">
+            {character.rotes.map((rote) => (
+              <RoteRow key={rote.name} rote={rote} cast={cast} />
+            ))}
+          </div>
+        </Section>
+      )}
+
       {/* The trait matrix — three shared category columns ("social is column
           3" holds for both zones), two zones told apart by color alone:
           innate Attributes wear gold, trained Skills wear ink. The section
@@ -214,17 +227,6 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
           ))}
         </div>
       </Section>
-
-      {/* Rotes — castable entries (issue #20); inert rows on read-only sheets */}
-      {character.rotes.length > 0 && (
-        <Section title="Rotes">
-          <div className="grid gap-1">
-            {character.rotes.map((rote) => (
-              <RoteRow key={rote.name} rote={rote} cast={cast} />
-            ))}
-          </div>
-        </Section>
-      )}
 
       {/* Vitals */}
       <Section title="Vitals">
@@ -535,13 +537,20 @@ function RoteRow({ rote, cast }: { rote: KnownRote; cast?: CastAPI | undefined }
       canToggle={cast !== undefined && cast.state !== "casting"}
       active={armed}
       onToggle={() => cast?.armRote(rote)}
-      className="flex items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-left"
+      className="-mx-2 flex items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-left"
     >
-      <ArcanaGlyph
-        arcanum={rote.spellArcanum.toLowerCase()}
-        size={19}
-        className={armed ? "mv-accent" : ""}
-      />
+      {/* the glyph speaks the dashboard's language: realm tint, and the
+          Gross Arcana wear their struck-medallion negative */}
+      <span
+        className="grid place-items-center"
+        style={{ color: arcanumTint(rote.spellArcanum) }}
+      >
+        <ArcanaGlyph
+          arcanum={rote.spellArcanum.toLowerCase()}
+          size={19}
+          variant={isGrossArcanum(rote.spellArcanum) ? "seal" : "line"}
+        />
+      </span>
       <span className="flex-1 text-[14px]">
         {rote.name}
         <span className="ml-1.5 text-[12px]" style={{ color: "var(--dim)" }}>
