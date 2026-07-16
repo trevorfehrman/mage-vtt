@@ -517,22 +517,15 @@ pre code {
   border-radius: inherit;
 }
 
-/* the caption plate — name and dots sit above any substance; the frosted
- * chip fades in ONLY while the tile is lit (a substance is running), so
- * idle and hover tiles keep the bare caption on the panel */
+/* the caption — name and dots ride above any substance, bare (the frosted
+ * plate was auditioned 2026-07-16 and pulled; the brightened dot rings
+ * below carry the legibility instead) */
 .mv-arcana-caption {
   position: relative;
   z-index: 1;
-  background: transparent;
-  transition: background 0.3s ease;
-}
-.mv-arcana-lit .mv-arcana-caption {
-  background: color-mix(in srgb, var(--panel) 78%, transparent);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
 }
 /* lit tiles brighten the empty dots' rings — realm-tinted light instead of
- * the near-invisible line color on the dark plate */
+ * the near-invisible line color against a running substance */
 .mv-arcana-lit {
   --mv-dot-ring: color-mix(in srgb, var(--tile) 50%, white);
 }
