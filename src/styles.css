@@ -540,6 +540,26 @@ pre code {
     opacity: 1;
   }
 }
+/* a substance layer that turns as a whole, very slowly (Death's diamond).
+ * Scaled √2-plus so the canvas corners never leave the tile uncovered. */
+.mv-substance-rotate {
+  position: absolute;
+  inset: 0;
+  transform: scale(1.45);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mv-substance-rotate {
+    animation: mv-slow-turn 75s linear infinite;
+  }
+}
+@keyframes mv-slow-turn {
+  from {
+    transform: scale(1.45) rotate(0deg);
+  }
+  to {
+    transform: scale(1.45) rotate(360deg);
+  }
+}
 
 .mv-roll {
   font-family: var(--font-mono);

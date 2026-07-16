@@ -5,9 +5,8 @@ import {
   GrainGradient,
   LiquidMetal,
   MeshGradient,
+  Metaballs,
   NeuroNoise,
-  SmokeRing,
-  Swirl,
   Warp,
   Water,
 } from "@paper-design/shaders-react"
@@ -49,29 +48,30 @@ interface SubstanceDef {
   /** speed is 0 under prefers-reduced-motion — the shader renders one
    * static frame and cancels its rAF loop. */
   node: (speed: number) => ReactNode
+  /** The whole layer turns slowly (reduced-motion gated in CSS). */
+  rotate?: boolean
 }
 
 const SUBSTANCES: Record<string, SubstanceDef> = {
   // ── Subtle row: the substance radiates out from the glyph ──
 
-  // destiny — lunargent strands curving toward the weave's center
-  // (SimplexNoise auditioned 2026-07-16: blobs, not threads. If Swirl reads
-  // too spiral, next candidates: Voronoi as the web, or React Bits'
-  // `Threads` GLSL ported into a custom ShaderMount — research report §2.)
+  // destiny — branching silver pathways, forever redrawing themselves.
+  // Same engine as Mind in a different dress (thin lunargent filament vs
+  // fire-web); it's the catalog's only true branching-filament shader.
+  // (SimplexNoise and Swirl both auditioned 2026-07-16 and failed; if the
+  // shared engine bothers, next is porting React Bits' Threads/Lightning
+  // GLSL into a custom ShaderMount — research report §2.)
   fate: {
     placement: "field",
     node: (speed) => (
-      <Swirl
-        colorBack="#0d0f12"
-        colors={["#cdd6e2cc"]}
-        bandCount={2}
-        twist={0.06}
-        center={0}
-        proportion={0.55}
-        softness={0.5}
-        noise={0.2}
-        noiseFrequency={0.5}
-        speed={speed * 0.15}
+      <NeuroNoise
+        colorBack="#00000000"
+        colorMid="#4a525e"
+        colorFront={REALM_HEX.arcadia}
+        brightness={0.16}
+        contrast={0.6}
+        scale={0.65}
+        speed={speed * 0.3}
         width="100%"
         height="100%"
         maxPixelCount={320 * 320}
@@ -113,17 +113,17 @@ const SUBSTANCES: Record<string, SubstanceDef> = {
       />
     ),
   },
-  // entropy — a lead-grey smoke diamond, barely moving, riding high so the
-  // caption never interrupts its geometry
+  // entropy — the full smoke diamond, turning imperceptibly slow (owner
+  // call: geometry restored, rotation instead of retreat from the caption)
   death: {
     placement: "field",
+    rotate: true,
     node: (speed) => (
       <GemSmoke
         colorBack="#00000000"
         colors={[REALM_HEX.stygia, "#4a4f58"]}
         colorInner="#2a2d33"
-        size={0.46}
-        offsetY={0.14}
+        size={0.62}
         innerDistortion={0.2}
         outerDistortion={0.35}
         innerGlow={0.25}
@@ -196,65 +196,74 @@ const SUBSTANCES: Record<string, SubstanceDef> = {
       />
     ),
   },
-  // folded space — the accretion ring: rust-lit smoke around a dark hole
-  // (DotOrbit auditioned 2026-07-16: too on the nose; owner inspo = the
-  // black-hole photographs, and Spirit's old smoke ring re-tinted is that)
+  // space is closing distances — two bodies apart, drawn together, merging
+  // (owner reframe 2026-07-16: not outer space; convergence itself. DotOrbit
+  // and the accretion ring both retired.)
   space: {
     placement: "absorb",
     node: (speed) => (
-      <SmokeRing
+      <Metaballs
         colorBack="#00000000"
-        colors={[REALM_HEX.pandemonium, "#e09a5a"]}
-        radius={0.3}
-        thickness={0.45}
-        noiseScale={1.2}
-        innerShape={0.6}
-        speed={speed * 0.25}
+        colors={[REALM_HEX.pandemonium, "#d9a06a"]}
+        count={2}
+        size={0.88}
+        speed={speed * 0.22}
         width="100%"
         height="100%"
         maxPixelCount={320 * 320}
       />
     ),
   },
-  // primal life — a raw grain-flecked green mass, pulsing, not clinical
-  // (Metaballs auditioned 2026-07-16: "amoebas or mitosis, too sciency")
+  // primal life — emergence: grain-flecked green bursting outward from the
+  // seed in expanding rings (owner: "it's a bursting forth" — the blob and
+  // the metaballs both read as biology-textbook, retired)
   life: {
     placement: "absorb",
     node: (speed) => (
       <GrainGradient
-        colorBack="#00000000"
-        colors={[REALM_HEX.wild, "#6f7d4c", "#c9d4a4"]}
-        shape="blob"
-        softness={0.7}
-        intensity={0.5}
-        noise={0.55}
-        speed={speed * 0.4}
+        colorBack="#1c2315"
+        colors={["#d8e3b4", REALM_HEX.wild, "#3a4426"]}
+        shape="ripple"
+        softness={0.6}
+        intensity={0.6}
+        noise={0.5}
+        speed={speed * 0.45}
         width="100%"
         height="100%"
         maxPixelCount={320 * 320}
       />
     ),
   },
-  // solid matter — molten lead flooding the tile, drawn in toward the coin
+  // solid matter — molten LEAD, not mercury (owner tweak): darker tint,
+  // fewer/softer stripes, and a brightness burn-down on the whole layer so
+  // the chrome whites go matte
   matter: {
     placement: "absorb",
     node: (speed) => (
-      <LiquidMetal
-        shape="circle"
-        scale={1.5}
-        colorBack="#00000000"
-        colorTint={REALM_HEX.stygia}
-        repetition={4}
-        softness={0.6}
-        distortion={0.12}
-        contour={0.9}
-        shiftRed={0}
-        shiftBlue={0}
-        speed={speed * 0.4}
-        width="100%"
-        height="100%"
-        maxPixelCount={320 * 320}
-      />
+      <span
+        style={{
+          position: "absolute",
+          inset: 0,
+          filter: "brightness(0.72) contrast(0.94) saturate(0.9)",
+        }}
+      >
+        <LiquidMetal
+          shape="circle"
+          scale={1.5}
+          colorBack="#00000000"
+          colorTint="#565c66"
+          repetition={3}
+          softness={0.8}
+          distortion={0.12}
+          contour={0.9}
+          shiftRed={0}
+          shiftBlue={0}
+          speed={speed * 0.35}
+          width="100%"
+          height="100%"
+          maxPixelCount={320 * 320}
+        />
+      </span>
     ),
   },
 }
@@ -277,7 +286,11 @@ export function ArcanaSubstance({ arcanum }: { arcanum: string }) {
         def.placement === "absorb" ? "mv-substance-absorb" : "mv-substance-field"
       }`}
     >
-      {def.node(reduced ? 0 : 1)}
+      {def.rotate ? (
+        <span className="mv-substance-rotate">{def.node(reduced ? 0 : 1)}</span>
+      ) : (
+        def.node(reduced ? 0 : 1)
+      )}
     </span>
   )
 }
