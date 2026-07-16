@@ -1,5 +1,12 @@
 # Component Polish — component design language (RESOLVED, core loop)
 
+> **Partially superseded (2026-07-16, ADR-0021):** the polish campaign's pilot
+> raised the type scale (traits 12→14px) and relaxed the "sheet fits without
+> scrolling" density constraint below — legibility beat density on a real
+> laptop. The evolving source of truth is ADR-0021 and, once #72 lands,
+> `docs/component-standards.md`. The rest of this doc (type roles, state
+> colors, glyph functionalism, sheet-as-controller) still stands.
+
 Asset for the `component-polish` ticket (`docs/decision-map.md`). Takes the locked
 visual identity (`docs/visual-identity.md`) down to the component level. Settled
 against a **working exemplar of the core play loop** — the most coupled, most-used

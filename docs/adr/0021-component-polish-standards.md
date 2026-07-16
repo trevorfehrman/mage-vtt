@@ -23,6 +23,18 @@ shadcn/Radix behavior machinery where it needs it and reskins it to mv on the
 spot; whether that feels distinctive enough is learned on one component before
 seventeen commit to it.
 
+*Amended (2026-07-16):* in practice the pilot landed on the **sheet family**
+first (commit e0fffdc): it settled the type scale (14px primary, nowrap trait
+names), the named-boundary rule (section headers, never control-shaped
+geometry or bare type weight), the stat-line label grammar, glyph optical
+normalization plus the Path/Order glyph sets, and the first in-game shadcn
+reuse (Separator). It also amended two of this ADR's own calls: the settled
+density rises (the "sheet fits without scrolling" constraint from
+`docs/component-polish.md` is relaxed — legibility beat density), and
+at-a-glance resources moved out of the sheet header into the rail's
+ResourceStrip. The rail foot keeps the remaining vocabulary-pilot role: gate
+tooltip, refusing-button treatment, designed empty state, first Motion use.
+
 **Animation is Motion + CSS, split by job.** The `motion` package
 (framer-motion) is the sanctioned animation layer: anything that enters,
 exits, reorders, or changes stage goes through Motion
