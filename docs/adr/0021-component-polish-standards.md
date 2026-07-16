@@ -44,6 +44,12 @@ transitions; nothing animates ambiently; reduced motion respected via
 animation (fragile), and routing hovers through Motion (a JS wrapper per
 button for no gain).
 
+*Amended (2026-07-16):* one sanctioned exception to "nothing ambient" — the
+Arcana dashboard's **material behaviors** (owner call): precious metals
+carry a slow specular drift, stone breathes, iron and lead thrum. Slow,
+low-alpha, `prefers-reduced-motion`-gated, and confined to the Arcana
+material system; this is not a general license for ambient motion.
+
 **The a11y floor amends the locked identity.** Three planks: text contrast
 ≥ 4.5:1, full keyboard operability with visible focus-visible styles, and no
 native form controls where a styled equivalent exists. `--dim` (#797488)

@@ -73,20 +73,32 @@ const ORDERS: Record<string, GlyphDef> = {
   "free council": { box: [4.2, 3.3, 17.5, 16.5], node: <><circle cx="11.5" cy="12.5" r="7.3" /><circle cx="11.5" cy="12.5" r="2.9" /><path d="M11.5 5.2 V7.4 M11.5 17.6 V19.8 M4.2 12.5 H6.4 M16.6 12.5 H18.8 M6.3 7.3 L7.9 8.9 M15.1 16.1 L16.7 17.7 M6.3 17.7 L7.9 16.1 M15.1 8.9 L16.7 7.3" /><circle cx="20.3" cy="4.7" r="1.4" fill="currentColor" stroke="none" /></> },
 }
 
-/** Scale-and-center a glyph's measured box onto an 18×18 target in the 24-box,
- * compensating stroke width so every glyph carries the same line weight. */
+export type GlyphVariant = "line" | "seal"
+
+/**
+ * Scale-and-center a glyph's measured box onto a shared target in the 24-box,
+ * compensating stroke width so every glyph carries the same line weight.
+ *
+ * `variant="line"` is the glyph as light: tinted strokes on the dark ground.
+ * `variant="seal"` is its negative — a struck medallion: a solid disc of
+ * currentColor with the glyph knocked out dark (the Gross/material rendering;
+ * the Subtle sibling stays line-light).
+ */
 function Glyph({
   def,
   size,
   className,
+  variant = "line",
 }: {
   def: GlyphDef | undefined
   size: number
   className: string
+  variant?: GlyphVariant
 }) {
   if (!def) return null
   const [x, y, w, h] = def.box
-  const s = Math.min(18 / w, 18 / h)
+  const target = variant === "seal" ? 13 : 18
+  const s = Math.min(target / w, target / h)
   const tx = 12 - s * (x + w / 2)
   const ty = 12 - s * (y + h / 2)
   return (
@@ -102,24 +114,96 @@ function Glyph({
       strokeLinejoin="round"
       aria-hidden
     >
-      <g transform={`translate(${tx.toFixed(3)} ${ty.toFixed(3)}) scale(${s.toFixed(3)})`}>
+      {variant === "seal" && (
+        <circle cx="12" cy="12" r="11" fill="currentColor" stroke="none" />
+      )}
+      <g
+        transform={`translate(${tx.toFixed(3)} ${ty.toFixed(3)}) scale(${s.toFixed(3)})`}
+        {...(variant === "seal" ? { style: { color: "var(--panel)" } } : {})}
+      >
         {def.node}
       </g>
     </svg>
   )
 }
 
+/**
+ * Arcana color semantics (docs/mage-iconography.md, --realm-* tokens): one
+ * hue per Supernal Realm family; the Subtle/Gross siblings split by
+ * inversion — Subtle renders as line-light, Gross as a struck medallion
+ * (see the `variant` prop). UI semantics, not game rules.
+ */
+const ARCANUM_REALM: Record<string, string> = {
+  prime: "aether",
+  forces: "aether",
+  fate: "arcadia",
+  time: "arcadia",
+  mind: "pandemonium",
+  space: "pandemonium",
+  spirit: "wild",
+  life: "wild",
+  death: "stygia",
+  matter: "stygia",
+}
+
+/** The Gross (material) half of each Realm pair; its sibling is Subtle. */
+const GROSS_ARCANA = new Set(["forces", "time", "space", "life", "matter"])
+
+const PATH_REALM: Record<string, string> = {
+  obrimos: "aether",
+  acanthus: "arcadia",
+  mastigos: "pandemonium",
+  thyrsus: "wild",
+  moros: "stygia",
+}
+
+/** The Realm-family tint for an Arcanum, as a CSS var. Accent for unknowns. */
+export const arcanumTint = (arcanum: string): string => {
+  const realm = ARCANUM_REALM[arcanum.toLowerCase()]
+  return realm ? `var(--realm-${realm})` : "var(--accent)"
+}
+
+/** True for the material (medallion-rendered) half of a Realm pair. */
+export const isGrossArcanum = (arcanum: string): boolean =>
+  GROSS_ARCANA.has(arcanum.toLowerCase())
+
+/** The Realm an Arcanum belongs to (drives the material behavior classes). */
+export const arcanumRealm = (arcanum: string): string =>
+  ARCANUM_REALM[arcanum.toLowerCase()] ?? "aether"
+
+/** The Realm-family tint for a Path. Accent for unknowns. */
+export const pathTint = (path: string): string => {
+  const realm = PATH_REALM[path.toLowerCase()]
+  return realm ? `var(--realm-${realm})` : "var(--accent)"
+}
+
+/** Precious-metal realms (gold Aether, lunargent Arcadia) sheen; the base
+ * materials — rusted iron, stone, lead — stay matte. */
+const PRECIOUS_REALMS = new Set(["aether", "arcadia"])
+
+export const isPreciousArcanum = (arcanum: string): boolean =>
+  PRECIOUS_REALMS.has(ARCANUM_REALM[arcanum.toLowerCase()] ?? "")
+
 /** Case-insensitive: takes "forces" or "Forces". Renders nothing for unknowns. */
 export function ArcanaGlyph({
   arcanum,
   size = 14,
   className = "",
+  variant = "line",
 }: {
   arcanum: string
   size?: number
   className?: string
+  variant?: GlyphVariant
 }) {
-  return <Glyph def={ARCANA[arcanum.toLowerCase()]} size={size} className={className} />
+  return (
+    <Glyph
+      def={ARCANA[arcanum.toLowerCase()]}
+      size={size}
+      className={className}
+      variant={variant}
+    />
+  )
 }
 
 /** Case-insensitive: takes "Moros" etc. Renders nothing for unknowns. */

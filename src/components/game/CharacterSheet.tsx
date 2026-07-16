@@ -1,4 +1,5 @@
-import type { ReactNode } from "react"
+import { useState } from "react"
+import type { CSSProperties, ReactNode } from "react"
 import {
   rulingArcanaOf,
   type ArcanumName,
@@ -8,7 +9,16 @@ import {
 import type { BoxSeverity } from "#/domain/damage"
 import type { PoolComponentInput, PoolComponentType } from "#/domain/dice"
 import { formatRotePool } from "#/domain/rote-pool"
-import { ArcanaGlyph, OrderGlyph, PathGlyph } from "./ArcanaGlyph"
+import {
+  ArcanaGlyph,
+  OrderGlyph,
+  PathGlyph,
+  arcanumRealm,
+  arcanumTint,
+  isGrossArcanum,
+  isPreciousArcanum,
+  pathTint,
+} from "./ArcanaGlyph"
 import { Separator } from "#/components/ui/separator"
 import { DotRating } from "./DotRating"
 import type { useCast } from "#/hooks/use-cast"
@@ -105,7 +115,11 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
           <div className="flex items-stretch gap-4">
             <EmblemGroup label="Path">
               <Emblem
-                glyph={<PathGlyph path={character.path} size={22} className="mv-accent" />}
+                glyph={
+                  <span className="inline-flex" style={{ color: pathTint(character.path) }}>
+                    <PathGlyph path={character.path} size={22} />
+                  </span>
+                }
                 name={character.path}
               />
             </EmblemGroup>
@@ -121,7 +135,15 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
               {ruling.map((a) => (
                 <Emblem
                   key={a}
-                  glyph={<ArcanaGlyph arcanum={a} size={22} className="mv-accent" />}
+                  glyph={
+                    <span className="inline-flex" style={{ color: arcanumTint(a) }}>
+                      <ArcanaGlyph
+                        arcanum={a}
+                        size={22}
+                        variant={isGrossArcanum(a) ? "seal" : "line"}
+                      />
+                    </span>
+                  }
                   name={a.charAt(0).toUpperCase() + a.slice(1)}
                 />
               ))}
@@ -151,6 +173,12 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
           </span>
         </div>
       </div>
+
+      {/* Arcana — the magic dashboard, directly beneath the title card:
+          magic first, mundane traits after (owner call 2026-07-16). */}
+      <Section title="Arcana">
+        <ArcanaDashboard arcana={character.arcana} ruling={ruling} cast={cast} />
+      </Section>
 
       {/* The trait matrix — three shared category columns ("social is column
           3" holds for both zones), two zones told apart by color alone:
@@ -185,19 +213,6 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
             />
           ))}
         </div>
-      </Section>
-
-      {/* Arcana */}
-      <Section title="Arcana">
-        <ArcanaList
-          arcana={character.arcana}
-          ruling={ruling}
-          onToggle={toggle}
-          isActive={isActive}
-          canToggle={canToggle}
-          interactive={interactive}
-          cast={cast}
-        />
       </Section>
 
       {/* Rotes — castable entries (issue #20); inert rows on read-only sheets */}
@@ -411,72 +426,84 @@ function CategoryColumn({
   )
 }
 
-function ArcanaList({
+/** The fixed canonical layout: 5 columns = 5 Supernal Realms, each column its
+ * Realm's Arcana pair. Row-major over a grid-cols-5, so index i and i+5 share
+ * a Realm (and a tint). */
+const ARCANA_CANON: ArcanumName[] = [
+  "prime", "fate", "mind", "spirit", "death",
+  "forces", "time", "space", "life", "matter",
+]
+
+/**
+ * The magic dashboard (owner call 2026-07-16): improvised casting is the
+ * game's main verb, so every Arcanum is a chunky launcher tile — glyph, name,
+ * rating, Realm tint. Press to arm the cast, press again to disarm; arming
+ * blooms the Realm gradient into the tile. All ten Arcana always render in
+ * canonical Realm columns: rated ones carry their tint and the cast action,
+ * unrated ones are inert ghosts (the map of magic, including what this mage
+ * can't yet touch). Ruling Arcana wear the corner-ticks. The old
+ * toggle-into-pool behavior retired from this surface — the tile casts.
+ */
+function ArcanaDashboard({
   arcana,
   ruling,
-  onToggle,
-  isActive,
-  canToggle,
-  interactive,
   cast,
 }: {
   arcana: Record<string, number | undefined>
   ruling: readonly string[]
-  onToggle: (component: PoolComponentInput) => void
-  isActive: (type: PoolComponentType, name: string) => boolean
-  canToggle: boolean
-  interactive: boolean
   cast?: CastAPI | undefined
 }) {
-  const entries = Object.entries(arcana)
-    .filter(([, dots]) => dots != null && dots > 0)
-    .sort(([, a], [, b]) => (b as number) - (a as number)) as [ArcanumName, number][]
-
-  if (entries.length === 0) return null
+  // DEMO WIRING (#84, 2026-07-16): every tile toggles its material gradients
+  // locally so the owner can audition emission/absorption and the per-realm
+  // behaviors on all ten Arcana. Cast-arming returns once the look settles.
+  void cast
+  const [lit, setLit] = useState<ReadonlySet<string>>(new Set())
+  const toggleLit = (name: string) =>
+    setLit((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
 
   return (
-    <div className="grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-3">
-      {entries.map(([name, dots]) => {
+    <div className="grid grid-cols-5 gap-2">
+      {ARCANA_CANON.map((name) => {
+        const dots = arcana[name] ?? 0
         const isRuling = ruling.includes(name)
         const displayName = name.charAt(0).toUpperCase() + name.slice(1)
-        const active = isActive("arcanum", displayName)
-        const armed =
-          cast?.context.selection?.method === "improvised" &&
-          cast.context.selection.arcanum === name
+        const gross = isGrossArcanum(name)
+        const isLit = lit.has(name)
+        const tileVar = { "--tile": arcanumTint(name) } as CSSProperties
+
         return (
-          <div key={name} className="flex items-center gap-1">
-            <TraitRow
-              interactive={interactive}
-              canToggle={canToggle}
-              active={active}
-              onToggle={() => onToggle({ type: "arcanum", name: displayName, dots })}
-              className="flex flex-1 items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-left"
-            >
-              <ArcanaGlyph arcanum={name} size={19} className={active ? "mv-accent" : ""} />
-              <span className="flex-1 whitespace-nowrap text-[14px]">
-                {displayName}
-                {isRuling && (
-                  <span className="mv-accent ml-1" title="Ruling Arcanum">
-                    ◆
-                  </span>
-                )}
-              </span>
-              <DotRating current={dots} active={active} />
-            </TraitRow>
-            {/* The improvised-cast trigger (issue #20): row toggles the pool,
-                this arms a cast — two controls, one surface. */}
-            {cast && (
-              <button
-                type="button"
-                onClick={() => cast.armImprovised(name, dots)}
-                disabled={cast.state === "casting"}
-                title={`Cast improvised ${displayName}`}
-                className={`mv-mini shrink-0 ${armed ? "mv-mini-on" : ""}`}
-              >
-                ✦
-              </button>
+          <button
+            key={name}
+            type="button"
+            onClick={() => toggleLit(name)}
+            title={`${displayName}${isRuling ? " — Ruling Arcanum" : ""} (demo: toggle material)`}
+            className={`mv-arcana ${isRuling ? "mv-cornered" : ""} ${
+              gross ? "mv-arcana-gross" : "mv-arcana-sub"
+            } mv-realm-${arcanumRealm(name)} ${
+              isLit ? "mv-arcana-lit" : ""
+            } relative aspect-square rounded-[4px]`}
+            style={tileVar}
+          >
+            <span aria-hidden className="mv-arcana-bloom" />
+            {isLit && isPreciousArcanum(name) && (
+              <span aria-hidden className="mv-arcana-fx" />
             )}
-          </div>
+            {/* the glyph owns the tile's true center; name and dots hang below */}
+            <span className="mv-arcana-glyph absolute inset-0 grid place-items-center">
+              <ArcanaGlyph arcanum={name} size={34} variant={gross ? "seal" : "line"} />
+            </span>
+            <span className="absolute inset-x-0 bottom-2 grid justify-items-center gap-1">
+              <span className="mv-arcana-name text-[12px]" style={{ color: "var(--ink)" }}>
+                {displayName}
+              </span>
+              <DotRating current={dots} color={arcanumTint(name)} />
+            </span>
+          </button>
         )
       })}
     </div>

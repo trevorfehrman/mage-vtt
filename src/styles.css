@@ -31,6 +31,20 @@
   --zone-attr: #d4c7a3;
   --zone-skill: #7fa3d8;
 
+  /* The five Supernal Realm materials (owner call 2026-07-16) — true to the
+   * Watchtowers: shimmering gold Aether (Prime·Forces·Obrimos), shimmering
+   * lunargent Arcadia (Fate·Time·Acanthus), matte rusted iron Pandemonium
+   * (Mind·Space·Mastigos), matte mossy stone Primal Wild
+   * (Spirit·Life·Thyrsus), matte dark lead Stygia (Death·Matter·Moros).
+   * Precious realms sheen (mv-arcana-sheen); base realms stay flat.
+   * Siblings split by INVERSION: the Subtle Arcanum is line-light on dark,
+   * the Gross Arcanum a struck medallion — dark glyph on a solid disc. */
+  --realm-aether: #d3b46a;
+  --realm-arcadia: #cdd6e2;
+  --realm-pandemonium: #b4693c;
+  --realm-wild: #9aa471;
+  --realm-stygia: #868e9c;
+
   /* Legacy aliases — pre-identity class/var names still referenced by the
    * marketing routes; recolored onto the identity rather than re-plumbed. */
   --sea-ink: var(--ink);
@@ -325,6 +339,159 @@ pre code {
   background: var(--accent);
   color: #0a0a0c;
   border-color: var(--accent);
+}
+
+/* Arcana dashboard tiles — the improvised-cast launchers. --tile is the
+ * Realm tint; arming blooms the tile's gradient in and lights its border.
+ * Bloom and sheen are child layers, not pseudos — mv-cornered owns the
+ * pseudo-elements on ruling tiles. */
+.mv-arcana {
+  position: relative;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.35s;
+  cursor: pointer;
+}
+.mv-arcana:disabled {
+  cursor: default;
+  background: transparent;
+}
+.mv-arcana-bloom {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 38%,
+    color-mix(in srgb, var(--tile, var(--accent)) 17%, transparent),
+    transparent 74%
+  );
+  transition: opacity 0.45s ease;
+}
+.mv-arcana:not(:disabled):hover {
+  border-color: var(--tile, var(--accent));
+  background: var(--raise);
+}
+.mv-arcana-armed {
+  border-color: var(--tile, var(--accent));
+  box-shadow: 0 0 20px -6px color-mix(in srgb, var(--tile, var(--accent)) 55%, transparent);
+}
+.mv-arcana-armed .mv-arcana-bloom {
+  opacity: 1;
+}
+
+/* ── The Arcana material system (auditioning on #84) ──
+ * Subtle Arcana EMIT: the field radiates out from the glyph — brighter,
+ * desaturated, outer glow. Gross Arcana ABSORB: the field pulls inward to
+ * the medallion — darker, saturated, inset glow. Per-material behavior
+ * (ambient, owner-sanctioned 2026-07-16, reduced-motion gated): precious
+ * metals glint, stone breathes, rusted iron and lead thrum deep. */
+
+.mv-arcana .mv-arcana-glyph {
+  color: var(--tile, var(--accent));
+  transition: color 0.3s;
+}
+.mv-arcana-lit {
+  border-color: color-mix(in srgb, var(--tile) 70%, var(--line));
+}
+.mv-arcana-lit .mv-arcana-bloom {
+  opacity: 1;
+}
+
+.mv-arcana-sub .mv-arcana-bloom {
+  /* emission — a quiet halo breathing out from the glyph */
+  background: radial-gradient(
+    circle at 50% 44%,
+    color-mix(in srgb, var(--tile) 16%, transparent),
+    color-mix(in srgb, var(--tile) 5%, transparent) 40%,
+    transparent 66%
+  );
+}
+.mv-arcana-sub.mv-arcana-lit {
+  box-shadow: 0 0 18px -8px color-mix(in srgb, var(--tile) 45%, transparent);
+}
+.mv-arcana-sub.mv-arcana-lit .mv-arcana-glyph {
+  color: color-mix(in srgb, var(--tile) 55%, white);
+}
+
+.mv-arcana-gross .mv-arcana-bloom {
+  /* absorption — light gathered at the rim, drawn down into the coin */
+  background: radial-gradient(
+    circle at 50% 46%,
+    transparent 34%,
+    color-mix(in srgb, var(--tile) 11%, transparent) 62%,
+    color-mix(in srgb, var(--tile) 28%, transparent) 100%
+  );
+}
+.mv-arcana-gross.mv-arcana-lit {
+  box-shadow: inset 0 0 30px -4px color-mix(in srgb, var(--tile) 65%, transparent);
+}
+.mv-arcana-gross.mv-arcana-lit .mv-arcana-glyph {
+  /* less light than its Subtle sibling but MORE intense: oklch chroma
+   * boost is proportional, so the neutral metals (lunargent, lead) deepen
+   * without turning vivid; color-mix is the fallback */
+  color: color-mix(in srgb, var(--tile) 85%, black);
+  color: oklch(from var(--tile) calc(l * 0.86) calc(c * 1.9) h);
+}
+
+/* the specular drift — precious metals only: a soft light crossing the
+ * surface, contained by the tile */
+.mv-arcana-fx {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 55% 40% at 32% 26%,
+    rgba(255, 255, 255, 0.07),
+    transparent 70%
+  );
+  background-size: 230% 230%;
+  background-position: 0% 0%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mv-arcana-fx {
+    animation: mv-glint 7s ease-in-out infinite alternate;
+  }
+  .mv-realm-wild.mv-arcana-lit .mv-arcana-bloom {
+    animation: mv-breath 4.5s ease-in-out infinite;
+  }
+  .mv-realm-pandemonium.mv-arcana-lit .mv-arcana-bloom,
+  .mv-realm-stygia.mv-arcana-lit .mv-arcana-bloom {
+    animation: mv-thrum 9s ease-in-out infinite;
+  }
+}
+@keyframes mv-glint {
+  from {
+    background-position: 0% 0%;
+  }
+  to {
+    background-position: 100% 65%;
+  }
+}
+@keyframes mv-breath {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+@keyframes mv-thrum {
+  0%,
+  100% {
+    opacity: 0.65;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .mv-roll {
