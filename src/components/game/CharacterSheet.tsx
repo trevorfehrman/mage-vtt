@@ -1,4 +1,3 @@
-import { useState } from "react"
 import type { CSSProperties, ReactNode } from "react"
 import {
   rulingArcanaOf,
@@ -454,47 +453,52 @@ function ArcanaDashboard({
   ruling: readonly string[]
   cast?: CastAPI | undefined
 }) {
-  // DEMO WIRING (#84, 2026-07-16): every tile toggles its material gradients
-  // locally so the owner can audition emission/absorption and the per-realm
-  // behaviors on all ten Arcana. Cast-arming returns once the look settles.
-  void cast
-  const [lit, setLit] = useState<ReadonlySet<string>>(new Set())
-  const toggleLit = (name: string) =>
-    setLit((prev) => {
-      const next = new Set(prev)
-      if (next.has(name)) next.delete(name)
-      else next.add(name)
-      return next
-    })
+  const selection = cast?.context.selection
+  const armedArcanum = selection?.method === "improvised" ? selection.arcanum : null
 
   return (
     <div className="grid grid-cols-5 gap-2">
       {ARCANA_CANON.map((name) => {
         const dots = arcana[name] ?? 0
+        const rated = dots > 0
         const isRuling = ruling.includes(name)
         const displayName = name.charAt(0).toUpperCase() + name.slice(1)
         const gross = isGrossArcanum(name)
-        const isLit = lit.has(name)
-        const tileVar = { "--tile": arcanumTint(name) } as CSSProperties
+        const armed = armedArcanum === name
+        const castable = cast !== undefined && rated && cast.state !== "casting"
+        const tileVar = {
+          "--tile": rated ? arcanumTint(name) : "var(--dim)",
+        } as CSSProperties
 
         return (
           <button
             key={name}
             type="button"
-            onClick={() => toggleLit(name)}
-            title={`${displayName}${isRuling ? " — Ruling Arcanum" : ""} (demo: toggle material)`}
+            disabled={!castable}
+            onClick={() => {
+              if (!cast) return
+              if (armed) cast.cancel()
+              else cast.armImprovised(name, dots)
+            }}
+            title={
+              rated
+                ? `${displayName}${isRuling ? " — Ruling Arcanum" : ""}: ${
+                    armed ? "disarm" : "arm an improvised spell"
+                  }`
+                : `${displayName} — unrated: this mage cannot cast here yet`
+            }
             className={`mv-arcana ${isRuling ? "mv-cornered" : ""} ${
               gross ? "mv-arcana-gross" : "mv-arcana-sub"
             } mv-realm-${arcanumRealm(name)} ${
-              isLit ? "mv-arcana-lit" : ""
-            } relative aspect-square rounded-[4px]`}
+              armed ? "mv-arcana-lit mv-arcana-armed" : ""
+            } ${rated ? "" : "opacity-60"} relative aspect-square rounded-[4px]`}
             style={tileVar}
           >
             <span aria-hidden className="mv-arcana-bloom" />
-            {/* substance bench (#84): Prime + Matter mount a shader while
-             * lit; the CSS glint stands down where a substance takes over */}
-            {isLit && <ArcanaSubstance arcanum={name} />}
-            {isLit && isPreciousArcanum(name) && !hasSubstance(name) && (
+            {/* the substance — the Arcanum's living matter — mounts only
+             * while armed, so concurrent shader canvases stay bounded */}
+            {armed && <ArcanaSubstance arcanum={name} />}
+            {armed && isPreciousArcanum(name) && !hasSubstance(name) && (
               <span aria-hidden className="mv-arcana-fx" />
             )}
             {/* the glyph owns the tile's true center; name and dots hang below */}

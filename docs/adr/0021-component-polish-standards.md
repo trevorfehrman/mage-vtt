@@ -50,6 +50,19 @@ carry a slow specular drift, stone breathes, iron and lead thrum. Slow,
 low-alpha, `prefers-reduced-motion`-gated, and confined to the Arcana
 material system; this is not a general license for ambient motion.
 
+*Amended (2026-07-16, later the same day):* the material system gained a
+**substance layer** (owner-auditioned per Arcanum, all ten locked; #84): a
+WebGL shader per Arcanum — `@paper-design/shaders-react` for eight, custom
+GLSL via its `ShaderMount` for Fate and Space — mounted **only while that
+tile is armed**, so concurrent WebGL contexts stay far under the browser cap
+(Chromium: 16 desktop / 8 Android; survey in
+`docs/research/2026-07-16-arcana-shine-library-survey.md`). Under reduced
+motion a substance renders one static frame (`speed 0` cancels the rAF
+loop). Caption legibility over substances is structural, not per-shader
+tuning: a dark drop-shadow halo hugs the caption's shapes while lit, and
+lit tiles brighten empty dot rings via `--mv-dot-ring`. The same rules
+apply: event-driven (armed), never ambient elsewhere.
+
 **The a11y floor amends the locked identity.** Three planks: text contrast
 ≥ 4.5:1, full keyboard operability with visible focus-visible styles, and no
 native form controls where a styled equivalent exists. `--dim` (#797488)

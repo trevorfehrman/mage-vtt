@@ -20,13 +20,14 @@ import { useReducedMotion } from "motion/react"
  * bounded (Chromium caps 16 desktop / 8 Android). The 0.45s fade-in rides the
  * same beat as the bloom and covers context-create + compile latency.
  *
- * All ten Arcana carry a substance (bench approved 2026-07-16 on Prime +
- * Matter; the other eight follow the research report's mapping). The row
- * grammar decides the placement: Subtle substances radiate from the glyph
- * ("field"), Gross substances flood the tile and gather at the rim while the
- * solid medallion holds against it ("absorb"). Substances run uncut, edge
- * to edge; caption legibility is structural, not tuned — name and dots ride
- * a frosted plate above the shader (styles.css .mv-arcana-caption).
+ * All ten Arcana carry a substance, each auditioned and locked by the owner
+ * (2026-07-16, #84): eight from the Paper Shaders catalog, two custom GLSL
+ * (Fate's branching paths, Space's gravity well). The row grammar decides
+ * the placement: Subtle substances radiate from the glyph ("field"), Gross
+ * substances flood the tile while the solid medallion holds against it
+ * ("absorb"). Substances run uncut, edge to edge; caption legibility is
+ * structural, not tuned — while lit, a dark drop-shadow halo hugs the
+ * caption's own shapes (styles.css .mv-arcana-caption).
  */
 
 /** Mirror of the --realm-* tokens (styles.css ~42): shader colors are WebGL
