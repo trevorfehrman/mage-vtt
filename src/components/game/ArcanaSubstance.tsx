@@ -1,14 +1,15 @@
 import type { ReactNode } from "react"
 import {
-  DotOrbit,
   GemSmoke,
   GodRays,
+  GrainGradient,
   LiquidMetal,
-  Metaballs,
+  MeshGradient,
   NeuroNoise,
   SmokeRing,
-  Spiral,
+  Swirl,
   Warp,
+  Water,
 } from "@paper-design/shaders-react"
 import { useReducedMotion } from "motion/react"
 
@@ -53,11 +54,30 @@ interface SubstanceDef {
 const SUBSTANCES: Record<string, SubstanceDef> = {
   // ── Subtle row: the substance radiates out from the glyph ──
 
-  // destiny — KNOWN GAP: no catalog shader reads as the weave's threads
-  // (SimplexNoise auditioned 2026-07-16 and rendered as blobs, not threads).
-  // The right substance is React Bits' `Threads` GLSL ported into a custom
-  // ShaderMount (research report §2) — until then Fate stays pure CSS, which
-  // also keeps one lit CSS-only tile on the wall for comparison.
+  // destiny — lunargent strands curving toward the weave's center
+  // (SimplexNoise auditioned 2026-07-16: blobs, not threads. If Swirl reads
+  // too spiral, next candidates: Voronoi as the web, or React Bits'
+  // `Threads` GLSL ported into a custom ShaderMount — research report §2.)
+  fate: {
+    placement: "field",
+    node: (speed) => (
+      <Swirl
+        colorBack="#0d0f12"
+        colors={["#cdd6e2cc"]}
+        bandCount={2}
+        twist={0.06}
+        center={0}
+        proportion={0.55}
+        softness={0.5}
+        noise={0.2}
+        noiseFrequency={0.5}
+        speed={speed * 0.15}
+        width="100%"
+        height="100%"
+        maxPixelCount={320 * 320}
+      />
+    ),
+  },
   // thought — glowing web-lines of rusted iron firing behind the ripples
   mind: {
     placement: "field",
@@ -76,25 +96,25 @@ const SUBSTANCES: Record<string, SubstanceDef> = {
       />
     ),
   },
-  // the veil — a mossy smoke ring breathing around the gateway glyph
+  // the numinous — aurora curtains flowing slow across the veil
   spirit: {
     placement: "field",
     node: (speed) => (
-      <SmokeRing
-        colorBack="#00000000"
-        colors={[REALM_HEX.wild, "#c3cba0"]}
-        radius={0.32}
-        thickness={0.55}
-        noiseScale={1.4}
-        innerShape={0.4}
-        speed={speed * 0.35}
+      <MeshGradient
+        colors={["#0a0c09", REALM_HEX.wild, "#e3ecd2", "#22291d"]}
+        distortion={0.8}
+        swirl={0.5}
+        grainMixer={0.3}
+        grainOverlay={0.15}
+        speed={speed * 0.25}
         width="100%"
         height="100%"
         maxPixelCount={320 * 320}
       />
     ),
   },
-  // entropy — a lead-grey smoke veil, barely moving
+  // entropy — a lead-grey smoke diamond, barely moving, riding high so the
+  // caption never interrupts its geometry
   death: {
     placement: "field",
     node: (speed) => (
@@ -102,7 +122,8 @@ const SUBSTANCES: Record<string, SubstanceDef> = {
         colorBack="#00000000"
         colors={[REALM_HEX.stygia, "#4a4f58"]}
         colorInner="#2a2d33"
-        size={0.62}
+        size={0.46}
+        offsetY={0.14}
         innerDistortion={0.2}
         outerDistortion={0.35}
         innerGlow={0.25}
@@ -155,18 +176,39 @@ const SUBSTANCES: Record<string, SubstanceDef> = {
       />
     ),
   },
-  // recurrence — a lunargent spiral turning slow around the still coin
+  // recurrence — lunargent water, the same wave always returning
+  // (Spiral auditioned 2026-07-16: "too on the nose, very twilight zone")
   time: {
     placement: "absorb",
     node: (speed) => (
-      <Spiral
+      <Water
         colorBack="#00000000"
-        colorFront={REALM_HEX.arcadia}
-        density={0.5}
-        strokeWidth={0.2}
-        strokeTaper={0.4}
-        distortion={0.12}
-        softness={0.1}
+        colorHighlight={REALM_HEX.arcadia}
+        highlights={0.5}
+        layering={0.5}
+        caustic={0.6}
+        waves={0.4}
+        size={0.6}
+        speed={speed * 0.3}
+        width="100%"
+        height="100%"
+        maxPixelCount={320 * 320}
+      />
+    ),
+  },
+  // folded space — the accretion ring: rust-lit smoke around a dark hole
+  // (DotOrbit auditioned 2026-07-16: too on the nose; owner inspo = the
+  // black-hole photographs, and Spirit's old smoke ring re-tinted is that)
+  space: {
+    placement: "absorb",
+    node: (speed) => (
+      <SmokeRing
+        colorBack="#00000000"
+        colors={[REALM_HEX.pandemonium, "#e09a5a"]}
+        radius={0.3}
+        thickness={0.45}
+        noiseScale={1.2}
+        innerShape={0.6}
         speed={speed * 0.25}
         width="100%"
         height="100%"
@@ -174,33 +216,19 @@ const SUBSTANCES: Record<string, SubstanceDef> = {
       />
     ),
   },
-  // folded space — sparse iron sparks orbiting cell centers, a starfield ring
-  space: {
-    placement: "absorb",
-    node: (speed) => (
-      <DotOrbit
-        colorBack="#00000000"
-        colors={[REALM_HEX.pandemonium, "#d9a06a", "#6a4a3a"]}
-        size={0.28}
-        sizeRange={0.5}
-        spreading={0.7}
-        speed={speed * 0.35}
-        width="100%"
-        height="100%"
-        maxPixelCount={320 * 320}
-      />
-    ),
-  },
-  // the vesica seed — gooey stone-green mass merging and dividing at the rim
+  // primal life — a raw grain-flecked green mass, pulsing, not clinical
+  // (Metaballs auditioned 2026-07-16: "amoebas or mitosis, too sciency")
   life: {
     placement: "absorb",
     node: (speed) => (
-      <Metaballs
+      <GrainGradient
         colorBack="#00000000"
-        colors={[REALM_HEX.wild, "#7a8657", "#b9c48f"]}
-        count={6}
-        size={0.72}
-        speed={speed * 0.35}
+        colors={[REALM_HEX.wild, "#6f7d4c", "#c9d4a4"]}
+        shape="blob"
+        softness={0.7}
+        intensity={0.5}
+        noise={0.55}
+        speed={speed * 0.4}
         width="100%"
         height="100%"
         maxPixelCount={320 * 320}

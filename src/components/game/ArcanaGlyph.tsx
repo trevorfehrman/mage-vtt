@@ -41,8 +41,10 @@ const ARCANA: Record<string, GlyphDef> = {
   prime: { box: [7, 2.4, 10, 17.6], node: <><circle cx="12" cy="3.6" r="1.2" fill="currentColor" stroke="none" /><path d="M12 5.4 V6.2 M9.9 3.6 H10.7 M13.3 3.6 H14.1" /><path d="M7 8 H17" /><path d="M12 8 V16" /><path d="M12 16 C9.2 16 9.2 20 12 20 C14.8 20 14.8 16 12 16 Z" /></> },
   // folded space — a square holding a turned square around a focal mote
   space: { box: [4, 4, 16, 16], node: <><rect x="4" y="4" width="16" height="16" /><path d="M12 4 L20 12 L12 20 L4 12 Z" /><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" /></> },
-  // the veil — a gateway with an orbiting soul-mote
-  spirit: { box: [3.5, 4.5, 18.9, 15], node: <><circle cx="11" cy="12" r="7.5" /><path d="M11 4.5 V19.5" /><path d="M4.5 12 H17.5" opacity=".5" /><circle cx="21" cy="6.5" r="1.4" fill="currentColor" stroke="none" /></> },
+  // the veil — a gateway with an orbiting soul-mote. Box is deliberately NOT
+  // the measured bbox: it's re-centered on the wheel (cx 11) so the mote
+  // hangs off-center instead of dragging the wheel left (owner call, #84).
+  spirit: { box: [1.55, 4.5, 18.9, 15], node: <><circle cx="11" cy="12" r="7.5" /><path d="M11 4.5 V19.5" /><path d="M4.5 12 H17.5" opacity=".5" /><circle cx="21" cy="6.5" r="1.4" fill="currentColor" stroke="none" /></> },
   // recurrence — an hourglass whose stream curls into a spiral, pivot at now
   time: { box: [6.5, 4, 12.61, 16], node: <><path d="M6.5 4 H17.5 L6.5 20 H17.5" /><path d="M17.5 20 C19.6 20 19.6 17.4 17.8 17.7" /><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" /></> },
 }
