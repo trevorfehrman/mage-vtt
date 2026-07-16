@@ -501,11 +501,13 @@ function ArcanaDashboard({
             <span className="mv-arcana-glyph absolute inset-0 grid place-items-center">
               <ArcanaGlyph arcanum={name} size={34} variant={gross ? "seal" : "line"} />
             </span>
-            <span className="absolute inset-x-0 bottom-3.5 grid justify-items-center gap-1">
-              <span className="mv-arcana-name text-[12px]" style={{ color: "var(--ink)" }}>
-                {displayName}
+            <span className="absolute inset-x-0 bottom-4 grid justify-items-center">
+              <span className="mv-arcana-caption grid justify-items-center gap-1 rounded-[3px] px-2 py-1">
+                <span className="mv-arcana-name text-[12px]" style={{ color: "var(--ink)" }}>
+                  {displayName}
+                </span>
+                <DotRating current={dots} color={arcanumTint(name)} />
               </span>
-              <DotRating current={dots} color={arcanumTint(name)} />
             </span>
           </button>
         )

@@ -24,9 +24,9 @@ import { useReducedMotion } from "motion/react"
  * Matter; the other eight follow the research report's mapping). The row
  * grammar decides the placement: Subtle substances radiate from the glyph
  * ("field"), Gross substances flood the tile and gather at the rim while the
- * solid medallion holds the clear middle ("absorb"). Caption legibility is
- * structural, not tuned: every substance is masked out of the caption band
- * (styles.css .mv-substance-field / -absorb), so shaders can go loud above.
+ * solid medallion holds against it ("absorb"). Substances run uncut, edge
+ * to edge; caption legibility is structural, not tuned — name and dots ride
+ * a frosted plate above the shader (styles.css .mv-arcana-caption).
  */
 
 /** Mirror of the --realm-* tokens (styles.css ~42): shader colors are WebGL

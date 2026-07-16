@@ -505,25 +505,27 @@ pre code {
   opacity: 0;
   animation: mv-substance-in 0.45s ease forwards;
 }
-.mv-substance-field {
-  inset: 0;
-  overflow: hidden;
-  border-radius: inherit;
-  /* the caption band stays clean: the substance fades out before the
-   * name and dots, whatever the shader does above */
-  mask-image: linear-gradient(to bottom, #000 56%, transparent 80%);
-}
+/* Substances run uncut, edge to edge — the solid glyph/medallion is the
+ * figure that holds against them, and the caption rides its own plate
+ * (below). Band masks and center cutouts were auditioned 2026-07-16 and
+ * pulled. The two classes stay split because the emission/absorption
+ * grammar may yet diverge in treatment. */
+.mv-substance-field,
 .mv-substance-absorb {
   inset: 0;
   overflow: hidden;
   border-radius: inherit;
-  /* absorption at full scale: the substance fills the tile but is masked
-   * OUT of the center — mass gathers toward the rim, the medallion holds
-   * the clear middle. Caption band stays clean as above. */
-  mask-image:
-    radial-gradient(circle at 50% 46%, transparent 30%, #000 64%),
-    linear-gradient(to bottom, #000 56%, transparent 80%);
-  mask-composite: intersect;
+}
+
+/* the caption plate — name and dots sit on a frosted chip of panel above
+ * any substance, so their legibility never depends on what the shader is
+ * doing behind them */
+.mv-arcana-caption {
+  position: relative;
+  z-index: 1;
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 @keyframes mv-substance-in {
   to {
