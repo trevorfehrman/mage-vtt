@@ -11,7 +11,7 @@ Default to using Bun instead of Node.js.
 - **Backend**: Convex (real-time database, serverless functions)
 - **Auth**: Better Auth + `@convex-dev/better-auth` (no webhooks, session cookies)
 - **Type system**: Effect v4 beta — typed errors, services/layers, Schema, streams
-- **State machines**: XState v5 — installed but not yet implemented (planned for dice pool builder, initiative tracker, canvas tools)
+- **State machines**: XState v5 — live in `src/machines/` (dice-pool, cast, cast-ladder); still planned for initiative tracker and canvas tools
 - **UI**: shadcn/ui v4 + Tailwind CSS v4
 - **AI**: Vercel AI SDK (`@ai-sdk/anthropic`, `@ai-sdk/react`)
 - **Testing**: `bunx vitest run` (NOT `bun test`) + @effect/vitest v4 beta
@@ -61,7 +61,7 @@ This project uses Effect v4 beta. Core concepts are the same as v3 but some APIs
 - `it.effect()` for effectful code; plain `it()` for pure rules leaves (ADR-0014); `it.scoped()` for resource tests.
 - `Random.withSeed("seed")` for deterministic dice tests.
 - TDD skill installed (Matt Pocock's red-green-refactor workflow).
-- 616 tests across the domain, flows, machines, and seam, all green.
+- 658 tests across the domain, flows, machines, and seam, all green.
 
 ## Project Structure
 
