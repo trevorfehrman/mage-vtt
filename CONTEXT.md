@@ -17,7 +17,8 @@ A mage's Supernal realm of origin — Acanthus, Mastigos, Moros, Obrimos, or
 Thyrsus. Sets ruling Arcana and grants +1 Composure or +1 Resolve.
 
 **Order**:
-The mage society a character belongs to (e.g. Mysterium). Grants rote skills.
+The mage society a character belongs to (e.g. Mysterium). Grants Rote
+Specialties.
 
 **Arcanum** (pl. **Arcana**):
 One of ten domains of magic — Death, Fate, Forces, Life, Matter, Mind, Prime,
@@ -50,6 +51,15 @@ larger than an improvised pool). Compare Improvised spell.
 _Avoid_: confusing with the **rote quality / rote action** — the generic
 reroll-failed-dice-once dice mechanic. Casting a Rote does **not** grant the
 rote quality; they are unrelated mechanics that share a name.
+
+**Rote Specialty**:
+One of the three Skills each Order codes its Rotes with (Mysterium:
+Investigation, Occult, Survival; …). Casting a Rote **of your own Order**
+whose pool uses one of them grants +1 die; a Rote learned from another Order
+never grants it. The only specialty that touches a casting pool.
+_Avoid_: confusing with a **Skill Specialty** ("Occult: Ghosts") — the mundane
+per-Skill focus. Skill Specialties explicitly do **not** apply to rote casting
+(Mage p. 76); a second namespace trap beside rote/rote-quality.
 
 **Practice**:
 The tier of effect an Arcanum dot rating unlocks (1 dot: Knowing/Compelling/

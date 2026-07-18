@@ -3,7 +3,6 @@ import {
   magicResistance,
   combinedSpellRequirements,
   spellTolerance,
-  roteSpecialtyBonus,
   extendedCastingTargets,
   transitorDurationPenalty,
   advancedProlongedDurationPenalty,
@@ -61,12 +60,6 @@ describe("Spellcasting Advanced", () => {
     expect(spellTolerance({ stamina: 3, activeSpellsOnTarget: 3 })).toBe(0)
     expect(spellTolerance({ stamina: 3, activeSpellsOnTarget: 4 })).toBe(-1)
     expect(spellTolerance({ stamina: 3, activeSpellsOnTarget: 6 })).toBe(-3)
-  })
-
-  it("rote specialty +1 when order skill matches", () => {
-    // Mysterium rote skills: Investigation, Occult, Survival
-    expect(roteSpecialtyBonus("Mysterium", "Occult")).toBe(1)
-    expect(roteSpecialtyBonus("Mysterium", "Athletics")).toBe(0)
   })
 
   it("extended casting target successes table", () => {

@@ -1,5 +1,5 @@
 import { Effect, Option, Schema } from "effect"
-import type { CharacterSheet, KnownRote } from "./character"
+import type { CharacterSheet, KnownRote, OrderName } from "./character"
 import {
   ROTE_ATTRIBUTES,
   ROTE_SKILLS,
@@ -38,6 +38,20 @@ export class SpellRef extends Schema.Class<SpellRef>("SpellRef")({
  */
 
 type SheetRatings = Pick<CharacterSheet, "attributes" | "skills" | "arcana">
+
+/**
+ * The three Rote Specialty skills each Order codes its Rotes with (see
+ * CONTEXT.md "Rote Specialty"; chunk-0741) — the one table, total over the
+ * closed Order vocabulary (ADR-0014). Creation validation and the casting
+ * bonus both read it here.
+ */
+export const ORDER_ROTE_SKILLS: Record<OrderName, ReadonlyArray<string>> = {
+  "Adamantine Arrow": ["Athletics", "Intimidation", "Medicine"],
+  "Free Council": ["Crafts", "Persuasion", "Science"],
+  "Guardians of the Veil": ["Investigation", "Stealth", "Subterfuge"],
+  "Mysterium": ["Investigation", "Occult", "Survival"],
+  "Silver Ladder": ["Expression", "Persuasion", "Subterfuge"],
+}
 
 const ATTRIBUTE_DOTS: Record<
   (typeof ROTE_ATTRIBUTES)[number],

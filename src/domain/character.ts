@@ -3,9 +3,9 @@ import { HealthTrack, healthBox, type HealthBox } from "./damage"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "./ids"
 import { Dots, Mana, Willpower } from "./quantities"
 import { RoteArcanumName, RotePool } from "./rote-pool"
-// Value-only import; rote-cast's import of this module is type-only, so the
+// Value-only imports; rote-cast's import of this module is type-only, so the
 // module graph stays acyclic at runtime.
-import { SpellAspect } from "./rote-cast"
+import { ORDER_ROTE_SKILLS, SpellAspect } from "./rote-cast"
 
 // --- Constrained number types ---
 //
@@ -102,10 +102,10 @@ const Skills = Schema.Struct({
 export const PathName = Schema.Literals(["Acanthus", "Mastigos", "Moros", "Obrimos", "Thyrsus"])
 export type PathName = typeof PathName.Type
 
-const OrderName = Schema.Literals([
+export const OrderName = Schema.Literals([
   "Adamantine Arrow", "Free Council", "Guardians of the Veil", "Mysterium", "Silver Ladder",
 ])
-type OrderName = typeof OrderName.Type
+export type OrderName = typeof OrderName.Type
 
 const Virtue = Schema.Literals([
   "Charity", "Faith", "Fortitude", "Hope", "Justice", "Prudence", "Temperance",
@@ -515,17 +515,6 @@ export const validateCreationRules = Effect.fn("Character.validateCreationRules"
     })
   }
 })
-
-// --- Order rote skills reference ---
-// Total over the closed Order vocabulary (ADR-0014).
-
-const ORDER_ROTE_SKILLS: Record<OrderName, ReadonlyArray<string>> = {
-  "Adamantine Arrow": ["Athletics", "Intimidation", "Medicine"],
-  "Free Council": ["Crafts", "Persuasion", "Science"],
-  "Guardians of the Veil": ["Investigation", "Stealth", "Subterfuge"],
-  "Mysterium": ["Investigation", "Occult", "Survival"],
-  "Silver Ladder": ["Expression", "Persuasion", "Subterfuge"],
-}
 
 export const validateRoteSpecialties = Effect.fn("Character.validateRoteSpecialties")(function* (
   order: string,
