@@ -1,27 +1,8 @@
 import { Match, Schema } from "effect"
 
 // Pure rules leaves (ADR-0014): plain functions; the resistance-mode dispatch
-// goes through Match, and the Order rote-skill table is total over the closed
-// Order vocabulary.
-
-// --- Order rote skills (for rote specialty bonus) ---
-
-export const OrderName = Schema.Literals([
-  "Adamantine Arrow",
-  "Free Council",
-  "Guardians of the Veil",
-  "Mysterium",
-  "Silver Ladder",
-])
-export type OrderName = typeof OrderName.Type
-
-const ORDER_ROTE_SKILLS: Record<OrderName, readonly string[]> = {
-  "Adamantine Arrow": ["Athletics", "Intimidation", "Medicine"],
-  "Free Council": ["Crafts", "Persuasion", "Science"],
-  "Guardians of the Veil": ["Investigation", "Stealth", "Subterfuge"],
-  "Mysterium": ["Investigation", "Occult", "Survival"],
-  "Silver Ladder": ["Expression", "Persuasion", "Subterfuge"],
-}
+// goes through Match. The Order rote-skill table lives in rote-cast.ts
+// (issue #87) alongside the specialty bonus it feeds.
 
 // --- Types ---
 
@@ -84,9 +65,6 @@ export const spellTolerance = (input: {
   const excess = Math.max(0, input.activeSpellsOnTarget - input.stamina)
   return excess === 0 ? 0 : -excess
 }
-
-export const roteSpecialtyBonus = (order: OrderName, skill: string): number =>
-  ORDER_ROTE_SKILLS[order].includes(skill) ? 1 : 0
 
 export const extendedCastingTargets = (input: {
   potency: number
