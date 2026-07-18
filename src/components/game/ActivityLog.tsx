@@ -134,7 +134,7 @@ function RollingIndicator() {
   )
 }
 
-function MessageItem({ message, dropCap }: { message: MessageEntry; dropCap?: boolean }) {
+export function MessageItem({ message, dropCap }: { message: MessageEntry; dropCap?: boolean }) {
   if (message.visibilityType === "system") {
     if (dropCap && message.text.length > 1) {
       return (
@@ -191,7 +191,7 @@ function OverrideTag({ override }: { override: OverrideMark }) {
   )
 }
 
-function RollItem({ roll }: { roll: RollEntry }) {
+export function RollItem({ roll }: { roll: RollEntry }) {
   const arcana = roll.components.filter((c) => c.type === "arcanum")
   return (
     <div className="mv-cornered mv-panel rounded-[3px] p-2.5">
