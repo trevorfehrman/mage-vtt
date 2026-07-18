@@ -294,6 +294,9 @@ const roteDeclaration = Effect.fn("Flows.vulgarCast.roteDeclaration")(function* 
     { type: "attribute", name: resolved.attribute.name, dots: resolved.attribute.dots },
     { type: resolved.skill.kind, name: resolved.skill.name, dots: resolved.skill.dots },
     { type: "arcanum", name: resolved.arcanum.name, dots: resolved.arcanum.dots },
+    ...(resolved.specialty.eligible
+      ? [{ type: "modifier", name: "Rote Specialty", dots: resolved.specialty.bonus }]
+      : []),
   ]
   return {
     isRote: true as const,
@@ -302,7 +305,10 @@ const roteDeclaration = Effect.fn("Flows.vulgarCast.roteDeclaration")(function* 
     level: spell.level,
     declaredComponents,
     declaredPool:
-      resolved.attribute.dots + resolved.skill.dots + resolved.arcanum.dots,
+      resolved.attribute.dots +
+      resolved.skill.dots +
+      resolved.arcanum.dots +
+      resolved.specialty.bonus,
     spellManaCost: 0,
   }
 })
