@@ -111,6 +111,12 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
               )}
             </p>
           </div>
+          <span className="mv-data flex items-center gap-2">
+            <span className="text-[12px]" style={{ color: "var(--dim)" }}>
+              HEALTH
+            </span>
+            <HealthTrack track={healthTrack} />
+          </span>
           <div className="flex items-stretch gap-4">
             <EmblemGroup label="Path">
               <Emblem
@@ -150,19 +156,30 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
           </div>
         </div>
 
-        {/* Right column: three rows, evenly distributed — Gnosis (the level,
-            dominant), its ceilings, the soul's poles. Live currents tick in
-            the rail's ResourceStrip. */}
+        {/* Right column: the numbers — Gnosis (the level, dominant), then the
+            ceilings and the body's ratings snug together, and the soul's poles
+            alone at the container's foot (vitals folded in, owner call
+            2026-07-17). Live currents tick in the rail's ResourceStrip. */}
         <div className="mv-data flex shrink-0 flex-col items-end justify-between gap-2 text-right">
           <span className="flex items-baseline gap-2 leading-none">
             <span className="text-[15px]" style={{ color: "var(--dim)" }}>GNOSIS</span>
             <span className="mv-accent text-[32px] font-semibold">{character.gnosis}</span>
           </span>
-          <span className="text-[12px]">
-            <span style={{ color: "var(--dim)" }}>MANA </span>
-            <span style={{ color: "var(--ink)" }}>{character.maxMana}</span>
-            <span style={{ color: "var(--dim)" }}> · WILL </span>
-            <span style={{ color: "var(--ink)" }}>{character.willpower}</span>
+          <span className="grid justify-items-end gap-2">
+            <span className="text-[12px]">
+              <span style={{ color: "var(--dim)" }}>MANA </span>
+              <span style={{ color: "var(--ink)" }}>{character.maxMana}</span>
+              <span style={{ color: "var(--dim)" }}> · WILL </span>
+              <span style={{ color: "var(--ink)" }}>{character.willpower}</span>
+            </span>
+            <span className="text-[12px]">
+              <span style={{ color: "var(--dim)" }}>DEFENSE </span>
+              <span style={{ color: "var(--ink)" }}>{character.defense}</span>
+              <span style={{ color: "var(--dim)" }}> · INITIATIVE </span>
+              <span style={{ color: "var(--ink)" }}>{character.initiative}</span>
+              <span style={{ color: "var(--dim)" }}> · SPEED </span>
+              <span style={{ color: "var(--ink)" }}>{character.speed}</span>
+            </span>
           </span>
           <span className="text-[12px]">
             <span style={{ color: "var(--dim)" }}>VIRTUE </span>
@@ -225,40 +242,6 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
         </div>
       </Section>
 
-      {/* Vitals */}
-      <Section title="Vitals">
-        <div className="grid gap-3">
-          <div className="flex items-center gap-3">
-            <span className="mv-eyebrow w-16">Health</span>
-            <div className="flex gap-1">
-              {healthTrack.map((box, i) => (
-                <span key={i} className="flex flex-col items-center gap-[2px]">
-                  <span
-                    className="mv-data grid size-5 place-items-center rounded-[2px] border text-[10px] font-bold"
-                    style={{
-                      borderColor:
-                        box.severity === "empty" ? "var(--line)" : "var(--accent)",
-                      background:
-                        box.severity === "empty" || box.severity === "bashing"
-                          ? "transparent"
-                          : "var(--glow)",
-                      color: "var(--accent)",
-                    }}
-                  >
-                    {healthBoxGlyph(box.severity)}
-                  </span>
-                  <ResistantDot resistant={box.resistant} />
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="mv-data flex gap-6 text-[13px]">
-            <Stat label="Defense" value={character.defense} />
-            <Stat label="Initiative" value={character.initiative} />
-            <Stat label="Speed" value={character.speed} />
-          </div>
-        </div>
-      </Section>
     </div>
   )
 }
@@ -297,11 +280,35 @@ function Emblem({ glyph, name }: { glyph: ReactNode; name: string }) {
   )
 }
 
-function Stat({ label, value }: { label: string; value: number | string }) {
+/**
+ * The health track — the body's row of boxes, living in the header's number
+ * column since the Vitals fold-in. Resistant dots hang beneath their boxes.
+ */
+function HealthTrack({ track }: { track: CharacterSheetData["healthTrack"] }) {
   return (
-    <span>
-      <span style={{ color: "var(--dim)" }}>{label} </span>
-      <span style={{ color: "var(--ink)" }}>{value}</span>
+    <span className="flex gap-1">
+      {track.map((box, i) => (
+        <span key={i} className="relative">
+          <span
+            className="mv-data grid size-5 place-items-center rounded-[2px] border text-[10px] font-bold"
+            style={{
+              borderColor: box.severity === "empty" ? "var(--line)" : "var(--accent)",
+              background:
+                box.severity === "empty" || box.severity === "bashing"
+                  ? "transparent"
+                  : "var(--glow)",
+              color: "var(--accent)",
+            }}
+          >
+            {healthBoxGlyph(box.severity)}
+          </span>
+          {/* the Resistant mark hangs below its box like a diacritic — out of
+              the layout, so the track aligns by its boxes alone */}
+          <span className="absolute left-1/2 top-full mt-[2px] flex -translate-x-1/2">
+            <ResistantDot resistant={box.resistant} />
+          </span>
+        </span>
+      ))}
     </span>
   )
 }

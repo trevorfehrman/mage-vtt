@@ -3,8 +3,9 @@ import type { CharacterSheet } from "#/domain/character"
 /**
  * The seat's at-a-glance resources, pinned to the rail foot beside the
  * controls that spend them (owner call 2026-07-08): the rail never disappears,
- * so Mana/Will stay visible even once the center panel grows tabs. The sheet
- * header stays pure identity; Vitals keeps the quiet numeric record.
+ * so Mana/Will stay visible even once the center panel grows tabs. These are
+ * the live currents; the sheet header holds the ceilings and the health track
+ * (vitals folded in, owner call 2026-07-17).
  */
 export function ResourceStrip({ character }: { character: CharacterSheet }) {
   return (
