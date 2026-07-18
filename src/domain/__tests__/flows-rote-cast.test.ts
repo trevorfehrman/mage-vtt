@@ -6,7 +6,7 @@ import { CharacterId, PlayerId, SessionId } from "../ids"
 import { Membership } from "../membership"
 import { RotePool } from "../rote-pool"
 import { SpellRef } from "../rote-cast"
-import { failureTag, makeAldousSheet as makeSheet } from "../testing/fixtures"
+import { failureTag, makeAldousSheet as makeSheet, makeCorvinSheet } from "../testing/fixtures"
 import { makeInMemory } from "../testing/in-memory"
 
 /**
@@ -52,7 +52,8 @@ const ectoplasmicShaping = new SpellRef({
 
 // --- Aldous's trained Rotes ---
 
-// Presence 2 + Occult 4 + Death 3 = 9 dice.
+// Presence 2 + Occult 4 + Death 3 + Rote Specialty 1 = 10 dice: Aldous is
+// Mysterium and Occult is one of the Order's three (issue #87).
 const graveMien = new KnownRote({
   name: "Grave Mien",
   spellName: "Speak with the Dead",
@@ -123,11 +124,13 @@ describe("Flows.roteCast.castRote (covert rote, issue #18)", () => {
       expect(entry.displayName).toBe("Aldous")
       expect(entry.override).toBeNull()
       // Pool = Presence 2 + Occult 4 + Death 3 (the caster's own ratings)
-      expect(entry.result.poolSize).toBe(9)
+      // + the Rote Specialty die (own Order, specialty skill — issue #87)
+      expect(entry.result.poolSize).toBe(10)
       expect(entry.components).toEqual([
         { type: "attribute", name: "Presence", dots: 2 },
         { type: "skill", name: "Occult", dots: 4 },
         { type: "arcanum", name: "Death", dots: 3 },
+        { type: "modifier", name: "Rote Specialty", dots: 1 },
       ])
       // The summary narrates the cast: who, which Rote, the spell, successes
       expect(entry.summary).toContain("Aldous")
@@ -303,7 +306,7 @@ describe("Flows.roteCast.castRote 'or' pools and contested pools", () => {
       const entry = store.rolls[0]!
       expect(entry.summary).toContain("vs Resolve + Gnosis")
       // The caster's own roll happened; resolution is the Storyteller's
-      expect(entry.result.poolSize).toBe(9)
+      expect(entry.result.poolSize).toBe(10)
     }),
   )
 })
@@ -316,8 +319,8 @@ describe("Flows.roteCast.castRote factors and Willpower (issues #12, #18)", () =
       yield* cast(store, { spendWillpower: true })
 
       const entry = store.rolls[0]!
-      // Presence 2 + Occult 4 + Death 3 + Willpower 3
-      expect(entry.result.poolSize).toBe(12)
+      // Presence 2 + Occult 4 + Death 3 + Rote Specialty 1 + Willpower 3
+      expect(entry.result.poolSize).toBe(13)
       expect(entry.components).toContainEqual({
         type: "modifier",
         name: "Willpower",
@@ -351,7 +354,7 @@ describe("Flows.roteCast.castRote factors and Willpower (issues #12, #18)", () =
     Effect.gen(function* () {
       const store = seed()
 
-      // 9 base + 2 High Speech + 3 Willpower - 2 Potency - 2 targets = 10
+      // 10 base (specialty included) + 2 High Speech + 3 Willpower - 2 Potency - 2 targets = 11
       yield* cast(store, {
         potency: 2,
         targets: 2,
@@ -360,7 +363,7 @@ describe("Flows.roteCast.castRote factors and Willpower (issues #12, #18)", () =
       })
 
       const entry = store.rolls[0]!
-      expect(entry.result.poolSize).toBe(10)
+      expect(entry.result.poolSize).toBe(11)
       expect(entry.components).toContainEqual({
         type: "modifier",
         name: "High Speech",
@@ -381,7 +384,7 @@ describe("Flows.roteCast.castRote factors and Willpower (issues #12, #18)", () =
     Effect.gen(function* () {
       const store = seed()
 
-      yield* cast(store, { potency: 5, targets: 4 }) // 9 - 8 - 4 = -3
+      yield* cast(store, { potency: 5, targets: 4 }) // 10 - 8 - 4 = -2
 
       const entry = store.rolls[0]!
       expect(entry.result.poolSize).toBe(0)
@@ -436,6 +439,125 @@ describe("Flows.roteCast.castRote factors and Willpower (issues #12, #18)", () =
       expect(failureTag(negativeExtra)).toBe("InvalidCastDeclaration")
 
       expect(store.rolls).toHaveLength(0)
+    }),
+  )
+})
+
+describe("Flows.roteCast.castRote — Rote Specialty (issue #87)", () => {
+  const CORVIN = CharacterId.make("char-corvin")
+  const CORVIN_PLAYER = PlayerId.make("user-corvin")
+  const corvin = new Membership({
+    userId: CORVIN_PLAYER,
+    sessionId: SESSION,
+    role: "player",
+    displayName: "Corvin Ashe",
+  })
+
+  const clamorSpell = new SpellRef({
+    name: "Speak with the Dead",
+    arcanum: "Death",
+    level: 1,
+    aspect: "Covert",
+  })
+
+  // Corvin's own-Order Rote through Occult — a Mysterium Rote Specialty.
+  const clamorOfThe = new KnownRote({
+    name: "Clamor of the",
+    spellName: "Speak with the Dead",
+    spellArcanum: "Death",
+    spellLevel: 1,
+    order: "Mysterium",
+    pool: new RotePool({ attribute: "Wits", skills: ["Occult"], arcanum: "Death" }),
+  })
+
+  // The same pool learned from another Order: never eligible.
+  const borrowedClamor = new KnownRote({
+    name: "Borrowed Clamor",
+    spellName: "Speak with the Dead",
+    spellArcanum: "Death",
+    spellLevel: 1,
+    order: "Adamantine Arrow",
+    pool: new RotePool({ attribute: "Wits", skills: ["Occult"], arcanum: "Death" }),
+  })
+
+  // Own Order, but Science is not among the Mysterium's three.
+  const ledgerOfAtoms = new KnownRote({
+    name: "Ledger of Atoms",
+    spellName: "Speak with the Dead",
+    spellArcanum: "Death",
+    spellLevel: 1,
+    order: "Mysterium",
+    pool: new RotePool({ attribute: "Intelligence", skills: ["Science"], arcanum: "Death" }),
+  })
+
+  const corvinSeed = () =>
+    makeInMemory({
+      members: [corvin],
+      actor: { userId: CORVIN_PLAYER, isDev: false },
+      sheets: [
+        makeCorvinSheet({
+          knownRotes: [clamorOfThe, borrowedClamor, ledgerOfAtoms],
+        }),
+      ],
+      spells: [clamorSpell],
+    })
+
+  const corvinCast = (
+    store: ReturnType<typeof makeInMemory>,
+    roteName: string,
+  ) =>
+    castRote({
+      sessionId: SESSION,
+      characterId: CORVIN,
+      roteName,
+    }).pipe(Effect.provide(store.layer), Random.withSeed("specialty-seed"))
+
+  it.effect("an eligible Rote rolls one die more, named 'Rote Specialty' in the breakdown", () =>
+    Effect.gen(function* () {
+      const store = corvinSeed()
+
+      yield* corvinCast(store, "Clamor of the")
+
+      const entry = store.rolls[0]!
+      // Wits 2 + Occult 3 + Death 2 + Rote Specialty 1 = 8 dice — and the
+      // roll landing at all proves the components-vs-pool invariant held.
+      expect(entry.result.poolSize).toBe(8)
+      expect(entry.components).toEqual([
+        { type: "attribute", name: "Wits", dots: 2 },
+        { type: "skill", name: "Occult", dots: 3 },
+        { type: "arcanum", name: "Death", dots: 2 },
+        { type: "modifier", name: "Rote Specialty", dots: 1 },
+      ])
+      expect(entry.summary).toContain("Rote Specialty")
+    }),
+  )
+
+  it.effect("a Rote learned from another Order rolls exactly as before", () =>
+    Effect.gen(function* () {
+      const store = corvinSeed()
+
+      yield* corvinCast(store, "Borrowed Clamor")
+
+      const entry = store.rolls[0]!
+      expect(entry.result.poolSize).toBe(7) // Wits 2 + Occult 3 + Death 2
+      expect(entry.components).not.toContainEqual(
+        expect.objectContaining({ name: "Rote Specialty" }),
+      )
+      expect(entry.summary).not.toContain("Rote Specialty")
+    }),
+  )
+
+  it.effect("an own-Order Rote through a non-specialty skill rolls unchanged", () =>
+    Effect.gen(function* () {
+      const store = corvinSeed()
+
+      yield* corvinCast(store, "Ledger of Atoms")
+
+      const entry = store.rolls[0]!
+      expect(entry.result.poolSize).toBe(8) // Intelligence 3 + Science 3 + Death 2
+      expect(entry.components).not.toContainEqual(
+        expect.objectContaining({ name: "Rote Specialty" }),
+      )
     }),
   )
 })

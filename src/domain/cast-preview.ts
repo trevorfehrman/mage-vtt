@@ -108,6 +108,9 @@ const rotePreview = (input: RotePreviewInput, resolved: ResolvedRotePool): CastP
     attributeDots: resolved.attribute.dots,
     skillDots: resolved.skill.dots,
     arcanumDots: resolved.arcanum.dots,
+    ...(resolved.specialty.eligible
+      ? { specialtyBonus: resolved.specialty.bonus }
+      : {}),
     ...(input.highSpeech ? { highSpeech: true } : {}),
     ...(input.spendWillpower ? { willpower: true } : {}),
   })
@@ -120,6 +123,9 @@ const rotePreview = (input: RotePreviewInput, resolved: ResolvedRotePool): CastP
     { type: "attribute", name: resolved.attribute.name, dots: resolved.attribute.dots },
     { type: resolved.skill.kind, name: resolved.skill.name, dots: resolved.skill.dots },
     { type: "arcanum", name: resolved.arcanum.name, dots: resolved.arcanum.dots },
+    ...(resolved.specialty.eligible
+      ? [{ type: "modifier", name: "Rote Specialty", dots: resolved.specialty.bonus }]
+      : []),
     ...(input.highSpeech
       ? [{ type: "modifier", name: "High Speech", dots: 2 }]
       : []),

@@ -173,6 +173,9 @@ export const castRote = Effect.fn("Flows.roteCast.castRote")(function* (
     attributeDots: resolved.attribute.dots,
     skillDots: resolved.skill.dots,
     arcanumDots: resolved.arcanum.dots,
+    ...(resolved.specialty.eligible
+      ? { specialtyBonus: resolved.specialty.bonus }
+      : {}),
     ...(declaration.highSpeech ? { highSpeech: true } : {}),
     ...(declaration.spendWillpower ? { willpower: true } : {}),
   })
@@ -197,6 +200,9 @@ export const castRote = Effect.fn("Flows.roteCast.castRote")(function* (
     { type: "attribute", name: resolved.attribute.name, dots: resolved.attribute.dots },
     { type: resolved.skill.kind, name: resolved.skill.name, dots: resolved.skill.dots },
     { type: "arcanum", name: resolved.arcanum.name, dots: resolved.arcanum.dots },
+    ...(resolved.specialty.eligible
+      ? [{ type: "modifier", name: "Rote Specialty", dots: resolved.specialty.bonus }]
+      : []),
     ...(declaration.highSpeech
       ? [{ type: "modifier", name: "High Speech", dots: 2 }]
       : []),
@@ -236,6 +242,7 @@ export const castRote = Effect.fn("Flows.roteCast.castRote")(function* (
       spell,
       factors: [
         `${resolved.attribute.name} + ${resolved.skill.name} + ${resolved.arcanum.name}`,
+        ...(resolved.specialty.eligible ? ["Rote Specialty"] : []),
         ...(declaration.potency && declaration.potency > 1
           ? [`Potency ${declaration.potency}`]
           : []),
