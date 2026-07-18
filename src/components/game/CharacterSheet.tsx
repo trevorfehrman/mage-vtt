@@ -18,6 +18,7 @@ import {
 } from "./ArcanaGlyph"
 import { ArcanaSubstance, hasSubstance } from "./ArcanaSubstance"
 import { RoteBook } from "./RoteBook"
+import { TraitSky } from "./TraitSky"
 import { Separator } from "#/components/ui/separator"
 import { DotRating } from "./DotRating"
 import type { useCast } from "#/hooks/use-cast"
@@ -197,7 +198,12 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
           zones told apart by color alone. The section header doubles as the
           legend. One label set, no hairlines — the muscle memory is "click
           once in the attribute zone, once in the skill zone, that's the
-          pool." Full width keeps names from ever breaking. */}
+          pool." Full width keeps names from ever breaking.
+
+          The section is the night sky (#84, owner verdict 2026-07-18): the
+          sheet's only containerless stretch, where the void shows through —
+          TraitSky runs the galaxy beneath the rows and fires a meteor when
+          the pool rolls; the halo class holds the rows legible against it. */}
       <Section
         title={
           <>
@@ -207,23 +213,26 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
           </>
         }
       >
-        <div className="grid grid-cols-3 gap-x-6">
-          {(["mental", "physical", "social"] as const).map((category) => (
-            <CategoryColumn
-              key={category}
-              label={category.charAt(0).toUpperCase() + category.slice(1)}
-              attributes={CATEGORY_ATTRIBUTES[category].map(
-                ([name, pick]): [string, number] => [name, pick(character)],
-              )}
-              skills={(Object.entries(character.skills[category]) as [string, number][])
-                .filter(([, dots]) => dots > 0)
-                .map(([key, dots]): [string, number] => [formatSkillName(key), dots])}
-              onToggle={toggle}
-              isActive={isActive}
-              canToggle={canToggle}
-              interactive={interactive}
-            />
-          ))}
+        <div className="relative">
+          <TraitSky pool={pool} traitColumns={traitColumnsOf(character)} />
+          <div className="mv-sky-halo relative z-10 grid grid-cols-3 gap-x-6">
+            {SHEET_CATEGORIES.map((category) => (
+              <CategoryColumn
+                key={category}
+                label={category.charAt(0).toUpperCase() + category.slice(1)}
+                attributes={CATEGORY_ATTRIBUTES[category].map(
+                  ([name, pick]): [string, number] => [name, pick(character)],
+                )}
+                skills={(Object.entries(character.skills[category]) as [string, number][])
+                  .filter(([, dots]) => dots > 0)
+                  .map(([key, dots]): [string, number] => [formatSkillName(key), dots])}
+                onToggle={toggle}
+                isActive={isActive}
+                canToggle={canToggle}
+                interactive={interactive}
+              />
+            ))}
+          </div>
         </div>
       </Section>
 
@@ -348,6 +357,26 @@ function TraitRow({
   )
 }
 
+/** The matrix's column order — "social is column 3" holds for both zones. */
+const SHEET_CATEGORIES = ["mental", "physical", "social"] as const
+
+/**
+ * Each trait's home column (0 mental · 1 physical · 2 social), keyed by the
+ * display name the pool stores — the meteor's lane map (TraitSky).
+ */
+function traitColumnsOf(character: CharacterSheetData): Record<string, number> {
+  return Object.fromEntries(
+    SHEET_CATEGORIES.flatMap((category, column) => [
+      ...CATEGORY_ATTRIBUTES[category].map(
+        ([name]): [string, number] => [name, column],
+      ),
+      ...Object.keys(character.skills[category]).map(
+        (key): [string, number] => [formatSkillName(key), column],
+      ),
+    ]),
+  )
+}
+
 /** The nine attributes by category, with their sheet accessors. */
 const CATEGORY_ATTRIBUTES: Record<
   "mental" | "physical" | "social",
@@ -407,7 +436,7 @@ function CategoryColumn({
           canToggle={canToggle}
           active={active}
           onToggle={() => onToggle({ type, name, dots })}
-          className="-mx-2 flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
+          className="mv-sky-row -mx-2 flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
         >
           <span
             className="whitespace-nowrap text-[14px]"

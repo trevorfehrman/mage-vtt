@@ -73,6 +73,23 @@ combat tracker. The rail foot keeps its remaining vocabulary-pilot roles
 driven rule is unchanged — the book's smoulder/scramble/watermark-lift
 behaviors are all armed-state-driven, never ambient.
 
+*Amended (2026-07-18):* the **mundane sky is the app's one ambient canvas**
+(owner verdict, #84; two prototype rounds preserved on
+`prototype/trait-matrix-skies`). The sheet's Attributes & Skills section is
+its only containerless stretch — every neighbor is a made object occluding
+the void, and there the void shows through: a GLSL galaxy (`TraitSky`) runs
+ambiently on the same `ShaderMount` the Arcana substances use. Budget
+holds: it is a single always-on WebGL context (substances still mount only
+while armed, so concurrency stays far under the 16/8 cap), `maxPixelCount`
+caps its GPU cost, the mount pauses offscreen, and reduced motion renders
+one static frame (`speed 0`). Its meteor stays event-driven — it marks the
+roll (the pool machine's building → rolling transition), never the
+selection. Row legibility over the galaxy is structural, same as the Arcana
+captions: a dark halo hugs each row's shapes and empty dot rings brighten
+(`--mv-dot-ring`); the field itself never dims during pool-building. This
+is a license for exactly one sky — the chronicle rail and feed are the
+crunch zone and stay still; ambient motion anywhere else remains banned.
+
 **The a11y floor amends the locked identity.** Three planks: text contrast
 ≥ 4.5:1, full keyboard operability with visible focus-visible styles, and no
 native form controls where a styled equivalent exists. `--dim` (#797488)

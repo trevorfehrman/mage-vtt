@@ -1,0 +1,447 @@
+import { useEffect, useRef, useState } from "react"
+import { ShaderMount } from "@paper-design/shaders-react"
+import { useReducedMotion } from "motion/react"
+import type { PoolComponentInput } from "#/domain/dice"
+import type { useDicePool } from "#/hooks/use-dice-pool"
+
+type DicePoolAPI = ReturnType<typeof useDicePool>
+
+/**
+ * The mundane sky (#84; ADR-0021, 2026-07-18 amendment). Attributes & Skills
+ * is the sheet's only containerless section — every neighbor is a made object
+ * (title card, Arcana tiles, Rote book) occluding the void, and here the void
+ * shows through: the mage's mundane traits are the stars they were born
+ * under, and a mundane roll reads their own chart. This is the app's one
+ * ambient canvas: a single WebGL galaxy on the same ShaderMount the Arcana
+ * substances use (it pauses offscreen; `speed 0` under reduced motion renders
+ * one static frame and cancels the rAF loop).
+ *
+ * The meteor marks the roll, not the selection: it fires on the pool
+ * machine's building → rolling transition. Its lane is DETERMINISTIC from the
+ * pool's category permutation — it enters over the attribute's column and
+ * exits toward the skill's; attr+attr pairs skim high and shallow; dice count
+ * sets tail length and peak opacity; only the jitter within the lane varies
+ * (seeded, repeatable). Mood stays on the sheet — the chronicle rail/feed is
+ * the crunch zone and gets none of this (owner rule).
+ */
+
+// ---------------------------------------------------------------------------
+// The galaxy — three parallax star layers + a whisper of nebula, hand-rolled
+// GLSL (ShaderMount conventions: GLSL ES 3.00, u_time seconds and
+// u_resolution px provided by the mount, premultiplied-alpha output).
+// Repulsion-free: fixed stars don't dodge the pointer. Every aesthetic knob
+// is a uniform so the dev tweak panel can tune the sky live; shipped values
+// live in SKY_DEFAULTS.
+// ---------------------------------------------------------------------------
+const GALAXY_FRAG = /* glsl */ `#version 300 es
+precision mediump float;
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform vec4 u_color;
+uniform float u_intensity;
+uniform float u_density;
+uniform float u_scale;
+uniform float u_sharp;
+uniform float u_twinkle;
+uniform float u_drift;
+uniform float u_nebula;
+out vec4 fragColor;
+
+float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+float vnoise(vec2 p) {
+  vec2 ip = floor(p); vec2 fp = fract(p);
+  float a = hash12(ip); float b = hash12(ip + vec2(1., 0.));
+  float c = hash12(ip + vec2(0., 1.)); float d = hash12(ip + vec2(1., 1.));
+  vec2 t = smoothstep(0., 1., fp);
+  return mix(mix(a, b, t.x), mix(c, d, t.x), t.y);
+}
+float layer(vec2 uv, float scale, float t, float seed, float density) {
+  vec2 gp = uv * scale;
+  vec2 ip = floor(gp); vec2 fp = fract(gp);
+  float h = hash12(ip + seed);
+  float exist = step(h, density);
+  vec2 pos = .15 + .7 * vec2(hash12(ip + seed + 11.3), hash12(ip + seed + 23.7));
+  float d = length(fp - pos);
+  float tw = mix(1., .62 + .38 * sin(t * (.4 + h * 1.6) + h * 43.), u_twinkle);
+  return exist * exp(-d * d * (240. + h * 500.) * u_sharp) * tw;
+}
+void main() {
+  vec2 uv = gl_FragCoord.xy / u_resolution.y;
+  float t = u_time;
+  float s = 0.;
+  s += layer(uv + vec2(t * .0016 * u_drift, 0.), 26. * u_scale, t, 2., .10 * u_density) * .45;
+  s += layer(uv + vec2(t * .0034 * u_drift, 0.), 14. * u_scale, t, 6., .09 * u_density) * .75;
+  s += layer(uv + vec2(t * .006 * u_drift, 0.), 7. * u_scale, t, 9., .07 * u_density) * 1.05;
+  float neb = vnoise(uv * 2.6 + t * .008 * u_drift) * vnoise(uv * 6.1 - t * .006 * u_drift);
+  vec3 col = u_color.rgb * s * u_intensity + vec3(.435, .682, .592) * neb * neb * .10 * u_nebula;
+  float a = clamp(max(col.r, max(col.g, col.b)), 0., 1.);
+  fragColor = vec4(min(col, vec3(1.)), a);
+}
+`
+
+/** Shader colors are WebGL uniforms, not CSS paint: --ink as vec4. */
+const STARLIGHT_VEC4 = [0.843, 0.824, 0.878, 1]
+
+/** The galaxy's aesthetic knobs — each maps 1:1 onto a shader uniform (1 =
+ * the value the owner promoted from the prototype), except the two intensity
+ * stops. Tuned live via the dev panel; bake approved values here. */
+type SkyParams = {
+  /** star population, all three layers */
+  density: number
+  /** grid frequency — more, smaller cells (star count vs. spacing) */
+  scale: number
+  /** gaussian falloff multiplier — higher = tinier, harder stars */
+  sharp: number
+  /** twinkle depth, 0 = steady burn */
+  twinkle: number
+  /** parallax drift speed multiplier */
+  drift: number
+  /** nebula wash strength */
+  nebula: number
+  /** u_intensity at rest */
+  rest: number
+  /** u_intensity while a pool is building */
+  build: number
+}
+
+const SKY_DEFAULTS: SkyParams = {
+  density: 1,
+  scale: 1,
+  sharp: 1,
+  twinkle: 1,
+  drift: 1,
+  nebula: 1,
+  rest: 0.85,
+  build: 1.2,
+}
+
+// ---------------------------------------------------------------------------
+// The meteor system
+// ---------------------------------------------------------------------------
+
+/** Seeded PRNG — the lane is law, the jitter within it repeatable. */
+function mulberry32(seed: number) {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+type Meteor = {
+  id: number
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+  tail: number
+  peak: number
+  dur: number
+}
+
+/** Fraction of sky width at each category column's center. */
+const COL_CENTER = [0.18, 0.5, 0.82]
+
+/** The lane core: entry over column A, exit toward column B. attr+attr skims
+ * high and shallow instead of diving the full sky; dice count sets tail
+ * length and peak opacity; the seed varies the streak within its lane. */
+function meteorLane(
+  colA: number,
+  colB: number,
+  bothAttrs: boolean,
+  dice: number,
+  seed: number,
+  w: number,
+  h: number,
+): Meteor {
+  const rnd = mulberry32(9000 + seed)
+  const jitter = () => (rnd() - 0.5) * 0.16 * w
+  const x0 = COL_CENTER[colA] * w + jitter()
+  const x1 = COL_CENTER[colB] * w + jitter()
+  return {
+    id: seed,
+    x0,
+    y0: -10,
+    x1: colA === colB ? x1 + (rnd() < 0.5 ? -1 : 1) * 0.08 * w : x1,
+    y1: bothAttrs ? h * (0.28 + rnd() * 0.14) : h + 10,
+    tail: 56 + dice * 14,
+    peak: Math.min(0.95, 0.5 + dice * 0.05),
+    dur: 900 + rnd() * 320,
+  }
+}
+
+/** Map a real pool onto a lane. Mundane pools are 1–2 traits (verified:
+ * 3-trait pools are rote-only and flow through the book); a single-trait
+ * roll falls within its own column. Non-trait components (modifiers,
+ * willpower) count toward magnitude but don't steer. */
+function meteorFor(
+  components: readonly PoolComponentInput[],
+  columnOf: Record<string, number>,
+  poolSize: number,
+  seed: number,
+  w: number,
+  h: number,
+): Meteor | null {
+  const traits = components.filter(
+    (c) => c.type === "attribute" || c.type === "skill",
+  )
+  const first = traits[0]
+  if (first === undefined) return null
+  const second = traits[1] ?? first
+  return meteorLane(
+    columnOf[first.name] ?? 1,
+    columnOf[second.name] ?? 1,
+    first.type === "attribute" && second.type === "attribute",
+    poolSize,
+    seed,
+    w,
+    h,
+  )
+}
+
+/** One streak. SMIL is a trap for dynamically mounted animations — a mounted
+ * <animate> resolves begin="0s" against the SVG's document timeline, so it
+ * arrives already-finished and invisible; CSS keyframes can't interpolate
+ * calc()'d custom-property dashoffsets either. What works: mount at the start
+ * offset, force a reflow, then transition concrete pixel values. */
+function MeteorLine({ m }: { m: Meteor }) {
+  const ref = useRef<SVGLineElement | null>(null)
+  const len = Math.hypot(m.x1 - m.x0, m.y1 - m.y0)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    void el.getBoundingClientRect() // commit the start state before transitioning
+    el.style.transition = [
+      `stroke-dashoffset ${m.dur}ms cubic-bezier(0.2, 0.4, 0.6, 1)`,
+      `opacity ${Math.round(m.dur * 0.3)}ms ease ${Math.round(m.dur * 0.7)}ms`,
+    ].join(", ")
+    el.style.strokeDashoffset = `${-m.tail}`
+    el.style.opacity = "0"
+  }, [m])
+
+  return (
+    <line
+      ref={ref}
+      x1={m.x0}
+      y1={m.y0}
+      x2={m.x1}
+      y2={m.y1}
+      className="mv-sky-meteor"
+      strokeDasharray={`${m.tail} ${len + m.tail}`}
+      style={{ strokeDashoffset: len + m.tail, opacity: m.peak }}
+    />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// The sky itself
+// ---------------------------------------------------------------------------
+
+interface TraitSkyProps {
+  /**
+   * The sheet's pool controller. Absent (read-only sheets) the sky is still
+   * present — it's the section's material, not an affordance — but stays at
+   * rest and never fires a meteor.
+   */
+  pool?: DicePoolAPI | undefined
+  /** Category column (0 mental · 1 physical · 2 social) per trait display
+   * name — the meteor's lane map, derived from the character's own sheet. */
+  traitColumns: Record<string, number>
+}
+
+export function TraitSky({ pool, traitColumns }: TraitSkyProps) {
+  const reduced = useReducedMotion() ?? false
+  const building = pool?.state === "building"
+  const skyRef = useRef<HTMLDivElement | null>(null)
+  const [meteors, setMeteors] = useState<Meteor[]>([])
+  const fireCount = useRef(0)
+  const [params, setParams] = useState<SkyParams>(SKY_DEFAULTS)
+
+  const launch = (m: Meteor | null) => {
+    if (!m) return
+    setMeteors((prev) => [...prev, m])
+    setTimeout(() => setMeteors((prev) => prev.filter((x) => x.id !== m.id)), 1600)
+  }
+
+  // The meteor marks the roll: fire on the machine's building → rolling
+  // transition, while the consumed pool's components are still in context.
+  const poolRef = useRef(pool)
+  poolRef.current = pool
+  const prevState = useRef(pool?.state)
+  useEffect(() => {
+    const p = poolRef.current
+    const el = skyRef.current
+    if (
+      p !== undefined &&
+      el !== null &&
+      !reduced &&
+      p.state === "rolling" &&
+      prevState.current === "building"
+    ) {
+      const { width, height } = el.getBoundingClientRect()
+      fireCount.current += 1
+      launch(
+        meteorFor(
+          p.context.components,
+          traitColumns,
+          p.context.poolSize,
+          fireCount.current,
+          width,
+          height,
+        ),
+      )
+    }
+    prevState.current = p?.state
+  }, [pool?.state])
+
+  // Dev-only: a lane test that needs no real roll — cycles the permutations.
+  const testMeteor = () => {
+    const el = skyRef.current
+    if (!el) return
+    const { width, height } = el.getBoundingClientRect()
+    fireCount.current += 1
+    const n = fireCount.current
+    launch(
+      meteorLane(n % 3, (n * 2 + 1) % 3, n % 4 === 0, 4 + (n % 6), n, width, height),
+    )
+  }
+
+  return (
+    <>
+      {/* the open sky — no container; the void shows through here and
+          nowhere else. The layer overshoots vertically so meteors enter
+          from above the content, and a mask feathers its edges. */}
+      <div ref={skyRef} aria-hidden className="mv-sky">
+        <ShaderMount
+          fragmentShader={GALAXY_FRAG}
+          uniforms={{
+            u_color: STARLIGHT_VEC4,
+            u_intensity: building ? params.build : params.rest,
+            u_density: params.density,
+            u_scale: params.scale,
+            u_sharp: params.sharp,
+            u_twinkle: params.twinkle,
+            u_drift: params.drift,
+            u_nebula: params.nebula,
+          }}
+          speed={reduced ? 0 : 1}
+          width="100%"
+          height="100%"
+          maxPixelCount={860 * 560}
+        />
+        <svg className="pointer-events-none absolute inset-0 z-[5] h-full w-full overflow-visible">
+          {meteors.map((m) => (
+            <MeteorLine key={m.id} m={m} />
+          ))}
+        </svg>
+      </div>
+      {import.meta.env.DEV && (
+        <SkyTweakPanel params={params} onChange={setParams} onTest={testMeteor} />
+      )}
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Dev tweak panel — the owner's tuning bench for the eye-tour. DEV-only;
+// approved values get baked into SKY_DEFAULTS and this panel stays dormant.
+// ---------------------------------------------------------------------------
+
+const SKY_RANGES: Record<keyof SkyParams, [min: number, max: number, step: number]> = {
+  density: [0.2, 2.5, 0.05],
+  scale: [0.5, 2, 0.05],
+  sharp: [0.3, 3, 0.05],
+  twinkle: [0, 1, 0.05],
+  drift: [0, 4, 0.1],
+  nebula: [0, 3, 0.05],
+  rest: [0, 2, 0.05],
+  build: [0, 2, 0.05],
+}
+
+function SkyTweakPanel({
+  params,
+  onChange,
+  onTest,
+}: {
+  params: SkyParams
+  onChange: (p: SkyParams) => void
+  onTest: () => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title="tune the sky (dev)"
+        className="mv-mini fixed bottom-4 right-4 z-50"
+      >
+        sky ✦
+      </button>
+    )
+  }
+
+  return (
+    <div
+      className="mv-panel fixed bottom-4 right-4 z-50 grid w-64 gap-2 rounded-[4px] border p-3"
+      style={{ borderColor: "var(--line)" }}
+    >
+      <div className="flex items-center justify-between">
+        <span className="mv-eyebrow">Sky (dev)</span>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="mv-mini"
+        >
+          close
+        </button>
+      </div>
+      {(Object.keys(SKY_RANGES) as (keyof SkyParams)[]).map((key) => {
+        const [min, max, step] = SKY_RANGES[key]
+        return (
+          <label key={key} className="grid gap-0.5">
+            <span className="mv-data flex justify-between text-[10px] uppercase tracking-wider" style={{ color: "var(--dim)" }}>
+              <span>{key}</span>
+              <span style={{ color: "var(--ink)" }}>{params[key].toFixed(2)}</span>
+            </span>
+            <input
+              type="range"
+              min={min}
+              max={max}
+              step={step}
+              value={params[key]}
+              onChange={(e) =>
+                onChange({ ...params, [key]: Number(e.target.value) })
+              }
+            />
+          </label>
+        )
+      })}
+      <div className="flex gap-2">
+        <button type="button" onClick={onTest} className="mv-mini flex-1">
+          ☄ test meteor
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(SKY_DEFAULTS)}
+          className="mv-mini"
+        >
+          reset
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            void navigator.clipboard.writeText(JSON.stringify(params, null, 2))
+          }}
+          className="mv-mini"
+        >
+          copy
+        </button>
+      </div>
+    </div>
+  )
+}

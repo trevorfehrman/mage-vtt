@@ -295,6 +295,48 @@ pre code {
   border-color: var(--accent) !important;
 }
 
+/* The mundane sky (#84; ADR-0021, 2026-07-18) — the Attributes & Skills
+ * section's galaxy layer (TraitSky). The layer overshoots the section so
+ * meteors enter from above the content; the mask feathers its edges so the
+ * void has no border. */
+.mv-sky {
+  position: absolute;
+  left: -12px;
+  right: -12px;
+  top: -28px;
+  bottom: -16px;
+  pointer-events: none;
+  mask-image:
+    linear-gradient(to bottom, transparent, black 34px, black calc(100% - 26px), transparent),
+    linear-gradient(to right, transparent, black 26px, black calc(100% - 26px), transparent);
+  mask-composite: intersect;
+}
+/* Row legibility against the running galaxy — the Arcana caption trick
+ * ported (.mv-arcana-lit .mv-arcana-caption): a lit-only dark halo hugging
+ * each row's own shapes, and brightened empty dot rings. Trait rows stay
+ * fully legible during pool-building; the field never dims. */
+.mv-sky-halo .mv-sky-row {
+  filter: drop-shadow(0 0 2px rgba(8, 8, 10, 0.95)) drop-shadow(0 0 5px rgba(8, 8, 10, 0.75))
+    drop-shadow(0 2px 9px rgba(8, 8, 10, 0.55));
+}
+.mv-sky-halo {
+  --mv-dot-ring: color-mix(in srgb, var(--ink) 42%, transparent);
+}
+/* The meteor: a dash segment racing the line entry → exit (JS-driven CSS
+ * transitions on concrete px values — see TraitSky's MeteorLine). */
+.mv-sky-meteor {
+  stroke: var(--ink);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  fill: none;
+  filter: drop-shadow(0 0 5px var(--accent));
+}
+@media (prefers-reduced-motion: reduce) {
+  .mv-sky-meteor {
+    display: none;
+  }
+}
+
 .mv-chip {
   background: var(--raise);
   border: 1px solid var(--line);
