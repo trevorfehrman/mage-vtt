@@ -405,14 +405,20 @@ function VariantFelt({ chips, submit }: VariantProps) {
         </span>
       </div>
 
-      {/* the felt, flanked by its chevrons: ‹ skims a die off, › feeds one on.
-          The felt itself stays touchable (tap = add, tap a die = remove) but
-          the chevrons are the easy path. */}
-      <div className="mx-3 mt-2 flex items-stretch gap-1.5">
+      {/* the felt, flanked by its rails: ‹/−5 skim dice off the left,
+          ›/+5 feed them on from the right. A grid so the chevrons match the
+          felt's height exactly, the ±5s sit directly beneath their chevrons
+          at the same width, and the fittings live strictly inside the felt
+          column — wrapping to a vertical stack when the rail thins. The felt
+          itself stays touchable (tap = add, tap a die = remove) as garnish. */}
+      <div
+        className="mx-3 mt-2 grid gap-1.5"
+        style={{ gridTemplateColumns: "2rem minmax(0,1fr) 2rem" }}
+      >
         <button
           onClick={() => setPlainCount((n) => Math.max(0, n - 1))}
           disabled={plainCount === 0}
-          className="mv-btn w-8 shrink-0 rounded-[6px] text-[20px] leading-none disabled:opacity-30"
+          className="mv-btn w-8 rounded-[6px] text-[20px] leading-none disabled:opacity-30"
           title="Take a die off the felt"
         >
           ‹
@@ -424,7 +430,7 @@ function VariantFelt({ chips, submit }: VariantProps) {
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") setPlainCount((n) => n + 1)
           }}
-          className="block min-w-0 flex-1 cursor-copy rounded-[6px] border p-2 text-left"
+          className="block min-w-0 cursor-copy rounded-[6px] border p-2 text-left"
           style={{
             borderColor: "var(--line)",
             background: "color-mix(in srgb, var(--accent) 6%, transparent)",
@@ -454,52 +460,72 @@ function VariantFelt({ chips, submit }: VariantProps) {
         </div>
         <button
           onClick={() => setPlainCount((n) => n + 1)}
-          className="mv-btn w-8 shrink-0 rounded-[6px] text-[20px] leading-none"
+          className="mv-btn w-8 rounded-[6px] text-[20px] leading-none"
           title="Feed a die onto the felt"
         >
           ›
         </button>
-      </div>
-      {chips && (
-        <p className="mv-data px-4 pt-1 text-[10px]" style={{ color: "var(--dim)" }}>
-          <span style={{ color: "var(--accent)" }}>◆</span> Wits + Investigation, from the sheet
-        </p>
-      )}
 
-      {/* the lip: always-visible fittings */}
-      <div className="mt-2 flex flex-wrap items-center gap-2 px-3">
-        <button onClick={() => setPlainCount((n) => n + 5)} className="mv-mini">
-          +5
-        </button>
+        {/* row two: the ±5s under their chevrons, fittings under the felt */}
         <button
-          onClick={() => setPlainCount(0)}
+          onClick={() => setPlainCount((n) => Math.max(0, n - 5))}
           disabled={plainCount === 0}
-          className="mv-mini disabled:opacity-40"
+          className="mv-mini w-8 self-start px-0 text-center disabled:opacity-40"
+          title="Take five dice off"
         >
-          Sweep
+          −5
         </button>
-        <span className="h-4 w-px" style={{ background: "var(--line)" }} />
-        <AgSegment
-          value={opts.againThreshold}
-          onChange={(v) => setOpts((o) => ({ ...o, againThreshold: v }))}
-        />
+        <div className="min-w-0">
+          {chips && (
+            <p
+              className="mv-data pb-1.5 text-[10px]"
+              style={{ color: "var(--dim)" }}
+            >
+              <span style={{ color: "var(--accent)" }}>◆</span> Wits +
+              Investigation, from the sheet
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => setPlainCount(0)}
+              disabled={plainCount === 0}
+              className="mv-mini disabled:opacity-40"
+            >
+              Sweep
+            </button>
+            <span className="h-4 w-px" style={{ background: "var(--line)" }} />
+            <AgSegment
+              value={opts.againThreshold}
+              onChange={(v) => setOpts((o) => ({ ...o, againThreshold: v }))}
+            />
+            <button
+              onClick={() =>
+                setOpts((o) => ({ ...o, isRoteAction: !o.isRoteAction }))
+              }
+              className={`mv-mini ${opts.isRoteAction ? "mv-mini-on" : ""}`}
+            >
+              Rote
+            </button>
+            <button
+              onClick={() => setOpts((o) => ({ ...o, hidden: !o.hidden }))}
+              className={`mv-mini ${opts.hidden ? "mv-mini-on" : ""}`}
+            >
+              Hidden
+            </button>
+            <button
+              onClick={() => setOpts((o) => ({ ...o, willpower: !o.willpower }))}
+              className={`mv-mini ${opts.willpower ? "mv-mini-on" : ""}`}
+            >
+              WP +3
+            </button>
+          </div>
+        </div>
         <button
-          onClick={() => setOpts((o) => ({ ...o, isRoteAction: !o.isRoteAction }))}
-          className={`mv-mini ${opts.isRoteAction ? "mv-mini-on" : ""}`}
+          onClick={() => setPlainCount((n) => n + 5)}
+          className="mv-mini w-8 self-start px-0 text-center"
+          title="Feed five dice on"
         >
-          Rote
-        </button>
-        <button
-          onClick={() => setOpts((o) => ({ ...o, hidden: !o.hidden }))}
-          className={`mv-mini ${opts.hidden ? "mv-mini-on" : ""}`}
-        >
-          Hidden
-        </button>
-        <button
-          onClick={() => setOpts((o) => ({ ...o, willpower: !o.willpower }))}
-          className={`mv-mini ${opts.willpower ? "mv-mini-on" : ""}`}
-        >
-          WP +3
+          +5
         </button>
       </div>
 
