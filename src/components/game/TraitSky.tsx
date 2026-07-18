@@ -112,13 +112,15 @@ type SkyParams = {
   build: number
 }
 
+/** Owner-tuned 2026-07-18 (live eye-tour): a sparser field, a fainter
+ * nebula — the sky recedes behind the sheet instead of competing with it. */
 const SKY_DEFAULTS: SkyParams = {
-  density: 1,
+  density: 0.55,
   scale: 1,
   sharp: 1,
   twinkle: 1,
   drift: 1,
-  nebula: 1,
+  nebula: 0.5,
   rest: 0.85,
   build: 1.2,
 }
@@ -127,6 +129,7 @@ const SKY_DEFAULTS: SkyParams = {
  * meteor field (lives with the trait matrix): the test button broadcasts,
  * the field listens. Production never dispatches it. */
 const SKY_TEST_EVENT = "mv-sky-test-meteor"
+const handledTestEvents = new WeakSet<Event>()
 
 // ---------------------------------------------------------------------------
 // The firmament
@@ -229,7 +232,9 @@ function meteorLane(
     x1: colA === colB ? x1 + (rnd() < 0.5 ? -1 : 1) * 0.08 * w : x1,
     y1: bothAttrs ? h * (0.28 + rnd() * 0.14) : h + 10,
     tail: 56 + dice * 14,
-    peak: Math.min(0.95, 0.5 + dice * 0.05),
+    // quiet by decree (owner, 2026-07-18): the streak is a passing omen,
+    // not a firework — length carries the magnitude, not brightness
+    peak: Math.min(0.7, 0.32 + dice * 0.04),
     dur: 900 + rnd() * 320,
   }
 }
@@ -357,10 +362,13 @@ export function TraitSky({ pool, traitColumns }: TraitSkyProps) {
   }, [pool?.state])
 
   // Dev-only: the tweak panel's lane test — no real roll needed; cycles the
-  // permutations deterministically.
+  // permutations deterministically. The WeakSet dedupes per event: a stale
+  // HMR listener or a double mount can't double-fire the streak.
   useEffect(() => {
     if (!import.meta.env.DEV) return
-    const onTest = () => {
+    const onTest = (e: Event) => {
+      if (handledTestEvents.has(e)) return
+      handledTestEvents.add(e)
       const el = skyRef.current
       if (!el) return
       const { width, height } = el.getBoundingClientRect()
