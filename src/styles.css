@@ -23,6 +23,12 @@
   --accent: #6fae97;
   --line: #1e2b27;
   --glow: rgba(111, 174, 151, 0.12);
+  /* The ember — the caster's hand (color grammar, owner 2026-07-18):
+   * verdigris is the world's magic (patina, stars, realm ambience); the
+   * ember is the player's own act. Drawn from the Rote book's recitation
+   * smoulder (#d87a3e→#f2a658); wears on pool-building selection. */
+  --ember: #e29659;
+  --ember-glow: rgba(216, 122, 62, 0.13);
   --bad: #b56d60;
   /* The trait-zone pair — plain ink, LOCKED for now (owner call
    * 2026-07-18, closing the color hunt after the night sky landed).
@@ -294,9 +300,10 @@ pre code {
   opacity: 0.5;
   cursor: default;
 }
+/* selection burns ember, not verdigris — the pool is the caster's hand */
 .mv-trait-on {
-  background: var(--glow) !important;
-  border-color: var(--accent) !important;
+  background: var(--ember-glow) !important;
+  border-color: var(--ember) !important;
 }
 
 /* The night sky (#84; ADR-0021, 2026-07-18) — the firmament (SheetSky)
