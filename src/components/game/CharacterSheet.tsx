@@ -7,6 +7,7 @@ import {
 } from "#/domain/character"
 import type { BoxSeverity } from "#/domain/damage"
 import type { PoolComponentInput, PoolComponentType } from "#/domain/dice"
+import { sortRotes } from "#/domain/rote-order"
 import { formatRotePool } from "#/domain/rote-pool"
 import {
   ArcanaGlyph,
@@ -182,11 +183,13 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
 
       {/* Rotes — practiced spells, directly under the Arcana they belong to:
           the sheet's magic stays contiguous (owner call 2026-07-16). Castable
-          entries (issue #20); inert rows on read-only sheets. */}
+          entries (issue #20); inert rows on read-only sheets. Rows in the
+          dashboard tiles' canonical order (issue #88), so they never
+          reshuffle when ratings change. */}
       {character.rotes.length > 0 && (
         <Section title="Rotes">
           <div className="grid gap-1">
-            {character.rotes.map((rote) => (
+            {sortRotes(character.rotes).map((rote) => (
               <RoteRow key={rote.name} rote={rote} cast={cast} />
             ))}
           </div>
