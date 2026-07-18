@@ -1,5 +1,13 @@
 # Vulgar casting is a staged negotiation: the Cast pipeline
 
+> **Amended by ADR-0022** (2026-07-18): liabilities became scene-owned
+> Tides (seed + per-cast adjustment), the ladder collapsed to four
+> two-colored rungs, and "one mutation per beat" was refined to "one
+> mutation per commitment; drafting is broadcast working state" — the
+> contain+cast collapse this ADR rejected is now adopted under that
+> refinement. The Cast document as single source of truth, the exclusive
+> stage, no timeouts, and void-anytime all stand.
+
 Vulgar casting is modeled as a first-class **Cast** document walking a status
 ladder, with one Convex mutation per dramatic beat:
 
