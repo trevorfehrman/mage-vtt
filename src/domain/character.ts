@@ -284,6 +284,23 @@ const SheetArcana = Schema.Struct({
 
 
 /**
+ * The spell's page as the book prints it (issue #89): the rulebook's own stat
+ * block, description and rote flavor the Rote book renders. Stamped at ingest
+ * from spells.json — the character file never declares it. Presentation only:
+ * the casting gate keeps reading `spellAspect` (issue #68), never this.
+ */
+export class SpellPage extends Schema.Class<SpellPage>("SpellPage")({
+  practice: Schema.String,
+  action: Schema.String,
+  duration: Schema.String,
+  cost: Schema.String,
+  /** The book's spell text; blank lines separate paragraphs. */
+  description: Schema.String,
+  /** The rote's own paragraph, where the corrections pass has recovered it. */
+  roteFlavor: Schema.optionalKey(Schema.String),
+}) {}
+
+/**
  * A Rote the character trained (issue #16): the sheet-side mirror of
  * `KnownRoteDoc` — spell business key, source Order, and the structured pool
  * whose trait names the cast flow resolves against the caster's ratings.
@@ -301,6 +318,9 @@ export class KnownRote extends Schema.Class<KnownRote>("KnownRote")({
   // Optional: rows ingested before the stamp have none; absent means unknown,
   // so the gate stays open and the server's refusal remains the authority.
   spellAspect: Schema.optionalKey(SpellAspect),
+  // The page stamp (issue #89) — absent on rows ingested before it; the
+  // book's page degrades to placeholders rather than refusing to open.
+  spellPage: Schema.optionalKey(SpellPage),
 }) {}
 
 /**

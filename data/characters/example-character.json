@@ -53,7 +53,7 @@
     "manaCurrent": 11,
     "knownRotes": [
       {
-        "name": "Clamor of the",
+        "name": "Clamor of the Departed",
         "spellName": "Speak with the Dead",
         "spellArcanum": "Death",
         "spellLevel": 1,
@@ -61,7 +61,7 @@
         "pool": { "attribute": "Wits", "skills": ["Occult"], "arcanum": "Death" }
       },
       {
-        "name": "The Seal of",
+        "name": "The Seal of Harafax",
         "spellName": "Ectoplasmic Shaping",
         "spellArcanum": "Death",
         "spellLevel": 1,
@@ -74,7 +74,7 @@
         }
       },
       {
-        "name": "Rube Goldberg’s",
+        "name": "Rube Goldberg's Brain",
         "spellName": "Craftsman's Eye",
         "spellArcanum": "Matter",
         "spellLevel": 1,
