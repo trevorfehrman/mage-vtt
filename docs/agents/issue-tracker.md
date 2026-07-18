@@ -25,6 +25,17 @@ When set to `yes`, PRs run through the same labels and states as issues, using t
 
 GitHub shares one number space across issues and PRs, so a bare `#42` may be either — resolve with `gh pr view 42` and fall back to `gh issue view 42`.
 
+## Wayfinding operations
+
+Wayfinder efforts keep their artifacts as GitHub issues:
+
+- **The map** is an issue labeled `wayfinder:map` — one per effort, the index of its decisions.
+- **Tickets** are child issues labeled `wayfinder:ticket` **plus** one type label (`wayfinder:grilling` / `wayfinder:prototype` / `wayfinder:research` / `wayfinder:task`), carrying a `## Map` section (`Part of #<map>`) in the body.
+- **Blocking** uses this repo's existing body convention — a `## Blocked by` section listing issue numbers. GitHub-native issue dependencies are not used. A ticket is unblocked when every listed issue is closed.
+- **Claiming**: assign yourself (`gh issue edit <n> --add-assignee @me`) before any work. Open + unassigned = unclaimed.
+- **The frontier**: `gh issue list --label "wayfinder:ticket" --state open --json number,title,body,assignees,labels`, then keep issues with no assignee whose `## Blocked by` entries are all closed.
+- **Resolving**: post the answer as a comment, close the issue, append one line to the map's `## Decisions so far`.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a GitHub issue.
