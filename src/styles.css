@@ -24,16 +24,16 @@
   --line: #1e2b27;
   --glow: rgba(111, 174, 151, 0.12);
   --bad: #b56d60;
-  /* The trait-zone pair — the mundane metals (baseline audition
-   * 2026-07-18, after the night sky landed): warm against the verdigris
-   * field — attributes the brighter amber-gold (the born metal), skills
-   * the quieter worked bronze (the earned one). Pitched between the realm
-   * tints on purpose: more orange than Aether's brass (#d3b46a), cleaner
-   * than Pandemonium's rust (#b4693c), so the zones don't repeat the
-   * ivory/blue failure of reading as realm materials. Retired pairs:
-   * ivory/blue, rose/violet, plain ink (the sky-audition interim). */
-  --zone-attr: #d9a35c;
-  --zone-skill: #b58963;
+  /* The trait-zone pair (audition round 2, 2026-07-18): raw copper and
+   * dusty rose against the verdigris field. The copper is the owner's own
+   * pick — and the right story: verdigris IS oxidized copper, so the
+   * mundane traits wear the raw metal the app's magic-patina comes from.
+   * The rose is verdigris's true complement (hue ~158° → ~338°), kept in
+   * the same pale muted register so the pair reads as one palette.
+   * Retired: ivory/blue and rose/violet (read as realm materials / didn't
+   * sit), amber-gold/bronze (too saturated), plain ink (interim). */
+  --zone-attr: #d0ae91;
+  --zone-skill: #c295a5;
 
   /* The five Supernal Realm materials (owner call 2026-07-16) — true to the
    * Watchtowers: shimmering gold Aether (Prime·Forces·Obrimos), shimmering
