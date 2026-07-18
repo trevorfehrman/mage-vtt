@@ -64,7 +64,7 @@ presentation may unpack a commitment into multiple beats.** This refines
 ADR-0016's "one mutation per beat." That ADR fused mutation boundaries with
 dramatic beats because drafting was private then — a reveal was the only
 place drama could live. With drafting broadcast, suspense moves upstream of
-the commitment, so contain + Willpower + roll collapse into one **Cast**
+the commitment, so contain + roll collapse into one **Cast**
 click (one server commitment instead of two), and the card may still play
 "the sacrifice lands" then "the dice fly" as sequential animations from one
 event. Different-actor beats never fuse: the ST's Paradox roll and the
@@ -80,17 +80,24 @@ third distinct treatment); a manifestation-severity tracker reacts live; an
 odds line sits permanently beneath, read-only to the ST and bystanders —
 spectator suspense is a design goal, not a leak.
 
-**Willpower moves to the cockpit.** Rules check (WoD core pp. 96/133, Mage
-pp. 123–126): Willpower is +3 dice on one roll — not a reroll — reflexive,
-must be declared *before that roll*, one point max, excluded only on
-degeneration/Morality rolls, and has no Paradox interaction (mitigation is
-Mana, containment is health, the Paradox roll is the ST's dice). Today's
-declaration-time `spendWillpower` toggle commits the point blind; the
-informed moment is after seeing the Paradox roll, and the placement is
-legal because the spend precedes the casting roll it boosts. The toggle
-gates on `willpowerCurrent > 0` and the spend writes the character doc on
-commit, like Mana. Covert casting and the plain roller keep their
-declare-time toggle — no cockpit exists there.
+**Willpower stays at declaration — precommitted, blind, by the book.**
+Rules check (WoD core pp. 96/133, Mage p. 125): Willpower is +3 dice on
+one roll — not a reroll — one point max, excluded only on
+degeneration/Morality rolls, and has no Paradox lever (mitigation is Mana,
+containment is health). The grill briefly relocated the toggle to the
+cockpit as the "informed moment"; the owner's double-check reversed it.
+WoD p. 133 pins the timing twice: going for broke is announced "before
+the activity is performed," and the three dice are added during pool
+composition "before all penalties for your roll have been applied — form
+your pool, add all bonuses, including your three dice from Willpower, and
+then subtract all penalties." The Paradox dice loss is such a penalty, and
+Mage p. 125 runs the Paradox check only "after the player has figured out
+all of the above elements." So the spend belongs in the cast builder, part
+of the declared pool that Paradox later erodes — backlash is the only
+post-Paradox liberty the book grants. The existing declaration-time
+`spendWillpower` toggle (issue #12) was already correct; the cockpit
+dice-line simply renders the Willpower dice as pool members, as losable to
+Paradox as any other die.
 
 **Drafting lives on the Cast document.** Box clicks and the Willpower
 toggle write draft fields via cheap seam-checked mutations (actor is
