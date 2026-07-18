@@ -527,7 +527,7 @@ function ArcanaDashboard({
               gross ? "mv-arcana-gross" : "mv-arcana-sub"
             } mv-realm-${arcanumRealm(name)} ${
               armed ? "mv-arcana-lit mv-arcana-armed" : ""
-            } ${rated ? "" : "opacity-60"} relative aspect-square rounded-[4px]`}
+            } relative aspect-square rounded-[4px]`}
             style={tileVar}
           >
             <span aria-hidden className="mv-arcana-bloom" />
@@ -537,11 +537,22 @@ function ArcanaDashboard({
             {armed && isPreciousArcanum(name) && !hasSubstance(name) && (
               <span aria-hidden className="mv-arcana-fx" />
             )}
-            {/* the glyph owns the tile's true center; name and dots hang below */}
-            <span className="mv-arcana-glyph absolute inset-0 grid place-items-center">
+            {/* the glyph owns the tile's true center; name and dots hang
+                below. Unrated tiles ghost their CONTENTS only — the tile
+                itself stays solid so the firmament (#84) never shines
+                through a made object. */}
+            <span
+              className={`mv-arcana-glyph absolute inset-0 grid place-items-center ${
+                rated ? "" : "opacity-60"
+              }`}
+            >
               <ArcanaGlyph arcanum={name} size={34} variant={gross ? "seal" : "line"} />
             </span>
-            <span className="absolute inset-x-0 bottom-4 grid justify-items-center">
+            <span
+              className={`absolute inset-x-0 bottom-4 grid justify-items-center ${
+                rated ? "" : "opacity-60"
+              }`}
+            >
               <span className="mv-arcana-caption grid justify-items-center gap-1 rounded-[3px] px-2 py-1">
                 <span className="mv-arcana-name text-[12px]" style={{ color: "var(--ink)" }}>
                   {displayName}

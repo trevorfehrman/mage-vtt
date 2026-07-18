@@ -187,7 +187,9 @@ function Contents({
   return (
     <div
       className="relative grid h-full content-start gap-0.5 overflow-hidden rounded-[4px] px-4 py-3"
-      style={{ boxShadow: frameShadow }}
+      // solid — the book is a made object; the firmament (#84) must not
+      // shine through its boards
+      style={{ boxShadow: frameShadow, background: "var(--panel)" }}
     >
       {/* the back of the index wears the Order's seal, embossed — this
           grimoire is an Order artifact before it is anything else */}
@@ -279,6 +281,7 @@ function Page({
     <div
       className="relative flex h-full flex-col overflow-hidden rounded-[4px] px-4 pb-3 pt-2"
       style={{
+        background: "var(--panel)",
         transition: "box-shadow 0.3s",
         // the armed state is the open page, lit — in the realm's tint: the
         // loaded magic is the Arcanum's, while the ember below stays the
