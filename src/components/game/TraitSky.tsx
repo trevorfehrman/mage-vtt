@@ -90,8 +90,11 @@ void main() {
 }
 `
 
-/** Shader colors are WebGL uniforms, not CSS paint: --ink as vec4. */
-const STARLIGHT_VEC4 = [0.843, 0.824, 0.878, 1]
+/** Shader colors are WebGL uniforms, not CSS paint: --ink mixed 70% toward
+ * verdigris (#6fae97) — the stars burn in the app's own patina
+ * (owner audition 2026-07-18, "crank it up" from 30%). Pure ink was
+ * [0.843, 0.824, 0.878]. */
+const STARLIGHT_VEC4 = [0.557, 0.724, 0.678, 1]
 
 /** The galaxy's aesthetic knobs — each maps 1:1 onto a shader uniform (1 =
  * the value the owner promoted from the prototype), except the two intensity
