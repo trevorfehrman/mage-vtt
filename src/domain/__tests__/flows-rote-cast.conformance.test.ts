@@ -303,8 +303,9 @@ describe("Flows.roteCast.castRote conformance (ConvexLive vs InMemory)", () => {
       }
 
       expect(observedLive).toEqual(observedInMem)
-      // Presence 2 + Occult 4 + Death 3, and a costless Rote moves no Mana
-      expect(observedLive.poolSize).toBe(9)
+      // Presence 2 + Occult 4 + Death 3 + Rote Specialty 1 (issue #87), and a
+      // costless Rote moves no Mana
+      expect(observedLive.poolSize).toBe(10)
       expect(observedLive.manaAfter).toBe(10)
       expect(observedLive.activityCount).toBe(1)
     }),

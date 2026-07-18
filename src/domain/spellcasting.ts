@@ -156,11 +156,17 @@ export const calculateRotePool = (input: {
   attributeDots: number
   skillDots: number
   arcanumDots: number
+  /** The Rote Specialty die the rote-cast leaf resolved — never computed here. */
+  specialtyBonus?: number
   highSpeech?: boolean
   willpower?: boolean
 }): CastingPool => {
   const baseDice = input.attributeDots + input.skillDots + input.arcanumDots
   const bonuses: Array<DiceBonus> = []
+
+  if (input.specialtyBonus) {
+    bonuses.push({ source: "Rote Specialty", dice: input.specialtyBonus })
+  }
 
   if (input.highSpeech) {
     bonuses.push({ source: "High Speech", dice: 2 })

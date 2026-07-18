@@ -75,7 +75,8 @@ describe("CastPreview.improvised", () => {
   })
 })
 
-// Presence 2 + Occult 4 + Death 3 = 9 dice on Aldous's sheet.
+// Presence 2 + Occult 4 + Death 3 + Rote Specialty 1 = 10 dice on Aldous's
+// sheet: he is Mysterium and Occult is one of the Order's three (issue #87).
 const graveMien = new KnownRote({
   name: "Grave Mien",
   spellName: "Speak with the Dead",
@@ -109,12 +110,13 @@ describe("CastPreview.rote", () => {
       }),
     )
 
-    expect(preview.dice).toBe(9) // Presence 2 + Occult 4 + Death 3
+    expect(preview.dice).toBe(10) // Presence 2 + Occult 4 + Death 3 + Rote Specialty 1
     expect(preview.manaCost).toBe(0) // no Path cost for a Rote
     expect(preview.components).toEqual([
       { type: "attribute", name: "Presence", dots: 2 },
       { type: "skill", name: "Occult", dots: 4 },
       { type: "arcanum", name: "Death", dots: 3 },
+      { type: "modifier", name: "Rote Specialty", dots: 1 },
     ])
     expect(preview.contestedVs).toBeUndefined()
   })
@@ -136,11 +138,12 @@ describe("CastPreview.rote", () => {
       }),
     )
 
-    expect(preview.dice).toBe(8) // Wits 2 + Investigation 3 + Death 3
+    expect(preview.dice).toBe(9) // Wits 2 + Investigation 3 + Death 3 + Rote Specialty 1
     expect(preview.components).toEqual([
       { type: "attribute", name: "Wits", dots: 2 },
       { type: "skill", name: "Investigation", dots: 3 },
       { type: "arcanum", name: "Death", dots: 3 },
+      { type: "modifier", name: "Rote Specialty", dots: 1 },
     ])
     expect(preview.contestedVs).toEqual(["Resolve", "Gnosis"])
   })
