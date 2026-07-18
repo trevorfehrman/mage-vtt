@@ -2,7 +2,12 @@ import { Effect, Exit, Schema } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import { KnownRote } from "../character"
 import { RotePool } from "../rote-pool"
-import { requireCovertSpell, resolveRotePool, SpellRef } from "../rote-cast"
+import {
+  requireCovertSpell,
+  resolveRoteAlternatives,
+  resolveRotePool,
+  SpellRef,
+} from "../rote-cast"
 import { failureTag, makeAldousSheet } from "../testing/fixtures"
 
 /**
@@ -32,8 +37,10 @@ describe("RoteCast.resolveRotePool", () => {
 
       expect(resolved).toEqual({
         attribute: { name: "Presence", dots: 2 },
+        // Occult is a Mysterium Rote Specialty and Aldous is Mysterium.
         skill: { name: "Occult", dots: 4, kind: "skill" },
         arcanum: { name: "Death", dots: 3 },
+        specialty: { eligible: true, bonus: 1 },
       })
     }),
   )
@@ -153,6 +160,100 @@ describe("RoteCast.resolveRotePool", () => {
         "Athletics",
       ).pipe(Effect.exit)
       expect(failureTag(offListChoice)).toBe("RoteSkillChoiceRequired")
+    }),
+  )
+})
+
+describe("RoteCast.resolveRoteAlternatives — Rote Specialty (issue #87, chunk-0741)", () => {
+  // Aldous is Mysterium; the Order's three are Investigation, Occult, Survival.
+
+  it("a Rote of the caster's own Order through a specialty skill is eligible for +1", () => {
+    const alternatives = resolveRoteAlternatives(
+      makeAldousSheet(),
+      roteOf({ attribute: "Presence", skills: ["Occult"], arcanum: "Death" }),
+    )
+
+    expect(alternatives).toEqual([
+      {
+        attribute: { name: "Presence", dots: 2 },
+        skill: { name: "Occult", dots: 4, kind: "skill" },
+        arcanum: { name: "Death", dots: 3 },
+        specialty: { eligible: true, bonus: 1 },
+      },
+    ])
+  })
+
+  it("a Rote learned from another Order never grants the die, specialty skill or not", () => {
+    const borrowed = new KnownRote({
+      name: "Wounds of the Soul",
+      spellName: "Soul Marks",
+      spellArcanum: "Death",
+      spellLevel: 1,
+      order: "Adamantine Arrow",
+      pool: new RotePool({ attribute: "Presence", skills: ["Occult"], arcanum: "Death" }),
+    })
+
+    const [occult] = resolveRoteAlternatives(makeAldousSheet(), borrowed)
+    expect(occult!.specialty).toEqual({ eligible: false, bonus: 0 })
+  })
+
+  it("an own-Order Rote through a non-specialty skill rolls as before", () => {
+    const [larceny] = resolveRoteAlternatives(
+      makeAldousSheet(),
+      roteOf({ attribute: "Dexterity", skills: ["Larceny"], arcanum: "Death" }),
+    )
+    expect(larceny!.specialty).toEqual({ eligible: false, bonus: 0 })
+  })
+
+  it("'or'-pool alternatives carry their own eligibility, numbered per skill", () => {
+    // Investigation is a Mysterium specialty; Science is not.
+    const alternatives = resolveRoteAlternatives(
+      makeAldousSheet(),
+      roteOf({
+        attribute: "Intelligence",
+        skills: ["Investigation", "Science"],
+        arcanum: "Matter",
+      }),
+    )
+
+    expect(alternatives).toEqual([
+      {
+        attribute: { name: "Intelligence", dots: 3 },
+        skill: { name: "Investigation", dots: 3, kind: "skill" },
+        arcanum: { name: "Matter", dots: 2 },
+        specialty: { eligible: true, bonus: 1 },
+      },
+      {
+        attribute: { name: "Intelligence", dots: 3 },
+        skill: { name: "Science", dots: 2, kind: "skill" },
+        arcanum: { name: "Matter", dots: 2 },
+        specialty: { eligible: false, bonus: 0 },
+      },
+    ])
+  })
+
+  it("a second Attribute in the skill slot is never a specialty", () => {
+    const [composure] = resolveRoteAlternatives(
+      makeAldousSheet(),
+      roteOf({ attribute: "Wits", skills: ["Composure"], arcanum: "Forces" }),
+    )
+    expect(composure!.skill.kind).toBe("attribute")
+    expect(composure!.specialty).toEqual({ eligible: false, bonus: 0 })
+  })
+
+  it.effect("the chosen 'or' alternative resolves with the same eligibility the breakdown showed", () =>
+    Effect.gen(function* () {
+      const orPool = roteOf({
+        attribute: "Intelligence",
+        skills: ["Investigation", "Science"],
+        arcanum: "Matter",
+      })
+
+      const investigation = yield* resolveRotePool(makeAldousSheet(), orPool, "Investigation")
+      expect(investigation.specialty).toEqual({ eligible: true, bonus: 1 })
+
+      const science = yield* resolveRotePool(makeAldousSheet(), orPool, "Science")
+      expect(science.specialty).toEqual({ eligible: false, bonus: 0 })
     }),
   )
 })

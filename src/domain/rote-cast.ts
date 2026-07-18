@@ -37,7 +37,7 @@ export class SpellRef extends Schema.Class<SpellRef>("SpellRef")({
  * ratings once, in one place.
  */
 
-type SheetRatings = Pick<CharacterSheet, "attributes" | "skills" | "arcana">
+type SheetRatings = Pick<CharacterSheet, "attributes" | "skills" | "arcana" | "order">
 
 /**
  * The three Rote Specialty skills each Order codes its Rotes with (see
@@ -183,6 +183,9 @@ export const requireVulgarSpell = Effect.fn("RoteCast.requireVulgarSpell")(funct
   }
 })
 
+/** The Rote Specialty's flat bonus die (chunk-0741). */
+export const ROTE_SPECIALTY_BONUS = 1
+
 /** The resolved casting traits: names straight off the Rote, dots off the sheet. */
 export const ResolvedRotePool = Schema.Struct({
   attribute: Schema.Struct({ name: Schema.String, dots: Schema.Number }),
@@ -193,8 +196,55 @@ export const ResolvedRotePool = Schema.Struct({
     kind: Schema.Literals(["skill", "attribute"]),
   }),
   arcanum: Schema.Struct({ name: Schema.String, dots: Schema.Number }),
+  /** Rote Specialty (see CONTEXT.md; chunk-0741): +1 die when the Rote's
+   * source Order is the caster's own AND the resolved skill is one of that
+   * Order's three. A Skill Specialty ("Occult: Ghosts") is a different thing
+   * and never applies here. */
+  specialty: Schema.Struct({
+    eligible: Schema.Boolean,
+    bonus: Schema.Number,
+  }),
 })
 export type ResolvedRotePool = typeof ResolvedRotePool.Type
+
+const resolveAlternative = (
+  sheet: SheetRatings,
+  rote: KnownRote,
+  name: (typeof ROTE_SKILLS)[number] | (typeof ROTE_ATTRIBUTES)[number],
+): ResolvedRotePool => {
+  const pool: RotePool = rote.pool
+  // Eligibility never fires on a second-Attribute slot: the table holds only
+  // skill names, and Attribute names never collide with them.
+  const eligible =
+    rote.order === sheet.order && ORDER_ROTE_SKILLS[sheet.order].includes(name)
+  return {
+    attribute: {
+      name: pool.attribute,
+      dots: ATTRIBUTE_DOTS[pool.attribute](sheet),
+    },
+    skill: {
+      name,
+      ...skillSlotDots(sheet, name),
+    },
+    arcanum: {
+      name: pool.arcanum,
+      dots: sheet.arcana[pool.arcanum.toLowerCase() as keyof typeof sheet.arcana] ?? 0,
+    },
+    specialty: { eligible, bonus: eligible ? ROTE_SPECIALTY_BONUS : 0 },
+  }
+}
+
+/**
+ * The numbered breakdown of every skill alternative the Rote offers (issue
+ * #87): one resolved pool per entry in the book's "or" list, each carrying
+ * its own specialty eligibility — the pre-choice readout the picker UI and
+ * the choice resolution below both draw from.
+ */
+export const resolveRoteAlternatives = (
+  sheet: SheetRatings,
+  rote: KnownRote,
+): ReadonlyArray<ResolvedRotePool> =>
+  rote.pool.skills.map((name) => resolveAlternative(sheet, rote, name))
 
 /**
  * The plain core (ADR-0014, issue #51): resolve the pool, `None` when the
@@ -217,20 +267,7 @@ export const resolveRotePoolChoice = (
     Option.filter(Option.some(pool.skills[0]), () => pool.skills.length === 1)
   const skillName = skillChoice !== undefined ? offeredChoice(skillChoice) : soleSkill()
 
-  return Option.map(skillName, (name) => ({
-    attribute: {
-      name: pool.attribute,
-      dots: ATTRIBUTE_DOTS[pool.attribute](sheet),
-    },
-    skill: {
-      name,
-      ...skillSlotDots(sheet, name),
-    },
-    arcanum: {
-      name: pool.arcanum,
-      dots: sheet.arcana[pool.arcanum.toLowerCase() as keyof typeof sheet.arcana] ?? 0,
-    },
-  }))
+  return Option.map(skillName, (name) => resolveAlternative(sheet, rote, name))
 }
 
 export const resolveRotePool = Effect.fn("RoteCast.resolveRotePool")(function* (

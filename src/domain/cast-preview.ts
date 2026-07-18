@@ -87,7 +87,7 @@ export const previewImprovisedCast: (input: {
 })
 
 type RotePreviewInput = {
-  sheet: Pick<CharacterSheet, "attributes" | "skills" | "arcana">
+  sheet: Pick<CharacterSheet, "attributes" | "skills" | "arcana" | "order">
   rote: KnownRote
   skillChoice?: string
   potency?: number
