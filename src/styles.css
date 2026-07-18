@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Spectral:ital,wght@0,400;0,500;1,400;1,500&display=swap');
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
@@ -594,6 +594,75 @@ pre code {
 }
 .mv-roll:hover:not(:disabled) {
   box-shadow: 0 0 16px var(--glow);
+}
+
+/* ── The Rote book (issue #89) — the sheet's grimoire ──
+   The page's spell text speaks Spectral (locked after the voice audition);
+   the recitation trigger is an inscription line whose mudra sigil inscribes
+   itself on strike, then smoulders as neutral ember — the caster's hand,
+   never the realm tint (the Arcanum's substance stays with improvised
+   casting). Movement gated behind no-preference, matching the Arcana
+   material system above: under reduced motion the ember holds a static
+   glow, the sigil renders complete, the label swaps instantly. */
+
+.mv-book-text {
+  font-family: 'Spectral', Georgia, serif;
+}
+
+.mv-smoulder {
+  background-image: linear-gradient(
+    100deg,
+    rgba(216, 122, 62, 0.06) 15%,
+    rgba(242, 166, 88, 0.24) 42%,
+    rgba(150, 60, 35, 0.1) 58%,
+    rgba(216, 122, 62, 0.06) 85%
+  );
+  background-size: 200% 100%;
+  box-shadow:
+    0 0 6px rgba(216, 122, 62, 0.22),
+    inset 0 0 8px rgba(216, 122, 62, 0.12);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mv-smoulder {
+    animation:
+      mv-smoulder-drift 3.4s linear infinite,
+      mv-smoulder-breathe 2.6s ease-in-out infinite;
+  }
+  .mv-rune-lit .mv-rune-path {
+    stroke-dasharray: 64;
+    stroke-dashoffset: 64;
+    animation: mv-rune-inscribe 0.5s ease-out forwards;
+  }
+}
+
+@keyframes mv-smoulder-drift {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes mv-smoulder-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 6px rgba(216, 122, 62, 0.22),
+      inset 0 0 8px rgba(216, 122, 62, 0.12);
+  }
+  50% {
+    box-shadow:
+      0 0 16px rgba(216, 122, 62, 0.42),
+      inset 0 0 15px rgba(216, 122, 62, 0.22);
+  }
+}
+
+@keyframes mv-rune-inscribe {
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 /* ── Legacy surfaces (marketing routes), recolored onto the identity ── */

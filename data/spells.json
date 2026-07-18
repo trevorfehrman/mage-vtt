@@ -7,12 +7,12 @@
     "action": "Instant and contested; target reflexively rolls Resolve + Gnosis (mage) or Resistance (ghost)",
     "duration": "Prolonged (one scene)",
     "aspect": "Vulgar",
-    "cost": "None Successes are used as Potency to wrest control of the ectoplasm from the mage or ghost who currently controls it.",
-    "description": "The mage can alter the form of an ectoplasmic manifestation (see “Ectoplasm,” p. 136), shaping it with his will into whatever form he desires. He must contend with the will of the mage who conjured the ectoplasm or the ghost who manifests through it.",
+    "cost": "None — successes are used as Potency to wrest control of the ectoplasm from the mage or ghost who currently controls it.",
+    "description": "The mage can alter the form of an ectoplasmic manifestation, shaping it with his will into whatever form he desires.\n\nHe must contend with the will of the mage who conjured the ectoplasm or the ghost who manifests through it.",
     "rotes": [
       {
         "order": "Mysterium",
-        "name": "The Seal of",
+        "name": "The Seal of Harafax",
         "dicePool": "Presence + Occult + Death vs Resolve + Gnosis",
         "pool": {
           "attribute": "Presence",
@@ -24,7 +24,8 @@
             "Resolve",
             "Gnosis"
           ]
-        }
+        },
+        "flavor": "Named after the mage who first formulized it, the title of this rote also refers to the image of ectoplasm as hot wax, to which the mage's will is applied like a signet."
       }
     ],
     "pageStart": 135
@@ -141,12 +142,12 @@
     "action": "Instant",
     "duration": "Prolonged (one scene)",
     "aspect": "Covert",
-    "cost": "None This spell’s successes must equal or exceed the Potency of any power (if any) used to conceal the ghost.",
-    "description": "The mage can see, hear and speak with ghosts within Twilight. He can also detect their unseen presence, if they are hiding or have chosen not to reveal themselves. He can see spirits within Twilight, too, but they appear hazy and indistinct and he cannot hear them, unless he also uses Spirit 1 while casting this spell. He cannot perceive mental projections unless he adds Mind 1 to the casting.",
+    "cost": "None — this spell's successes must equal or exceed the Potency of any power (if any) used to conceal the ghost.",
+    "description": "The mage can see, hear and speak with ghosts within Twilight. He can also detect their unseen presence, if they are hiding or have chosen not to reveal themselves.\n\nHe can see spirits within Twilight, too, but they appear hazy and indistinct and he cannot hear them, unless he also uses Spirit 1 while casting this spell. He cannot perceive mental projections unless he adds Mind 1 to the casting.",
     "rotes": [
       {
         "order": "Mysterium",
-        "name": "Clamor of the",
+        "name": "Clamor of the Departed",
         "dicePool": "Wits + Occult + Death",
         "pool": {
           "attribute": "Wits",
@@ -154,7 +155,8 @@
             "Occult"
           ],
           "arcanum": "Death"
-        }
+        },
+        "flavor": "Long have the Awakened known that the dead keep secrets. Mages of the Mysterium use this magic to learn such lost lore. More pragmatically, willworkers of the Adamantine Arrow have sometimes been known to use this rote to ask questions of allies or enemies recently slain."
       }
     ],
     "pageStart": 137
@@ -4686,11 +4688,11 @@
     "duration": "Concentration",
     "aspect": "Covert",
     "cost": "None",
-    "description": "The mage can discover the proper function of an object with moving parts. At the Storyteller’s discretion, this might aid Craft Skill rolls. Practice: Knowing Action: Instant Duration: Concentration Aspect: Covert Cost: None Mysterium Rote: Rube Goldberg’s Brain Dice Pool: Intelligence + Investigation or Science + Matter Elaborate moving-part puzzles and ancient machines of unknown purpose, among many other things, can be deciphered by means of this Mysterium rote.",
+    "description": "The mage can discover the proper function of an object with moving parts. At the Storyteller's discretion, this might aid Craft Skill rolls.",
     "rotes": [
       {
         "order": "Mysterium",
-        "name": "Rube Goldberg’s",
+        "name": "Rube Goldberg's Brain",
         "dicePool": "Intelligence + Investigation or Science + Matter",
         "pool": {
           "attribute": "Intelligence",
@@ -4699,7 +4701,8 @@
             "Science"
           ],
           "arcanum": "Matter"
-        }
+        },
+        "flavor": "Elaborate moving-part puzzles and ancient machines of unknown purpose, among many other things, can be deciphered by means of this Mysterium rote. Free Council mages are also known to favor such magic in their work to modernize the face of magic."
       }
     ],
     "pageStart": 196

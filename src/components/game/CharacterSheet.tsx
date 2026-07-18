@@ -3,12 +3,9 @@ import {
   rulingArcanaOf,
   type ArcanumName,
   type CharacterSheet as CharacterSheetData,
-  type KnownRote,
 } from "#/domain/character"
 import type { BoxSeverity } from "#/domain/damage"
 import type { PoolComponentInput, PoolComponentType } from "#/domain/dice"
-import { sortRotes } from "#/domain/rote-order"
-import { formatRotePool } from "#/domain/rote-pool"
 import {
   ArcanaGlyph,
   OrderGlyph,
@@ -20,6 +17,7 @@ import {
   pathTint,
 } from "./ArcanaGlyph"
 import { ArcanaSubstance, hasSubstance } from "./ArcanaSubstance"
+import { RoteBook } from "./RoteBook"
 import { Separator } from "#/components/ui/separator"
 import { DotRating } from "./DotRating"
 import type { useCast } from "#/hooks/use-cast"
@@ -181,18 +179,14 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
         <ArcanaDashboard arcana={character.arcana} ruling={ruling} cast={cast} />
       </Section>
 
-      {/* Rotes — practiced spells, directly under the Arcana they belong to:
-          the sheet's magic stays contiguous (owner call 2026-07-16). Castable
-          entries (issue #20); inert rows on read-only sheets. Rows in the
-          dashboard tiles' canonical order (issue #88), so they never
-          reshuffle when ratings change. */}
+      {/* Rotes — the character's book (issue #89), directly under the Arcana
+          it belongs to: the sheet's magic stays contiguous (owner call
+          2026-07-16). A framed table of contents turning to a page per rote,
+          the cast verb a recitation on the page (issue #20); the same book
+          inert on read-only sheets. */}
       {character.rotes.length > 0 && (
         <Section title="Rotes">
-          <div className="grid gap-1">
-            {sortRotes(character.rotes).map((rote) => (
-              <RoteRow key={rote.name} rote={rote} cast={cast} />
-            ))}
-          </div>
+          <RoteBook character={character} cast={cast} />
         </Section>
       )}
 
@@ -522,48 +516,6 @@ function ArcanaDashboard({
         )
       })}
     </div>
-  )
-}
-
-/**
- * One known Rote as a castable entry (issue #20): glyph, name, the spell it
- * fixes, and its pool prose. Clicking arms the cast in the shared pre-roll
- * panel; read-only sheets (no cast controller) render the same layout inert.
- */
-function RoteRow({ rote, cast }: { rote: KnownRote; cast?: CastAPI | undefined }) {
-  const armed =
-    cast?.context.selection?.method === "rote" &&
-    cast.context.selection.rote.name === rote.name
-  return (
-    <TraitRow
-      interactive={cast !== undefined}
-      canToggle={cast !== undefined && cast.state !== "casting"}
-      active={armed}
-      onToggle={() => cast?.armRote(rote)}
-      className="-mx-2 flex items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-left"
-    >
-      {/* the glyph speaks the dashboard's language: realm tint, and the
-          Gross Arcana wear their struck-medallion negative */}
-      <span
-        className="grid place-items-center"
-        style={{ color: arcanumTint(rote.spellArcanum) }}
-      >
-        <ArcanaGlyph
-          arcanum={rote.spellArcanum.toLowerCase()}
-          size={19}
-          variant={isGrossArcanum(rote.spellArcanum) ? "seal" : "line"}
-        />
-      </span>
-      <span className="flex-1 text-[14px]">
-        {rote.name}
-        <span className="ml-1.5 text-[12px]" style={{ color: "var(--dim)" }}>
-          {rote.spellName} · {rote.spellArcanum} {rote.spellLevel}
-        </span>
-      </span>
-      <span className="mv-data text-[11px]" style={{ color: "var(--dim)" }}>
-        {formatRotePool(rote.pool)}
-      </span>
-    </TraitRow>
   )
 }
 

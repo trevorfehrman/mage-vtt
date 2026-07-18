@@ -108,7 +108,7 @@ const widenedColumns = {
 
 // Columns added after the migration, each *optional* so every document stored
 // under the frozen shape above still validates. `knownRotes`: issue #16;
-// its `spellAspect` stamp: issue #68.
+// its `spellAspect` stamp: issue #68; its `spellPage` stamp: issue #89.
 const addedColumns = {
   knownRotes: v.optional(
     v.array(
@@ -125,6 +125,16 @@ const addedColumns = {
           vs: v.optional(v.array(v.string())),
         }),
         spellAspect: v.optional(v.string()),
+        spellPage: v.optional(
+          v.object({
+            practice: v.string(),
+            action: v.string(),
+            duration: v.string(),
+            cost: v.string(),
+            description: v.string(),
+            roteFlavor: v.optional(v.string()),
+          }),
+        ),
       }),
     ),
   ),

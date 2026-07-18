@@ -58,6 +58,75 @@ const ROTE_POOL_CORRECTIONS: Record<string, string> = {
   "Labyrinth|Space|Silver Ladder": "Intelligence + Medicine or Crafts or Science + Space",
 }
 
+// --- Rote-name corrections (issue #89) ---
+// The parser clips rote names at the column's line break ("Clamor of the",
+// "The Seal of", "Rube Goldberg's", …). Key: "spellName|arcanum|order" → the
+// full name from the book page. Corvin's three first; extend as pages get
+// proofread.
+const ROTE_NAME_CORRECTIONS: Record<string, string> = {
+  // p. 137: "Mysterium Rote: Clamor of the Departed"
+  "Speak with the Dead|Death|Mysterium": "Clamor of the Departed",
+  // p. 135: "Mysterium Rote: The Seal of Harafax"
+  "Ectoplasmic Shaping|Death|Mysterium": "The Seal of Harafax",
+  // p. 196: "Mysterium Rote: Rube Goldberg's Brain"
+  "Craftsman's Eye|Matter|Mysterium": "Rube Goldberg's Brain",
+}
+
+// --- Rote flavor paragraphs (issue #89) ---
+// The book prints a paragraph in the rote's own voice after its dice pool;
+// the extractor drops it. Hand-recovered from the page (same key as above)
+// so the Rote book can print the rote's own words.
+const ROTE_FLAVOR_CORRECTIONS: Record<string, string> = {
+  "Speak with the Dead|Death|Mysterium":
+    "Long have the Awakened known that the dead keep secrets. Mages of the " +
+    "Mysterium use this magic to learn such lost lore. More pragmatically, " +
+    "willworkers of the Adamantine Arrow have sometimes been known to use " +
+    "this rote to ask questions of allies or enemies recently slain.",
+  "Ectoplasmic Shaping|Death|Mysterium":
+    "Named after the mage who first formulized it, the title of this rote " +
+    "also refers to the image of ectoplasm as hot wax, to which the mage's " +
+    "will is applied like a signet.",
+  "Craftsman's Eye|Matter|Mysterium":
+    "Elaborate moving-part puzzles and ancient machines of unknown purpose, " +
+    "among many other things, can be deciphered by means of this Mysterium " +
+    "rote. Free Council mages are also known to favor such magic in their " +
+    "work to modernize the face of magic.",
+}
+
+// --- Cost and description cleanups (issue #89) ---
+// The Rote book quotes these verbatim, so extraction artifacts that were
+// harmless in a search index now show. Key: "spellName|arcanum". Costs lost
+// their sentence break ("None Successes are…"); descriptions restore the
+// page's paragraph breaks as blank lines, and Craftsman's Eye sheds a whole
+// re-embedded stat block.
+const COST_CORRECTIONS: Record<string, string> = {
+  "Speak with the Dead|Death":
+    "None — this spell's successes must equal or exceed the Potency of any " +
+    "power (if any) used to conceal the ghost.",
+  "Ectoplasmic Shaping|Death":
+    "None — successes are used as Potency to wrest control of the ectoplasm " +
+    "from the mage or ghost who currently controls it.",
+}
+
+const DESCRIPTION_CORRECTIONS: Record<string, string> = {
+  "Speak with the Dead|Death":
+    "The mage can see, hear and speak with ghosts within Twilight. He can " +
+    "also detect their unseen presence, if they are hiding or have chosen " +
+    "not to reveal themselves.\n\n" +
+    "He can see spirits within Twilight, too, but they appear hazy and " +
+    "indistinct and he cannot hear them, unless he also uses Spirit 1 while " +
+    "casting this spell. He cannot perceive mental projections unless he " +
+    "adds Mind 1 to the casting.",
+  "Ectoplasmic Shaping|Death":
+    "The mage can alter the form of an ectoplasmic manifestation, shaping " +
+    "it with his will into whatever form he desires.\n\n" +
+    "He must contend with the will of the mage who conjured the ectoplasm " +
+    "or the ghost who manifests through it.",
+  "Craftsman's Eye|Matter":
+    "The mage can discover the proper function of an object with moving " +
+    "parts. At the Storyteller's discretion, this might aid Craft Skill rolls.",
+}
+
 /** The fields a FIELD_CORRECTIONS entry may fill — filled only over "Unknown". */
 const CORRECTABLE_FIELDS = ["practice", "action", "duration", "aspect"] as const
 
@@ -191,6 +260,9 @@ const SpellRote = Schema.Struct({
   name: Schema.String,
   dicePool: Schema.optionalKey(Schema.String),
   pool: Schema.optionalKey(RotePool),
+  // The rote's own paragraph (issue #89) — present only where this script's
+  // ROTE_FLAVOR_CORRECTIONS has recovered it from the page.
+  flavor: Schema.optionalKey(Schema.String),
 })
 
 const SpellRecord = Schema.Struct({
@@ -261,6 +333,39 @@ const applyCorrections = Effect.fn("ApplyCorrections.run")(function* () {
           fieldsFixed++
         }
       }
+    }
+  }
+
+  // Rote names, flavor, costs, descriptions (issue #89): the Rote book quotes
+  // the page, so the page's words are restored here.
+  for (const spell of spells) {
+    for (const rote of spell.rotes) {
+      const roteKey = `${spell.name}|${spell.arcanum}|${rote.order}`
+      const fullName = ROTE_NAME_CORRECTIONS[roteKey]
+      if (fullName !== undefined && rote.name !== fullName) {
+        console.log(`  Rote name: "${rote.name}" → "${fullName}"`)
+        rote.name = fullName
+        nameFixed++
+      }
+      const flavor = ROTE_FLAVOR_CORRECTIONS[roteKey]
+      if (flavor !== undefined && rote.flavor !== flavor) {
+        console.log(`  Rote flavor: ${spell.name} (${rote.order}) recovered`)
+        rote.flavor = flavor
+        fieldsFixed++
+      }
+    }
+    const spellKey = `${spell.name}|${spell.arcanum}`
+    const cost = COST_CORRECTIONS[spellKey]
+    if (cost !== undefined && spell.cost !== cost) {
+      console.log(`  Cost: ${spell.name} cleaned`)
+      spell.cost = cost
+      fieldsFixed++
+    }
+    const description = DESCRIPTION_CORRECTIONS[spellKey]
+    if (description !== undefined && spell.description !== description) {
+      console.log(`  Description: ${spell.name} cleaned`)
+      spell.description = description
+      fieldsFixed++
     }
   }
 

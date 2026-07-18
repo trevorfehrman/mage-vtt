@@ -31,7 +31,26 @@ interface SpellSource {
   arcanum: string
   level: number
   aspect: string
-  rotes?: Array<{ order: string; pool?: unknown }>
+  practice: string
+  action: string
+  duration: string
+  cost: string
+  description: string
+  rotes?: Array<{ order: string; name: string; pool?: unknown; flavor?: string }>
+}
+
+/** What spells.json stamps onto one ingested rote (issues #68, #89). */
+interface RoteStamp {
+  name: string
+  spellAspect: string
+  spellPage: {
+    practice: string
+    action: string
+    duration: string
+    cost: string
+    description: string
+    roteFlavor?: string
+  }
 }
 
 const program = Effect.gen(function* () {
@@ -97,7 +116,7 @@ const program = Effect.gen(function* () {
     () => Bun.file(SPELLS_PATH).json() as Promise<unknown>,
   ).pipe(Effect.mapError((e) => refuse("reading spells.json", e)))) as SpellSource[]
 
-  const aspects: string[] = []
+  const stamps: RoteStamp[] = []
   for (const rote of sheet.rotes) {
     const spell = spells.find(
       (s) => s.name === rote.spellName && s.arcanum === rote.spellArcanum,
@@ -114,7 +133,7 @@ const program = Effect.gen(function* () {
         `"${rote.name}": ${rote.spellName} is level ${spell.level}, not ${rote.spellLevel}`,
       )
     }
-    const source = (spell.rotes ?? []).some(
+    const source = (spell.rotes ?? []).find(
       (r) =>
         r.order === rote.order &&
         Bun.deepEquals(r.pool, JSON.parse(JSON.stringify(rote.pool))),
@@ -125,19 +144,32 @@ const program = Effect.gen(function* () {
         `"${rote.name}": ${rote.spellName} has no ${rote.order} rote with pool "${formatRotePool(rote.pool)}"`,
       )
     }
-    aspects.push(spell.aspect)
+    stamps.push({
+      name: source.name,
+      spellAspect: spell.aspect,
+      spellPage: {
+        practice: spell.practice,
+        action: spell.action,
+        duration: spell.duration,
+        cost: spell.cost,
+        description: spell.description,
+        ...(source.flavor !== undefined ? { roteFlavor: source.flavor } : {}),
+      },
+    })
   }
 
-  // The aspect stamp (issue #68): spells.json is the aspect's one source of
-  // truth, so the ingested rows are stamped here — the character file never
-  // declares it (and a hand-written aspect would be silently corrected).
+  // The spells.json stamps: the aspect (issue #68) and the book page + the
+  // rote's canonical name (issue #89). The data pipeline is the one source of
+  // truth for all of them, so the ingested rows are stamped here — the
+  // character file never declares them (and a hand-written aspect, name or
+  // page would be silently corrected).
   const stamped = {
     ...data,
     ...(data.knownRotes
       ? {
           knownRotes: data.knownRotes.map((rote, i) => ({
             ...rote,
-            spellAspect: aspects[i],
+            ...stamps[i],
           })),
         }
       : {}),

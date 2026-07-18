@@ -107,6 +107,19 @@ export const KnownRoteDoc = Schema.Struct({
   pool: RotePoolDoc,
   // Optional column: rows ingested before issue #68 carry no aspect stamp.
   spellAspect: Schema.optionalKey(Schema.String),
+  // Optional column (issue #89): the book-page stamp the Rote book renders;
+  // rows ingested before it have none. Raw primitives here (ADR-0011) — the
+  // shaped mirror is `SpellPage` on the domain `KnownRote`.
+  spellPage: Schema.optionalKey(
+    Schema.Struct({
+      practice: Schema.String,
+      action: Schema.String,
+      duration: Schema.String,
+      cost: Schema.String,
+      description: Schema.String,
+      roteFlavor: Schema.optionalKey(Schema.String),
+    }),
+  ),
 })
 
 /**
