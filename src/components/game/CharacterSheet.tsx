@@ -190,29 +190,14 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
         </div>
       </div>
 
-      {/* Arcana — the magic dashboard, directly beneath the title card:
-          magic first, mundane traits after (owner call 2026-07-16). */}
-      <Section title="Arcana">
-        <ArcanaDashboard arcana={character.arcana} ruling={ruling} cast={cast} />
-      </Section>
-
-      {/* Rotes — the character's book (issue #89), directly under the Arcana
-          it belongs to: the sheet's magic stays contiguous (owner call
-          2026-07-16). A framed table of contents turning to a page per rote,
-          the cast verb a recitation on the page (issue #20); the same book
-          inert on read-only sheets. */}
-      {character.rotes.length > 0 && (
-        <Section title="Rotes">
-          <RoteBook character={character} cast={cast} />
-        </Section>
-      )}
-
-      {/* The trait matrix — three shared category columns ("social is column
-          3" holds for both zones), two zones told apart by color alone:
-          innate Attributes wear gold, trained Skills wear ink. The section
-          header doubles as the legend. One label set, no hairlines — the
-          muscle memory is "click once in the gold zone, once in the ink
-          zone, that's the pool." Full width keeps names from ever breaking. */}
+      {/* The trait matrix — directly beneath the title card: the mundane
+          traits paint the person before the magic does (owner call
+          2026-07-17, reversing 2026-07-16's magic-first order). Three shared
+          category columns ("social is column 3" holds for both zones), two
+          zones told apart by color alone. The section header doubles as the
+          legend. One label set, no hairlines — the muscle memory is "click
+          once in the attribute zone, once in the skill zone, that's the
+          pool." Full width keeps names from ever breaking. */}
       <Section
         title={
           <>
@@ -242,6 +227,21 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
         </div>
       </Section>
 
+      {/* Arcana — the magic dashboard, after the human traits. */}
+      <Section title="Arcana">
+        <ArcanaDashboard arcana={character.arcana} ruling={ruling} cast={cast} />
+      </Section>
+
+      {/* Rotes — the character's book (issue #89), directly under the Arcana
+          it belongs to: the sheet's magic stays contiguous (owner call
+          2026-07-16). A framed table of contents turning to a page per rote,
+          the cast verb a recitation on the page (issue #20); the same book
+          inert on read-only sheets. */}
+      {character.rotes.length > 0 && (
+        <Section title="Rotes">
+          <RoteBook character={character} cast={cast} />
+        </Section>
+      )}
     </div>
   )
 }

@@ -24,12 +24,12 @@
   --line: #1e2b27;
   --glow: rgba(111, 174, 151, 0.12);
   --bad: #b56d60;
-  /* The trait-zone pair (settled 2026-07-16) — innate Attributes warm
-   * (ivory), trained Skills cool (blue): temperature separates the sheet's
-   * two click-zones, and both stay distinct from the Verdigris accent,
-   * which means "selected". */
-  --zone-attr: #d4c7a3;
-  --zone-skill: #7fa3d8;
+  /* The trait-zone pair — INTERIM (2026-07-17): both zones wear plain ink
+   * while the Attributes & Skills treatment is redesigned from concept up.
+   * The retired pairs both failed: ivory/blue read as Aether/Arcadia
+   * realm materials, rose/violet didn't sit right either. */
+  --zone-attr: var(--ink);
+  --zone-skill: var(--ink);
 
   /* The five Supernal Realm materials (owner call 2026-07-16) — true to the
    * Watchtowers: shimmering gold Aether (Prime·Forces·Obrimos), shimmering
