@@ -215,9 +215,55 @@ type Meteor = {
 /** Fraction of sky width at each category column's center. */
 const COL_CENTER = [0.18, 0.5, 0.82]
 
-/** The lane core: entry over column A, exit toward column B. attr+attr skims
- * high and shallow instead of diving the full sky; dice count sets tail
- * length and peak opacity; the seed varies the streak within its lane. */
+/** The visible sky's bounds in meteor-field coordinates — meteors originate
+ * past one edge and exit past the other (owner rule 2026-07-18). */
+type SkyRect = { left: number; top: number; right: number; bottom: number }
+
+/** Slab-extend the lane's anchor segment to `margin` px beyond the visible
+ * sky on both ends, so the streak is born off-screen and dies off-screen.
+ * Degenerate lanes (no rect intersection) keep their anchors. */
+function extendToRect(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  rect: SkyRect,
+  margin: number,
+) {
+  const dx = bx - ax
+  const dy = by - ay
+  const seg = Math.hypot(dx, dy) || 1
+  let tMin = -Infinity
+  let tMax = Infinity
+  if (dx !== 0) {
+    const t1 = (rect.left - ax) / dx
+    const t2 = (rect.right - ax) / dx
+    tMin = Math.max(tMin, Math.min(t1, t2))
+    tMax = Math.min(tMax, Math.max(t1, t2))
+  }
+  if (dy !== 0) {
+    const t1 = (rect.top - ay) / dy
+    const t2 = (rect.bottom - ay) / dy
+    tMin = Math.max(tMin, Math.min(t1, t2))
+    tMax = Math.min(tMax, Math.max(t1, t2))
+  }
+  if (!Number.isFinite(tMin) || !Number.isFinite(tMax) || tMax < tMin) {
+    return { x0: ax, y0: ay, x1: bx, y1: by }
+  }
+  const mt = margin / seg
+  return {
+    x0: ax + dx * (tMin - mt),
+    y0: ay + dy * (tMin - mt),
+    x1: ax + dx * (tMax + mt),
+    y1: ay + dy * (tMax + mt),
+  }
+}
+
+/** The lane core: the anchor segment runs over column A toward column B
+ * across the trait field, then extends past the visible sky's edges —
+ * every meteor enters from off-screen and exits off-screen. attr+attr
+ * crosses shallow and high instead of diving; dice count sets tail length
+ * and peak opacity; the seed varies the streak within its lane. */
 function meteorLane(
   colA: number,
   colB: number,
@@ -226,25 +272,38 @@ function meteorLane(
   seed: number,
   w: number,
   h: number,
+  sky: SkyRect,
 ): Meteor {
   const rnd = mulberry32(9000 + seed)
   const jitter = () => (rnd() - 0.5) * 0.16 * w
-  const x0 = COL_CENTER[colA] * w + jitter()
-  const x1 = COL_CENTER[colB] * w + jitter()
+  let ax = COL_CENTER[colA] * w + jitter()
+  let bx = COL_CENTER[colB] * w + jitter()
+  let ay: number
+  let by: number
+  if (bothAttrs) {
+    // a shallow high crossing — mostly lateral, always falling a little
+    ay = h * (0.18 + rnd() * 0.14)
+    by = ay + h * (0.06 + rnd() * 0.12)
+    if (colA === colB) bx = ax + (rnd() < 0.5 ? -1 : 1) * 0.35 * w
+  } else {
+    // the full dive over the field
+    ay = 0
+    by = h
+    if (colA === colB) bx += (rnd() < 0.5 ? -1 : 1) * 0.08 * w
+  }
+  const ends = extendToRect(ax, ay, bx, by, sky, 60)
+  const len = Math.hypot(ends.x1 - ends.x0, ends.y1 - ends.y0)
   return {
     id: seed,
-    x0,
-    y0: -10,
-    x1: colA === colB ? x1 + (rnd() < 0.5 ? -1 : 1) * 0.08 * w : x1,
-    y1: bothAttrs ? h * (0.28 + rnd() * 0.14) : h + 10,
+    ...ends,
     tail: 56 + dice * 14,
     // quiet by decree (owner, 2026-07-18, dialed twice): the streak is a
     // passing omen, not a firework — length carries the magnitude, not
     // brightness
     peak: Math.min(0.38, 0.16 + dice * 0.025),
-    // real-shooting-star fast (owner, same night, dialed twice): a blink
-    // — the "wait — did I just see that?" read
-    dur: 150 + rnd() * 90,
+    // real-shooting-star fast (owner, same night): constant blink-speed —
+    // duration scales with the crossing so long lanes don't dawdle
+    dur: len / (4.5 + rnd() * 1.5),
   }
 }
 
@@ -259,6 +318,7 @@ function meteorFor(
   seed: number,
   w: number,
   h: number,
+  sky: SkyRect,
 ): Meteor | null {
   const traits = components.filter(
     (c) => c.type === "attribute" || c.type === "skill",
@@ -274,6 +334,7 @@ function meteorFor(
     seed,
     w,
     h,
+    sky,
   )
 }
 
@@ -371,6 +432,24 @@ export function TraitSky({ pool, traitColumns }: TraitSkyProps) {
     setTimeout(() => setMeteors((prev) => prev.filter((x) => x.id !== m.id)), 1600)
   }
 
+  // The visible sky in field coordinates: the center panel's box, which is
+  // where the firmament clips — meteors are born and die past its edges.
+  const skyBounds = (el: HTMLDivElement): SkyRect => {
+    const field = el.getBoundingClientRect()
+    const panel = el
+      .closest('[data-slot="resizable-panel"]')
+      ?.getBoundingClientRect()
+    if (!panel) {
+      return { left: 0, top: 0, right: field.width, bottom: field.height }
+    }
+    return {
+      left: panel.left - field.left,
+      top: panel.top - field.top,
+      right: panel.right - field.left,
+      bottom: panel.bottom - field.top,
+    }
+  }
+
   // The meteor marks the roll: fire on the machine's building → rolling
   // transition, while the consumed pool's components are still in context.
   const poolRef = useRef(pool)
@@ -396,6 +475,7 @@ export function TraitSky({ pool, traitColumns }: TraitSkyProps) {
           fireCount.current,
           width,
           height,
+          skyBounds(el),
         ),
       )
     }
@@ -416,7 +496,16 @@ export function TraitSky({ pool, traitColumns }: TraitSkyProps) {
       fireCount.current += 1
       const n = fireCount.current
       launch(
-        meteorLane(n % 3, (n * 2 + 1) % 3, n % 4 === 0, 4 + (n % 6), n, width, height),
+        meteorLane(
+          n % 3,
+          (n * 2 + 1) % 3,
+          n % 4 === 0,
+          4 + (n % 6),
+          n,
+          width,
+          height,
+          skyBounds(el),
+        ),
       )
     }
     window.addEventListener(SKY_TEST_EVENT, onTest)

@@ -316,8 +316,9 @@ pre code {
   pointer-events: none;
 }
 /* The meteor field (TraitSky) stays anchored to the trait matrix — the one
- * containerless section. It overshoots the section so meteors enter from
- * above the content; the mask feathers their entry and exit. */
+ * containerless section — but its streaks run the FULL lane line: born past
+ * one edge of the visible sky, dead past the other (owner rule 2026-07-18).
+ * No mask: the center panel's own clipping is the sky's edge. */
 .mv-sky-meteors {
   position: absolute;
   left: -12px;
@@ -325,10 +326,6 @@ pre code {
   top: -28px;
   bottom: -16px;
   pointer-events: none;
-  mask-image:
-    linear-gradient(to bottom, transparent, black 34px, black calc(100% - 26px), transparent),
-    linear-gradient(to right, transparent, black 26px, black calc(100% - 26px), transparent);
-  mask-composite: intersect;
 }
 /* Row legibility against the running galaxy — the Arcana caption trick
  * ported (.mv-arcana-lit .mv-arcana-caption): a lit-only dark halo hugging
