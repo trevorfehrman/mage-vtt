@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
+import { Schema } from "effect"
 import type { CharacterSheet, KnownRote } from "#/domain/character"
 import {
   reciteDiceLabel,
@@ -37,7 +38,12 @@ const BOOK_HEIGHT = 700
 
 const frameShadow = "inset 0 0 0 1px color-mix(in srgb, var(--dim) 22%, transparent)"
 
-type View = { kind: "toc" } | { kind: "page"; index: number }
+/** Where the book rests: open to its contents, or turned to one page. */
+const View = Schema.Union([
+  Schema.Struct({ kind: Schema.Literals(["toc"]) }),
+  Schema.Struct({ kind: Schema.Literals(["page"]), index: Schema.Number }),
+])
+type View = typeof View.Type
 
 export function RoteBook({
   character,
@@ -88,8 +94,18 @@ export function RoteBook({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // The book leafs only when the keys aren't aimed at another widget:
+      // fields keep their arrows, and anything that already handled the
+      // event (a dialog's Esc, a stepper) keeps it.
+      if (e.defaultPrevented) return
       const t = e.target as HTMLElement | null
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable))
+      if (
+        t &&
+        (t.tagName === "INPUT" ||
+          t.tagName === "TEXTAREA" ||
+          t.tagName === "SELECT" ||
+          t.isContentEditable)
+      )
         return
       if (view.kind !== "page") return
       if (e.key === "Escape") toContents()
@@ -431,29 +447,37 @@ function Page({
         </button>
       )}
 
-      {/* page foot: leafing + folio */}
-      <div className="mt-3 flex items-baseline justify-between gap-4">
-        <button
-          type="button"
-          onClick={() => onLeaf(-1)}
-          disabled={!prev}
-          className="text-[11px] text-[color:var(--dim)] transition-colors hover:text-[color:var(--ink)] hover:underline disabled:opacity-0"
-          title="Previous page (←)"
-        >
-          ‹ {prev ? prev.name : ""}
-        </button>
+      {/* page foot: leafing + folio. At the covers there is no further leaf,
+          so the link is absent, not disabled — the folio says why. The grid
+          keeps the folio centered either way. */}
+      <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-baseline gap-4">
+        <span className="justify-self-start">
+          {prev && (
+            <button
+              type="button"
+              onClick={() => onLeaf(-1)}
+              className="text-[11px] text-[color:var(--dim)] transition-colors hover:text-[color:var(--ink)] hover:underline"
+              title="Previous page (←)"
+            >
+              ‹ {prev.name}
+            </button>
+          )}
+        </span>
         <span className="mv-data text-[10.5px]" style={{ color: "var(--dim)" }}>
           {index + 1} of {count}
         </span>
-        <button
-          type="button"
-          onClick={() => onLeaf(1)}
-          disabled={!next}
-          className="text-[11px] text-[color:var(--dim)] transition-colors hover:text-[color:var(--ink)] hover:underline disabled:opacity-0"
-          title="Next page (→)"
-        >
-          {next ? next.name : ""} ›
-        </button>
+        <span className="justify-self-end">
+          {next && (
+            <button
+              type="button"
+              onClick={() => onLeaf(1)}
+              className="text-[11px] text-[color:var(--dim)] transition-colors hover:text-[color:var(--ink)] hover:underline"
+              title="Next page (→)"
+            >
+              {next.name} ›
+            </button>
+          )}
+        </span>
       </div>
     </div>
   )

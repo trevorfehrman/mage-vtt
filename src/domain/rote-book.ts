@@ -60,13 +60,23 @@ export const resolveRotePage = (
 export const tocDicePhrase = (
   alternatives: ReadonlyArray<RotePageAlternative>,
 ): string =>
-  alternatives.length === 1
-    ? `${alternatives[0]?.total} dice`
-    : `${alternatives.map((a) => `${a.total} ${a.slot.name}`).join(" or ")} dice`
+  Arr.match(alternatives, {
+    // Unreachable through the schema (a pool's skills are non-empty); the
+    // phrase degrades honestly rather than printing "undefined dice".
+    onEmpty: () => "—",
+    onNonEmpty: (alts) =>
+      alts.length === 1
+        ? `${alts[0].total} dice`
+        : `${alts.map((a) => `${a.total} ${a.slot.name}`).join(" or ")} dice`,
+  })
 
 /** The recitation trigger's count: alternatives sharing a total collapse to
  * one number ("9 dice"), differing totals each speak once ("9 or 7 dice"). */
 export const reciteDiceLabel = (
   alternatives: ReadonlyArray<RotePageAlternative>,
 ): string =>
-  `${Arr.dedupe(alternatives.map((a) => a.total)).join(" or ")} dice`
+  Arr.match(alternatives, {
+    onEmpty: () => "—",
+    onNonEmpty: (alts) =>
+      `${Arr.dedupe(alts.map((a) => a.total)).join(" or ")} dice`,
+  })
