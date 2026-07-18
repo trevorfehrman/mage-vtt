@@ -63,6 +63,16 @@ tuning: a dark drop-shadow halo hugs the caption's shapes while lit, and
 lit tiles brighten empty dot rings via `--mv-dot-ring`. The same rules
 apply: event-driven (armed), never ambient elsewhere.
 
+*Amended (2026-07-17):* the **first-Motion crown moves from the rail foot
+(#79) to the Rote book (#89)** — the book's page turn (`AnimatePresence`;
+forward slips left, back slips right, contents rises) is the app's first
+sanctioned Motion use. Owner call during the rote-look grilling: opening a
+grimoire is a more thematic coronation, and its art direction may inform the
+combat tracker. The rail foot keeps its remaining vocabulary-pilot roles
+(gate tooltip, refusing-button treatment, designed empty state). The event-
+driven rule is unchanged — the book's smoulder/scramble/watermark-lift
+behaviors are all armed-state-driven, never ambient.
+
 **The a11y floor amends the locked identity.** Three planks: text contrast
 ≥ 4.5:1, full keyboard operability with visible focus-visible styles, and no
 native form controls where a styled equivalent exists. `--dim` (#797488)
