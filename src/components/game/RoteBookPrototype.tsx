@@ -256,10 +256,12 @@ const writeParams = (voice: VoiceKey, wm: boolean) => {
 
 export function RoteBookPrototypeGate({
   rotes,
+  order,
   cast,
   children,
 }: {
   rotes: readonly KnownRote[]
+  order: string
   cast?: CastAPI | undefined
   children: ReactNode
 }) {
@@ -268,7 +270,7 @@ export function RoteBookPrototypeGate({
     setEnabled(import.meta.env.DEV && readParams().enabled)
   }, [])
   if (!enabled) return <>{children}</>
-  return <RoteBook rotes={rotes} cast={cast} />
+  return <RoteBook rotes={rotes} order={order} cast={cast} />
 }
 
 /* ── The book ───────────────────────────────────────────────────────────── */
@@ -277,9 +279,11 @@ type View = { kind: "toc" } | { kind: "page"; index: number }
 
 function RoteBook({
   rotes,
+  order,
   cast,
 }: {
   rotes: readonly KnownRote[]
+  order: string
   cast?: CastAPI | undefined
 }) {
   const [voice, setVoice] = useState<VoiceKey>(() => readParams().voice)
@@ -395,7 +399,7 @@ function RoteBook({
           className="h-full"
         >
           {view.kind === "toc" ? (
-            <Contents rotes={ordered} onOpen={openPage} />
+            <Contents rotes={ordered} order={order} watermark={wm} onOpen={openPage} />
           ) : (
             <Page
               rote={ordered[view.index]!}
@@ -435,18 +439,38 @@ function RoteBook({
 
 function Contents({
   rotes,
+  order,
+  watermark,
   onOpen,
 }: {
   rotes: readonly KnownRote[]
+  order: string
+  watermark: boolean
   onOpen: (index: number) => void
 }) {
   return (
     <div
-      className="grid h-full content-start gap-0.5 rounded-[4px] px-4 py-3"
+      className="relative grid h-full content-start gap-0.5 overflow-hidden rounded-[4px] px-4 py-3"
       style={{
         boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--dim) 22%, transparent)",
       }}
     >
+      {/* the back of the index wears the Order's seal, embossed — this
+          grimoire is an Order artifact before it is anything else */}
+      {watermark && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 grid place-items-center"
+          style={{
+            color: "var(--dim)",
+            opacity: 0.07,
+            filter:
+              "drop-shadow(0 1.5px 0 rgba(0,0,0,.6)) drop-shadow(0 -1px 0 rgba(255,255,255,.06))",
+          }}
+        >
+          <OrderGlyph order={order} size={210} />
+        </span>
+      )}
       {rotes.map((rote, i) => {
         const page = pageFor(rote)
         const dice = tocDice(page)

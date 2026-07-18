@@ -188,7 +188,7 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
         <Section title="Rotes">
           {/* PROTOTYPE gate (issue #89 look grilling) — renders the real rows
               unless ?rotebook is in the URL. Delete with RoteBookPrototype. */}
-          <RoteBookPrototypeGate rotes={character.rotes} cast={cast}>
+          <RoteBookPrototypeGate rotes={character.rotes} order={character.order} cast={cast}>
             <div className="grid gap-1">
               {character.rotes.map((rote) => (
                 <RoteRow key={rote.name} rote={rote} cast={cast} />
