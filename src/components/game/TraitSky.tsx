@@ -272,7 +272,13 @@ function meteorFor(
  * <animate> resolves begin="0s" against the SVG's document timeline, so it
  * arrives already-finished and invisible; CSS keyframes can't interpolate
  * calc()'d custom-property dashoffsets either. What works: mount at the start
- * offset, force a reflow, then transition concrete pixel values. */
+ * offset, force a reflow, then transition concrete pixel values.
+ *
+ * The dash GAP must exceed the whole travel distance (len + 2·tail): a
+ * shorter gap repeats the pattern within the line, and a second phantom
+ * dash rides in behind the real one — the "meteors fire twice" bug
+ * (owner-caught 2026-07-18; a prototype-era artifact). One dash, one pass:
+ * in at the start offset `tail`, out past the far end at `-(len + tail)`. */
 function MeteorLine({ m }: { m: Meteor }) {
   const ref = useRef<SVGLineElement | null>(null)
   const len = Math.hypot(m.x1 - m.x0, m.y1 - m.y0)
@@ -285,7 +291,7 @@ function MeteorLine({ m }: { m: Meteor }) {
       `stroke-dashoffset ${m.dur}ms cubic-bezier(0.2, 0.4, 0.6, 1)`,
       `opacity ${Math.round(m.dur * 0.3)}ms ease ${Math.round(m.dur * 0.7)}ms`,
     ].join(", ")
-    el.style.strokeDashoffset = `${-m.tail}`
+    el.style.strokeDashoffset = `${-(len + m.tail)}`
     el.style.opacity = "0"
   }, [m])
 
@@ -297,8 +303,8 @@ function MeteorLine({ m }: { m: Meteor }) {
       x2={m.x1}
       y2={m.y1}
       className="mv-sky-meteor"
-      strokeDasharray={`${m.tail} ${len + m.tail}`}
-      style={{ strokeDashoffset: len + m.tail, opacity: m.peak }}
+      strokeDasharray={`${m.tail} ${len + 2 * m.tail}`}
+      style={{ strokeDashoffset: m.tail, opacity: m.peak }}
     />
   )
 }
