@@ -234,7 +234,7 @@ function meteorLane(
     tail: 56 + dice * 14,
     // quiet by decree (owner, 2026-07-18): the streak is a passing omen,
     // not a firework — length carries the magnitude, not brightness
-    peak: Math.min(0.55, 0.26 + dice * 0.03),
+    peak: Math.min(0.5, 0.22 + dice * 0.03),
     // real-shooting-star fast (owner, same night): sub-half-second, the
     // "wait — did I just see that?" read
     dur: 260 + rnd() * 140,
@@ -297,17 +297,43 @@ function MeteorLine({ m }: { m: Meteor }) {
     el.style.opacity = "0"
   }, [m])
 
+  // Not a flat white line (owner, 2026-07-18): brightness is shaped along
+  // the flight path — the streak materializes out of nothing, flares past
+  // mid-flight, and dies before the exit, like the real thing. The gradient
+  // is fixed to the lane (userSpaceOnUse), so the racing dash inherits the
+  // local brightness wherever it is.
+  const gid = `mv-meteor-grad-${m.id}`
   return (
-    <line
-      ref={ref}
-      x1={m.x0}
-      y1={m.y0}
-      x2={m.x1}
-      y2={m.y1}
-      className="mv-sky-meteor"
-      strokeDasharray={`${m.tail} ${len + 2 * m.tail}`}
-      style={{ strokeDashoffset: m.tail, opacity: m.peak }}
-    />
+    <g>
+      <defs>
+        <linearGradient
+          id={gid}
+          gradientUnits="userSpaceOnUse"
+          x1={m.x0}
+          y1={m.y0}
+          x2={m.x1}
+          y2={m.y1}
+        >
+          <stop offset="0" stopColor="var(--ink)" stopOpacity="0" />
+          <stop offset="0.55" stopColor="var(--ink)" stopOpacity="1" />
+          <stop offset="1" stopColor="var(--ink)" stopOpacity="0.2" />
+        </linearGradient>
+      </defs>
+      <line
+        ref={ref}
+        x1={m.x0}
+        y1={m.y0}
+        x2={m.x1}
+        y2={m.y1}
+        className="mv-sky-meteor"
+        strokeDasharray={`${m.tail} ${len + 2 * m.tail}`}
+        style={{
+          stroke: `url(#${gid})`,
+          strokeDashoffset: m.tail,
+          opacity: m.peak,
+        }}
+      />
+    </g>
   )
 }
 

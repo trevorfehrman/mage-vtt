@@ -332,8 +332,8 @@ pre code {
 }
 /* The meteor: a dash segment racing the line entry → exit (JS-driven CSS
  * transitions on concrete px values — see TraitSky's MeteorLine). */
+/* stroke paint comes from the per-meteor flight-path gradient (inline) */
 .mv-sky-meteor {
-  stroke: var(--ink);
   stroke-width: 1;
   stroke-linecap: round;
   fill: none;
