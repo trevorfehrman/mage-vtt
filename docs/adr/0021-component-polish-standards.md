@@ -73,12 +73,15 @@ combat tracker. The rail foot keeps its remaining vocabulary-pilot roles
 driven rule is unchanged — the book's smoulder/scramble/watermark-lift
 behaviors are all armed-state-driven, never ambient.
 
-*Amended (2026-07-18):* the **mundane sky is the app's one ambient canvas**
+*Amended (2026-07-18):* the **night sky is the app's one ambient canvas**
 (owner verdict, #84; two prototype rounds preserved on
-`prototype/trait-matrix-skies`). The sheet's Attributes & Skills section is
-its only containerless stretch — every neighbor is a made object occluding
-the void, and there the void shows through: a GLSL galaxy (`TraitSky`) runs
-ambiently on the same `ShaderMount` the Arcana substances use. Budget
+`prototype/trait-matrix-skies`). A GLSL galaxy (`SheetSky`) fills the
+center panel behind the sheet, on the same `ShaderMount` the Arcana
+substances use: the firmament runs everywhere a container isn't, and every
+made object — title card, Arcana tiles, Rote book, all solid `--panel`
+surfaces — occludes it. Attributes & Skills is the sheet's one
+containerless section, so only there does the void show through
+unobstructed. Budget
 holds: it is a single always-on WebGL context (substances still mount only
 while armed, so concurrency stays far under the 16/8 cap), `maxPixelCount`
 caps its GPU cost, the mount pauses offscreen, and reduced motion renders

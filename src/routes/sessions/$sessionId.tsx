@@ -14,6 +14,7 @@ import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { ResourceStrip } from "#/components/game/ResourceStrip"
 import { ChatInput } from "#/components/game/ChatInput"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
+import { SheetSky } from "#/components/game/TraitSky"
 import { SheetlessCastForm } from "#/components/game/SheetlessCastForm"
 import { Roster } from "#/components/game/Roster"
 import { HandEditForm } from "#/components/game/HandEditForm"
@@ -320,6 +321,9 @@ function SessionPage() {
           isStoryteller={isStoryteller}
         />
       }
+      // The firmament (#84): the galaxy behind everything a container isn't.
+      // It answers the pool wherever the pool was built.
+      sheetSky={<SheetSky pool={pool} />}
       characterSheet={characterSheet}
       activityLog={
         <ActivityLog

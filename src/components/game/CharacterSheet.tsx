@@ -200,10 +200,11 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
           once in the attribute zone, once in the skill zone, that's the
           pool." Full width keeps names from ever breaking.
 
-          The section is the night sky (#84, owner verdict 2026-07-18): the
-          sheet's only containerless stretch, where the void shows through —
-          TraitSky runs the galaxy beneath the rows and fires a meteor when
-          the pool rolls; the halo class holds the rows legible against it. */}
+          The section is the sheet's only containerless stretch (#84, owner
+          verdict 2026-07-18): the firmament (SheetSky, mounted behind the
+          whole center panel) shows through unobstructed here and nowhere
+          else — TraitSky anchors the roll-fired meteors to these columns,
+          and the halo class holds the rows legible against the galaxy. */}
       <Section
         title={
           <>

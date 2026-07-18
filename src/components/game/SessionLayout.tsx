@@ -36,6 +36,9 @@ interface SessionLayoutProps {
   /** The Scene strip (issue #42): one line of header-adjacent chrome, not a panel. */
   sceneStrip?: ReactNode
   videoRail?: ReactNode
+  /** The firmament (#84): the galaxy layer behind the center panel — the
+   * sheet scrolls over it, its containers occlude it. */
+  sheetSky?: ReactNode
   characterSheet?: ReactNode
   activityLog: ReactNode
   dicePoolBuilder: ReactNode
@@ -54,6 +57,7 @@ export function SessionLayout({
   secondSeat,
   sceneStrip,
   videoRail,
+  sheetSky,
   characterSheet,
   activityLog,
   dicePoolBuilder,
@@ -174,12 +178,15 @@ export function SessionLayout({
         )}
 
         <ResizablePanel id="center" defaultSize={57} minSize={40}>
-          <div className="h-full overflow-y-auto p-4">
-            {characterSheet ?? (
-              <div className="flex h-full items-center justify-center" style={{ color: "var(--dim)" }}>
-                <p className="text-sm">No character in this session yet.</p>
-              </div>
-            )}
+          <div className="relative h-full">
+            {sheetSky}
+            <div className="relative z-10 h-full overflow-y-auto p-4">
+              {characterSheet ?? (
+                <div className="flex h-full items-center justify-center" style={{ color: "var(--dim)" }}>
+                  <p className="text-sm">No character in this session yet.</p>
+                </div>
+              )}
+            </div>
           </div>
         </ResizablePanel>
 

@@ -7,22 +7,27 @@ import type { useDicePool } from "#/hooks/use-dice-pool"
 type DicePoolAPI = ReturnType<typeof useDicePool>
 
 /**
- * The mundane sky (#84; ADR-0021, 2026-07-18 amendment). Attributes & Skills
- * is the sheet's only containerless section — every neighbor is a made object
- * (title card, Arcana tiles, Rote book) occluding the void, and here the void
- * shows through: the mage's mundane traits are the stars they were born
- * under, and a mundane roll reads their own chart. This is the app's one
- * ambient canvas: a single WebGL galaxy on the same ShaderMount the Arcana
- * substances use (it pauses offscreen; `speed 0` under reduced motion renders
- * one static frame and cancels the rAF loop).
+ * The night sky (#84; ADR-0021, 2026-07-18 amendment), in two layers:
  *
- * The meteor marks the roll, not the selection: it fires on the pool
- * machine's building → rolling transition. Its lane is DETERMINISTIC from the
- * pool's category permutation — it enters over the attribute's column and
- * exits toward the skill's; attr+attr pairs skim high and shallow; dice count
- * sets tail length and peak opacity; only the jitter within the lane varies
- * (seeded, repeatable). Mood stays on the sheet — the chronicle rail/feed is
- * the crunch zone and gets none of this (owner rule).
+ * `SheetSky` — the firmament. A GLSL galaxy filling the center panel behind
+ * the sheet: it runs everywhere a container isn't. Every made object (title
+ * card, Arcana tiles, Rote book — all solid `--panel` surfaces) occludes it;
+ * Attributes & Skills is the sheet's ONE containerless section, so only
+ * there does the void show through unobstructed — the mage's mundane traits
+ * are the stars they were born under, and a mundane roll reads their own
+ * chart. This is the app's one ambient canvas: a single WebGL context on
+ * the same ShaderMount the Arcana substances use (it pauses offscreen;
+ * `speed 0` under reduced motion renders one static frame and cancels the
+ * rAF loop).
+ *
+ * `TraitSky` — the meteors, anchored to the trait matrix. One fires on the
+ * pool machine's building → rolling transition: it marks the roll, not the
+ * selection. Its lane is DETERMINISTIC from the pool's category permutation
+ * — it enters over the attribute's column and exits toward the skill's;
+ * attr+attr pairs skim high and shallow; dice count sets tail length and
+ * peak opacity; only the jitter within the lane varies (seeded,
+ * repeatable). Mood stays on the sheet — the chronicle rail/feed is the
+ * crunch zone and gets none of this (owner rule).
  */
 
 // ---------------------------------------------------------------------------
@@ -66,7 +71,10 @@ float layer(vec2 uv, float scale, float t, float seed, float density) {
   return exist * exp(-d * d * (240. + h * 500.) * u_sharp) * tw;
 }
 void main() {
-  vec2 uv = gl_FragCoord.xy / u_resolution.y;
+  // Fixed-pixel basis, not resolution-relative: a bigger panel shows MORE
+  // sky, not bigger stars (420 ≈ the prototype section's height, so the
+  // shipped look matches the approved audition).
+  vec2 uv = gl_FragCoord.xy / 420.;
   float t = u_time;
   float s = 0.;
   s += layer(uv + vec2(t * .0016 * u_drift, 0.), 26. * u_scale, t, 2., .10 * u_density) * .45;
@@ -113,6 +121,60 @@ const SKY_DEFAULTS: SkyParams = {
   nebula: 1,
   rest: 0.85,
   build: 1.2,
+}
+
+/** Dev-only seam between the tweak panel (lives with the firmament) and the
+ * meteor field (lives with the trait matrix): the test button broadcasts,
+ * the field listens. Production never dispatches it. */
+const SKY_TEST_EVENT = "mv-sky-test-meteor"
+
+// ---------------------------------------------------------------------------
+// The firmament
+// ---------------------------------------------------------------------------
+
+interface SheetSkyProps {
+  /**
+   * The session's pool controller — the whole sky brightens while a pool is
+   * building, whichever surface built it. Absent, the sky rests.
+   */
+  pool?: DicePoolAPI | undefined
+}
+
+export function SheetSky({ pool }: SheetSkyProps) {
+  const reduced = useReducedMotion() ?? false
+  const building = pool?.state === "building"
+  const [params, setParams] = useState<SkyParams>(SKY_DEFAULTS)
+
+  return (
+    <>
+      <div aria-hidden className="mv-sky">
+        <ShaderMount
+          fragmentShader={GALAXY_FRAG}
+          uniforms={{
+            u_color: STARLIGHT_VEC4,
+            u_intensity: building ? params.build : params.rest,
+            u_density: params.density,
+            u_scale: params.scale,
+            u_sharp: params.sharp,
+            u_twinkle: params.twinkle,
+            u_drift: params.drift,
+            u_nebula: params.nebula,
+          }}
+          speed={reduced ? 0 : 1}
+          width="100%"
+          height="100%"
+          maxPixelCount={1280 * 832}
+        />
+      </div>
+      {import.meta.env.DEV && (
+        <SkyTweakPanel
+          params={params}
+          onChange={setParams}
+          onTest={() => window.dispatchEvent(new CustomEvent(SKY_TEST_EVENT))}
+        />
+      )}
+    </>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -237,14 +299,13 @@ function MeteorLine({ m }: { m: Meteor }) {
 }
 
 // ---------------------------------------------------------------------------
-// The sky itself
+// The meteor field over the trait matrix
 // ---------------------------------------------------------------------------
 
 interface TraitSkyProps {
   /**
-   * The sheet's pool controller. Absent (read-only sheets) the sky is still
-   * present — it's the section's material, not an affordance — but stays at
-   * rest and never fires a meteor.
+   * The sheet's pool controller. Absent (read-only sheets) no meteor ever
+   * fires — the firmament above still holds the section.
    */
   pool?: DicePoolAPI | undefined
   /** Category column (0 mental · 1 physical · 2 social) per trait display
@@ -254,11 +315,9 @@ interface TraitSkyProps {
 
 export function TraitSky({ pool, traitColumns }: TraitSkyProps) {
   const reduced = useReducedMotion() ?? false
-  const building = pool?.state === "building"
   const skyRef = useRef<HTMLDivElement | null>(null)
   const [meteors, setMeteors] = useState<Meteor[]>([])
   const fireCount = useRef(0)
-  const [params, setParams] = useState<SkyParams>(SKY_DEFAULTS)
 
   const launch = (m: Meteor | null) => {
     if (!m) return
@@ -297,51 +356,32 @@ export function TraitSky({ pool, traitColumns }: TraitSkyProps) {
     prevState.current = p?.state
   }, [pool?.state])
 
-  // Dev-only: a lane test that needs no real roll — cycles the permutations.
-  const testMeteor = () => {
-    const el = skyRef.current
-    if (!el) return
-    const { width, height } = el.getBoundingClientRect()
-    fireCount.current += 1
-    const n = fireCount.current
-    launch(
-      meteorLane(n % 3, (n * 2 + 1) % 3, n % 4 === 0, 4 + (n % 6), n, width, height),
-    )
-  }
+  // Dev-only: the tweak panel's lane test — no real roll needed; cycles the
+  // permutations deterministically.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const onTest = () => {
+      const el = skyRef.current
+      if (!el) return
+      const { width, height } = el.getBoundingClientRect()
+      fireCount.current += 1
+      const n = fireCount.current
+      launch(
+        meteorLane(n % 3, (n * 2 + 1) % 3, n % 4 === 0, 4 + (n % 6), n, width, height),
+      )
+    }
+    window.addEventListener(SKY_TEST_EVENT, onTest)
+    return () => window.removeEventListener(SKY_TEST_EVENT, onTest)
+  }, [])
 
   return (
-    <>
-      {/* the open sky — no container; the void shows through here and
-          nowhere else. The layer overshoots vertically so meteors enter
-          from above the content, and a mask feathers its edges. */}
-      <div ref={skyRef} aria-hidden className="mv-sky">
-        <ShaderMount
-          fragmentShader={GALAXY_FRAG}
-          uniforms={{
-            u_color: STARLIGHT_VEC4,
-            u_intensity: building ? params.build : params.rest,
-            u_density: params.density,
-            u_scale: params.scale,
-            u_sharp: params.sharp,
-            u_twinkle: params.twinkle,
-            u_drift: params.drift,
-            u_nebula: params.nebula,
-          }}
-          speed={reduced ? 0 : 1}
-          width="100%"
-          height="100%"
-          maxPixelCount={860 * 560}
-        />
-        <svg className="pointer-events-none absolute inset-0 z-[5] h-full w-full overflow-visible">
-          {meteors.map((m) => (
-            <MeteorLine key={m.id} m={m} />
-          ))}
-        </svg>
-      </div>
-      {import.meta.env.DEV && (
-        <SkyTweakPanel params={params} onChange={setParams} onTest={testMeteor} />
-      )}
-    </>
+    <div ref={skyRef} aria-hidden className="mv-sky-meteors">
+      <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
+        {meteors.map((m) => (
+          <MeteorLine key={m.id} m={m} />
+        ))}
+      </svg>
+    </div>
   )
 }
 

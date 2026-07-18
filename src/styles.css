@@ -295,11 +295,19 @@ pre code {
   border-color: var(--accent) !important;
 }
 
-/* The mundane sky (#84; ADR-0021, 2026-07-18) — the Attributes & Skills
- * section's galaxy layer (TraitSky). The layer overshoots the section so
- * meteors enter from above the content; the mask feathers its edges so the
- * void has no border. */
+/* The night sky (#84; ADR-0021, 2026-07-18) — the firmament (SheetSky)
+ * fills the center panel behind the sheet: the galaxy runs everywhere a
+ * container isn't, and every made object (title card, tiles, book — solid
+ * --panel surfaces) occludes it. The sheet scrolls over a still sky. */
 .mv-sky {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+/* The meteor field (TraitSky) stays anchored to the trait matrix — the one
+ * containerless section. It overshoots the section so meteors enter from
+ * above the content; the mask feathers their entry and exit. */
+.mv-sky-meteors {
   position: absolute;
   left: -12px;
   right: -12px;
