@@ -466,25 +466,29 @@ function VariantFelt({ chips, submit }: VariantProps) {
           ›
         </button>
 
-        {/* row two: the ±5s under their chevrons, fittings under the felt */}
+        {/* the caption keeps its old spot: its own quiet line right under
+            the felt, spanning the felt column only */}
+        {chips && (
+          <p
+            className="mv-data text-[10px]"
+            style={{ color: "var(--dim)", gridColumn: "2" }}
+          >
+            <span style={{ color: "var(--accent)" }}>◆</span> Wits +
+            Investigation, from the sheet
+          </p>
+        )}
+
+        {/* fittings row: the ±5s under their chevrons, fittings under the felt */}
         <button
           onClick={() => setPlainCount((n) => Math.max(0, n - 5))}
           disabled={plainCount === 0}
           className="mv-mini w-8 self-start px-0 text-center disabled:opacity-40"
+          style={{ gridColumn: "1" }}
           title="Take five dice off"
         >
           −5
         </button>
-        <div className="min-w-0">
-          {chips && (
-            <p
-              className="mv-data pb-1.5 text-[10px]"
-              style={{ color: "var(--dim)" }}
-            >
-              <span style={{ color: "var(--accent)" }}>◆</span> Wits +
-              Investigation, from the sheet
-            </p>
-          )}
+        <div className="min-w-0" style={{ gridColumn: "2" }}>
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               onClick={() => setPlainCount(0)}
@@ -523,6 +527,7 @@ function VariantFelt({ chips, submit }: VariantProps) {
         <button
           onClick={() => setPlainCount((n) => n + 5)}
           className="mv-mini w-8 self-start px-0 text-center"
+          style={{ gridColumn: "3" }}
           title="Feed five dice on"
         >
           +5
