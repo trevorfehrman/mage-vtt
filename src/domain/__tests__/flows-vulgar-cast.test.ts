@@ -1035,7 +1035,8 @@ describe("Flows.vulgarCast — the refusal matrix", () => {
 })
 
 describe("Flows.vulgarCast — the rote lane (issue #47)", () => {
-  // Presence 2 + Occult 4 + Death 3 = 9 dice on Aldous's sheet.
+  // Presence 2 + Occult 4 + Death 3 + Rote Specialty 1 = 10 dice on Aldous's
+  // sheet: he is Mysterium and Occult is one of the Order's three (issue #87).
   const sealOfBone = new KnownRote({
     name: "Seal of Bone",
     spellName: "Ectoplasmic Shaping",
@@ -1061,6 +1062,16 @@ describe("Flows.vulgarCast — the rote lane (issue #47)", () => {
     }),
   })
 
+  // The same pool learned from another Order: never the specialty die (issue #87).
+  const borrowedSeal = new KnownRote({
+    name: "Borrowed Seal",
+    spellName: "Ectoplasmic Shaping",
+    spellArcanum: "Death",
+    spellLevel: 1,
+    order: "Adamantine Arrow",
+    pool: new RotePool({ attribute: "Presence", skills: ["Occult"], arcanum: "Death" }),
+  })
+
   // A Covert spell behind a trained Rote: casts atomically, refuses the ladder.
   const graveMien = new KnownRote({
     name: "Grave Mien",
@@ -1080,7 +1091,7 @@ describe("Flows.vulgarCast — the rote lane (issue #47)", () => {
 
   const roteSeed = (opts: Parameters<typeof seed>[0] = {}) =>
     seed({
-      sheet: makeSheet({ knownRotes: [sealOfBone, twoDoors, graveMien] }),
+      sheet: makeSheet({ knownRotes: [sealOfBone, twoDoors, borrowedSeal, graveMien] }),
       spells: SPELLS,
       ...opts,
     })
@@ -1103,13 +1114,15 @@ describe("Flows.vulgarCast — the rote lane (issue #47)", () => {
       // The declaration derives from the Rote's spell, not client numbers.
       expect(cast.arcanum).toBe("death")
       expect(cast.level).toBe(1)
-      // The pool freezes from the sheet through the same leaf castRote uses.
+      // The pool freezes from the sheet through the same leaf castRote uses —
+      // Rote Specialty die included (own Order + Occult, issue #87).
       expect(cast.declaredComponents).toEqual([
         { type: "attribute", name: "Presence", dots: 2 },
         { type: "skill", name: "Occult", dots: 4 },
         { type: "arcanum", name: "Death", dots: 3 },
+        { type: "modifier", name: "Rote Specialty", dots: 1 },
       ])
-      expect(cast.declaredPool).toBe(9)
+      expect(cast.declaredPool).toBe(10)
       // A Rote skips the improvised Path cost (the castRote convention).
       expect(cast.spellManaCost).toBe(0)
       expect(store.messages[0]!.text).toContain('drafts the Rote "Seal of Bone"')
@@ -1144,6 +1157,24 @@ describe("Flows.vulgarCast — the rote lane (issue #47)", () => {
       })
       expect(cast.declaredPool).toBe(7) // Wits 2 + Larceny 2 + Death 3
       expect(cast.level).toBe(4) // no ArcanumTooWeak gate on the rote lane
+    }),
+  )
+
+  it.effect("a Rote learned from another Order freezes an unchanged pool — no specialty die", () =>
+    Effect.gen(function* () {
+      const store = roteSeed()
+
+      yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        roteName: "Borrowed Seal",
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      const cast = store.casts[0]!
+      expect(cast.declaredPool).toBe(9) // Presence 2 + Occult 4 + Death 3
+      expect(cast.declaredComponents).not.toContainEqual(
+        expect.objectContaining({ name: "Rote Specialty" }),
+      )
     }),
   )
 
