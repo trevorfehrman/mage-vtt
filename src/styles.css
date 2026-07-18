@@ -24,16 +24,16 @@
   --line: #1e2b27;
   --glow: rgba(111, 174, 151, 0.12);
   --bad: #b56d60;
-  /* The trait-zone pair (audition round 2, 2026-07-18): raw copper and
-   * dusty rose against the verdigris field. The copper is the owner's own
-   * pick — and the right story: verdigris IS oxidized copper, so the
-   * mundane traits wear the raw metal the app's magic-patina comes from.
-   * The rose is verdigris's true complement (hue ~158° → ~338°), kept in
-   * the same pale muted register so the pair reads as one palette.
-   * Retired: ivory/blue and rose/violet (read as realm materials / didn't
-   * sit), amber-gold/bronze (too saturated), plain ink (interim). */
-  --zone-attr: #d0ae91;
-  --zone-skill: #c295a5;
+  /* The trait-zone pair — plain ink, LOCKED for now (owner call
+   * 2026-07-18, closing the color hunt after the night sky landed).
+   * Four pairs auditioned and retired: ivory/blue (read as realm
+   * materials), rose/violet (didn't sit), amber-gold/bronze (too
+   * saturated), pale-copper/dusty-rose (not enough contrast; the rose sat
+   * uneasily between verdigris and copper). If the hunt reopens: the
+   * copper #d0ae91 "had something" (verdigris IS oxidized copper — the
+   * raw metal under the app's patina), the rose lane is spent. */
+  --zone-attr: var(--ink);
+  --zone-skill: var(--ink);
 
   /* The five Supernal Realm materials (owner call 2026-07-16) — true to the
    * Watchtowers: shimmering gold Aether (Prime·Forces·Obrimos), shimmering
