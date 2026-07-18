@@ -34,6 +34,11 @@ to the table about the ambient state.
 Color grammar note: the Tides are the world's magic and render verdigris;
 the caster's hand (drafting, insurance, the Cast click) is ember.
 
+Within the Tides, the signs have names (owner, 2026-07-18): advantage
+circumstances are the **Flood** (the tide runs with the caster), penalties
+are the **Ebb** (it runs out). Witnesses and prior-Paradox pips are Ebb-side
+by nature; a ghost's boon is Flood.
+
 ## The freeze
 
 The ST locks the price when satisfied. After that click the ST is
