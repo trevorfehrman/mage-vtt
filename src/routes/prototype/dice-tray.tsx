@@ -405,41 +405,60 @@ function VariantFelt({ chips, submit }: VariantProps) {
         </span>
       </div>
 
-      {/* the felt itself — a div, not a button: it holds die buttons */}
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => setPlainCount((n) => n + 1)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") setPlainCount((n) => n + 1)
-        }}
-        className="mx-3 mt-2 block cursor-copy rounded-[6px] border p-2 text-left"
-        style={{
-          borderColor: "var(--line)",
-          background: "color-mix(in srgb, var(--accent) 6%, transparent)",
-          minHeight: 64,
-        }}
-        title="Tap the felt to add a die"
-      >
-        <span className="flex flex-wrap gap-2.5 p-1">
-          {chips &&
-            Array.from({ length: sheetDots }, (_, i) => (
-              <span key={`s${i}`}>{die(true)}</span>
+      {/* the felt, flanked by its chevrons: ‹ skims a die off, › feeds one on.
+          The felt itself stays touchable (tap = add, tap a die = remove) but
+          the chevrons are the easy path. */}
+      <div className="mx-3 mt-2 flex items-stretch gap-1.5">
+        <button
+          onClick={() => setPlainCount((n) => Math.max(0, n - 1))}
+          disabled={plainCount === 0}
+          className="mv-btn w-8 shrink-0 rounded-[6px] text-[20px] leading-none disabled:opacity-30"
+          title="Take a die off the felt"
+        >
+          ‹
+        </button>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setPlainCount((n) => n + 1)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") setPlainCount((n) => n + 1)
+          }}
+          className="block min-w-0 flex-1 cursor-copy rounded-[6px] border p-2 text-left"
+          style={{
+            borderColor: "var(--line)",
+            background: "color-mix(in srgb, var(--accent) 6%, transparent)",
+            minHeight: 64,
+          }}
+          title="Tap the felt to add a die"
+        >
+          <span className="flex flex-wrap gap-2.5 p-1">
+            {chips &&
+              Array.from({ length: sheetDots }, (_, i) => (
+                <span key={`s${i}`}>{die(true)}</span>
+              ))}
+            {Array.from({ length: plainCount }, (_, i) => (
+              <span key={`p${i}`}>
+                {die(false, () => setPlainCount((n) => n - 1))}
+              </span>
             ))}
-          {Array.from({ length: plainCount }, (_, i) => (
-            <span key={`p${i}`}>
-              {die(false, () => setPlainCount((n) => n - 1))}
-            </span>
-          ))}
-          {total === 0 && (
-            <span
-              className="mv-data self-center pl-1 text-[11px] italic"
-              style={{ color: "var(--dim)" }}
-            >
-              an empty tray rolls a chance die…
-            </span>
-          )}
-        </span>
+            {total === 0 && (
+              <span
+                className="mv-data self-center pl-1 text-[11px] italic"
+                style={{ color: "var(--dim)" }}
+              >
+                an empty tray rolls a chance die…
+              </span>
+            )}
+          </span>
+        </div>
+        <button
+          onClick={() => setPlainCount((n) => n + 1)}
+          className="mv-btn w-8 shrink-0 rounded-[6px] text-[20px] leading-none"
+          title="Feed a die onto the felt"
+        >
+          ›
+        </button>
       </div>
       {chips && (
         <p className="mv-data px-4 pt-1 text-[10px]" style={{ color: "var(--dim)" }}>
