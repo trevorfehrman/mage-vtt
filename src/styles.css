@@ -24,12 +24,16 @@
   --line: #1e2b27;
   --glow: rgba(111, 174, 151, 0.12);
   --bad: #b56d60;
-  /* The trait-zone pair — INTERIM (2026-07-17): both zones wear plain ink
-   * while the Attributes & Skills treatment is redesigned from concept up.
-   * The retired pairs both failed: ivory/blue read as Aether/Arcadia
-   * realm materials, rose/violet didn't sit right either. */
-  --zone-attr: var(--ink);
-  --zone-skill: var(--ink);
+  /* The trait-zone pair — the mundane metals (baseline audition
+   * 2026-07-18, after the night sky landed): warm against the verdigris
+   * field — attributes the brighter amber-gold (the born metal), skills
+   * the quieter worked bronze (the earned one). Pitched between the realm
+   * tints on purpose: more orange than Aether's brass (#d3b46a), cleaner
+   * than Pandemonium's rust (#b4693c), so the zones don't repeat the
+   * ivory/blue failure of reading as realm materials. Retired pairs:
+   * ivory/blue, rose/violet, plain ink (the sky-audition interim). */
+  --zone-attr: #d9a35c;
+  --zone-skill: #b58963;
 
   /* The five Supernal Realm materials (owner call 2026-07-16) — true to the
    * Watchtowers: shimmering gold Aether (Prime·Forces·Obrimos), shimmering
