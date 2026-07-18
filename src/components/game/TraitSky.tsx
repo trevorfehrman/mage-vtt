@@ -50,6 +50,7 @@ uniform float u_sharp;
 uniform float u_twinkle;
 uniform float u_drift;
 uniform float u_nebula;
+uniform float u_pixelRatio;
 out vec4 fragColor;
 
 float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
@@ -71,10 +72,12 @@ float layer(vec2 uv, float scale, float t, float seed, float density) {
   return exist * exp(-d * d * (240. + h * 500.) * u_sharp) * tw;
 }
 void main() {
-  // Fixed-pixel basis, not resolution-relative: a bigger panel shows MORE
+  // Fixed CSS-pixel basis, not buffer-relative: a bigger panel shows MORE
   // sky, not bigger stars (420 ≈ the prototype section's height, so the
-  // shipped look matches the approved audition).
-  vec2 uv = gl_FragCoord.xy / 420.;
+  // shipped look matches the approved audition). u_pixelRatio is the
+  // mount's buffer-to-CSS render scale — dividing it out keeps star size
+  // constant when maxPixelCount rescales the buffer.
+  vec2 uv = gl_FragCoord.xy / (420. * u_pixelRatio);
   float t = u_time;
   float s = 0.;
   s += layer(uv + vec2(t * .0016 * u_drift, 0.), 26. * u_scale, t, 2., .10 * u_density) * .45;
@@ -166,7 +169,7 @@ export function SheetSky({ pool }: SheetSkyProps) {
           speed={reduced ? 0 : 1}
           width="100%"
           height="100%"
-          maxPixelCount={1280 * 832}
+          maxPixelCount={1920 * 1080}
         />
       </div>
       {import.meta.env.DEV && (
@@ -232,12 +235,13 @@ function meteorLane(
     x1: colA === colB ? x1 + (rnd() < 0.5 ? -1 : 1) * 0.08 * w : x1,
     y1: bothAttrs ? h * (0.28 + rnd() * 0.14) : h + 10,
     tail: 56 + dice * 14,
-    // quiet by decree (owner, 2026-07-18): the streak is a passing omen,
-    // not a firework — length carries the magnitude, not brightness
-    peak: Math.min(0.5, 0.22 + dice * 0.03),
-    // real-shooting-star fast (owner, same night): sub-half-second, the
-    // "wait — did I just see that?" read
-    dur: 260 + rnd() * 140,
+    // quiet by decree (owner, 2026-07-18, dialed twice): the streak is a
+    // passing omen, not a firework — length carries the magnitude, not
+    // brightness
+    peak: Math.min(0.38, 0.16 + dice * 0.025),
+    // real-shooting-star fast (owner, same night, dialed twice): a blink
+    // — the "wait — did I just see that?" read
+    dur: 150 + rnd() * 90,
   }
 }
 

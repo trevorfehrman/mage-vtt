@@ -337,7 +337,7 @@ pre code {
   stroke-width: 1;
   stroke-linecap: round;
   fill: none;
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 45%, transparent));
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 35%, transparent));
 }
 @media (prefers-reduced-motion: reduce) {
   .mv-sky-meteor {

@@ -36,8 +36,8 @@ interface SessionLayoutProps {
   /** The Scene strip (issue #42): one line of header-adjacent chrome, not a panel. */
   sceneStrip?: ReactNode
   videoRail?: ReactNode
-  /** The firmament (#84): the galaxy layer behind the center panel — the
-   * sheet scrolls over it, its containers occlude it. */
+  /** The firmament (#84): the galaxy layer behind the whole panel group —
+   * the opaque rails occlude it, the sheet scrolls over it. */
   sheetSky?: ReactNode
   characterSheet?: ReactNode
   activityLog: ReactNode
@@ -153,12 +153,18 @@ export function SessionLayout({
       {/* Scene strip — the narrative container's one line (issue #42) */}
       {sceneStrip}
 
-      {/* Main content — Character center · Activity/pool/chat right rail */}
+      {/* Main content — Character center · Activity/pool/chat right rail.
+          The firmament (#84) hangs behind the WHOLE panel group, not inside
+          the center panel: the opaque rails occlude it, and dragging the
+          panel handles never resizes the WebGL canvas (a per-frame buffer
+          realloc that zoomed the stars and tanked the fps). */}
+      <div className="relative min-h-0 flex-1">
+      {sheetSky}
       <ResizablePanelGroup
         orientation="horizontal"
         defaultLayout={mainLayout.defaultLayout}
         onLayoutChanged={mainLayout.onLayoutChanged}
-        className={`flex-1 ${animClass}`}
+        className={`relative h-full ${animClass}`}
       >
         {videoRail && (
           <>
@@ -178,15 +184,12 @@ export function SessionLayout({
         )}
 
         <ResizablePanel id="center" defaultSize={57} minSize={40}>
-          <div className="relative h-full">
-            {sheetSky}
-            <div className="relative z-10 h-full overflow-y-auto p-4">
-              {characterSheet ?? (
-                <div className="flex h-full items-center justify-center" style={{ color: "var(--dim)" }}>
-                  <p className="text-sm">No character in this session yet.</p>
-                </div>
-              )}
-            </div>
+          <div className="h-full overflow-y-auto p-4">
+            {characterSheet ?? (
+              <div className="flex h-full items-center justify-center" style={{ color: "var(--dim)" }}>
+                <p className="text-sm">No character in this session yet.</p>
+              </div>
+            )}
           </div>
         </ResizablePanel>
 
@@ -213,6 +216,7 @@ export function SessionLayout({
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
+      </div>
 
       {/* Bottom band — the FFX tick timeline (issue #60), full width */}
       {combatTracker}
