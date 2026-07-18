@@ -100,13 +100,17 @@ const draft: CastEntry = {
   level: 3,
   intent: "Unravel the warding knot sealing the mausoleum door",
   usesMagicalTool: true,
+  // Improvised-cast shape (Gnosis + Arcanum + boosts, spellcasting.ts) and a
+  // 0-Mana cost: Death is Moros-ruling, so the honest price is nothing — the
+  // walk-through (2026-07-18) caught the earlier fake charging 1 Mana.
   declaredComponents: [
-    { type: "attribute", name: "Intelligence", dots: 3 },
-    { type: "skill", name: "Occult", dots: 4 },
-    { type: "arcanum", name: "death", dots: 3 },
+    { type: "gnosis", name: "Gnosis", dots: 3 },
+    { type: "arcanum", name: "Death", dots: 3 },
+    { type: "modifier", name: "High Speech", dots: 2 },
+    { type: "modifier", name: "Willpower", dots: 2 },
   ],
   declaredPool: 10,
-  spellManaCost: 1,
+  spellManaCost: 0,
   createdAt: T0,
   updatedAt: T0,
 }
