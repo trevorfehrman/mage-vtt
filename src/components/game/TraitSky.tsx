@@ -234,8 +234,10 @@ function meteorLane(
     tail: 56 + dice * 14,
     // quiet by decree (owner, 2026-07-18): the streak is a passing omen,
     // not a firework — length carries the magnitude, not brightness
-    peak: Math.min(0.7, 0.32 + dice * 0.04),
-    dur: 900 + rnd() * 320,
+    peak: Math.min(0.55, 0.26 + dice * 0.03),
+    // real-shooting-star fast (owner, same night): sub-half-second, the
+    // "wait — did I just see that?" read
+    dur: 260 + rnd() * 140,
   }
 }
 

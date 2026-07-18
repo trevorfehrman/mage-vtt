@@ -334,10 +334,10 @@ pre code {
  * transitions on concrete px values — see TraitSky's MeteorLine). */
 .mv-sky-meteor {
   stroke: var(--ink);
-  stroke-width: 1.2;
+  stroke-width: 1;
   stroke-linecap: round;
   fill: none;
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 55%, transparent));
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 45%, transparent));
 }
 @media (prefers-reduced-motion: reduce) {
   .mv-sky-meteor {
