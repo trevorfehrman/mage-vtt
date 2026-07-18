@@ -19,6 +19,7 @@ import {
   pathTint,
 } from "./ArcanaGlyph"
 import { ArcanaSubstance, hasSubstance } from "./ArcanaSubstance"
+import { RoteBookPrototypeGate } from "./RoteBookPrototype"
 import { Separator } from "#/components/ui/separator"
 import { DotRating } from "./DotRating"
 import type { useCast } from "#/hooks/use-cast"
@@ -185,11 +186,15 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
           entries (issue #20); inert rows on read-only sheets. */}
       {character.rotes.length > 0 && (
         <Section title="Rotes">
-          <div className="grid gap-1">
-            {character.rotes.map((rote) => (
-              <RoteRow key={rote.name} rote={rote} cast={cast} />
-            ))}
-          </div>
+          {/* PROTOTYPE gate (issue #89 look grilling) — renders the real rows
+              unless ?rotebook is in the URL. Delete with RoteBookPrototype. */}
+          <RoteBookPrototypeGate rotes={character.rotes} cast={cast}>
+            <div className="grid gap-1">
+              {character.rotes.map((rote) => (
+                <RoteRow key={rote.name} rote={rote} cast={cast} />
+              ))}
+            </div>
+          </RoteBookPrototypeGate>
         </Section>
       )}
 
