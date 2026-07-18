@@ -405,9 +405,12 @@ pre code {
     box-shadow 0.35s;
   cursor: pointer;
 }
+/* disabled tiles (unrated, or any tile on a read-only sheet) stay SOLID —
+ * the ghost read comes from their dimmed contents, never from the board
+ * going transparent: the firmament (#84) must not shine through a made
+ * object. */
 .mv-arcana:disabled {
   cursor: default;
-  background: transparent;
 }
 .mv-arcana-bloom {
   position: absolute;
