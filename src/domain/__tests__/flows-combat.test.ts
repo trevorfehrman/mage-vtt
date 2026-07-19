@@ -10,7 +10,7 @@ import {
   startCombat,
 } from "../flows/combat"
 import { closeScene } from "../flows/scene"
-import { CombatId, PlayerId, SceneId, SessionId } from "../ids"
+import { CastId, CharacterId, CombatId, PlayerId, SceneId, SessionId } from "../ids"
 import { Membership } from "../membership"
 import { failureTag, makeAldousSheet } from "../testing/fixtures"
 import {
@@ -542,6 +542,44 @@ describe("Flows.combat.rollCombatInitiative (issue #60)", () => {
       expect(roll.override).toBeNull()
       expect(roll.summary).toContain("rolls initiative")
       expect(roll.summary).toContain(`= ${p.initiative!.total}`)
+    }),
+  )
+
+  it.effect("a pending vulgar cast freezes its caster's initiative (issue #109)", () =>
+    Effect.gen(function* () {
+      const store = makeInMemory({
+        members: [aldous, bianca, stella],
+        actor: { userId: ALDOUS_USER, isDev: false },
+        sheets: [aldousSheet, biancaSheet],
+        combats: [seated()],
+        casts: [
+          {
+            id: CastId.make("cast-pending"),
+            sessionId: SESSION,
+            characterId: CharacterId.make("char-aldous"),
+            casterUserId: ALDOUS_USER,
+            casterName: "Aldous",
+            status: "draft",
+            arcanum: "death",
+            level: 1,
+            usesMagicalTool: false,
+            declaredComponents: [],
+            declaredPool: 4,
+            spellManaCost: 0,
+            override: null,
+            createdAt: 0,
+            updatedAt: 0,
+          },
+        ],
+      })
+
+      const exit = yield* rollCombatInitiative({
+        sessionId: SESSION,
+        participantId: "p1",
+      }).pipe(Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("CasterHasPendingCast")
+      expect(store.rolls).toHaveLength(0)
     }),
   )
 

@@ -22,6 +22,7 @@ import {
 } from "../initiative"
 import { GameStore } from "../ports/game-store"
 import { PoolSize, Successes } from "../quantities"
+import { requireRollFreedom } from "./pending-lock"
 import { requireActiveScene } from "./scene"
 
 /**
@@ -421,6 +422,11 @@ export const rollCombatInitiative = Effect.fn("Flows.combat.rollCombatInitiative
       ),
       Match.exhaustive,
     )
+
+    // The pending-cast lock (issue #109): initiative is a roll like any
+    // other — a pending vulgar cast freezes its member's dice, and an
+    // unanswered offer holds the Storyteller's.
+    yield* requireRollFreedom(acting.member)
 
     if (participant.initiative !== undefined) {
       return yield* new InitiativeAlreadyRolled({ participantId: participant.id })

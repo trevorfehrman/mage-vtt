@@ -47,6 +47,9 @@ export function CasterPendingCast({
 
   // Whose move the pulse wears: waiting = the world answers; engaged rungs
   // alternate, but the card carries the beats — here it stays the world's.
+  // Exhaustive over the closed CastStatus set (ADR-0018): the route only
+  // mounts this posture on unresolved statuses, so the terminal arms are a
+  // last breath — the feed's own update unmounts the zone a beat later.
   const statusLine = Match.value(cast.status).pipe(
     Match.when(
       "draft",
@@ -60,7 +63,10 @@ export function CasterPendingCast({
       "paradox",
       () => "on stage — Paradox plays out on its card; your dice are spoken for",
     ),
-    Match.orElse(() => "resolving"),
+    Match.when("resolved", () => "resolved — the zone frees"),
+    Match.when("cancelled", () => "withdrawn — the zone frees"),
+    Match.when("voided", () => "voided — the zone frees"),
+    Match.exhaustive,
   )
 
   return (
