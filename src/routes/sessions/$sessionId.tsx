@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react"
 import usePresence from "@convex-dev/presence/react"
 import { api } from "../../../convex/_generated/api"
 import type { PoolComponentInput } from "#/domain/dice"
+import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy"
 import { useCast } from "#/hooks/use-cast"
 import { useDicePool } from "#/hooks/use-dice-pool"
 import { useSession } from "#/hooks/use-session"
@@ -329,6 +330,17 @@ function SessionPage() {
         <ActivityLog
           sessionId={sessionId}
           isRolling={pool.state === "rolling" || rawCast.state === "casting"}
+          // The pool's dice in flight; an empty pool casts one chance die.
+          // Cast rolls leave it undefined and read plural.
+          rollingDiceCount={
+            pool.state === "rolling"
+              ? Math.max(
+                  1,
+                  pool.context.poolSize +
+                    (pool.context.spendWillpower ? WILLPOWER_BONUS_DICE : 0),
+                )
+              : undefined
+          }
           // The live Cast card's role gates (issue #43): chrome follows the
           // seat (ADR-0013); the server refuses wrong actors regardless.
           isStoryteller={isStoryteller}

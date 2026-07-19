@@ -15,6 +15,8 @@ const PIN_THRESHOLD_PX = 48
 interface ActivityLogProps {
   sessionId: Id<"sessions">
   isRolling?: boolean
+  /** Dice in flight while rolling — 1 (or a chance die) reads "the die". */
+  rollingDiceCount?: number | undefined
   /** The Second Seat (ADR-0013): read the log as this member instead. */
   seat?: Id<"sessionMembers">
   /** The live Cast card's role gates (issue #43): chrome follows the seat. */
@@ -32,6 +34,7 @@ interface ActivityLogProps {
 export function ActivityLog({
   sessionId,
   isRolling,
+  rollingDiceCount,
   seat,
   isStoryteller,
   viewerUserId,
@@ -143,7 +146,7 @@ export function ActivityLog({
           )}
 
           {/* Rolling indicator — appears immediately when dice are in flight */}
-          {isRolling && <RollingIndicator />}
+          {isRolling && <RollingIndicator count={rollingDiceCount} />}
         </div>
       </ScrollArea>
     </div>
@@ -152,11 +155,13 @@ export function ActivityLog({
 
 // --- Sub-components ---
 
-function RollingIndicator() {
+function RollingIndicator({ count }: { count?: number | undefined }) {
+  // A pool of one — or the empty felt's chance die — casts a single die.
+  const single = count !== undefined && count <= 1
   return (
     <div className="mv-panel flex items-center gap-2 rounded-[3px] px-2.5 py-2 text-[12px]">
       <span className="inline-flex size-2 animate-ping rounded-full" style={{ background: "var(--accent)" }} />
-      <span className="mv-accent">casting the dice…</span>
+      <span className="mv-accent">{single ? "casting the die…" : "casting the dice…"}</span>
     </div>
   )
 }

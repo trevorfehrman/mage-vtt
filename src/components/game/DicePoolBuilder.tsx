@@ -145,29 +145,25 @@ export function DicePoolBuilder({
   return (
     <TooltipProvider>
       <div className="border-t" style={{ borderColor: "var(--line)" }}>
-        {/* Folded, the tray is a handle and nothing else: the caret, and the
-            pool count when dice are waiting. */}
-        {!expanded && (
-          <button
-            onClick={() => setExpanded(true)}
-            className="mv-felt flex h-[18px] w-full items-center justify-center gap-1.5 leading-none"
-            style={{ background: "transparent" }}
-            title="Open the felt"
-            aria-expanded={false}
-          >
-            <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
-              ⌃
+        {/* One handle, both postures: the thin toggle is the tray's only
+            splitter — barely there, the pool count surfacing only when the
+            felt is folded over waiting dice. */}
+        <button
+          onClick={() => setExpanded((e) => !e)}
+          className="mv-handle flex h-[18px] w-full items-center justify-center gap-1.5 leading-none"
+          title={expanded ? "Fold the tray away" : "Open the felt"}
+          aria-expanded={expanded}
+        >
+          <span className="mv-data text-[10px]">{expanded ? "⌄" : "⌃"}</span>
+          {!expanded && total > 0 && (
+            <span
+              className="mv-data text-[10px] font-bold"
+              style={{ color: "var(--accent)" }}
+            >
+              {total}
             </span>
-            {total > 0 && (
-              <span
-                className="mv-data text-[10px] font-bold"
-                style={{ color: "var(--accent)" }}
-              >
-                {total}
-              </span>
-            )}
-          </button>
-        )}
+          )}
+        </button>
 
         <motion.div
           initial={false}
@@ -175,28 +171,6 @@ export function DicePoolBuilder({
           transition={postureTransition}
           className="overflow-hidden"
         >
-          {/* readout */}
-          <div className="flex items-center gap-2 px-3 pt-2.5">
-            <button
-              onClick={() => setExpanded(false)}
-              className="mv-btn grid size-6 shrink-0 place-items-center rounded-[3px] text-[11px] leading-none"
-              title="Fold the tray away"
-              aria-expanded
-            >
-              ⌄
-            </button>
-            <span className="mv-eyebrow">The felt</span>
-            <span
-              className="mv-data ml-auto text-[22px] font-bold leading-none"
-              style={{ color: total > 0 ? "var(--accent)" : "var(--dim)" }}
-            >
-              {total > 0 ? total : "◈"}
-            </span>
-            <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
-              {total === 0 ? "chance" : total === 1 ? "die" : "dice"}
-            </span>
-          </div>
-
           {/* the felt, flanked by its rails: ‹/−5 skim off the left,
               ›/+5 feed on from the right; fittings keep to the felt's
               own column and wrap when the rail thins (#98) */}
@@ -222,7 +196,7 @@ export function DicePoolBuilder({
                   setLoose(loose + 1)
                 }
               }}
-              className="mv-felt block min-w-0 cursor-copy rounded-[6px] border p-2 text-left"
+              className="mv-felt relative block min-w-0 cursor-copy rounded-[6px] border p-2 text-left"
               style={{
                 borderColor: "var(--line)",
                 background: "color-mix(in srgb, var(--accent) 6%, transparent)",
@@ -236,15 +210,28 @@ export function DicePoolBuilder({
                   {willpowerDice}
                   {looseDice}
                 </AnimatePresence>
+              </span>
+              {/* the empty hint floats centered over the felt, out of the
+                  layout entirely — swept dice exit under it, nothing shifts */}
+              <AnimatePresence initial={false}>
                 {total === 0 && (
-                  <span
-                    className="mv-data self-center pl-1 text-[10px]"
+                  <motion.span
+                    key="empty-hint"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={
+                      reduced
+                        ? { duration: 0 }
+                        : { duration: 0.15, delay: 0.12 }
+                    }
+                    className="mv-data pointer-events-none absolute inset-0 grid place-items-center text-[10px]"
                     style={{ color: "var(--dim)" }}
                   >
                     an empty felt rolls a chance die
-                  </span>
+                  </motion.span>
                 )}
-              </span>
+              </AnimatePresence>
             </div>
             <button
               onClick={() => setLoose(loose + 1)}
