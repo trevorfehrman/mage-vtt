@@ -6,8 +6,18 @@
 // Tides BEFORE drafting, the tool decision living here exclusively, the
 // card no longer duplicating workbench controls.
 //
-// Three structurally different variants, switchable via ?variant=
+// Four structurally different variants, switchable via ?variant=
 // (UI-prototype pattern; ← → cycle):
+//   felt   — THE LEADING CANDIDATE (owner exchange, 2026-07-18): the
+//            workbench IS the felt in a declaring posture. Dice sit
+//            physically on the felt; the potency/targets fittings ghost
+//            two dice per press (the #102 pending recipe — you watch the
+//            price before you pay it) and wrap-to-reset past the cap;
+//            Willpower is three dice arriving. Evicted per the audit:
+//            mana+ (→ the Mana strip), High Speech (→ the future turn
+//            surface), hidden (→ trigger/roller), tool (→ sheet fact,
+//            reported in the Tides receipt). Bought Potency is STAMPED
+//            onto the feed entry so the ST knows what dispel rolls against.
 //   ledger — every decision its own row, price as the footer receipt
 //   scales — price first: your hand vs the Tides as a two-pane readout,
 //            controls demoted to fitting strips beneath
@@ -47,9 +57,10 @@ import type { Id } from "../../../convex/_generated/dataModel"
 
 // ── The knobs ────────────────────────────────────────────────────────────────
 
-const VARIANT_ORDER = ["ledger", "scales", "embryo"] as const
+const VARIANT_ORDER = ["felt", "ledger", "scales", "embryo"] as const
 type RigVariant = (typeof VARIANT_ORDER)[number]
 const VARIANT_LABEL: Record<RigVariant, string> = {
+  felt: "D · felt",
   ledger: "A · ledger",
   scales: "B · scales",
   embryo: "C · embryo",
@@ -65,7 +76,7 @@ const isScenario = (v: unknown): v is RigScenario =>
 
 export const Route = createFileRoute("/prototype/workbench")({
   validateSearch: (search: Record<string, unknown>) => ({
-    variant: isVariant(search.variant) ? search.variant : ("ledger" as RigVariant),
+    variant: isVariant(search.variant) ? search.variant : ("felt" as RigVariant),
     scenario: isScenario(search.scenario)
       ? search.scenario
       : ("improvised" as RigScenario),
@@ -295,7 +306,9 @@ function WorkbenchRig() {
 
   const bench = { sheet, draft, setDraft, priced, flash, setFlash }
   const workbench =
-    variant === "ledger" ? (
+    variant === "felt" ? (
+      <FeltBench {...bench} />
+    ) : variant === "ledger" ? (
       <LedgerBench {...bench} />
     ) : variant === "scales" ? (
       <ScalesBench {...bench} />
@@ -482,6 +495,228 @@ function BenchActions({ draft, priced, setFlash }: BenchProps) {
         <span className="mv-data text-[10px]" style={{ color: "var(--bad)" }}>
           {gate}
         </span>
+      )}
+    </div>
+  )
+}
+
+// ── Variant D: the felt ──────────────────────────────────────────────────────
+// The workbench is the felt in a declaring posture (owner design, 2026-07-18).
+// The pool sits as physical dice; factor fittings ghost two dice per press
+// (#102 pending recipe) and wrap-to-reset past the cap; Willpower is three
+// dice arriving (ember provenance — a felt-grammar question for the walk).
+// The resting face: identity · felt · price · trigger. Nothing else.
+
+const TARGET_BRACKETS = [1, 2, 4, 8, 16]
+/** Ghosted dice a factor choice costs: potency −2/dot, targets −2/bracket. */
+const ghostCost = (potency: number, targets: number): number => {
+  const t = TARGET_BRACKETS.indexOf(targets)
+  return (potency - 1) * 2 + (t <= 0 ? 0 : t * 2)
+}
+
+function FeltBench(props: BenchProps) {
+  const { draft, setDraft, priced, flash, setFlash, sheet } = props
+  const d = (patch: Partial<Draft>) => setDraft((p) => ({ ...p, ...patch }))
+
+  // The physical pool: factors at neutral (they ghost, not shrink).
+  const prefactor =
+    draft.method === "rote"
+      ? draft.skillChoice === null
+        ? null
+        : Option.getOrNull(
+            previewRoteCast({
+              sheet,
+              rote: graveMist,
+              skillChoice: draft.skillChoice,
+              spendWillpower: draft.spendWillpower,
+            }),
+          )
+      : Option.getOrNull(
+          previewImprovisedCast({
+            sheet,
+            arcanum: "death",
+            spendWillpower: draft.spendWillpower,
+          }),
+        )
+
+  const physical = prefactor?.dice ?? 0
+  const wpDice = draft.spendWillpower ? WILLPOWER_BONUS_DICE : 0
+  const ghosts = Math.min(ghostCost(draft.potency, draft.targets), physical)
+  const live = physical - ghosts
+  const odds = rollOdds(live)
+  const manaCost = prefactor?.manaCost ?? 0
+  const manaShort = prefactor !== null && manaCost > sheet.manaCurrent
+
+  // Fittings: each press ghosts two more dice; a press past the cap wraps
+  // the fitting back to rest (the chevrons' cycle-to-reset, kept).
+  const pressPotency = () => {
+    const next = draft.potency + 1
+    d(
+      ghostCost(next, draft.targets) > physical
+        ? { potency: 1 }
+        : { potency: next },
+    )
+  }
+  const pressTargets = () => {
+    const i = TARGET_BRACKETS.indexOf(draft.targets)
+    const next = TARGET_BRACKETS[i + 1]
+    d(
+      next === undefined || ghostCost(draft.potency, next) > physical
+        ? { targets: 1 }
+        : { targets: next },
+    )
+  }
+
+  const gate =
+    draft.method === "rote" && draft.skillChoice === null
+      ? "Pick the rote's skill."
+      : manaShort
+        ? `Not enough Mana — need ${manaCost}, have ${sheet.manaCurrent}.`
+        : null
+
+  return (
+    <div className="border-t px-3 py-2" style={{ borderColor: "var(--line)" }}>
+      {/* identity — what you're casting, level implied with a quiet override */}
+      <div className="flex items-center gap-1.5">
+        <span className="mv-eyebrow">Declaring</span>
+        <ArcanaGlyph arcanum="death" size={13} className="mv-accent" />
+        <span className="text-[12px]" style={{ color: "var(--ink)" }}>
+          {draft.method === "rote" ? "Grave Mist" : "Improvised Death"}
+        </span>
+        {draft.method === "rote" ? (
+          ["Occult", "Investigation"].map((s) => (
+            <Mini key={s} on={draft.skillChoice === s} onClick={() => d({ skillChoice: s })}>
+              {s}
+            </Mini>
+          ))
+        ) : (
+          <span
+            className="mv-data cursor-pointer text-[10px]"
+            style={{ color: "var(--dim)" }}
+            title="The Practice tier your intent implies — click to override."
+            onClick={() => d({ level: draft.level >= 3 ? 1 : draft.level + 1 })}
+          >
+            Unraveling · {"●".repeat(draft.level)}
+          </span>
+        )}
+      </div>
+
+      {/* the felt — the pool as physical dice; ghosts are the price you're
+          weighing (the #102 pending recipe on your own dice) */}
+      <div
+        className="mt-2 flex min-h-[34px] flex-wrap content-center items-center gap-1 rounded-[3px] border px-2 py-1.5"
+        style={{ borderColor: "var(--line)", background: "var(--panel)" }}
+      >
+        {physical === 0 ? (
+          <span className="mv-data text-[10px] italic" style={{ color: "var(--dim)" }}>
+            {draft.method === "rote" ? "pick a skill — the dice land here" : "no pool"}
+          </span>
+        ) : (
+          Array.from({ length: physical }, (_, i) => {
+            const ghosted = i >= physical - ghosts
+            const willpower = !ghosted && i >= physical - ghosts - wpDice
+            return (
+              <span
+                key={i}
+                className="mv-data grid size-5 place-items-center rounded-[2px] text-[10px] font-bold"
+                style={
+                  ghosted
+                    ? {
+                        border: "1px dashed var(--dim)",
+                        color: "var(--dim)",
+                        opacity: 0.4,
+                      }
+                    : {
+                        background: willpower ? "var(--ember-glow)" : "color-mix(in srgb, var(--accent) 20%, transparent)",
+                        border: `1px solid ${willpower ? "var(--ember)" : "var(--accent)"}`,
+                        color: "var(--ink)",
+                      }
+                }
+                title={ghosted ? "spent on spell factors" : willpower ? "Willpower" : "your pool"}
+              >
+                {ghosted ? "·" : ""}
+              </span>
+            )
+          })
+        )}
+        <span className="mv-data ml-auto pl-2 text-[13px] font-bold" style={{ color: "var(--ink)" }}>
+          {live === 0 && physical > 0 ? "◈" : live}
+          <span className="pl-1 text-[9px] font-normal" style={{ color: "var(--dim)" }}>
+            {live === 0 && physical > 0 ? "chance" : `dice · ${pct(odds.success)}`}
+          </span>
+        </span>
+      </div>
+
+      {/* lip fittings — the two summonable bets + Willpower's arriving dice */}
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <Mini
+          on={draft.potency > 1}
+          onClick={pressPotency}
+          title="Buy the Potency floor: −2 dice per dot. Insurance against dispel — the bought floor is stamped on the card for the ST to roll against. Press past the cap to reset."
+        >
+          Potency {"◆".repeat(draft.potency)}
+        </Mini>
+        <Mini
+          on={draft.targets > 1}
+          onClick={pressTargets}
+          title="Each bracket doubles targets for −2 dice (2/4/8/16). Press past the cap to reset."
+        >
+          Targets ×{draft.targets}
+        </Mini>
+        <Mini
+          on={draft.spendWillpower}
+          onClick={() => d({ spendWillpower: !draft.spendWillpower })}
+          title="One point, +3 dice, precommitted and blind (WoD p.133) — Paradox can eat them like any others."
+        >
+          Willpower +{WILLPOWER_BONUS_DICE}
+        </Mini>
+      </div>
+
+      {/* the price line — auto Mana + the Tides' ask; the tool is a sheet
+          fact reported in the receipt, not a dial */}
+      <div className="mv-data mt-1.5 text-[10px]" style={{ color: "var(--dim)" }}>
+        Mana{" "}
+        <b style={{ color: manaShort ? "var(--bad)" : "var(--mana)" }}>◈ {manaCost}</b>
+        {" auto"} · the Tides ask{" "}
+        <b style={{ color: "var(--ink)" }}>{diceLabel(priced.paradox.totalDice)}</b> · bites{" "}
+        <b style={{ color: "var(--rail-danger)" }}>{pct(priced.paradoxOdds.success)}</b>
+        <span title="Standing sheet fact — flips on the sheet, not here."> · tool in hand −1</span>
+      </div>
+
+      {/* intent + trigger */}
+      <div className="mt-1.5 flex items-center gap-2">
+        <input
+          value={draft.intent}
+          onChange={(e) => d({ intent: e.target.value })}
+          placeholder="What is the spell for?"
+          className="mv-data min-w-0 flex-1 rounded-[3px] border bg-transparent px-2 py-1 text-[11px] outline-none focus:border-[var(--accent)]"
+          style={{ borderColor: "var(--line)" }}
+        />
+        <button
+          onClick={() =>
+            setFlash(
+              `→ stub: drafts ${live} dice, stamps Potency ${draft.potency} + targets ×${draft.targets} on the card — the ST's dispel rolls against that floor`,
+            )
+          }
+          disabled={gate !== null}
+          title={gate ?? "Draft into the wings — the handshake plays out on the docked card."}
+          className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
+        >
+          Draft
+        </button>
+        <button onClick={() => setFlash(null)} className="mv-btn rounded-[3px] px-2.5 py-1.5 text-[12px]">
+          Cancel
+        </button>
+      </div>
+      {gate && (
+        <p className="mv-data pt-1 text-[10px]" style={{ color: "var(--bad)" }}>
+          {gate}
+        </p>
+      )}
+      {flash && (
+        <p className="mv-data pt-1 text-[10px] italic" style={{ color: "var(--dim)" }}>
+          {flash}
+        </p>
       )}
     </div>
   )
