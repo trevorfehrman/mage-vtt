@@ -4,6 +4,7 @@ import type { CastEntry } from "#/domain/activity"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { GateButton } from "#/components/ui/gate-button"
 import { ArcanaGlyph } from "./ArcanaGlyph"
+import { castReceipt } from "./cast-receipt"
 import { api } from "../../../convex/_generated/api"
 import type { Id } from "../../../convex/_generated/dataModel"
 
@@ -79,13 +80,9 @@ export function StorytellerOffer({
         </p>
       )}
 
-      {/* the declared terms — the same receipt the chronicle card carries */}
+      {/* the declared terms — the shared receipt (issue #110) */}
       <p className="mv-data px-3 pt-1.5 text-[10px]" style={{ color: "var(--dim)" }}>
-        declared pool {cast.declaredPool}
-        {cast.potency !== undefined ? ` · Potency ${cast.potency} bought` : ""}
-        {cast.targets !== undefined ? ` · ×${cast.targets} targets` : ""}
-        {cast.spellManaCost > 0 ? ` · ${cast.spellManaCost} Mana cost` : ""}
-        {cast.usesMagicalTool ? " · tool in hand −1" : ""}
+        {castReceipt(cast)}
       </p>
 
       {moreWaiting > 0 && (

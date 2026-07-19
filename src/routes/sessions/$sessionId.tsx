@@ -17,6 +17,7 @@ import {
 } from "#/components/game/DeclarationFelt"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { ResourceStrip } from "#/components/game/ResourceStrip"
+import { CasterPendingCast } from "#/components/game/CasterPendingCast"
 import { StorytellerOffer } from "#/components/game/StorytellerOffer"
 import { ChatInput } from "#/components/game/ChatInput"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
@@ -29,7 +30,7 @@ import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { SecondSeatControl } from "#/components/game/SecondSeatControl"
 import { seamErrorMessage } from "#/lib/seam-errors"
-import { isOnStage } from "#/domain/cast"
+import { isOnStage, isUnresolved } from "#/domain/cast"
 import {
   decodeSheet,
   type CharacterSheet as CharacterSheetData,
@@ -245,6 +246,18 @@ function SessionPage() {
   // (issues #15, #19).
   const isStoryteller = effectiveMember?.role === "storyteller"
 
+  // The caster's occupied roll zone (issue #110): the viewer's own pending
+  // vulgar cast, read off the same feed as the offer. While it stands, the
+  // seam refuses their every other roll (issue #109) — the posture is that
+  // fact, not the enforcement.
+  const viewerUserId = effectiveMember?.userId ?? user._id
+  const myPendingCast =
+    activity?.flatMap((e) =>
+      e._tag === "cast" && e.casterUserId === viewerUserId && isUnresolved(e.status)
+        ? [e]
+        : [],
+    )[0] ?? null
+
   // Build character sheet content
   let sheetContent: React.ReactNode = undefined
   if (viewed === undefined) {
@@ -430,6 +443,13 @@ function SessionPage() {
                 stageGate={stageGate}
                 moreWaiting={moreWaiting}
               />
+            </div>
+          ) : myPendingCast ? (
+            // The caster's own pending cast holds their zone (issue #110) —
+            // spectators keep the chronicle card; this seat's dice are
+            // spoken for until the cast resolves.
+            <div key="pending" className="mv-assemble mv-stage">
+              <CasterPendingCast cast={myPendingCast} sessionId={sessionId} />
             </div>
           ) : rawCast.state !== "idle" && mySheet ? (
             <div key="declaring" className="mv-assemble mv-stage">
