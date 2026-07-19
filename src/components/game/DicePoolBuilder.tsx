@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy";
 import type { CharacterSheet } from "#/domain/character";
@@ -17,10 +16,12 @@ const diceLabel = (n: number): string => (n === 1 ? "1 die" : `${n} dice`);
  * arrives as ember dice — one unified pool, one Roll. Chevron rails feed and
  * skim; the fittings are tray hardware on the lip, never a disclosure.
  *
- * Posture is EXPLICIT (owner call 2026-07-18, amending #104's activity-driven
- * rule): one caret opens and folds the tray, and nothing else does — an empty
- * felt stays open, a built pool survives folding. Folded, the tray is barely
- * there: a slim handle carrying only the caret and the pool count.
+ * The tray is ALWAYS OPEN (owner call 2026-07-19, reversing 2026-07-18's
+ * caret): the roll zone is one instrument — the raw felt at rest, replaced
+ * in place when a dice system takes the stage — so it never folds and
+ * nothing else shares the slot. The felt holds a fixed two-row height with
+ * its lineage in the tray's own gutter: no layout shift as dice or
+ * provenance arrive.
  */
 
 /** The loose-dice component — the "Modifier" lie is dead; plain dice say so.
@@ -39,7 +40,6 @@ export function DicePoolBuilder({
   character?: CharacterSheet | undefined;
 }) {
   const reduced = useReducedMotion();
-  const [expanded, setExpanded] = useState(true);
   const building = pool.state === "building";
   const rolling = pool.state === "rolling";
   const canInteract = pool.state === "idle" || building;
@@ -66,11 +66,6 @@ export function DicePoolBuilder({
         !pool.context.spendWillpower
       ? "No Willpower left to spend."
       : null;
-
-  // A plain tween, no bounce (owner call): the tray folds like a drawer.
-  const postureTransition = reduced
-    ? { duration: 0 }
-    : { duration: 0.18, ease: "easeOut" as const };
 
   const die = (
     kind: DieKind,
@@ -117,33 +112,7 @@ export function DicePoolBuilder({
 
   return (
     <div className="border-t" style={{ borderColor: "var(--line)" }}>
-      {/* One handle, both postures: the thin toggle is the tray's only
-            splitter — barely there, the pool count surfacing only when the
-            felt is folded over waiting dice. */}
-      <button
-        onClick={() => setExpanded((e) => !e)}
-        className="mv-handle flex h-[18px] w-full items-center justify-center gap-1.5 leading-none"
-        title={expanded ? "Fold the tray away" : "Open the felt"}
-        aria-expanded={expanded}
-      >
-        <span className="mv-data text-[10px]">{expanded ? "⌄" : "⌃"}</span>
-        {!expanded && total > 0 && (
-          <span
-            className="mv-data text-[10px] font-bold"
-            style={{ color: "var(--accent)" }}
-          >
-            {total}
-          </span>
-        )}
-      </button>
-
-      <motion.div
-        initial={false}
-        animate={{ height: expanded ? "auto" : 0, opacity: expanded ? 1 : 0 }}
-        transition={postureTransition}
-        className="overflow-hidden"
-      >
-        {/* the felt, flanked by its rails: ‹/−5 skim off the left,
+      {/* the felt, flanked by its rails: ‹/−5 skim off the left,
               ›/+5 feed on from the right; fittings keep to the felt's
               own column and wrap when the rail thins (#98) */}
         <div
@@ -168,21 +137,30 @@ export function DicePoolBuilder({
                 setLoose(loose + 1);
               }
             }}
-            className="mv-felt relative block min-w-0 cursor-copy rounded-[6px] border p-2 text-left"
+            className="mv-felt relative block min-w-0 cursor-copy rounded-[6px] border px-2 pt-2 pb-1 text-left"
             style={{
               borderColor: "var(--line)",
               background: "color-mix(in srgb, var(--accent) 6%, transparent)",
-              minHeight: 64,
             }}
             title="Tap the felt to add a die"
           >
-            <span className="flex max-h-44 flex-wrap gap-2.5 overflow-y-auto p-1">
+            {/* fixed two-row height — no shift as dice arrive; a third row
+                  scrolls */}
+            <span className="flex h-[58px] flex-wrap content-start gap-2.5 overflow-y-auto p-1">
               <AnimatePresence initial={false}>
                 {sheetDice}
                 {willpowerDice}
                 {looseDice}
               </AnimatePresence>
             </span>
+            {/* the gutter — the lineage in the tray's own frame, no shift
+                  when it arrives */}
+            <p
+              className="mv-data h-[13px] truncate px-1 text-[10px] leading-none"
+              style={{ color: "var(--dim)" }}
+            >
+              {lineage ?? ""}
+            </p>
             {/* the empty hint floats centered over the felt, out of the
                   layout entirely — swept dice exit under it, nothing shifts */}
             <AnimatePresence initial={false}>
@@ -210,17 +188,6 @@ export function DicePoolBuilder({
           >
             ›
           </button>
-
-          {/* the lineage caption: one quiet line under the felt column */}
-          {lineage && (
-            <p
-              className="mv-data text-[10px]"
-              style={{ color: "var(--dim)", gridColumn: "2" }}
-            >
-              <span style={{ color: "var(--accent)" }}>◆</span> {lineage}, from
-              the sheet
-            </p>
-          )}
 
           {/* fittings: the fives under their chevrons; the hardware fills
                 the felt's width when the rail affords it (owner call) */}
@@ -318,7 +285,6 @@ export function DicePoolBuilder({
                 : `Roll ${diceLabel(total)}`}
           </button>
         </div>
-      </motion.div>
 
       {/* error — the seam's refusal, spoken under the tray */}
       {pool.context.error && (

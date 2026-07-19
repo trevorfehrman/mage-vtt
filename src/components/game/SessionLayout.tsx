@@ -42,8 +42,6 @@ interface SessionLayoutProps {
   characterSheet?: ReactNode
   activityLog: ReactNode
   dicePoolBuilder: ReactNode
-  /** ST/Dev-only affordances (e.g. the sheet-less cast) — absent for players. */
-  storytellerTools?: ReactNode
   chatInput: ReactNode
   /** The FFX tick timeline (issue #60): the full-width bottom band. */
   combatTracker?: ReactNode
@@ -61,7 +59,6 @@ export function SessionLayout({
   characterSheet,
   activityLog,
   dicePoolBuilder,
-  storytellerTools,
   chatInput,
   combatTracker,
   onClearPool,
@@ -207,10 +204,11 @@ export function SessionLayout({
           <div className="flex h-full flex-col">
             {/* Activity log — fills available space */}
             <div className="flex-1 overflow-hidden">{activityLog}</div>
-            {/* Dice pool — foot of the rail, above chat */}
-            <div className="shrink-0">{dicePoolBuilder}</div>
-            {/* ST/Dev tools — only rendered when provided */}
-            {storytellerTools && <div className="shrink-0">{storytellerTools}</div>}
+            {/* Dice pool — foot of the rail, above chat. The memory/judgment
+                boundary (styles.css): the panel ends with the Chronicle and
+                the working zone stands on the void — postures wear the
+                mv-stage frame, the strip re-grounds itself below. */}
+            <div className="mv-stage-ground shrink-0">{dicePoolBuilder}</div>
             {/* Chat input — pinned to bottom */}
             <div className="shrink-0">{chatInput}</div>
           </div>

@@ -5,9 +5,9 @@ import usePresence from "@convex-dev/presence/react"
 import { api } from "../../../convex/_generated/api"
 import type { PoolComponentInput } from "#/domain/dice"
 import { pooledDice } from "#/machines/dice-pool"
+import { useActivity } from "#/hooks/use-activity"
 import { useCast } from "#/hooks/use-cast"
 import { useDicePool } from "#/hooks/use-dice-pool"
-import { useScene } from "#/hooks/use-scene"
 import { useSession } from "#/hooks/use-session"
 import { SessionLayout } from "#/components/game/SessionLayout"
 import { ActivityLog } from "#/components/game/ActivityLog"
@@ -17,10 +17,10 @@ import {
 } from "#/components/game/DeclarationFelt"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { ResourceStrip } from "#/components/game/ResourceStrip"
+import { StorytellerOffer } from "#/components/game/StorytellerOffer"
 import { ChatInput } from "#/components/game/ChatInput"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { SheetSky } from "#/components/game/TraitSky"
-import { SheetlessCastForm } from "#/components/game/SheetlessCastForm"
 import { Roster } from "#/components/game/Roster"
 import { HandEditForm } from "#/components/game/HandEditForm"
 import { SceneStrip } from "#/components/game/SceneStrip"
@@ -29,7 +29,7 @@ import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { SecondSeatControl } from "#/components/game/SecondSeatControl"
 import { seamErrorMessage } from "#/lib/seam-errors"
-import type { TidesSnapshot } from "#/domain/cast"
+import { isOnStage } from "#/domain/cast"
 import {
   decodeSheet,
   type CharacterSheet as CharacterSheetData,
@@ -142,24 +142,31 @@ function SessionPage() {
     character ? { sessionId, characterId: character._id } : "skip",
   )
 
-  // The scene's live Tides (ADR-0022) feed the declaration felt's price
-  // line: the ambient truth plus this caster's own derived pips — the same
-  // numbers the freeze will stamp, priced before declaring (issue #107).
-  const { scene: activeScene, pips } = useScene(sessionId)
-  const tides = useMemo(
-    (): TidesSnapshot =>
-      activeScene
-        ? {
-            witnessCount: activeScene.witnessCount,
-            circumstances: activeScene.circumstances,
-            priorParadoxRolls:
-              pips?.find((p) => p.characterId === character?._id)?.accumulator ??
-              0,
-          }
-        : { witnessCount: 0, circumstances: [], priorParadoxRolls: 0 },
-    [activeScene, pips, character?._id],
-  )
   const setMagicalTool = useMutation(api.characters.setMagicalTool)
+
+  // The offer occupies the ST's roll zone (owner call 2026-07-19): a vulgar
+  // draft in the wings replaces the felt until answered — the same feed the
+  // Chronicle subscribes to (Convex dedupes), read for the oldest waiting
+  // draft (FIFO through the wings). Engage/decline live only there; the card
+  // stays the record. The stage gate mirrors the server's StageOccupied
+  // refusal so Engage explains itself before the click (ADR-0021).
+  const activity = useActivity(sessionId, seatMember?._id)
+  const { pendingOffer, moreWaiting, stageGate } = useMemo(() => {
+    if (!activity) return { pendingOffer: null, moreWaiting: 0, stageGate: null }
+    // The feed arrives newest-first — the last match is the oldest draft.
+    const drafts = activity.flatMap((e) =>
+      e._tag === "cast" && e.status === "draft" ? [e] : [],
+    )
+    const onStage = activity.find((e) => e._tag === "cast" && isOnStage(e.status))
+    return {
+      pendingOffer: drafts[drafts.length - 1] ?? null,
+      moreWaiting: Math.max(0, drafts.length - 1),
+      stageGate:
+        onStage && onStage._tag === "cast"
+          ? `The stage is taken — ${onStage.casterName}'s cast is still playing out.`
+          : null,
+    }
+  }, [activity])
 
   // Switching sheets clears the pool: its components carry the previous
   // sheet's dots while the roll would anchor to the new one — a stale mix
@@ -382,55 +389,62 @@ function SessionPage() {
         />
       }
       dicePoolBuilder={
-        // The rail foot in reach-order (#104): the felt, then the depletables
-        // strip reading as its caption. Arming a cast puts the felt in its
-        // declaring posture (issue #107) — same instrument, same slot.
+        // The console (owner call 2026-07-19, superseding #104's reach-order):
+        // the masthead first — the depletables are the constant plate above
+        // an instrument that shifts forms — then the posture. Arming a cast
+        // puts the felt in its declaring posture (issue #107) — same
+        // instrument, same slot. For the Storyteller a waiting vulgar draft
+        // takes the slot outright: answer the offer before any rolling.
         <>
-          {rawCast.state !== "idle" && mySheet ? (
-            <DeclarationFelt
-              cast={cast}
-              character={mySheet}
-              tides={tides}
-              hasPendingCast={hasPendingCast === true}
-            />
-          ) : (
-            <DicePoolBuilder pool={pool} character={mySheet ?? undefined} />
-          )}
           {mySheet && (
             <ResourceStrip
               character={mySheet}
               // The ghost means "armed on the felt, spent on the roll/cast" —
-              // whichever posture holds the felt, the strip weighs its spend.
+              // whichever posture holds the felt, the masthead weighs its
+              // spend.
               pendingWillpower={
                 rawCast.state === "idle"
                   ? pool.context.spendWillpower
                   : rawCast.context.spendWillpower
               }
               // Mana armed on the declaring felt (auto + rider), ghosted at
-              // the resource it will spend from (issue #107).
+              // the resource it will spend from (issue #107). The rider's
+              // controls are felt fittings now (owner call 2026-07-19) —
+              // the masthead only weighs.
               pendingMana={
                 rawCast.state !== "idle"
                   ? (armedPreview(rawCast.context, mySheet)?.manaCost ?? 0)
                   : 0
               }
-              // The rider spend lives where the resource lives: no bench
-              // stepper — "the spell text says 1 more" is declared here.
-              rider={
-                rawCast.state === "declaring"
-                  ? {
-                      value: rawCast.context.extraMana,
-                      onChange: rawCast.setExtraMana,
-                    }
-                  : undefined
-              }
             />
           )}
+          {/* Each posture keyed so a change remounts through the assembly
+              beat (.mv-assemble): the zone doesn't swap, it re-marshals
+              beneath the masthead, which never remounts — the constant
+              presence that makes the boundary read (styles.css). */}
+          {isStoryteller && pendingOffer ? (
+            <div key="offer" className="mv-assemble mv-stage">
+              <StorytellerOffer
+                cast={pendingOffer}
+                sessionId={sessionId}
+                stageGate={stageGate}
+                moreWaiting={moreWaiting}
+              />
+            </div>
+          ) : rawCast.state !== "idle" && mySheet ? (
+            <div key="declaring" className="mv-assemble mv-stage">
+              <DeclarationFelt
+                cast={cast}
+                character={mySheet}
+                hasPendingCast={hasPendingCast === true}
+              />
+            </div>
+          ) : (
+            <div key="resting" className="mv-assemble mv-stage">
+              <DicePoolBuilder pool={pool} character={mySheet ?? undefined} />
+            </div>
+          )}
         </>
-      }
-      storytellerTools={
-        isStoryteller ? (
-          <SheetlessCastForm sessionId={sessionId} />
-        ) : undefined
       }
       chatInput={
         <ChatInput

@@ -251,6 +251,62 @@ pre code {
   border: 1px solid var(--line);
 }
 
+/* ── Memory and judgment (owner calls 2026-07-19) ───────────────────────────
+ * The rail is one panel, two moods — but the SAME person: the Chronicle
+ * above is the mage's memory, the working zone below their judgment. The
+ * boundary is STRUCTURAL, not tonal — four tonal auditions were rescinded
+ * in one day (an accent-tinted surface muddied the controls, a starred
+ * seam band read as a mistake, a timeline spine spent scarce rail width,
+ * a bare page-dark step was an inelegant black box; a full inset card
+ * frame was brute force — it clearly split the zones but taxed x and y in
+ * the game night's densest click area). What settled it: the panel itself
+ * ends with the memory, a breath of void shows through, and the console
+ * opens with its MASTHEAD — the depletables strip, the constant plate
+ * above an instrument that shifts forms (the stage: a dice system "takes
+ * the stage"). Distinctness comes from character, not outline: the feed
+ * is prose, the console is gauges-then-instrument, full width. The feed
+ * is untouched; controls keep their raise-on-panel ground. */
+.mv-stage-ground {
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+/* the stage floor: postures stand full-width on the panel's own ground */
+.mv-stage {
+  background: var(--panel);
+}
+
+/* The assembly beat: when the roll zone changes instruments, the new posture
+ * doesn't appear — it ASSEMBLES, sections arriving in reach-order on a short
+ * stagger. The mind marshaling itself: quick, ordered, never a scramble.
+ * Zero contrast change; reduced motion renders instantly. */
+@media (prefers-reduced-motion: no-preference) {
+  .mv-assemble > * > * {
+    animation: mv-arise 0.22s ease-out both;
+  }
+  .mv-assemble > * > *:nth-child(2) {
+    animation-delay: 0.05s;
+  }
+  .mv-assemble > * > *:nth-child(3) {
+    animation-delay: 0.1s;
+  }
+  .mv-assemble > * > *:nth-child(4) {
+    animation-delay: 0.15s;
+  }
+  .mv-assemble > * > *:nth-child(5) {
+    animation-delay: 0.2s;
+  }
+  .mv-assemble > * > *:nth-child(n + 6) {
+    animation-delay: 0.25s;
+  }
+}
+@keyframes mv-arise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
 /* Accent corner-ticks — the "important" surfaces only. */
 .mv-cornered {
   position: relative;
@@ -429,6 +485,26 @@ pre code {
  * Invented on the rail-foot pilot (#79), promoted into the shared layer.
  * The rubric these classes serve is docs/component-standards.md. */
 
+/* The Switch in the mv voice (#107 feedback pass): a standing fact reads at
+ * a glance — track burns accent when the fact holds, sits on raise when set
+ * aside; the thumb keeps the same dark-on-lit / dim-on-dark contract as
+ * mv-mini-on. Unlayered on purpose: these beat the primitive's @layer
+ * utilities in the cascade. */
+[data-slot="switch"] {
+  background: var(--raise);
+  border-color: var(--line);
+}
+[data-slot="switch"][data-state="checked"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+[data-slot="switch"] [data-slot="switch-thumb"] {
+  background: var(--dim);
+}
+[data-slot="switch"][data-state="checked"] [data-slot="switch-thumb"] {
+  background: #0a0a0c;
+}
+
 /* The a11y floor's focus ring (ADR-0021): keyboard focus is always visible —
  * one accent ring, offset so the control's own border stays legible. One rule
  * owns the plank: mv-* controls and the restyled shadcn primitives
@@ -438,7 +514,6 @@ pre code {
 .mv-chip:focus-visible,
 .mv-roll:focus-visible,
 .mv-felt:focus-visible,
-.mv-handle:focus-visible,
 .mv-trait:focus-visible,
 .mv-arcana:focus-visible,
 [data-slot="button"]:focus-visible,
@@ -486,21 +561,6 @@ pre code {
   font-size: 10px;
   color: var(--dim);
   text-align: center;
-}
-
-/* The tray handle: one thin toggle for both postures — barely there at rest,
- * it answers the hand on approach. */
-.mv-handle {
-  background: transparent;
-  color: var(--dim);
-  cursor: pointer;
-  transition:
-    background 120ms ease,
-    color 120ms ease;
-}
-.mv-handle:hover {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  color: var(--ink);
 }
 
 /* A refusing control (the gate): dimmed like disabled, but it keeps pointer

@@ -6,9 +6,7 @@ import {
   previewRoteCast,
   type CastPreview,
 } from "#/domain/cast-preview"
-import { toGnosisRank, type TidesSnapshot } from "#/domain/cast"
 import type { CharacterSheet } from "#/domain/character"
-import { calculateParadoxPool } from "#/domain/paradox"
 import { rollOdds } from "#/domain/probability"
 import {
   potencyPenalty,
@@ -26,19 +24,21 @@ import type { useCast } from "#/hooks/use-cast"
 type CastAPI = ReturnType<typeof useCast>
 
 /**
- * The felt in a declaring posture (issue #107; the #105 audit's unification):
- * arming a cast lands the pool as physical dice on the #98 felt — sheet dice
- * verdigris, Willpower's +3 with its own ember provenance — and the factor
- * fittings ghost two dice per press (the #102 pending recipe: the price
- * visible before it's paid), wrapping to reset past the cap. The resting
- * face is the audit's: identity (+ implied level) · the felt · price line ·
- * Willpower · intent · trigger. Everything the audit evicted is gone: no
- * mana stepper (rider spends live on the Mana strip), no High Speech, no
- * hidden toggle, no tool toggle (a standing sheet fact, reported in the
- * price line). Numbers come from the real leaves — cast-preview,
- * calculateParadoxPool, rollOdds — off live scene Tides (ADR-0022: price
- * your risk off public truth before declaring); the server recomputes and
- * stays authoritative.
+ * The felt in a declaring posture (issue #107; the #105 audit's unification;
+ * reshaped by the 2026-07-19 feedback pass): arming a cast lands the pool as
+ * physical dice on the #98 felt — sheet dice verdigris, Willpower's +3 with
+ * its own ember provenance — and the factor fittings ghost two dice per
+ * press (the #102 pending recipe: the price visible before it's paid),
+ * wrapping to reset past the cap. The felt holds a fixed two-row height —
+ * no layout shift as dice arrive — and carries its own gutter: provenance
+ * on the left, the live tally (rider-inclusive Mana in its identity blue ·
+ * dice · odds) on the right. The price line is dead: Mana speaks as the
+ * strip's pending ghost and inside the Cast trigger; the Tides' ask and its
+ * bite belong to the vulgar posture, not here. Rider Mana is a felt fitting
+ * (◈−/◈+) beside Willpower — the strip stays a gauge, never a dial. Draft
+ * Vulgar sits in the header as the placeholder for the coming covert/vulgar
+ * toggle. Numbers come from the real leaves — cast-preview, rollOdds; the
+ * server recomputes and stays authoritative.
  */
 
 /** Dice a factor choice ghosts: −2 per Potency dot, −2 per targets bracket. */
@@ -88,18 +88,16 @@ export const armedPreview = (
 export function DeclarationFelt({
   cast,
   character,
-  tides,
   hasPendingCast = false,
 }: {
   cast: CastAPI
   character: CharacterSheet
-  /** The scene's live Tides (ADR-0022) — zeros in downtime. */
-  tides: TidesSnapshot
   /** One unresolved Cast per character (issue #68): gates Draft Vulgar. */
   hasPendingCast?: boolean
 }) {
   const reduced = useReducedMotion()
-  const { selection, skillChoice, potency, targets, spendWillpower } = cast.context
+  const { selection, skillChoice, potency, targets, spendWillpower, extraMana } =
+    cast.context
   const casting = cast.state === "casting"
   const drafting = cast.state === "drafting"
   const busy = casting || drafting
@@ -147,19 +145,6 @@ export function DeclarationFelt({
     character.willpowerCurrent < 1 && !spendWillpower
       ? "No Willpower left to spend."
       : null
-
-  // The Tides' ask (ADR-0022): the Paradox forecast a vulgar draft would
-  // face, priced off public scene truth before declaring — the same leaves
-  // the freeze and the ST's roll use. The tool rides in as the sheet fact.
-  const paradox = calculateParadoxPool({
-    gnosis: toGnosisRank(character.gnosis),
-    isRote: selection.method === "rote",
-    usesMagicalTool: character.magicalTool,
-    witnessCount: tides.witnessCount,
-    priorParadoxRollsThisScene: tides.priorParadoxRolls,
-    discretionaryModifiers: tides.circumstances,
-  })
-  const paradoxOdds = rollOdds(paradox.totalDice)
 
   const roteAspect =
     selection.method === "rote" ? selection.rote.spellAspect : undefined
@@ -216,8 +201,9 @@ export function DeclarationFelt({
 
   return (
     <div className="border-t" style={{ borderColor: "var(--line)" }}>
-      {/* identity — what you're declaring; level implied, quietly overridable */}
-      <div className="flex flex-wrap items-center gap-1.5 px-3 pt-2.5">
+      {/* identity — what you're declaring; level implied, quietly overridable.
+          Text sits on one baseline; the glyph centers on the line's midline. */}
+      <div className="flex flex-wrap items-baseline gap-1.5 px-3 pt-2.5">
         <span className="mv-eyebrow">Declaring</span>
         <ArcanaGlyph
           arcanum={
@@ -226,7 +212,7 @@ export function DeclarationFelt({
               : selection.arcanum
           }
           size={14}
-          className="mv-accent"
+          className="mv-accent self-center"
         />
         <span className="text-[13px] font-medium" style={{ color: "var(--ink)" }}>
           {selection.method === "rote"
@@ -261,54 +247,87 @@ export function DeclarationFelt({
             level {"●".repeat(cast.context.level)}
           </button>
         )}
+        {/* Draft Vulgar — pinned interim home (2026-07-19): this corner is
+            where the covert/vulgar toggle will live; the button holds its
+            seat until that design lands. */}
+        {showDraft && (
+          <GateButton
+            gate={draftGate}
+            onClick={cast.draftVulgar}
+            disabled={busy}
+            className="mv-mini ml-auto self-center whitespace-nowrap disabled:opacity-40"
+            style={
+              primary === "draft"
+                ? { borderColor: "var(--accent)", color: "var(--ink)" }
+                : undefined
+            }
+            title={
+              draftGate ??
+              "Draft into the wings — the Paradox handshake plays out on the Cast card."
+            }
+          >
+            {drafting ? "Drafting…" : "Draft Vulgar"}
+          </GateButton>
+        )}
       </div>
 
       {/* the felt — the pool as physical dice; ghosts are the price being
-          weighed. Not a tray here: dice come from the sheet, not the hand. */}
+          weighed. Not a tray here: dice come from the sheet, not the hand.
+          Fixed two-row height (no shift as dice arrive; a third row scrolls)
+          over the felt's own gutter: provenance left, the live tally right. */}
       <div className="px-3 pt-2">
         <div
-          className="mv-felt relative rounded-[6px] border p-2"
+          className="mv-felt rounded-[6px] border"
           style={{
             borderColor: "var(--line)",
             background: "color-mix(in srgb, var(--accent) 6%, transparent)",
-            minHeight: 64,
           }}
         >
-          <span className="flex max-h-44 flex-wrap gap-2.5 overflow-y-auto p-1 pr-16">
-            <AnimatePresence initial={false}>{dice}</AnimatePresence>
-          </span>
-          {physical === 0 && (
-            <span className="mv-empty pointer-events-none absolute inset-0">
-              {needsSkillChoice
-                ? "pick a skill — the dice land here"
-                : "no pool — a chance die waits"}
+          <div className="relative px-2 pt-2">
+            <span className="flex h-[58px] flex-wrap content-start gap-2.5 overflow-y-auto p-1">
+              <AnimatePresence initial={false}>{dice}</AnimatePresence>
             </span>
-          )}
-          {/* the live count + odds, re-priced per press (the real leaves) */}
-          {physical > 0 && (
+            {physical === 0 && (
+              <span className="mv-empty pointer-events-none absolute inset-0">
+                {needsSkillChoice
+                  ? "pick a skill — the dice land here"
+                  : "no pool — a chance die waits"}
+              </span>
+            )}
+          </div>
+          {/* the gutter — where the felt explains itself, re-priced per press */}
+          <div
+            className="mv-data flex items-baseline justify-between gap-2 px-3 pb-2 text-[10px] leading-none"
+            style={{ color: "var(--dim)" }}
+          >
+            <span className="truncate">{lineage ?? ""}</span>
             <span
-              className="mv-data pointer-events-none absolute bottom-1.5 right-2 text-right leading-none"
+              className="whitespace-nowrap"
               title={
                 live === 0
                   ? "The factors ate the pool — a chance die"
                   : `${diceLabel(live)} · ${pct(odds.success)} at least one success`
               }
             >
-              <span className="text-[18px] font-bold" style={{ color: "var(--ink)" }}>
+              {manaCost > 0 && (
+                <>
+                  <b
+                    className="text-[12px]"
+                    style={{ color: manaShort ? "var(--bad)" : "var(--mana)" }}
+                    title="Mana armed on this cast — auto cost plus rider; it spends when the cast commits"
+                  >
+                    ◈{manaCost}
+                  </b>
+                  {" · "}
+                </>
+              )}
+              <b className="text-[12px]" style={{ color: "var(--ink)" }}>
                 {live === 0 ? "◈" : live}
-              </span>
-              <span className="pl-1 text-[9px]" style={{ color: "var(--dim)" }}>
-                {live === 0 ? "chance" : `dice · ${pct(odds.success)}`}
-              </span>
+              </b>{" "}
+              {live === 0 ? "chance" : `dice · ${pct(odds.success)}`}
             </span>
-          )}
+          </div>
         </div>
-        {lineage && (
-          <p className="mv-data pt-1 text-[10px]" style={{ color: "var(--dim)" }}>
-            <span style={{ color: "var(--accent)" }}>◆</span> {lineage}, from the
-            sheet
-          </p>
-        )}
       </div>
 
       {/* lip fittings — the two summonable bets + Willpower's arriving dice */}
@@ -337,33 +356,37 @@ export function DeclarationFelt({
         >
           Willpower +{WILLPOWER_BONUS_DICE}
         </GateButton>
-      </div>
-
-      {/* the price line — auto Mana + the Tides' ask; the tool is a sheet
-          fact reported in the receipt, never a dial (issue #107) */}
-      <div className="mv-data px-3 pt-2 text-[10px]" style={{ color: "var(--dim)" }}>
-        Mana{" "}
-        <b style={{ color: manaShort ? "var(--bad)" : "var(--mana)" }}>
-          ◈ {manaCost}
-        </b>{" "}
-        auto
-        {showDraft && (
-          <>
-            {" "}
-            · the Tides ask{" "}
-            <b style={{ color: "var(--ink)" }}>
-              {paradox.totalDice === 0 ? "a chance die" : diceLabel(paradox.totalDice)}
-            </b>{" "}
-            · bites{" "}
-            <b style={{ color: "var(--rail-danger)" }}>{pct(paradoxOdds.success)}</b>
-          </>
-        )}
-        {character.magicalTool && (
-          <span title="Standing sheet fact — flips on the sheet, not here.">
-            {" "}
-            · tool in hand −1
-          </span>
-        )}
+        {/* rider Mana — a felt fitting (owner call 2026-07-19): the pair
+            splits one fitting's width; the strip below stays a gauge and
+            ghosts what's armed here. */}
+        <span className="flex grow gap-1.5">
+          <button
+            onClick={() => cast.setExtraMana(Math.max(0, extraMana - 1))}
+            disabled={busy || extraMana === 0}
+            className="mv-mini grow basis-0 whitespace-nowrap px-0 text-center disabled:opacity-40"
+            style={{ color: "var(--mana)" }}
+            title="Take back a rider Mana"
+          >
+            ◈−
+          </button>
+          <button
+            onClick={() => cast.setExtraMana(extraMana + 1)}
+            disabled={busy}
+            className="mv-mini grow basis-0 whitespace-nowrap px-0 text-center disabled:opacity-40"
+            style={
+              extraMana > 0
+                ? {
+                    background: "var(--mana)",
+                    borderColor: "var(--mana)",
+                    color: "#0a0a0c",
+                  }
+                : { color: "var(--mana)" }
+            }
+            title="Rider Mana — the spell text asks more; it spends with the cast"
+          >
+            ◈+
+          </button>
+        </span>
       </div>
       {preview?.contestedVs && (
         <p className="px-3 pt-1 text-[11px] italic" style={{ color: "var(--dim)" }}>
@@ -372,8 +395,18 @@ export function DeclarationFelt({
         </p>
       )}
 
-      {/* intent + the trigger */}
+      {/* the trigger row — Cancel walks away on the left, intent holds the
+          center, Cast commits on the right; a Mana cost rides inside the
+          trigger (owner call 2026-07-19: about to spend, said where you
+          press) */}
       <div className="flex flex-wrap items-center gap-2 p-3">
+        <button
+          onClick={cast.cancel}
+          disabled={busy}
+          className="mv-btn rounded-[3px] px-2.5 py-1.5 text-[12px]"
+        >
+          Cancel
+        </button>
         <Input
           value={cast.context.intent}
           onChange={(e) => cast.setIntent(e.target.value)}
@@ -388,34 +421,18 @@ export function DeclarationFelt({
             disabled={busy}
             className={`${primary === "cast" ? "mv-roll" : "mv-btn"} rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40`}
           >
-            {casting
-              ? "Casting…"
-              : preview === null || preview.isChanceDie
-                ? "Cast ◈"
-                : `Cast ${preview.dice}`}
+            {casting ? (
+              "Casting…"
+            ) : (
+              <>
+                {preview === null || preview.isChanceDie
+                  ? "Cast ◈"
+                  : `Cast ${preview.dice}`}
+                {manaCost > 0 && ` · ◈${manaCost}`}
+              </>
+            )}
           </GateButton>
         )}
-        {showDraft && (
-          <GateButton
-            gate={draftGate}
-            onClick={cast.draftVulgar}
-            disabled={busy}
-            className={`${primary === "draft" ? "mv-roll" : "mv-btn"} rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40`}
-            title={
-              draftGate ??
-              "Draft into the wings — the Paradox handshake plays out on the Cast card."
-            }
-          >
-            {drafting ? "Drafting…" : "Draft Vulgar"}
-          </GateButton>
-        )}
-        <button
-          onClick={cast.cancel}
-          disabled={busy}
-          className="mv-btn rounded-[3px] px-2.5 py-1.5 text-[12px]"
-        >
-          Cancel
-        </button>
       </div>
 
       {/* error — the seam's typed refusal (cast or draft, one channel) */}

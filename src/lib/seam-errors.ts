@@ -1,6 +1,5 @@
 import { ConvexError } from "convex/values"
 import { Match, Option, Schema } from "effect"
-import { MAX_DECLARED_POOL } from "#/domain/flows/sheetless-cast"
 import { SeamError, type SeamErrorTag } from "#/domain/seam-errors"
 
 /**
@@ -40,7 +39,6 @@ const describe = Match.type<SeamError>().pipe(
     DocumentNotFound: (e) =>
       `${NOT_FOUND_NOUNS[e.table] ?? "That record"} not found.`,
     InvalidCastDeclaration: () => "That declaration isn't castable.",
-    InvalidSheetlessCast: () => `That pool isn't castable (0–${MAX_DECLARED_POOL} dice).`,
     InvalidHandEdit: (e) => e.message,
     InvalidPoolComponent: () => "That pool isn't rollable.",
     VulgarCastingNotYetSupported: (e) => `${e.spellName} is Vulgar — draft it into the Cast ladder with "Draft Vulgar".`,

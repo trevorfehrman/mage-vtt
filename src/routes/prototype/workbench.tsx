@@ -425,10 +425,6 @@ function ControlBench() {
           shape={pad}
           gate="Not enough Mana — need 2, have 1."
         />
-        <ControlRow
-          label="mv-handle"
-          shape="rounded-[3px] px-3 py-1 text-[11px]"
-        />
       </div>
       <p className="text-[11px]" style={{ color: "var(--dim)" }}>
         The refusing treatment (<span className="mv-data">mv-refuse</span>) dims
@@ -722,6 +718,7 @@ function GlyphBench() {
 function RailFootBench() {
   const sheetless = useDicePool(SESSION_ID);
   const funded = useDicePool(SESSION_ID, "proto-character" as Id<"characters">);
+  const staged = useDicePool(SESSION_ID, "proto-character" as Id<"characters">);
   if (!arctusSheet) return null;
   return (
     <Bench
@@ -729,10 +726,9 @@ function RailFootBench() {
       note="the pilot's own components, live — build a pool, fold the tray; Roll meets the seam's honest refusal (no real session behind this bench)"
     >
       <div className="flex flex-wrap items-start gap-6">
-        <Spec label="funded seat — tray + strip">
+        <Spec label="funded seat — the tray">
           <div className="mv-panel w-[430px] rounded-[3px]">
             <DicePoolBuilder pool={funded} character={arctusSheet} />
-            <ResourceStrip character={arctusSheet} />
           </div>
         </Spec>
         <Spec label="sheetless seat — the Willpower gate refuses with its reason">
@@ -740,9 +736,26 @@ function RailFootBench() {
             <DicePoolBuilder pool={sheetless} />
           </div>
         </Spec>
-        <Spec label="strip — a Willpower spend being weighed (pending ghost)">
+        <Spec label="masthead — spends being weighed (pending ghosts on both pools)">
           <div className="mv-panel w-[430px] rounded-[3px]">
-            <ResourceStrip character={arctusSheet} pendingWillpower />
+            <ResourceStrip character={arctusSheet} pendingWillpower pendingMana={2} />
+          </div>
+        </Spec>
+        <Spec label="the stage — memory/judgment boundary: the rail's panel ends, the void breathes, the console opens masthead-first">
+          <div className="mv-panel w-[430px] rounded-[3px]">
+            {/* a feed stand-in, so the seam has a memory to end */}
+            <p
+              className="px-3 py-2 text-center text-[11px] italic"
+              style={{ color: "var(--dim)" }}
+            >
+              — the chronicle&apos;s last beat —
+            </p>
+            <div className="mv-stage-ground">
+              <ResourceStrip character={arctusSheet} />
+              <div className="mv-stage">
+                <DicePoolBuilder pool={staged} character={arctusSheet} />
+              </div>
+            </div>
           </div>
         </Spec>
       </div>

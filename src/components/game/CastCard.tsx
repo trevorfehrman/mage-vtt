@@ -66,11 +66,14 @@ export function CastCard({
   const status = ladderRung(state.value, cast)
 
   const isCaster = cast.casterUserId === viewerUserId
-  const controls = ladderControls(cast, { isStoryteller, isCaster })
+  // Engage/decline moved to the ST's roll zone (owner call 2026-07-19): the
+  // offer occupies the Storyteller's felt, and the card stays the table's
+  // record — the decision never doubles.
+  const controls = ladderControls(cast, { isStoryteller, isCaster }).filter(
+    (c) => c !== "engage" && c !== "decline",
+  )
 
   const kill = useMutation(api.casts.kill)
-  const decline = useMutation(api.casts.decline)
-  const engage = useMutation(api.casts.engage)
   const adjustPrice = useMutation(api.casts.adjustPrice)
   const lockPrice = useMutation(api.casts.lockPrice)
   const commit = useMutation(api.casts.commit)
@@ -417,24 +420,6 @@ export function CastCard({
       {/* the viewer's controls — and only theirs */}
       {controls.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          {controls.includes("engage") && (
-            <button
-              onClick={() => run(() => engage(step))}
-              disabled={busy}
-              className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
-            >
-              Engage
-            </button>
-          )}
-          {controls.includes("decline") && (
-            <button
-              onClick={() => run(() => decline(step))}
-              disabled={busy}
-              className="mv-btn rounded-[3px] px-3 py-1.5 text-[12px]"
-            >
-              Decline
-            </button>
-          )}
           {controls.includes("kill") && (
             <button
               onClick={() => run(() => kill(step))}

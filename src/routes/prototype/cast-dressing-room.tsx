@@ -40,7 +40,6 @@ import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { ChatInput } from "#/components/game/ChatInput"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { ResourceStrip } from "#/components/game/ResourceStrip"
-import { SheetlessCastForm } from "#/components/game/SheetlessCastForm"
 import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import type { Id } from "../../../convex/_generated/dataModel"
 
@@ -351,9 +350,6 @@ function DressingRoom() {
             {mySheet && <ResourceStrip character={mySheet} />}
             <DicePoolBuilder pool={pool} />
           </>
-        }
-        storytellerTools={
-          view.isStoryteller ? <SheetlessCastForm sessionId={SESSION_ID} /> : undefined
         }
         chatInput={
           <ChatInput

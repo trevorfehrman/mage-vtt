@@ -21,6 +21,7 @@ import { ArcanaSubstance, hasSubstance } from "./ArcanaSubstance"
 import { RoteBook } from "./RoteBook"
 import { TraitSky } from "./TraitSky"
 import { Separator } from "#/components/ui/separator"
+import { Switch } from "#/components/ui/switch"
 import { DotRating } from "./DotRating"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
@@ -205,21 +206,34 @@ export function CharacterSheet({
             <span style={{ color: "var(--ink)" }}>{character.vice}</span>
           </span>
           {/* The standing tool fact (issue #107): a sheet fact, not a bench
-              dial — every vulgar cast stamps it, the bench reports it. */}
+              dial — every vulgar cast stamps it, the bench reports it. A
+              Switch, not a button (owner call 2026-07-19): a standing fact
+              should read on/off at a glance. */}
           {onSetMagicalTool ? (
             <span className="grid justify-items-end gap-1">
-              <button
-                onClick={() => {
-                  setToolError(null)
-                  onSetMagicalTool(!character.magicalTool).catch((err) =>
-                    setToolError(seamErrorMessage(err)),
-                  )
-                }}
-                className={`mv-mini whitespace-nowrap ${character.magicalTool ? "mv-mini-on" : ""}`}
+              <label
+                className="flex cursor-pointer items-center gap-1.5"
                 title="A magical tool in hand: −1 Paradox die on every vulgar cast. A standing fact of your practice — casts stamp it as declared."
               >
-                Tool {character.magicalTool ? "in hand −1" : "set aside"}
-              </button>
+                <span
+                  className="mv-data text-[10px] uppercase tracking-[0.06em]"
+                  style={{
+                    color: character.magicalTool ? "var(--ink)" : "var(--dim)",
+                  }}
+                >
+                  Tool {character.magicalTool ? "in hand −1" : "set aside"}
+                </span>
+                <Switch
+                  size="sm"
+                  checked={character.magicalTool}
+                  onCheckedChange={(checked) => {
+                    setToolError(null)
+                    onSetMagicalTool(checked).catch((err) =>
+                      setToolError(seamErrorMessage(err)),
+                    )
+                  }}
+                />
+              </label>
               {toolError && (
                 <span className="text-[11px]" style={{ color: "var(--bad)" }}>
                   {toolError}

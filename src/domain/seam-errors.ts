@@ -21,7 +21,6 @@ import {
   NoActiveScene,
   SceneAlreadyOpen,
 } from "./flows/scene"
-import { InvalidSheetlessCast } from "./flows/sheetless-cast"
 import {
   CastAlreadyPending,
   CastStatusConflict,
@@ -86,7 +85,6 @@ export const SeamError = Schema.Union([
   InvalidCastDeclaration,
   InvalidAdjustment,
   InvalidMitigation,
-  InvalidSheetlessCast,
   InvalidHandEdit,
   InvalidPoolComponent,
 ])
