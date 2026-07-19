@@ -64,6 +64,29 @@ export const dicePoolMachine = setup({
         // The lip's sacred gesture (#79/#104): an empty tray still rolls —
         // the server reads an empty pool as the chance die.
         ROLL: "rolling",
+        // The open felt's fittings are live before any die lands (#79):
+        // options set at rest ride into the build.
+        SET_AGAIN_THRESHOLD: {
+          actions: assign({ againThreshold: ({ event }) => event.value }),
+        },
+        SET_ROTE_ACTION: {
+          actions: assign({ isRoteAction: ({ event }) => event.value }),
+        },
+        SET_SPEND_WILLPOWER: {
+          actions: assign({ spendWillpower: ({ event }) => event.value }),
+        },
+        SET_VISIBILITY: {
+          actions: assign({ visibility: ({ event }) => event.value }),
+        },
+        RESET: {
+          actions: assign({
+            againThreshold: 10,
+            isRoteAction: false,
+            spendWillpower: false,
+            visibility: () => "public" as const,
+            error: null,
+          }),
+        },
         ADD_COMPONENT: {
           target: "building",
           actions: assign({

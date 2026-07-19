@@ -131,12 +131,6 @@ const SKY_DEFAULTS: SkyParams = {
   build: 1.2,
 }
 
-/** Dev-only seam between the tweak panel (lives with the firmament) and the
- * meteor field (lives with the trait matrix): the test button broadcasts,
- * the field listens. Production never dispatches it. */
-const SKY_TEST_EVENT = "mv-sky-test-meteor"
-const handledTestEvents = new WeakSet<Event>()
-
 // ---------------------------------------------------------------------------
 // The firmament
 // ---------------------------------------------------------------------------
@@ -152,37 +146,27 @@ interface SheetSkyProps {
 export function SheetSky({ pool }: SheetSkyProps) {
   const reduced = useReducedMotion() ?? false
   const building = pool?.state === "building"
-  const [params, setParams] = useState<SkyParams>(SKY_DEFAULTS)
 
   return (
-    <>
-      <div aria-hidden className="mv-sky">
-        <ShaderMount
-          fragmentShader={GALAXY_FRAG}
-          uniforms={{
-            u_color: STARLIGHT_VEC4,
-            u_intensity: building ? params.build : params.rest,
-            u_density: params.density,
-            u_scale: params.scale,
-            u_sharp: params.sharp,
-            u_twinkle: params.twinkle,
-            u_drift: params.drift,
-            u_nebula: params.nebula,
-          }}
-          speed={reduced ? 0 : 1}
-          width="100%"
-          height="100%"
-          maxPixelCount={1920 * 1080}
-        />
-      </div>
-      {import.meta.env.DEV && (
-        <SkyTweakPanel
-          params={params}
-          onChange={setParams}
-          onTest={() => window.dispatchEvent(new CustomEvent(SKY_TEST_EVENT))}
-        />
-      )}
-    </>
+    <div aria-hidden className="mv-sky">
+      <ShaderMount
+        fragmentShader={GALAXY_FRAG}
+        uniforms={{
+          u_color: STARLIGHT_VEC4,
+          u_intensity: building ? SKY_DEFAULTS.build : SKY_DEFAULTS.rest,
+          u_density: SKY_DEFAULTS.density,
+          u_scale: SKY_DEFAULTS.scale,
+          u_sharp: SKY_DEFAULTS.sharp,
+          u_twinkle: SKY_DEFAULTS.twinkle,
+          u_drift: SKY_DEFAULTS.drift,
+          u_nebula: SKY_DEFAULTS.nebula,
+        }}
+        speed={reduced ? 0 : 1}
+        width="100%"
+        height="100%"
+        maxPixelCount={1920 * 1080}
+      />
+    </div>
   )
 }
 
@@ -482,36 +466,6 @@ export function TraitSky({ pool, traitColumns }: TraitSkyProps) {
     prevState.current = p?.state
   }, [pool?.state])
 
-  // Dev-only: the tweak panel's lane test — no real roll needed; cycles the
-  // permutations deterministically. The WeakSet dedupes per event: a stale
-  // HMR listener or a double mount can't double-fire the streak.
-  useEffect(() => {
-    if (!import.meta.env.DEV) return
-    const onTest = (e: Event) => {
-      if (handledTestEvents.has(e)) return
-      handledTestEvents.add(e)
-      const el = skyRef.current
-      if (!el) return
-      const { width, height } = el.getBoundingClientRect()
-      fireCount.current += 1
-      const n = fireCount.current
-      launch(
-        meteorLane(
-          n % 3,
-          (n * 2 + 1) % 3,
-          n % 4 === 0,
-          4 + (n % 6),
-          n,
-          width,
-          height,
-          skyBounds(el),
-        ),
-      )
-    }
-    window.addEventListener(SKY_TEST_EVENT, onTest)
-    return () => window.removeEventListener(SKY_TEST_EVENT, onTest)
-  }, [])
-
   return (
     <div ref={skyRef} aria-hidden className="mv-sky-meteors">
       <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
@@ -523,103 +477,3 @@ export function TraitSky({ pool, traitColumns }: TraitSkyProps) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Dev tweak panel — the owner's tuning bench for the eye-tour. DEV-only;
-// approved values get baked into SKY_DEFAULTS and this panel stays dormant.
-// ---------------------------------------------------------------------------
-
-const SKY_RANGES: Record<keyof SkyParams, [min: number, max: number, step: number]> = {
-  density: [0.2, 2.5, 0.05],
-  scale: [0.5, 2, 0.05],
-  sharp: [0.3, 3, 0.05],
-  twinkle: [0, 1, 0.05],
-  drift: [0, 4, 0.1],
-  nebula: [0, 3, 0.05],
-  rest: [0, 2, 0.05],
-  build: [0, 2, 0.05],
-}
-
-function SkyTweakPanel({
-  params,
-  onChange,
-  onTest,
-}: {
-  params: SkyParams
-  onChange: (p: SkyParams) => void
-  onTest: () => void
-}) {
-  const [open, setOpen] = useState(false)
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        title="tune the sky (dev)"
-        className="mv-mini fixed bottom-4 right-4 z-50"
-      >
-        sky ✦
-      </button>
-    )
-  }
-
-  return (
-    <div
-      className="mv-panel fixed bottom-4 right-4 z-50 grid w-64 gap-2 rounded-[4px] border p-3"
-      style={{ borderColor: "var(--line)" }}
-    >
-      <div className="flex items-center justify-between">
-        <span className="mv-eyebrow">Sky (dev)</span>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="mv-mini"
-        >
-          close
-        </button>
-      </div>
-      {(Object.keys(SKY_RANGES) as (keyof SkyParams)[]).map((key) => {
-        const [min, max, step] = SKY_RANGES[key]
-        return (
-          <label key={key} className="grid gap-0.5">
-            <span className="mv-data flex justify-between text-[10px] uppercase tracking-wider" style={{ color: "var(--dim)" }}>
-              <span>{key}</span>
-              <span style={{ color: "var(--ink)" }}>{params[key].toFixed(2)}</span>
-            </span>
-            <input
-              type="range"
-              min={min}
-              max={max}
-              step={step}
-              value={params[key]}
-              onChange={(e) =>
-                onChange({ ...params, [key]: Number(e.target.value) })
-              }
-            />
-          </label>
-        )
-      })}
-      <div className="flex gap-2">
-        <button type="button" onClick={onTest} className="mv-mini flex-1">
-          ☄ test meteor
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange(SKY_DEFAULTS)}
-          className="mv-mini"
-        >
-          reset
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            void navigator.clipboard.writeText(JSON.stringify(params, null, 2))
-          }}
-          className="mv-mini"
-        >
-          copy
-        </button>
-      </div>
-    </div>
-  )
-}

@@ -235,6 +235,34 @@ describe("dice-pool machine", () => {
     expect(snap.context.components).toHaveLength(0)
   })
 
+  test("options set from idle stick — the open felt's fittings are live before dice land (#79)", () => {
+    const actor = startMachine()
+    actor.send({ type: "SET_AGAIN_THRESHOLD", value: 9 })
+    actor.send({ type: "SET_ROTE_ACTION", value: true })
+    actor.send({ type: "SET_VISIBILITY", value: "hidden" })
+    expect(actor.getSnapshot().value).toBe("idle")
+    actor.send({
+      type: "ADD_COMPONENT",
+      component: { type: "attribute", name: "Strength", dots: 3 },
+    })
+    const snap = actor.getSnapshot()
+    expect(snap.value).toBe("building")
+    expect(snap.context.againThreshold).toBe(9)
+    expect(snap.context.isRoteAction).toBe(true)
+    expect(snap.context.visibility).toBe("hidden")
+  })
+
+  test("RESET from idle clears options armed at rest (#79)", () => {
+    const actor = startMachine()
+    actor.send({ type: "SET_AGAIN_THRESHOLD", value: 8 })
+    actor.send({ type: "SET_SPEND_WILLPOWER", value: true })
+    actor.send({ type: "RESET" })
+    const snap = actor.getSnapshot()
+    expect(snap.value).toBe("idle")
+    expect(snap.context.againThreshold).toBe(10)
+    expect(snap.context.spendWillpower).toBe(false)
+  })
+
   test("ROLL from idle rolls the empty pool — the lip's chance die (#79)", () => {
     const actor = startMachine()
     actor.send({ type: "ROLL" })
