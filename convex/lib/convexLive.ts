@@ -420,9 +420,6 @@ export const convexLive = (
             ...(patch.paradoxIsDramaticFailure !== undefined
               ? { paradoxIsDramaticFailure: patch.paradoxIsDramaticFailure }
               : {}),
-            ...(patch.draftContainedSuccesses !== undefined
-              ? { draftContainedSuccesses: patch.draftContainedSuccesses }
-              : {}),
             ...(patch.containedSuccesses !== undefined
               ? { containedSuccesses: patch.containedSuccesses }
               : {}),

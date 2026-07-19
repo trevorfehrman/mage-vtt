@@ -16,7 +16,6 @@ import {
   lockPrice as lockPriceFlow,
   releaseCast as releaseCastFlow,
   rollParadox as rollParadoxFlow,
-  setDraftContainment as setDraftContainmentFlow,
   voidCast as voidCastFlow,
 } from "../src/domain/flows/vulgar-cast"
 
@@ -83,13 +82,6 @@ export const commit = enforcedMutation({
 export const cancel = enforcedMutation({ args: step, flow: cancelCastFlow })
 
 export const rollParadox = enforcedMutation({ args: step, flow: rollParadoxFlow })
-
-// The cockpit's broadcast draft (ADR-0022): box clicks, no rules consequence
-// until the release — spectators watch through the same reactivity.
-export const setDraftContainment = enforcedMutation({
-  args: { ...step, draftContainedSuccesses: v.number() },
-  flow: setDraftContainmentFlow,
-})
 
 // The one Cast click (ADR-0022): containment lands and the dice fly as a
 // single commitment.

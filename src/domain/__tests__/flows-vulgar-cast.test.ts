@@ -17,7 +17,6 @@ import {
   lockPrice,
   releaseCast,
   rollParadox,
-  setDraftContainment,
   voidCast,
 } from "../flows/vulgar-cast"
 import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "../ids"
@@ -386,30 +385,6 @@ describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
       expect(store.sheetPatches).toHaveLength(0)
       expect(store.rolls[0]!.summary).toContain("lets all 2 Paradox successes run")
       expect(store.casts[0]!.severity).toBe("bedlam")
-    }),
-  )
-
-  it.effect("the cockpit's draft containment is broadcast working state (ADR-0022)", () =>
-    Effect.gen(function* () {
-      const store = seed({
-        casts: [castAt("paradox", { paradoxSuccesses: 2, paradoxIsDramaticFailure: false })],
-      })
-      const castId = CastId.make("cast-prior")
-
-      // Box clicks, un-clicks included — no ceremony, no sheet writes.
-      yield* setDraftContainment({
-        sessionId: SESSION, castId, draftContainedSuccesses: 2,
-      }).pipe(as(PLAYER), Effect.provide(store.layer))
-      expect(store.casts[0]!.draftContainedSuccesses).toBe(2)
-
-      yield* setDraftContainment({
-        sessionId: SESSION, castId, draftContainedSuccesses: 0,
-      }).pipe(as(PLAYER), Effect.provide(store.layer))
-      expect(store.casts[0]!.draftContainedSuccesses).toBe(0)
-
-      expect(store.messages).toHaveLength(0)
-      expect(store.sheetPatches).toHaveLength(0)
-      expect(store.casts[0]!.status).toBe("paradox")
     }),
   )
 
@@ -1124,12 +1099,10 @@ describe("Flows.vulgarCast — the refusal matrix", () => {
       // …and the caster reaching past the ST.
       const commitEarly = yield* commitCast({ sessionId: SESSION, castId: CAST, manaMitigation: 0 }).pipe(
         as(PLAYER), Effect.provide(store.layer), Effect.exit)
-      const draftEarly = yield* setDraftContainment({ sessionId: SESSION, castId: CAST, draftContainedSuccesses: 0 }).pipe(
-        as(PLAYER), Effect.provide(store.layer), Effect.exit)
       const releaseEarly = yield* releaseCast({ sessionId: SESSION, castId: CAST, containedSuccesses: 0 }).pipe(
         as(PLAYER), Effect.provide(store.layer), Effect.exit)
 
-      for (const exit of [freezeEarly, rollEarly, commitEarly, draftEarly, releaseEarly]) {
+      for (const exit of [freezeEarly, rollEarly, commitEarly, releaseEarly]) {
         expect(failureTag(exit)).toBe("CastStatusConflict")
       }
       expect(store.casts[0]!.status).toBe("draft")
@@ -1265,13 +1238,9 @@ describe("Flows.vulgarCast — the refusal matrix", () => {
       const overHealth = yield* releaseCast({
         sessionId: SESSION, castId: CAST, containedSuccesses: 2,
       }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
-      const overDraft = yield* setDraftContainment({
-        sessionId: SESSION, castId: CAST, draftContainedSuccesses: 2,
-      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
 
       expect(failureTag(overSuccesses)).toBe("InvalidContainment")
       expect(failureTag(overHealth)).toBe("InvalidContainment")
-      expect(failureTag(overDraft)).toBe("InvalidContainment")
       expect(store.sheetPatches).toHaveLength(0)
       expect(store.casts[0]!.status).toBe("paradox")
     }),

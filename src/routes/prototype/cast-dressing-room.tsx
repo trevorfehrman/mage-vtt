@@ -169,7 +169,6 @@ const paradoxRolled: CastEntry = {
   ...paradoxUnrolled,
   paradoxSuccesses: 2,
   paradoxIsDramaticFailure: false,
-  draftContainedSuccesses: 1,
 }
 
 const resolved: CastEntry = {

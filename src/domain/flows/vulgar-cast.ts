@@ -56,13 +56,14 @@ import { requireKnownRote } from "./rote-cast"
  * ADR-0022): one flow per commitment, each checking actor authority, document
  * status, and phase, and refusing on the ADR-0010 taxonomy — the first mutual
  * contract under ADR-0015's second regime. The Cast document is the single
- * source of truth; commitments land atomic Activity entries (ADR-0009) while
- * drafting stays broadcast working state on the document itself.
+ * source of truth; commitments land atomic Activity entries (ADR-0009).
+ * Containment drafting is client-local until the Cast click (#113 reversed
+ * ADR-0022's broadcast draft — per-click mutations made the cockpit sluggish).
  *
  *   draftCast → engageCast (ST; the stage) → [adjustPrice*] → lockPrice (ST;
  *   THE FREEZE — Tides stamped, irrevocably hands-off) → commitCast (caster;
  *   Mana + precommitted Willpower spent; POINT OF NO RETURN) → rollParadox
- *   (ST's own button; chance die at zero dice) → [setDraftContainment*] →
+ *   (ST's own button; chance die at zero dice) →
  *   releaseCast (caster's one Cast click: containment lands and the dice fly
  *   in one commitment) → resolved
  *
@@ -941,40 +942,6 @@ export const rollParadox = Effect.fn("Flows.vulgarCast.rollParadox")(function* (
 
   return castId
 })
-
-export const SetDraftContainmentArgs = Schema.Struct({
-  ...CastStepArgs.fields,
-  /** The half-built sacrifice: box clicks, broadcast live (ADR-0022). */
-  draftContainedSuccesses: Schema.Number,
-})
-export type SetDraftContainmentArgs = typeof SetDraftContainmentArgs.Type
-
-/**
- * The cockpit's drafting door (ADR-0022): box clicks write broadcast working
- * state on the Cast document — cheap, seam-checked (actor is caster, phase is
- * the cockpit, boxes in range), no rules consequence until the release
- * finalizes. Spectators watch through the same reactivity as everything
- * else; a reconnecting caster drops back into their half-built sacrifice.
- * Deliberately public, un-clicks included — no poker face. No Activity entry.
- */
-export const setDraftContainment = Effect.fn("Flows.vulgarCast.setDraftContainment")(
-  function* (args: SetDraftContainmentArgs) {
-    const sessionId = SessionId.make(args.sessionId)
-    const castId = CastId.make(args.castId)
-    const store = yield* GameStore
-
-    const cast = yield* requireCast(sessionId, castId)
-    const sheet = yield* requireSessionCharacter(sessionId, cast.characterId)
-    yield* requireParadoxPhase(cast, "rolled")
-    yield* requireContainable(cast, sheet, args.draftContainedSuccesses)
-
-    yield* store.patchCast(castId, {
-      draftContainedSuccesses: args.draftContainedSuccesses,
-    })
-
-    return castId
-  },
-)
 
 export const ReleaseCastArgs = Schema.Struct({
   ...CastStepArgs.fields,

@@ -118,7 +118,6 @@ export interface StoredCast {
   readonly manaMitigation?: number
   readonly paradoxSuccesses?: number
   readonly paradoxIsDramaticFailure?: boolean
-  readonly draftContainedSuccesses?: number
   readonly containedSuccesses?: number
   readonly castPool?: number
   readonly castSuccesses?: number

@@ -138,7 +138,6 @@ export const CastPatch = Schema.Struct({
   manaMitigation: Schema.optionalKey(Schema.Number),
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
   paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
-  draftContainedSuccesses: Schema.optionalKey(Schema.Number),
   containedSuccesses: Schema.optionalKey(Schema.Number),
   castPool: Schema.optionalKey(Schema.Number),
   castSuccesses: Schema.optionalKey(Schema.Number),

@@ -318,8 +318,7 @@ export const CastDoc = Schema.Struct({
   // The Paradox roll — stamped mid-rung; its presence flips the phase.
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
   paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
-  // The cockpit's broadcast draft, then the one Cast click and resolution.
-  draftContainedSuccesses: Schema.optionalKey(Schema.Number),
+  // The one Cast click and resolution.
   containedSuccesses: Schema.optionalKey(Schema.Number),
   castPool: Schema.optionalKey(Schema.Number),
   castSuccesses: Schema.optionalKey(Schema.Number),

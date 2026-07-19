@@ -1,5 +1,13 @@
 # Tides are scene state; the cast card is a docked cockpit
 
+> **Amended** (2026-07-19, #112 audit → #113): containment drafting is no
+> longer broadcast working state — the per-click `setDraftContainment`
+> mutation made the cockpit sluggish, and the owner reversed it. Containment
+> selection is client-local; the Cast click is the first the server (and so
+> the table) hears of the sacrifice. "One mutation per commitment" stands;
+> the "drafting is broadcast" half and its no-poker-face consequence are
+> withdrawn. Reconnecting mid-cockpit now resets the selection to zero.
+
 Adopted from the 2026-07-18 stage-question grilling (issue #101, worked with
 eyes on the #96 dressing-room rig). This ADR **amends ADR-0016**: the Cast
 document as single source of truth, the exclusive stage, no timeouts,

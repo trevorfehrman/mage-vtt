@@ -229,7 +229,6 @@ const observedCast = (row: Record<string, unknown>) => ({
   adjustments: row.adjustments,
   tides: row.tides,
   manaMitigation: row.manaMitigation,
-  draftContainedSuccesses: row.draftContainedSuccesses ?? null,
   paradoxSuccesses: row.paradoxSuccesses,
   paradoxIsDramaticFailure: row.paradoxIsDramaticFailure,
   containedSuccesses: row.containedSuccesses,

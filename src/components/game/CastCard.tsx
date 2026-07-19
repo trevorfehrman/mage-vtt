@@ -79,16 +79,15 @@ export function CastCard({
   const commit = useMutation(api.casts.commit)
   const cancel = useMutation(api.casts.cancel)
   const rollParadox = useMutation(api.casts.rollParadox)
-  const setDraftContainment = useMutation(api.casts.setDraftContainment)
   const release = useMutation(api.casts.release)
   const voidCast = useMutation(api.casts.voidCast)
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mitigation, setMitigation] = useState(0)
-  // The cockpit's half-built sacrifice is broadcast working state on the
-  // document (ADR-0022): render from it, write through the drafting door.
-  const contained = cast.draftContainedSuccesses ?? 0
+  // Containment selection is local until the Cast click (#113): the server
+  // first hears the sacrifice when the release commits it.
+  const [contained, setContained] = useState(0)
   // The ST's add-a-modifier form (issue #44): local until the Add press.
   const [modSource, setModSource] = useState("")
   const [modDice, setModDice] = useState(1)
@@ -114,11 +113,6 @@ export function CastCard({
   }
 
   const step = { sessionId, castId: cast._id }
-
-  // The cockpit's box clicks write the broadcast draft (ADR-0022) — cheap
-  // seam-checked patches; refusals surface like any other button's.
-  const setContained = (value: number) =>
-    run(() => setDraftContainment({ ...step, draftContainedSuccesses: value }))
 
   // The Paradox pool as the freeze stamped it (ADR-0022) — the same leaf the
   // server rolls with, never a reimplementation. Before the freeze nothing is
@@ -403,8 +397,7 @@ export function CastCard({
 
       {/* The informed bet (issue #45): drag the slider, watch the double
           shrink — uncontained dice bought back, wound penalties paid for.
-          Every stop is a broadcast draft write (ADR-0022): the whole table
-          watches the half-built sacrifice. */}
+          Every stop is local (#113): the table hears one Cast click. */}
       {controls.includes("contain") && mySheet !== null && (
         <ContainmentBet
           track={mySheet.healthTrack}
