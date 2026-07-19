@@ -68,6 +68,9 @@ export function ActivityLog({
       }
     })
     observer.observe(content)
+    // The viewport itself shrinks when the tray below expands (#79) — the
+    // content never resizes, so without this the foot slides out of view.
+    observer.observe(viewport)
 
     return () => {
       viewport.removeEventListener("scroll", onScroll)
@@ -77,6 +80,30 @@ export function ActivityLog({
 
   // Activity comes in desc order — reverse for chronological display
   const sorted = activity ? [...activity].reverse() : []
+
+  // Your own beat always brings the feed to the foot (#79): rolling, casting,
+  // or speaking is an intent to see the result — it re-engages the pin even
+  // when reading history had released it. Other people's beats never yank.
+  const newest = sorted[sorted.length - 1]
+  const newestId = newest?._id
+  const newestAuthor =
+    newest === undefined
+      ? null
+      : Match.value(newest).pipe(
+          Match.tag("message", (m) => m.senderId),
+          Match.tag("roll", (r) => r.userId),
+          Match.tag("cast", (c) => c.casterUserId),
+          Match.exhaustive,
+        )
+  useEffect(() => {
+    if (newestAuthor === null || newestAuthor !== viewerUserId) return
+    const viewport = contentRef.current?.closest(
+      "[data-slot=scroll-area-viewport]",
+    )
+    if (!viewport) return
+    pinnedRef.current = true
+    viewport.scrollTo({ top: viewport.scrollHeight })
+  }, [newestId, newestAuthor, viewerUserId])
 
   return (
     <div className="flex h-full flex-col">

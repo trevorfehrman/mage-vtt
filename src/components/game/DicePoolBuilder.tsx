@@ -21,10 +21,9 @@ const diceLabel = (n: number): string => (n === 1 ? "1 die" : `${n} dice`)
  * skim; the fittings are tray hardware on the lip, never a disclosure.
  *
  * Posture is EXPLICIT (owner call 2026-07-18, amending #104's activity-driven
- * rule): one caret expands and collapses the tray, and nothing else does — an
- * empty felt stays open, a built pool survives collapsing. Rolling is sacred
- * from either posture: the collapsed lip still rolls the pool in one gesture,
- * and an empty felt rolls the chance die.
+ * rule): one caret opens and folds the tray, and nothing else does — an empty
+ * felt stays open, a built pool survives folding. Folded, the tray is barely
+ * there: a slim handle carrying only the caret and the pool count.
  */
 
 /** The loose-dice component — the "Modifier" lie is dead; plain dice say so. */
@@ -80,14 +79,6 @@ export function DicePoolBuilder({
       pool.addComponent({ type: LOOSE_TYPE, name: LOOSE_NAME, dots: clamped })
   }
 
-  // Anything on the tray worth clearing — dice, or options armed at rest.
-  const dirty =
-    total > 0 ||
-    pool.context.spendWillpower ||
-    pool.context.isRoteAction ||
-    pool.context.againThreshold !== 10 ||
-    pool.context.visibility === "hidden"
-
   // The gate speaks at the control that refuses (#79's tooltip pattern).
   const willpowerGate = !pool.canSpendWillpower
     ? "Willpower is a spend — it needs your sheet to fund it."
@@ -100,9 +91,10 @@ export function DicePoolBuilder({
   const dieTransition = reduced
     ? { duration: 0 }
     : { type: "spring" as const, stiffness: 500, damping: 30, mass: 0.6 }
+  // A plain tween, no bounce (owner call): the tray folds like a drawer.
   const postureTransition = reduced
     ? { duration: 0 }
-    : { duration: 0.16, ease: "easeOut" as const }
+    : { duration: 0.18, ease: "easeOut" as const }
 
   const die = (kind: DieKind, key: string, title: string, onSkim?: () => void) => (
     <motion.button
@@ -150,278 +142,232 @@ export function DicePoolBuilder({
       ? sheetComponents.map((c) => c.name).join(" + ")
       : null
 
-  const caret = (
-    <button
-      onClick={() => setExpanded((e) => !e)}
-      className="mv-btn grid size-6 shrink-0 place-items-center rounded-[3px] text-[11px] leading-none"
-      title={expanded ? "Fold the tray to its lip" : "Open the felt"}
-      aria-expanded={expanded}
-    >
-      {expanded ? "⌄" : "⌃"}
-    </button>
-  )
-
-  const rollButton = (compact: boolean) => (
-    <button
-      onClick={pool.roll}
-      disabled={rolling || !canInteract}
-      className={`mv-roll rounded-[3px] text-[13px] disabled:opacity-40 ${
-        compact ? "h-8 px-3 text-[12px]" : "flex-1 py-2"
-      }`}
-      title={
-        total === 0
-          ? "Roll the empty felt — a chance die"
-          : `Roll ${diceLabel(total)}`
-      }
-    >
-      {rolling
-        ? "Rolling…"
-        : total === 0
-          ? "◈ Roll"
-          : `Roll ${diceLabel(total)}`}
-    </button>
-  )
-
   return (
     <TooltipProvider>
       <div className="border-t" style={{ borderColor: "var(--line)" }}>
-        <AnimatePresence initial={false} mode="wait">
-          {expanded ? (
-            <motion.div
-              key="felt"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={postureTransition}
-              className="overflow-hidden"
-            >
-              {/* readout */}
-              <div className="flex items-center gap-2 px-3 pt-2.5">
-                {caret}
-                <span className="mv-eyebrow">The felt</span>
-                <span
-                  className="mv-data ml-auto text-[22px] font-bold leading-none"
-                  style={{ color: total > 0 ? "var(--accent)" : "var(--dim)" }}
-                >
-                  {total > 0 ? total : "◈"}
-                </span>
-                <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
-                  {total === 0 ? "chance" : total === 1 ? "die" : "dice"}
-                </span>
-              </div>
-
-              {/* the felt, flanked by its rails: ‹/−5 skim off the left,
-                  ›/+5 feed on from the right; fittings keep to the felt's
-                  own column and wrap when the rail thins (#98) */}
-              <div
-                className="mx-3 mt-2 grid gap-1.5"
-                style={{ gridTemplateColumns: "2rem minmax(0,1fr) 2rem" }}
+        {/* Folded, the tray is a handle and nothing else: the caret, and the
+            pool count when dice are waiting. */}
+        {!expanded && (
+          <button
+            onClick={() => setExpanded(true)}
+            className="mv-felt flex h-[18px] w-full items-center justify-center gap-1.5 leading-none"
+            style={{ background: "transparent" }}
+            title="Open the felt"
+            aria-expanded={false}
+          >
+            <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
+              ⌃
+            </span>
+            {total > 0 && (
+              <span
+                className="mv-data text-[10px] font-bold"
+                style={{ color: "var(--accent)" }}
               >
-                <button
-                  onClick={() => setLoose(loose - 1)}
-                  disabled={loose === 0 || !canInteract}
-                  className="mv-btn w-8 rounded-[6px] text-[20px] leading-none disabled:opacity-30"
-                  title="Skim a die off the felt"
-                >
-                  ‹
-                </button>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setLoose(loose + 1)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault()
-                      setLoose(loose + 1)
-                    }
-                  }}
-                  className="mv-felt block min-w-0 cursor-copy rounded-[6px] border p-2 text-left"
-                  style={{
-                    borderColor: "var(--line)",
-                    background: "color-mix(in srgb, var(--accent) 6%, transparent)",
-                    minHeight: 64,
-                  }}
-                  title="Tap the felt to add a die"
-                >
-                  <span className="flex max-h-44 flex-wrap gap-2.5 overflow-y-auto p-1">
-                    <AnimatePresence initial={false}>
-                      {sheetDice}
-                      {willpowerDice}
-                      {looseDice}
-                    </AnimatePresence>
-                    {total === 0 && (
-                      <span
-                        className="mv-data self-center pl-1 text-[10px]"
-                        style={{ color: "var(--dim)" }}
-                      >
-                        an empty felt rolls a chance die
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <button
-                  onClick={() => setLoose(loose + 1)}
-                  disabled={!canInteract}
-                  className="mv-btn w-8 rounded-[6px] text-[20px] leading-none disabled:opacity-30"
-                  title="Feed a die onto the felt"
-                >
-                  ›
-                </button>
+                {total}
+              </span>
+            )}
+          </button>
+        )}
 
-                {/* the lineage caption: one quiet line under the felt column */}
-                {lineage && (
-                  <p
-                    className="mv-data text-[10px]"
-                    style={{ color: "var(--dim)", gridColumn: "2" }}
+        <motion.div
+          initial={false}
+          animate={{ height: expanded ? "auto" : 0, opacity: expanded ? 1 : 0 }}
+          transition={postureTransition}
+          className="overflow-hidden"
+        >
+          {/* readout */}
+          <div className="flex items-center gap-2 px-3 pt-2.5">
+            <button
+              onClick={() => setExpanded(false)}
+              className="mv-btn grid size-6 shrink-0 place-items-center rounded-[3px] text-[11px] leading-none"
+              title="Fold the tray away"
+              aria-expanded
+            >
+              ⌄
+            </button>
+            <span className="mv-eyebrow">The felt</span>
+            <span
+              className="mv-data ml-auto text-[22px] font-bold leading-none"
+              style={{ color: total > 0 ? "var(--accent)" : "var(--dim)" }}
+            >
+              {total > 0 ? total : "◈"}
+            </span>
+            <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
+              {total === 0 ? "chance" : total === 1 ? "die" : "dice"}
+            </span>
+          </div>
+
+          {/* the felt, flanked by its rails: ‹/−5 skim off the left,
+              ›/+5 feed on from the right; fittings keep to the felt's
+              own column and wrap when the rail thins (#98) */}
+          <div
+            className="mx-3 mt-2 grid gap-1.5"
+            style={{ gridTemplateColumns: "2rem minmax(0,1fr) 2rem" }}
+          >
+            <button
+              onClick={() => setLoose(loose - 1)}
+              disabled={loose === 0 || !canInteract}
+              className="mv-btn w-8 rounded-[6px] text-[20px] leading-none disabled:opacity-30"
+              title="Skim a die off the felt"
+            >
+              ‹
+            </button>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setLoose(loose + 1)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  setLoose(loose + 1)
+                }
+              }}
+              className="mv-felt block min-w-0 cursor-copy rounded-[6px] border p-2 text-left"
+              style={{
+                borderColor: "var(--line)",
+                background: "color-mix(in srgb, var(--accent) 6%, transparent)",
+                minHeight: 64,
+              }}
+              title="Tap the felt to add a die"
+            >
+              <span className="flex max-h-44 flex-wrap gap-2.5 overflow-y-auto p-1">
+                <AnimatePresence initial={false}>
+                  {sheetDice}
+                  {willpowerDice}
+                  {looseDice}
+                </AnimatePresence>
+                {total === 0 && (
+                  <span
+                    className="mv-data self-center pl-1 text-[10px]"
+                    style={{ color: "var(--dim)" }}
                   >
-                    <span style={{ color: "var(--accent)" }}>◆</span> {lineage},
-                    from the sheet
-                  </p>
+                    an empty felt rolls a chance die
+                  </span>
                 )}
+              </span>
+            </div>
+            <button
+              onClick={() => setLoose(loose + 1)}
+              disabled={!canInteract}
+              className="mv-btn w-8 rounded-[6px] text-[20px] leading-none disabled:opacity-30"
+              title="Feed a die onto the felt"
+            >
+              ›
+            </button>
 
-                {/* fittings: the fives under their chevrons, hardware under the felt */}
+            {/* the lineage caption: one quiet line under the felt column */}
+            {lineage && (
+              <p
+                className="mv-data text-[10px]"
+                style={{ color: "var(--dim)", gridColumn: "2" }}
+              >
+                <span style={{ color: "var(--accent)" }}>◆</span> {lineage},
+                from the sheet
+              </p>
+            )}
+
+            {/* fittings: the fives under their chevrons; the hardware fills
+                the felt's width when the rail affords it (owner call) */}
+            <button
+              onClick={() => setLoose(loose - 5)}
+              disabled={loose === 0 || !canInteract}
+              className="mv-mini w-8 self-start px-0 text-center disabled:opacity-40"
+              style={{ gridColumn: "1" }}
+              title="Skim five dice off"
+            >
+              −5
+            </button>
+            <div className="min-w-0" style={{ gridColumn: "2" }}>
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
-                  onClick={() => setLoose(loose - 5)}
+                  onClick={() => setLoose(0)}
                   disabled={loose === 0 || !canInteract}
-                  className="mv-mini w-8 self-start px-0 text-center disabled:opacity-40"
-                  style={{ gridColumn: "1" }}
-                  title="Skim five dice off"
+                  className="mv-mini grow whitespace-nowrap disabled:opacity-40"
+                  title="Sweep the loose dice off the felt"
                 >
-                  −5
+                  Sweep
                 </button>
-                <div className="min-w-0" style={{ gridColumn: "2" }}>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <button
-                      onClick={() => setLoose(0)}
-                      disabled={loose === 0 || !canInteract}
-                      className="mv-mini disabled:opacity-40"
-                      title="Sweep the loose dice off the felt"
-                    >
-                      Sweep
-                    </button>
-                    <span className="h-4 w-px" style={{ background: "var(--line)" }} />
-                    {[10, 9, 8].map((n) => (
-                      <button
-                        key={n}
-                        onClick={() => canInteract && pool.setAgainThreshold(n)}
-                        className={`mv-mini ${pool.context.againThreshold === n ? "mv-mini-on" : ""}`}
-                      >
-                        {n}-ag
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => canInteract && pool.setRoteAction(!pool.context.isRoteAction)}
-                      className={`mv-mini ${pool.context.isRoteAction ? "mv-mini-on" : ""}`}
-                    >
-                      Rote
-                    </button>
-                    <button
-                      onClick={() =>
-                        canInteract &&
-                        pool.setVisibility(
-                          pool.context.visibility === "hidden" ? "public" : "hidden",
-                        )
-                      }
-                      className={`mv-mini ${pool.context.visibility === "hidden" ? "mv-mini-on" : ""}`}
-                    >
-                      Hidden
-                    </button>
-                    {willpowerGate === null ? (
-                      <button
-                        onClick={() =>
-                          canInteract &&
-                          pool.setSpendWillpower(!pool.context.spendWillpower)
-                        }
-                        className={`mv-mini ${pool.context.spendWillpower ? "mv-mini-on" : ""}`}
-                      >
+                <span className="h-4 w-px" style={{ background: "var(--line)" }} />
+                {[10, 9, 8].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => canInteract && pool.setAgainThreshold(n)}
+                    className={`mv-mini grow whitespace-nowrap ${pool.context.againThreshold === n ? "mv-mini-on" : ""}`}
+                  >
+                    {n}-ag
+                  </button>
+                ))}
+                <button
+                  onClick={() => canInteract && pool.setRoteAction(!pool.context.isRoteAction)}
+                  className={`mv-mini grow whitespace-nowrap ${pool.context.isRoteAction ? "mv-mini-on" : ""}`}
+                >
+                  Rote
+                </button>
+                <button
+                  onClick={() =>
+                    canInteract &&
+                    pool.setVisibility(
+                      pool.context.visibility === "hidden" ? "public" : "hidden",
+                    )
+                  }
+                  className={`mv-mini grow whitespace-nowrap ${pool.context.visibility === "hidden" ? "mv-mini-on" : ""}`}
+                >
+                  Hidden
+                </button>
+                {willpowerGate === null ? (
+                  <button
+                    onClick={() =>
+                      canInteract &&
+                      pool.setSpendWillpower(!pool.context.spendWillpower)
+                    }
+                    className={`mv-mini grow whitespace-nowrap ${pool.context.spendWillpower ? "mv-mini-on" : ""}`}
+                  >
+                    WP +{WILLPOWER_BONUS_DICE}
+                  </button>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button aria-disabled className="mv-mini mv-refuse grow whitespace-nowrap">
                         WP +{WILLPOWER_BONUS_DICE}
                       </button>
-                    ) : (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button aria-disabled className="mv-mini mv-refuse">
-                            WP +{WILLPOWER_BONUS_DICE}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">{willpowerGate}</TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setLoose(loose + 5)}
-                  disabled={!canInteract}
-                  className="mv-mini w-8 self-start px-0 text-center disabled:opacity-40"
-                  style={{ gridColumn: "3" }}
-                  title="Feed five dice on"
-                >
-                  +5
-                </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{willpowerGate}</TooltipContent>
+                  </Tooltip>
+                )}
               </div>
-
-              {/* action */}
-              <div className="flex gap-2 p-3">
-                {rollButton(false)}
-                <button
-                  onClick={pool.reset}
-                  disabled={!dirty || !canInteract}
-                  className="mv-btn rounded-[3px] px-3 text-[12px] disabled:opacity-40"
-                >
-                  Clear
-                </button>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="lip"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={postureTransition}
-              className="overflow-hidden"
+            </div>
+            <button
+              onClick={() => setLoose(loose + 5)}
+              disabled={!canInteract}
+              className="mv-mini w-8 self-start px-0 text-center disabled:opacity-40"
+              style={{ gridColumn: "3" }}
+              title="Feed five dice on"
             >
-              {/* THE LIP: the tray folded, never dead — the pool reads as a
-                  count on the sliver, and one gesture still rolls it. */}
-              <div className="flex items-center gap-1.5 px-3 py-2">
-                {caret}
-                <div
-                  className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-[6px] border px-2.5"
-                  style={{
-                    borderColor: "var(--line)",
-                    background: "color-mix(in srgb, var(--accent) 6%, transparent)",
-                  }}
-                >
-                  {total > 0 ? (
-                    <>
-                      <span
-                        className="mv-data text-[14px] font-bold leading-none"
-                        style={{ color: "var(--accent)" }}
-                      >
-                        {total}
-                      </span>
-                      <span
-                        className="mv-data truncate text-[10px]"
-                        style={{ color: "var(--dim)" }}
-                      >
-                        {total === 1 ? "die" : "dice"} on the felt
-                        {lineage ? ` · ${lineage}` : ""}
-                        {wpDice > 0 ? " · WP" : ""}
-                      </span>
-                    </>
-                  ) : (
-                    <span
-                      className="mv-data text-[10px]"
-                      style={{ color: "var(--dim)" }}
-                    >
-                      the felt is bare
-                    </span>
-                  )}
-                </div>
-                {rollButton(true)}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              +5
+            </button>
+          </div>
+
+          {/* action — one trigger, full width; the felt itself is the pool's
+              editor, so Roll needs no rival */}
+          <div className="p-3">
+            <button
+              onClick={pool.roll}
+              disabled={rolling || !canInteract}
+              className="mv-roll w-full rounded-[3px] py-2 text-[13px] disabled:opacity-40"
+              title={
+                total === 0
+                  ? "Roll the empty felt — a chance die"
+                  : `Roll ${diceLabel(total)}`
+              }
+            >
+              {rolling
+                ? "Rolling…"
+                : total === 0
+                  ? "◈ Roll"
+                  : `Roll ${diceLabel(total)}`}
+            </button>
+          </div>
+        </motion.div>
 
         {/* error — the seam's refusal, spoken under the tray */}
         {pool.context.error && (
