@@ -13,6 +13,7 @@ import {
   ParticipantNotInCombat,
 } from "./flows/combat"
 import { InvalidHandEdit } from "./flows/hand-edit"
+import { CasterHasPendingCast, OfferAwaitsAnswer } from "./flows/pending-lock"
 import { RoteNotKnown } from "./flows/rote-cast"
 import {
   CastOnStage,
@@ -68,6 +69,8 @@ export const SeamError = Schema.Union([
   NoActiveScene,
   CastOnStage,
   CastAlreadyPending,
+  CasterHasPendingCast,
+  OfferAwaitsAnswer,
   StageOccupied,
   CastStatusConflict,
   InvalidContainment,

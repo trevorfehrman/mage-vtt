@@ -12,6 +12,7 @@ import {
   calculateImprovisedPool,
   type CastingPool,
 } from "../spellcasting"
+import { requireRollFreedom } from "./pending-lock"
 import type { DiceRollResult } from "../dice"
 
 /**
@@ -191,6 +192,10 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
   // Attribution follows the character's owner (ADR-0006): the entry is the
   // owner's action in their visibility scope, whoever invoked it.
   const member = yield* store.getMembership(sheet.sessionId, sheet.userId)
+
+  // The pending-cast lock (issue #109): a pending vulgar Cast freezes the
+  // member's other rolls; an unanswered offer holds the Storyteller's.
+  yield* requireRollFreedom(member)
 
   // Move rule: the sheet's Arcanum dots must meet the declared level (the
   // Practices ladder). Which level an improvised effect *is* stays table

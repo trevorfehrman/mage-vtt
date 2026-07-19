@@ -1,6 +1,9 @@
 import { Effect, Layer, Random } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import { KnownRote, type CharacterSheet } from "../character"
+import { castSpell } from "../flows/casting"
+import { createRoll } from "../flows/rolls"
+import { castRote } from "../flows/rote-cast"
 import { closeScene } from "../flows/scene"
 import { RotePool } from "../rote-pool"
 import {
@@ -1625,5 +1628,165 @@ describe("Flows.vulgarCast — the in-stead door stays visible (ADR-0015)", () =
       expect(store.casts[0]!.override?.kind).toBe("storyteller-action")
       expect(store.messages[0]!.override?.kind).toBe("storyteller-action")
     }),
+  )
+})
+
+describe("Flows — the pending-cast lock (issue #109)", () => {
+  const looseDice = [{ type: "modifier", name: "Dice", dots: 3 }]
+
+  it.effect("a caster with a drafted cast may not roll dice", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [castAt("draft")] })
+
+      const exit = yield* createRoll({
+        sessionId: SESSION,
+        components: looseDice,
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("CasterHasPendingCast")
+      expect(store.rolls).toHaveLength(0)
+    }),
+  )
+
+  it.effect("a caster with a cast on stage may not cast covert", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [castAt("price")] })
+
+      const exit = yield* castSpell({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        arcanum: "death",
+        level: 1,
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("CasterHasPendingCast")
+      expect(store.rolls).toHaveLength(0)
+    }),
+  )
+
+  it.effect("a caster with a pending cast may not cast a covert Rote", () =>
+    Effect.gen(function* () {
+      const graveMien = new KnownRote({
+        name: "Grave Mien",
+        spellName: "Speak with the Dead",
+        spellArcanum: "Death",
+        spellLevel: 2,
+        order: "Mysterium",
+        pool: new RotePool({ attribute: "Presence", skills: ["Occult"], arcanum: "Death" }),
+      })
+      const store = seed({
+        sheet: makeSheet({ knownRotes: [graveMien] }),
+        spells: [
+          new SpellRef({ name: "Speak with the Dead", arcanum: "Death", level: 2, aspect: "Covert" }),
+        ],
+        casts: [castAt("draft")],
+      })
+
+      const exit = yield* castRote({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        roteName: "Grave Mien",
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("CasterHasPendingCast")
+      expect(store.rolls).toHaveLength(0)
+    }),
+  )
+
+  it.effect("the lock follows the member across characters, not the sheet", () =>
+    Effect.gen(function* () {
+      // Aldous's SECOND sheet: the per-character CastAlreadyPending can't see
+      // the pending cast on char-aldous, but the member-level lock must.
+      const store = makeInMemory({
+        members: [aldous, briar, stella],
+        actor: { userId: PLAYER, isDev: false },
+        sheets: [
+          makeSheet(),
+          makeSheet({ id: "char-aldous-2", sessionMemberId: "member-aldous-2" }),
+        ],
+        casts: [castAt("draft")],
+      })
+
+      const exit = yield* draftCast({
+        sessionId: SESSION,
+        characterId: "char-aldous-2",
+        arcanum: "death",
+        level: 1,
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("CasterHasPendingCast")
+      expect(store.casts).toHaveLength(1)
+    }),
+  )
+
+  it.effect("the same character's second draft still refuses per-character first", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [castAt("draft")] })
+
+      const exit = yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        arcanum: "death",
+        level: 1,
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+
+      // The richer refusal keeps its door (existing contract, unchanged).
+      expect(failureTag(exit)).toBe("CastAlreadyPending")
+    }),
+  )
+
+  it.effect("the Storyteller may not roll while a draft waits in the wings", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [castAt("draft")] })
+
+      const exit = yield* createRoll({
+        sessionId: SESSION,
+        components: looseDice,
+      }).pipe(as(ST_USER), Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("OfferAwaitsAnswer")
+      expect(store.rolls).toHaveLength(0)
+    }),
+  )
+
+  it.effect("an engaged cast frees the Storyteller's own dice", () =>
+    Effect.gen(function* () {
+      // On stage (price) is answered — the ST may need their own rolls to run
+      // the world against it (contested pools); only unanswered drafts lock.
+      const store = seed({ casts: [castAt("price")] })
+
+      yield* createRoll({
+        sessionId: SESSION,
+        components: looseDice,
+      }).pipe(as(ST_USER), Effect.provide(store.layer))
+
+      expect(store.rolls).toHaveLength(1)
+    }).pipe(Random.withSeed("lock-st-free")),
+  )
+
+  it.effect("a spectator rolls freely while another's draft waits", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [castAt("draft")] })
+
+      yield* createRoll({
+        sessionId: SESSION,
+        components: looseDice,
+      }).pipe(as(OTHER_PLAYER), Effect.provide(store.layer))
+
+      expect(store.rolls).toHaveLength(1)
+    }).pipe(Random.withSeed("lock-spectator")),
+  )
+
+  it.effect("a resolved cast locks nothing", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [castAt("resolved")] })
+
+      yield* createRoll({
+        sessionId: SESSION,
+        components: looseDice,
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      expect(store.rolls).toHaveLength(1)
+    }).pipe(Random.withSeed("lock-resolved")),
   )
 })

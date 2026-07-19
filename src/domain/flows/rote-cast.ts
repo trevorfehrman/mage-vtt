@@ -11,6 +11,7 @@ import { spendWillpower, WILLPOWER_BONUS_DICE } from "../willpower-economy"
 import type { CharacterSheet, KnownRote } from "../character"
 import type { DiceRollResult } from "../dice"
 import { factorPenaltyComponents, InvalidCastDeclaration, outcomeOf } from "./casting"
+import { requireRollFreedom } from "./pending-lock"
 
 /**
  * `castRote` — a Player casts a Rote their character trained, through the
@@ -161,6 +162,10 @@ export const castRote = Effect.fn("Flows.roteCast.castRote")(function* (
 
   // Attribution follows the character's owner (ADR-0006).
   const member = yield* store.getMembership(sheet.sessionId, sheet.userId)
+
+  // The pending-cast lock (issue #109): a pending vulgar Cast freezes the
+  // member's other rolls; an unanswered offer holds the Storyteller's.
+  yield* requireRollFreedom(member)
 
   // The spell reference row, by the Rote's business key: the Aspect gate reads
   // reference data, never client input (PRD #11 — aspect gates, method does not).

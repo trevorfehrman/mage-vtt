@@ -10,6 +10,7 @@ import {
 import { CharacterId, SessionId } from "../ids"
 import { GameStore } from "../ports/game-store"
 import { spendWillpower, WILLPOWER_BONUS_DICE } from "../willpower-economy"
+import { requireRollFreedom } from "./pending-lock"
 import type { Willpower } from "../quantities"
 
 /**
@@ -74,6 +75,10 @@ export const createRoll = Effect.fn("Flows.rolls.create")(function* (
   } else {
     member = yield* requireMember(sessionId)
   }
+
+  // The pending-cast lock (issue #109): a pending vulgar Cast freezes the
+  // member's other rolls; an unanswered offer holds the Storyteller's.
+  yield* requireRollFreedom(member)
 
   // A declared Willpower spend: resolve the funding sheet, walk the authority
   // ladder, and check the pool before anything rolls or writes.

@@ -48,6 +48,7 @@ import {
   modifierComponents,
   outcomeOf,
 } from "./casting"
+import { requireRollFreedom } from "./pending-lock"
 import { requireKnownRote } from "./rote-cast"
 
 /**
@@ -540,6 +541,12 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
   }
 
   const member = yield* store.getMembership(sheet.sessionId, sheet.userId)
+
+  // The pending-cast lock (issue #109), after the per-character refusal so
+  // the same character's second draft keeps its richer door: the member's
+  // OTHER characters are locked too — the lock follows the person.
+  yield* requireRollFreedom(member)
+
   const intent = args.intent?.trim()
 
   // The bought floor stamps only when bought — Potency 1 and one target are
