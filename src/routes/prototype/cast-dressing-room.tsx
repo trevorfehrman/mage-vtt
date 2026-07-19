@@ -3,6 +3,13 @@
 // The cheap viewing rig for the live Cast card: every rung of the ladder
 // (7 live + cancelled/voided) × every seat (caster / storyteller / bystander),
 // flipped through in seconds instead of a two-account Convex playthrough.
+// The #102 grammar audition adds a third knob (?grammar=): three complete
+// success-ink candidates — A merge (success IS verdigris), B quantity (no
+// status hue; count, weight, and pips carry it), C mint (a second green at
+// hard tonal distance). Everything settled at the 2026-07-18 grilling —
+// danger slot, Mana blue + glyph, ember/verdigris rungs and buttons, neutral
+// dice counts — renders identically in all three; the knob only swaps the
+// --rail-success alias.
 // The REAL app shell (SessionLayout), the REAL feed neighbors (MessageItem /
 // RollItem), and the REAL CastCard — fed hand-built fake Cast documents via
 // URL knobs (?rung=…&seat=…), reload-stable and shareable.
@@ -53,15 +60,32 @@ type RigRung = (typeof RUNG_ORDER)[number]
 const SEAT_ORDER = ["caster", "storyteller", "bystander"] as const
 type RigSeat = (typeof SEAT_ORDER)[number]
 
+// The #102 root candidates: each is ONLY an alias swap on --rail-success —
+// the settled grammar (danger, Mana, turns, pending) never varies.
+const GRAMMAR_ORDER = ["merge", "quantity", "mint"] as const
+type RigGrammar = (typeof GRAMMAR_ORDER)[number]
+
+const GRAMMARS: Record<
+  RigGrammar,
+  { label: string; vars: Record<string, string> }
+> = {
+  merge: { label: "A · merge", vars: {} }, // styles.css default: success IS verdigris
+  quantity: { label: "B · quantity", vars: { "--rail-success": "var(--ink)" } },
+  mint: { label: "C · mint", vars: { "--rail-success": "#93e6bf" } },
+}
+
 const isRung = (v: unknown): v is RigRung =>
   typeof v === "string" && (RUNG_ORDER as ReadonlyArray<string>).includes(v)
 const isSeat = (v: unknown): v is RigSeat =>
   typeof v === "string" && (SEAT_ORDER as ReadonlyArray<string>).includes(v)
+const isGrammar = (v: unknown): v is RigGrammar =>
+  typeof v === "string" && (GRAMMAR_ORDER as ReadonlyArray<string>).includes(v)
 
 export const Route = createFileRoute("/prototype/cast-dressing-room")({
   validateSearch: (search: Record<string, unknown>) => ({
     rung: isRung(search.rung) ? search.rung : ("draft" as RigRung),
     seat: isSeat(search.seat) ? search.seat : ("caster" as RigSeat),
+    grammar: isGrammar(search.grammar) ? search.grammar : ("merge" as RigGrammar),
   }),
   component: DressingRoom,
 })
@@ -235,7 +259,7 @@ const SEAT_VIEW: Record<
 // ── The rig ──────────────────────────────────────────────────────────────────
 
 function DressingRoom() {
-  const { rung, seat } = Route.useSearch()
+  const { rung, seat, grammar } = Route.useSearch()
   const navigate = Route.useNavigate()
   const pool = useDicePool(SESSION_ID)
 
@@ -301,6 +325,9 @@ function DressingRoom() {
 
   return (
     <>
+      {/* display:contents — no layout, just the grammar's CSS-var override
+          inheriting into the whole shell. */}
+      <div className="contents" style={GRAMMARS[grammar].vars}>
       <SessionLayout
         sessionName="The Dressing Room"
         inviteCode="PROTO-96"
@@ -333,10 +360,37 @@ function DressingRoom() {
         }
         onClearPool={pool.reset}
       />
+      </div>
 
       {/* The knobs — deliberately foreign to the mv language so nobody
           mistakes them for the design under audition. */}
       <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full bg-zinc-100 px-4 py-2 text-zinc-900 shadow-lg">
+        <div className="flex items-center gap-1">
+          {GRAMMAR_ORDER.map((g) => (
+            <button
+              key={g}
+              onClick={() =>
+                void navigate({
+                  search: (prev) => ({ ...prev, grammar: g }),
+                  replace: true,
+                })
+              }
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                g === grammar ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
+              }`}
+              title={
+                g === "merge"
+                  ? "Success IS verdigris — two token names, one hex"
+                  : g === "quantity"
+                    ? "No status hue — count, weight, and pips carry success"
+                    : "A second green at hard tonal distance"
+              }
+            >
+              {GRAMMARS[g].label}
+            </button>
+          ))}
+        </div>
+        <span className="h-4 w-px bg-zinc-400" />
         <div className="flex items-center gap-1">
           {SEAT_ORDER.map((s) => (
             <button

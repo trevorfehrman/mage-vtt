@@ -13,8 +13,13 @@ export function ResourceStrip({ character }: { character: CharacterSheet }) {
       className="flex items-center justify-between gap-4 border-t px-3 py-2"
       style={{ borderColor: "var(--line)" }}
     >
+      {/* Mana is canonically blue (#102): identity hue + mandatory glyph —
+          the grammar's growth rule. Will keeps the default ink until its own
+          identity question is put to the owner. */}
       <Meter
         label="Mana"
+        glyph="◈"
+        color="var(--mana)"
         filled={character.manaCurrent}
         max={Math.min(character.maxMana, 10)}
         readout={`${character.manaCurrent}/${character.maxMana}`}
@@ -31,24 +36,35 @@ export function ResourceStrip({ character }: { character: CharacterSheet }) {
 
 function Meter({
   label,
+  glyph,
+  color = "var(--accent)",
   filled,
   max,
   readout,
 }: {
   label: string
+  glyph?: string
+  color?: string
   filled: number
   max: number
   readout: string
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="mv-eyebrow">{label}</span>
+      <span className="mv-eyebrow">
+        {glyph ? (
+          <span aria-hidden style={{ color }}>
+            {glyph}{" "}
+          </span>
+        ) : null}
+        {label}
+      </span>
       <span className="inline-flex gap-[3px]">
         {Array.from({ length: max }, (_, i) => (
           <span
             key={i}
             className="text-[14px] leading-none"
-            style={{ color: i < filled ? "var(--accent)" : "var(--line)" }}
+            style={{ color: i < filled ? color : "var(--line)" }}
           >
             ◆
           </span>

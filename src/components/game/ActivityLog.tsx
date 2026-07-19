@@ -215,10 +215,21 @@ export function RollItem({ roll }: { roll: RollEntry }) {
       <div className="mt-1 flex items-baseline gap-2">
         <span
           className="mv-data text-[24px] font-bold leading-none"
-          style={{ color: roll.successes > 0 ? "var(--accent)" : "var(--dim)" }}
+          style={{ color: roll.successes > 0 ? "var(--rail-success)" : "var(--dim)" }}
         >
           {roll.successes}
         </span>
+        {/* Success pips — the non-hue channel (#102): the count reads even
+            when --rail-success carries no status hue at all. */}
+        {roll.successes > 0 && (
+          <span
+            className="text-[10px] tracking-[0.15em]"
+            style={{ color: "var(--rail-success)" }}
+            aria-hidden
+          >
+            {"✦".repeat(Math.min(roll.successes, 6))}
+          </span>
+        )}
         <span className="text-[11px]" style={{ color: "var(--dim)" }}>
           {roll.successes === 1 ? "success" : "successes"} ·{" "}
           {roll.isChanceDie ? "chance die" : `${roll.poolSize} dice`}
@@ -270,7 +281,7 @@ function Die({
     <span
       className="mv-data grid size-5 place-items-center rounded-[2px] text-[10px] font-bold"
       style={{
-        background: dramatic ? "var(--bad)" : success ? "var(--accent)" : "var(--raise)",
+        background: dramatic ? "var(--bad)" : success ? "var(--rail-success)" : "var(--raise)",
         color: dramatic || success ? "#0a0a0c" : "var(--dim)",
         boxShadow:
           ring === "rote"
@@ -288,7 +299,7 @@ function Die({
 }
 
 function Tag({ kind, title, children }: { kind?: "good" | "bad"; title?: string; children: ReactNode }) {
-  const c = kind === "good" ? "var(--accent)" : kind === "bad" ? "var(--bad)" : "var(--dim)"
+  const c = kind === "good" ? "var(--rail-success)" : kind === "bad" ? "var(--bad)" : "var(--dim)"
   return (
     <span
       title={title}

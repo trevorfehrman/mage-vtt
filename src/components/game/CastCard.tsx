@@ -213,19 +213,28 @@ export function CastCard({
           {RUNGS.map((rung, i) => {
             const here = i === rungIndex(status)
             const past = i < rungIndex(status)
+            // The two-colored negotiation (#102, funding ADR-0022): each rung
+            // wears the hand it waits on — ember yours, verdigris the world's.
+            const turn = waitingOn(rung.status)
+            const tint =
+              turn === "caster"
+                ? "var(--turn-caster)"
+                : turn === "storyteller"
+                  ? "var(--turn-world)"
+                  : "var(--ink)"
             return (
               <div key={rung.status} className="flex min-w-0 flex-1 flex-col gap-1">
                 <div
                   className="h-[3px] rounded-full"
                   style={{
-                    background: past || here ? "var(--accent)" : "var(--raise)",
+                    background: past || here ? tint : "var(--raise)",
                     opacity: here ? 1 : past ? 0.55 : 1,
                     boxShadow: here ? "0 0 6px var(--glow)" : undefined,
                   }}
                 />
                 <span
                   className="mv-data truncate text-center text-[8px] uppercase tracking-wide"
-                  style={{ color: here ? "var(--accent)" : "var(--dim)" }}
+                  style={{ color: here ? tint : "var(--dim)" }}
                 >
                   {rung.label}
                 </span>
@@ -245,7 +254,9 @@ export function CastCard({
         {pool !== null && !terminal && (
           <span className="mv-data">
             Paradox pool{" "}
-            <b style={{ color: "var(--accent)" }}>
+            {/* A dice count is a quantity, never good news (#102) — the
+                insurance table below headlines the actual risk. */}
+            <b style={{ color: "var(--ink)" }}>
               {pool.totalDice === 0 ? "chance die" : `${pool.totalDice} dice`}
             </b>
             {" — "}
@@ -255,7 +266,7 @@ export function CastCard({
         {cast.paradoxSuccesses !== undefined && (
           <span className="mv-data">
             Paradox rolled{" "}
-            <b style={{ color: cast.paradoxSuccesses > 0 ? "var(--bad)" : "var(--accent)" }}>
+            <b style={{ color: cast.paradoxSuccesses > 0 ? "var(--bad)" : "var(--rail-success)" }}>
               {cast.paradoxSuccesses} {cast.paradoxSuccesses === 1 ? "success" : "successes"}
             </b>
             {cast.paradoxIsDramaticFailure ? " — dramatic failure, Paradox relents" : ""}
@@ -267,7 +278,7 @@ export function CastCard({
         {status === "resolved" && (
           <span className="mv-data">
             cast rolled{" "}
-            <b style={{ color: (cast.castSuccesses ?? 0) > 0 ? "var(--accent)" : "var(--dim)" }}>
+            <b style={{ color: (cast.castSuccesses ?? 0) > 0 ? "var(--rail-success)" : "var(--dim)" }}>
               {cast.castSuccesses} {cast.castSuccesses === 1 ? "success" : "successes"}
             </b>
             {cast.severity && cast.severity !== "none"
@@ -280,7 +291,13 @@ export function CastCard({
       {/* who the table waits on */}
       {!terminal && (
         <p className="mt-1.5 text-[11px] italic" style={{ color: "var(--dim)" }}>
-          <span className="inline-flex size-1.5 animate-pulse rounded-full align-middle" style={{ background: "var(--accent)" }} />{" "}
+          <span
+            className="inline-flex size-1.5 animate-pulse rounded-full align-middle"
+            style={{
+              background:
+                waiting === "caster" ? "var(--turn-caster)" : "var(--turn-world)",
+            }}
+          />{" "}
           waiting on {waiting === "storyteller" ? "the Storyteller" : cast.casterName}
           {(waiting === "caster" && isCaster) ||
           (waiting === "storyteller" && isStoryteller)
@@ -466,7 +483,7 @@ export function CastCard({
                   run(() => lockIntention({ ...step, manaMitigation: mitigation }))
                 }
                 disabled={busy}
-                className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
+                className="mv-commit rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
                 title="The point of no return: mitigation and spell cost commit now."
               >
                 Lock Intention — commit {cast.spellManaCost + mitigation} Mana
@@ -498,18 +515,21 @@ export function CastCard({
                   run(() => contain({ ...step, containedSuccesses: contained }))
                 }
                 disabled={busy}
-                className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
+                className="mv-commit rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
                 title="Each contained success is one Resistant bashing wound."
               >
                 Contain {contained} as Resistant bashing
               </button>
             </>
           )}
+          {/* The caster's own hands burn ember (mv-commit); the world-side
+              buttons (Engage, Lock Liabilities, Roll Paradox) keep the
+              verdigris mv-roll — the ladder's two colors, enacted (#102). */}
           {controls.includes("rollCast") && (
             <button
               onClick={() => run(() => rollCast(step))}
               disabled={busy}
-              className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
+              className="mv-commit rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
             >
               Release the Spell
             </button>
@@ -633,6 +653,10 @@ function MitigationPreview({
       style={{ border: "1px dashed var(--line)" }}
     >
       <span className="mv-eyebrow">Blind insurance — each Mana buys off one Paradox die</span>
+      {/* Danger reads as danger (#102): the risk is the headline, in the hot
+          slot; dice counts stay neutral quantities — never accent-green good
+          news. Picking a spend is the caster's hand, so selection burns ember;
+          the Mana price wears Mana's own blue and glyph. */}
       {rows.map(({ spend, dice, odds }) => {
         const here = spend === Math.min(selected, cap)
         return (
@@ -642,16 +666,21 @@ function MitigationPreview({
             disabled={disabled}
             className="mv-data grid grid-cols-[3.5rem_5rem_1fr_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[10px] disabled:opacity-40"
             style={{
-              border: here ? "1px solid var(--accent)" : "1px solid transparent",
+              border: here ? "1px solid var(--ember)" : "1px solid transparent",
               color: here ? "var(--ink)" : "var(--dim)",
             }}
           >
-            <span>{spend} Mana</span>
-            <span style={{ color: here ? "var(--accent)" : undefined }}>
+            <span style={{ color: here ? "var(--mana)" : undefined }}>
+              ◈ {spend} Mana
+            </span>
+            <span style={{ color: here ? "var(--ink)" : undefined }}>
               {diceLabel(dice)}
             </span>
             <span>
-              bites <b style={{ color: "var(--bad)" }}>{pct(odds.success)}</b>
+              bites{" "}
+              <b className="text-[11px]" style={{ color: "var(--rail-danger)" }}>
+                {pct(odds.success)}
+              </b>
             </span>
             <span>~{odds.expected.toFixed(2)} successes</span>
           </button>
@@ -705,7 +734,7 @@ function ContainmentBet({
           value={contained}
           onChange={(e) => onChange(Number(e.target.value))}
           disabled={disabled || cap === 0}
-          className="flex-1 accent-[var(--accent)]"
+          className="flex-1 accent-[var(--ember)]"
         />
         <span className="mv-data w-10 text-center text-[13px] font-bold">
           {contained} / {cap}
@@ -724,7 +753,7 @@ function ContainmentBet({
           {outlook.newPenalty < 0 ? ` (${outlook.newPenalty} new)` : ""}
         </span>
         <span>
-          casts on <b style={{ color: "var(--accent)" }}>{diceLabel(outlook.castPool)}</b>
+          casts on <b style={{ color: "var(--ink)" }}>{diceLabel(outlook.castPool)}</b>
         </span>
         <span>
           {outlook.uncontained} {outlook.uncontained === 1 ? "success" : "successes"} loose
@@ -732,7 +761,7 @@ function ContainmentBet({
       </div>
       <div className="mv-data flex flex-wrap gap-x-3 gap-y-0.5 text-[10px]" style={{ color: "var(--dim)" }}>
         <span>
-          success <b style={{ color: "var(--accent)" }}>{pct(odds.success)}</b>
+          success <b style={{ color: "var(--rail-success)" }}>{pct(odds.success)}</b>
         </span>
         <span>~{odds.expected.toFixed(2)} successes</span>
         <span>exceptional {pct(odds.exceptional)}</span>
