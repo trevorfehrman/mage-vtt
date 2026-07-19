@@ -17,6 +17,7 @@
  */
 
 import { Schema } from "effect"
+import { CastStatus, TidesSnapshot } from "./cast"
 import { CombatParticipant } from "./combat-tracker"
 import { ConvexId } from "./schema-bridge"
 import { OverrideKind } from "./override"
@@ -243,78 +244,83 @@ export const CharacterDoc = Schema.Struct({
 })
 
 /**
- * Stored shape of a Scene (issue #42): the ST-controlled narrative container.
- * At most one row per session is `active` — an invariant the open flow
- * enforces, not the table. Raw primitives here (ADR-0011); the vocabulary
- * decode lives in `scene.ts`. `closedAt` is present only once closed.
+ * Stored shape of a Scene (issue #42, ADR-0022): the ST-controlled narrative
+ * container, owner of the Tides — the ambient price of vulgar magic. At most
+ * one row per session is `active` — an invariant the open flow enforces, not
+ * the table. Raw primitives here (ADR-0011); the vocabulary decode lives in
+ * `scene.ts`. `closedAt` is present only once closed. The Tides columns
+ * (`witnessCount`, `circumstances`) are written on every new row; the
+ * `sleeperWitnesses` boolean survives only for rows written before the
+ * stepper superseded it ("true is one witness").
  */
 export const SceneDoc = Schema.Struct({
   sessionId: ConvexId("sessions"),
   name: Schema.String,
   status: Schema.Literals(["active", "closed"]),
-  sleeperWitnesses: Schema.Boolean,
+  sleeperWitnesses: Schema.optionalKey(Schema.Boolean),
+  witnessCount: Schema.optionalKey(Schema.Number),
+  circumstances: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
   openedAt: Schema.Number,
   closedAt: Schema.optionalKey(Schema.Number),
 })
 
 /**
- * Stored shape of a Cast (issue #43, ADR-0016): the Vulgar-casting handshake's
- * single source of truth, walking the status ladder one mutation per dramatic
- * beat. Raw primitives here (ADR-0011); the vocabulary decode lives in
- * `cast.ts`. Beat fields are present only once their beat lands, so the
- * document alone rehydrates a reconnecting client mid-ladder. `override`
- * carries void's repair provenance (ADR-0006/0015); resolved rows are the
- * system of record for the per-(Scene, caster) Paradox accumulator (ADR-0012).
+ * Stored shape of a Cast (issue #43, ADR-0016 as amended by ADR-0022): the
+ * Vulgar-casting handshake's single source of truth, walking the four-rung
+ * ladder one mutation per commitment. Raw primitives here (ADR-0011); the
+ * vocabulary decode lives in `cast.ts` — the status column reuses the domain
+ * `CastStatus` literals so a removed rung is one edit, everywhere. Beat
+ * fields are present only once their beat lands, so the document alone
+ * rehydrates a reconnecting client mid-ladder. `override` carries void's
+ * repair provenance (ADR-0006/0015); resolved rows are the system of record
+ * for the per-(Scene, caster) Paradox accumulator (ADR-0012). The retired
+ * negotiation columns (`sleeperWitnesses`, `witnessCount`,
+ * `priorParadoxRolls`, `discretionaryModifiers`) survive only so resolved
+ * rows written under the seven-rung ladder keep validating.
  */
 export const CastDoc = Schema.Struct({
   sessionId: ConvexId("sessions"),
   characterId: ConvexId("characters"),
   casterUserId: Schema.String,
   casterName: Schema.String,
-  status: Schema.Literals([
-    "draft",
-    "engaged",
-    "liabilitiesLocked",
-    "intentionLocked",
-    "paradoxRolled",
-    "contained",
-    "resolved",
-    "cancelled",
-    "voided",
-  ]),
+  status: CastStatus,
   // Declaration (the draft beat). The rote lane (issue #47) stamps `isRote`
   // and the Rote's name; absent on improvised rows and on pre-lane rows.
+  // `spendWillpower` is the blind precommitment (ADR-0022, WoD p. 133).
   arcanum: Schema.String,
   level: Schema.Number,
   isRote: Schema.optionalKey(Schema.Boolean),
   roteName: Schema.optionalKey(Schema.String),
   intent: Schema.optionalKey(Schema.String),
   usesMagicalTool: Schema.Boolean,
+  spendWillpower: Schema.optionalKey(Schema.Boolean),
   declaredComponents: Schema.Array(DiceRollComponentDoc),
   declaredPool: Schema.Number,
   spellManaCost: Schema.Number,
-  // The stage (the engage beat), then live under the negotiation's edits
-  // (issue #44). `witnessCount` supersedes the boolean on new rows — the
-  // boolean stays for rows written before the count existed.
+  // The stage (the engage beat)
   sceneId: Schema.optionalKey(ConvexId("scenes")),
   gnosis: Schema.optionalKey(Schema.Number),
-  sleeperWitnesses: Schema.optionalKey(Schema.Boolean),
-  witnessCount: Schema.optionalKey(Schema.Number),
-  priorParadoxRolls: Schema.optionalKey(Schema.Number),
-  // Same raw two-field struct the pool speaks (plain String + Number, so the
-  // Doc layer stays primitive per ADR-0011).
-  discretionaryModifiers: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
-  // Commitment (the caster's point-of-no-return lock)
+  // The Price (ADR-0022): the ST's personal adjustments, then the frozen
+  // Tides seed — the snapshot's presence IS the freeze. Both reuse the
+  // domain shapes (raw primitives already, ADR-0011), never a hand-mirror.
+  adjustments: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
+  tides: Schema.optionalKey(TidesSnapshot),
+  // Commitment (the caster's point of no return)
   manaMitigation: Schema.optionalKey(Schema.Number),
-  // The Paradox roll
+  // The Paradox roll — stamped mid-rung; its presence flips the phase.
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
   paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
-  // Containment
+  // The cockpit's broadcast draft, then the one Cast click and resolution.
+  draftContainedSuccesses: Schema.optionalKey(Schema.Number),
   containedSuccesses: Schema.optionalKey(Schema.Number),
-  // The cast roll and resolution
   castPool: Schema.optionalKey(Schema.Number),
   castSuccesses: Schema.optionalKey(Schema.Number),
   severity: Schema.optionalKey(Schema.String),
+  // Legacy negotiation columns — seven-rung rows only; no new writes.
+  sleeperWitnesses: Schema.optionalKey(Schema.Boolean),
+  witnessCount: Schema.optionalKey(Schema.Number),
+  priorParadoxRolls: Schema.optionalKey(Schema.Number),
+  discretionaryModifiers: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
   override: Schema.optionalKey(OverrideMarkerDoc),
   createdAt: Schema.Number,
   updatedAt: Schema.Number,

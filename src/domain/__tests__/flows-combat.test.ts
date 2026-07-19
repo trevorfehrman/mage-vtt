@@ -68,7 +68,8 @@ const activeScene = (): StoredScene => ({
   sessionId: SESSION,
   name: "The Docks",
   status: "active",
-  sleeperWitnesses: false,
+  witnessCount: 0,
+  circumstances: [],
   openedAt: 0,
 })
 

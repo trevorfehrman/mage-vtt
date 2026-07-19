@@ -1,7 +1,7 @@
 import { Match } from "effect"
 import { assign, setup, type StateValue } from "xstate"
 import type { CastEntry } from "#/domain/activity"
-import { CastStatus, isOnStage } from "#/domain/cast"
+import { CastStatus, isOnStage, isPriceFrozen, type CastPhases } from "#/domain/cast"
 
 /**
  * The Cast-ladder machine (issue #43, ADR-0016): a *projection* of the
@@ -70,49 +70,60 @@ export const ladderRung = (value: StateValue, cast: CastEntry): CastStatus =>
   value === "deriving" ? cast.status : (value as CastStatus)
 
 /**
- * The card's controls for one (rung, viewer) pair — the pure heart of
- * "buttons only for my role". Spectators get none; the Storyteller's `void`
- * door is open on any live rung (ADR-0015's visible repair). Caster beats
- * list for the caster only — an ST driving them in a player's stead is
- * server-legal (Override-stamped) but not chrome we offer.
+ * The card's controls for one (rung-phase, viewer) pair — the pure heart of
+ * "buttons only for my role". The two-colored rungs (ADR-0022) split on the
+ * document's stamps, read through `waitingOn`'s `CastPhases` shape.
+ * Spectators get none; the Storyteller's `void` door is open on any live
+ * rung (ADR-0015's visible repair). Caster beats list for the caster only —
+ * an ST driving them in a player's stead is server-legal (Override-stamped)
+ * but not chrome we offer.
  */
 export type LadderControl =
   | "kill" // caster: withdraw own draft
   | "decline" // ST: refuse a draft
   | "engage" // ST: put a draft on stage
-  | "negotiate" // ST: the liability buttons (issue #44), engaged only
-  | "tool" // caster: the magical-tool toggle, free until the ST locks
-  | "lockLiabilities" // ST: freeze the pool
-  | "lockIntention" // caster: the point of no return (with mitigation)
-  | "cancel" // either party, pre-commitment
+  | "adjust" // ST: personal adjustments (ADR-0022), The Price before the freeze
+  | "tool" // caster: the magical-tool toggle, free until the freeze
+  | "lockPrice" // ST: THE FREEZE — stamp the Tides, go hands-off
+  | "commit" // caster: the point of no return (with mitigation)
+  | "cancel" // either party, anywhere on The Price
   | "rollParadox" // ST's own button
-  | "contain" // caster: bet flesh (with the capped input)
-  | "rollCast" // caster: the climax
+  | "contain" // caster: the cockpit's draft box clicks (broadcast state)
+  | "release" // caster: the one Cast click — containment lands, dice fly
   | "void" // ST: the Override-stamped repair
 
 export const ladderControls = (
-  status: CastStatus,
+  cast: CastPhases,
   viewer: { isStoryteller: boolean; isCaster: boolean },
 ): ReadonlyArray<LadderControl> => {
   const eitherParty = viewer.isCaster || viewer.isStoryteller
-  const rung = Match.value(status).pipe(
+  const rung = Match.value(cast.status).pipe(
     Match.withReturnType<ReadonlyArray<LadderControl>>(),
     Match.when("draft", () => [
       ...(viewer.isCaster ? (["kill", "tool"] as const) : []),
       ...(viewer.isStoryteller ? (["engage", "decline"] as const) : []),
     ]),
-    Match.when("engaged", () => [
-      ...(viewer.isStoryteller ? (["negotiate", "lockLiabilities"] as const) : []),
-      ...(viewer.isCaster ? (["tool"] as const) : []),
-      ...(eitherParty ? (["cancel"] as const) : []),
-    ]),
-    Match.when("liabilitiesLocked", () => [
-      ...(viewer.isCaster ? (["lockIntention"] as const) : []),
-      ...(eitherParty ? (["cancel"] as const) : []),
-    ]),
-    Match.when("intentionLocked", () => (viewer.isStoryteller ? ["rollParadox" as const] : [])),
-    Match.when("paradoxRolled", () => (viewer.isCaster ? ["contain" as const] : [])),
-    Match.when("contained", () => (viewer.isCaster ? ["rollCast" as const] : [])),
+    Match.when("price", () =>
+      isPriceFrozen(cast)
+        ? [
+            ...(viewer.isCaster ? (["commit"] as const) : []),
+            ...(eitherParty ? (["cancel"] as const) : []),
+          ]
+        : [
+            ...(viewer.isStoryteller ? (["adjust", "lockPrice"] as const) : []),
+            ...(viewer.isCaster ? (["tool"] as const) : []),
+            ...(eitherParty ? (["cancel"] as const) : []),
+          ],
+    ),
+    Match.when("paradox", () =>
+      cast.paradoxSuccesses === undefined
+        ? viewer.isStoryteller
+          ? (["rollParadox"] as const)
+          : []
+        : viewer.isCaster
+          ? (["contain", "release"] as const)
+          : [],
+    ),
     // Terminal rungs offer no buttons — listed, not defaulted (ADR-0018), so a
     // new rung is a compile error here instead of a silently control-less card.
     Match.whenOr("resolved", "cancelled", "voided", () => []),
@@ -120,5 +131,5 @@ export const ladderControls = (
   )
   // The repair door rides every live rung except the free-exit draft stage
   // (a draft dies by kill/decline; void exists to unstick the contract).
-  return viewer.isStoryteller && isOnStage(status) ? [...rung, "void"] : rung
+  return viewer.isStoryteller && isOnStage(cast.status) ? [...rung, "void"] : rung
 }

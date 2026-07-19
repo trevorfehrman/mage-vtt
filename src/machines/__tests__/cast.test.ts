@@ -286,6 +286,18 @@ describe("buildDraftSubmission", () => {
       skillChoice: "Occult",
     })
   })
+
+  test("the Willpower precommitment rides the draft wire (ADR-0022, WoD p. 133)", () => {
+    const actor = startMachine()
+    actor.send({ type: "ARM_IMPROVISED", arcanum: "forces", dots: 2 })
+    actor.send({ type: "SET_SPEND_WILLPOWER", value: true })
+    expect(buildDraftSubmission(actor.getSnapshot().context)).toEqual({
+      method: "improvised",
+      arcanum: "forces",
+      level: 1,
+      spendWillpower: true,
+    })
+  })
 })
 
 describe("buildSubmission", () => {

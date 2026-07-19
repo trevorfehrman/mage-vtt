@@ -6,7 +6,6 @@ import {
   containmentCap,
   containmentOutlook,
   mitigationCap,
-  effectiveWitnessCount,
   isRoteCast,
   toGnosisRank,
   waitingOn,
@@ -33,11 +32,8 @@ import type { Id } from "../../../convex/_generated/dataModel"
 
 const RUNGS: ReadonlyArray<{ status: CastStatus; label: string }> = [
   { status: "draft", label: "Draft" },
-  { status: "engaged", label: "Engaged" },
-  { status: "liabilitiesLocked", label: "Liabilities" },
-  { status: "intentionLocked", label: "Intention" },
-  { status: "paradoxRolled", label: "Paradox" },
-  { status: "contained", label: "Contained" },
+  { status: "price", label: "The Price" },
+  { status: "paradox", label: "Paradox" },
   { status: "resolved", label: "Resolved" },
 ]
 
@@ -70,25 +66,27 @@ export function CastCard({
   const status = ladderRung(state.value, cast)
 
   const isCaster = cast.casterUserId === viewerUserId
-  const controls = ladderControls(status, { isStoryteller, isCaster })
+  const controls = ladderControls(cast, { isStoryteller, isCaster })
 
   const kill = useMutation(api.casts.kill)
   const decline = useMutation(api.casts.decline)
   const engage = useMutation(api.casts.engage)
-  const editLiabilities = useMutation(api.casts.editLiabilities)
+  const adjustPrice = useMutation(api.casts.adjustPrice)
   const setTool = useMutation(api.casts.setTool)
-  const lockLiabilities = useMutation(api.casts.lockLiabilities)
-  const lockIntention = useMutation(api.casts.lockIntention)
+  const lockPrice = useMutation(api.casts.lockPrice)
+  const commit = useMutation(api.casts.commit)
   const cancel = useMutation(api.casts.cancel)
   const rollParadox = useMutation(api.casts.rollParadox)
-  const contain = useMutation(api.casts.contain)
-  const rollCast = useMutation(api.casts.rollCast)
+  const setDraftContainment = useMutation(api.casts.setDraftContainment)
+  const release = useMutation(api.casts.release)
   const voidCast = useMutation(api.casts.voidCast)
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mitigation, setMitigation] = useState(0)
-  const [contained, setContained] = useState(0)
+  // The cockpit's half-built sacrifice is broadcast working state on the
+  // document (ADR-0022): render from it, write through the drafting door.
+  const contained = cast.draftContainedSuccesses ?? 0
   // The ST's add-a-modifier form (issue #44): local until the Add press.
   const [modSource, setModSource] = useState("")
   const [modDice, setModDice] = useState(1)
@@ -115,24 +113,33 @@ export function CastCard({
 
   const step = { sessionId, castId: cast._id }
 
-  // The Paradox pool as the engage beat stamped it and the negotiation edits
-  // it live (ADR-0015, issue #44) — the same leaf the server rolls with,
-  // never a reimplementation. Old rows fall back from count to the boolean.
+  // The cockpit's box clicks write the broadcast draft (ADR-0022) — cheap
+  // seam-checked patches; refusals surface like any other button's.
+  const setContained = (value: number) =>
+    run(() => setDraftContainment({ ...step, draftContainedSuccesses: value }))
+
+  // The Paradox pool as the freeze stamped it (ADR-0022) — the same leaf the
+  // server rolls with, never a reimplementation. Before the freeze nothing is
+  // settled, so the card prices nothing (the strip shows the live Tides).
   const poolInputs =
-    cast.gnosis !== undefined
+    cast.gnosis !== undefined && cast.tides !== undefined
       ? {
           gnosis: toGnosisRank(cast.gnosis),
           isRote: isRoteCast(cast),
           usesMagicalTool: cast.usesMagicalTool,
-          witnessCount: effectiveWitnessCount(cast),
-          priorParadoxRollsThisScene: cast.priorParadoxRolls ?? 0,
-          discretionaryModifiers: cast.discretionaryModifiers ?? [],
+          witnessCount: cast.tides.witnessCount,
+          priorParadoxRollsThisScene: cast.tides.priorParadoxRolls,
+          discretionaryModifiers: [
+            ...cast.tides.circumstances,
+            ...(cast.adjustments ?? []),
+          ],
         }
       : null
+  const priceFrozenUncommitted = status === "price" && cast.tides !== undefined
   const pool = poolInputs
     ? calculateParadoxPool({
         ...poolInputs,
-        ...(status === "liabilitiesLocked"
+        ...(priceFrozenUncommitted
           ? { manaMitigation: mitigation }
           : cast.manaMitigation !== undefined
             ? { manaMitigation: cast.manaMitigation }
@@ -151,7 +158,7 @@ export function CastCard({
     ? containmentCap(mySheet.healthTrack, cast.paradoxSuccesses ?? 0)
     : (cast.paradoxSuccesses ?? 0)
 
-  const waiting = waitingOn(status)
+  const waiting = waitingOn(cast)
   const terminal = waiting === null
 
   return (
@@ -213,9 +220,11 @@ export function CastCard({
           {RUNGS.map((rung, i) => {
             const here = i === rungIndex(status)
             const past = i < rungIndex(status)
-            // The two-colored negotiation (#102, funding ADR-0022): each rung
-            // wears the hand it waits on — ember yours, verdigris the world's.
-            const turn = waitingOn(rung.status)
+            // The two-colored rungs (ADR-0022): only the live rung wears the
+            // hand it waits on — ember yours, verdigris the world's — derived
+            // from the document's stamps. Settled rungs read neutral; a rung
+            // not yet reached makes no claim about whose it will be.
+            const turn = here ? waiting : null
             const tint =
               turn === "caster"
                 ? "var(--turn-caster)"
@@ -306,32 +315,17 @@ export function CastCard({
         </p>
       )}
 
-      {/* The ST's liability buttons (issue #44): each press patches the shared
-          document, and every screen watches the pool reassemble live. */}
-      {controls.includes("negotiate") && (
+      {/* The ST's personal adjustments (ADR-0022): facts about this caster's
+          situation, patched onto the shared document while the price is
+          fluid — the scene's ambient Tides live on the strip, not here. */}
+      {controls.includes("adjust") && (
         <div
           className="mt-2 grid gap-2 rounded-[3px] p-2"
           style={{ border: "1px dashed var(--line)" }}
         >
-          <span className="mv-eyebrow">Liabilities — live for the whole table</span>
-          <div className="flex flex-wrap items-center gap-3">
-            <NumberInput
-              label="witnesses"
-              value={effectiveWitnessCount(cast)}
-              onChange={(n) => run(() => editLiabilities({ ...step, witnessCount: n }))}
-              disabled={busy}
-            />
-            <NumberInput
-              label="prior rolls"
-              value={cast.priorParadoxRolls ?? 0}
-              onChange={(n) =>
-                run(() => editLiabilities({ ...step, priorParadoxRolls: n }))
-              }
-              disabled={busy}
-            />
-          </div>
+          <span className="mv-eyebrow">Personal adjustments — this caster's situation</span>
           <div className="flex flex-wrap items-center gap-1.5">
-            {(cast.discretionaryModifiers ?? []).map((m, i) => (
+            {(cast.adjustments ?? []).map((m, i) => (
               <span
                 key={`${m.source}-${i}`}
                 className="mv-data inline-flex items-center gap-1 rounded-[2px] px-1.5 py-0.5 text-[10px]"
@@ -341,9 +335,9 @@ export function CastCard({
                 <button
                   onClick={() =>
                     run(() =>
-                      editLiabilities({
+                      adjustPrice({
                         ...step,
-                        discretionaryModifiers: (cast.discretionaryModifiers ?? [])
+                        adjustments: (cast.adjustments ?? [])
                           .filter((_, j) => j !== i)
                           .map((d) => ({ ...d })),
                       }),
@@ -352,7 +346,7 @@ export function CastCard({
                   disabled={busy}
                   className="leading-none disabled:opacity-40"
                   style={{ color: "var(--dim)" }}
-                  title="Remove this modifier"
+                  title="Remove this adjustment"
                 >
                   ×
                 </button>
@@ -361,7 +355,7 @@ export function CastCard({
             <input
               value={modSource}
               onChange={(e) => setModSource(e.target.value)}
-              placeholder="Name a circumstance…"
+              placeholder="Name an adjustment…"
               className="mv-data w-36 rounded-[3px] border bg-transparent px-2 py-0.5 text-[11px] outline-none focus:border-[var(--accent)]"
               style={{ borderColor: "var(--line)" }}
             />
@@ -371,10 +365,10 @@ export function CastCard({
                 const source = modSource.trim()
                 if (source.length === 0) return
                 const ok = await run(() =>
-                  editLiabilities({
+                  adjustPrice({
                     ...step,
-                    discretionaryModifiers: [
-                      ...(cast.discretionaryModifiers ?? []).map((d) => ({ ...d })),
+                    adjustments: [
+                      ...(cast.adjustments ?? []).map((d) => ({ ...d })),
                       { source, dice: modDice },
                     ],
                   }),
@@ -392,7 +386,7 @@ export function CastCard({
 
       {/* The blind insurance, priced (issue #45): every affordable Mana spend,
           the Paradox pool it buys, and exact odds — before the caster commits. */}
-      {controls.includes("lockIntention") && poolInputs !== null && (
+      {controls.includes("commit") && poolInputs !== null && (
         <MitigationPreview
           poolInputs={poolInputs}
           cap={mitigateCap}
@@ -403,7 +397,9 @@ export function CastCard({
       )}
 
       {/* The informed bet (issue #45): drag the slider, watch the double
-          shrink — uncontained dice bought back, wound penalties paid for. */}
+          shrink — uncontained dice bought back, wound penalties paid for.
+          Every stop is a broadcast draft write (ADR-0022): the whole table
+          watches the half-built sacrifice. */}
       {controls.includes("contain") && mySheet !== null && (
         <ContainmentBet
           track={mySheet.healthTrack}
@@ -460,16 +456,17 @@ export function CastCard({
               Magical tool
             </button>
           )}
-          {controls.includes("lockLiabilities") && (
+          {controls.includes("lockPrice") && (
             <button
-              onClick={() => run(() => lockLiabilities(step))}
+              onClick={() => run(() => lockPrice(step))}
               disabled={busy}
               className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
+              title="THE FREEZE: the Tides stamp onto the card and the price cannot shift again."
             >
-              Lock Liabilities
+              Freeze the Price
             </button>
           )}
-          {controls.includes("lockIntention") && (
+          {controls.includes("commit") && (
             <>
               <NumberInput
                 label="mitigate"
@@ -480,13 +477,14 @@ export function CastCard({
               />
               <button
                 onClick={() =>
-                  run(() => lockIntention({ ...step, manaMitigation: mitigation }))
+                  run(() => commit({ ...step, manaMitigation: mitigation }))
                 }
                 disabled={busy}
                 className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
-                title="The point of no return: mitigation and spell cost commit now."
+                title="The point of no return: mitigation, spell cost, and any precommitted Willpower commit now."
               >
-                Lock Intention — commit {cast.spellManaCost + mitigation} Mana
+                Commit — {cast.spellManaCost + mitigation} Mana
+                {cast.spendWillpower ? " + Willpower" : ""}
               </button>
             </>
           )}
@@ -499,28 +497,14 @@ export function CastCard({
               Roll Paradox
             </button>
           )}
-          {controls.includes("contain") && (
-            <>
-              {mySheet === null && (
-                <NumberInput
-                  label="contain"
-                  value={contained}
-                  cap={containCap}
-                  onChange={setContained}
-                  disabled={busy}
-                />
-              )}
-              <button
-                onClick={() =>
-                  run(() => contain({ ...step, containedSuccesses: contained }))
-                }
-                disabled={busy}
-                className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
-                title="Each contained success is one Resistant bashing wound."
-              >
-                Contain {contained} as Resistant bashing
-              </button>
-            </>
+          {controls.includes("contain") && mySheet === null && (
+            <NumberInput
+              label="contain"
+              value={contained}
+              cap={containCap}
+              onChange={setContained}
+              disabled={busy}
+            />
           )}
           {/* Triggers are always the verdigris mv-roll — the established
               right-pane pattern. Ember marks ARMED, reversible selection only
@@ -528,13 +512,16 @@ export function CastCard({
               are their own cancel. Ember-as-submit was auditioned and
               rescinded (#102, owner walk 2026-07-18) — it read as aimless
               against the hot Paradox family. */}
-          {controls.includes("rollCast") && (
+          {controls.includes("release") && (
             <button
-              onClick={() => run(() => rollCast(step))}
+              onClick={() =>
+                run(() => release({ ...step, containedSuccesses: contained }))
+              }
               disabled={busy}
               className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
+              title="One commitment: the containment lands as Resistant bashing and the dice fly."
             >
-              Release the Spell
+              Cast{contained > 0 ? ` — contain ${contained}` : ""}
             </button>
           )}
           {controls.includes("cancel") && (
@@ -552,7 +539,7 @@ export function CastCard({
               disabled={busy}
               className="mv-btn ml-auto rounded-[3px] px-2 py-1 text-[11px]"
               style={{ borderColor: "var(--bad)", color: "var(--bad)" }}
-              title="Override-stamped repair: restores Mana and Health, frees the stage, leaves no accumulator trace."
+              title="Override-stamped repair: restores Mana and Willpower, frees the stage, leaves no accumulator trace."
             >
               Void
             </button>

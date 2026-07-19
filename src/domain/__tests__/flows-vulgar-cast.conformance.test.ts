@@ -5,13 +5,12 @@ import type { OverrideStamp } from "../override"
 import type { GameStore } from "../ports/game-store"
 import { convexLive } from "../../../convex/lib/convexLive"
 import {
-  containParadox,
+  adjustPrice,
+  commitCast,
   draftCast,
-  editLiabilities,
   engageCast,
-  lockIntention,
-  lockLiabilities,
-  rollCastDice,
+  lockPrice,
+  releaseCast,
   rollParadox,
   setMagicalTool,
   voidCast,
@@ -185,32 +184,29 @@ const runHandshake = (
     yield* engageCast({ sessionId: SESSION, castId }).pipe(
       Effect.provide(layerFor(ST_USER)),
     )
-    // The negotiation beats (issue #44) pin the new patch fields through both
-    // adapters. Deliberately net-zero on the pool (+1 discretionary, −1 tool)
+    // The Price beats (ADR-0022) pin the new patch fields through both
+    // adapters. Deliberately net-zero on the pool (+1 adjustment, −1 tool)
     // so the seeded dice downstream stay byte-identical.
-    yield* editLiabilities({
+    yield* adjustPrice({
       sessionId: SESSION,
       castId,
-      witnessCount: 0,
-      discretionaryModifiers: [{ source: "Ley line hum", dice: 1 }],
+      adjustments: [{ source: "Ley line hum", dice: 1 }],
     }).pipe(Effect.provide(layerFor(ST_USER)))
     yield* setMagicalTool({ sessionId: SESSION, castId, usesMagicalTool: true }).pipe(
       Effect.provide(layerFor(PLAYER)),
     )
-    yield* lockLiabilities({ sessionId: SESSION, castId }).pipe(
+    yield* lockPrice({ sessionId: SESSION, castId }).pipe(
       Effect.provide(layerFor(ST_USER)),
     )
-    yield* lockIntention({ sessionId: SESSION, castId, manaMitigation: 0 }).pipe(
+    yield* commitCast({ sessionId: SESSION, castId, manaMitigation: 0 }).pipe(
       Effect.provide(layerFor(PLAYER)),
     )
     yield* rollParadox({ sessionId: SESSION, castId }).pipe(
       Effect.provide(layerFor(ST_USER)),
     )
-    // Seed "docks" rolls a 9 on the single Paradox die: one success to contain.
-    yield* containParadox({ sessionId: SESSION, castId, containedSuccesses: 1 }).pipe(
-      Effect.provide(layerFor(PLAYER)),
-    )
-    yield* rollCastDice({ sessionId: SESSION, castId }).pipe(
+    // Seed "docks" rolls a 9 on the single Paradox die: one success — the
+    // one Cast click contains it and releases the spell (ADR-0022).
+    yield* releaseCast({ sessionId: SESSION, castId, containedSuccesses: 1 }).pipe(
       Effect.provide(layerFor(PLAYER)),
     )
     return castId
@@ -227,11 +223,10 @@ const observedCast = (row: Record<string, unknown>) => ({
   spellManaCost: row.spellManaCost,
   sceneId: row.sceneId ?? null,
   gnosis: row.gnosis,
-  sleeperWitnesses: row.sleeperWitnesses,
-  witnessCount: row.witnessCount,
-  priorParadoxRolls: row.priorParadoxRolls,
-  discretionaryModifiers: row.discretionaryModifiers,
+  adjustments: row.adjustments,
+  tides: row.tides,
   manaMitigation: row.manaMitigation,
+  draftContainedSuccesses: row.draftContainedSuccesses ?? null,
   paradoxSuccesses: row.paradoxSuccesses,
   paradoxIsDramaticFailure: row.paradoxIsDramaticFailure,
   containedSuccesses: row.containedSuccesses,

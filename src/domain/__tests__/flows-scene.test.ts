@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 import { describe, expect, it } from "@effect/vitest"
-import { closeScene, openScene, setSceneWitnesses } from "../flows/scene"
+import { closeScene, editTides, openScene } from "../flows/scene"
 import { PlayerId, SessionId } from "../ids"
 import { Membership } from "../membership"
 import { failureTag } from "../testing/fixtures"
@@ -53,7 +53,8 @@ const activeScene = (overrides?: Partial<StoredScene>): StoredScene => ({
   sessionId: SESSION,
   name: "The Docks",
   status: "active",
-  sleeperWitnesses: false,
+  witnessCount: 0,
+  circumstances: [],
   openedAt: 0,
   ...overrides,
 })
@@ -74,8 +75,9 @@ describe("Flows.scene.openScene (issue #42)", () => {
       expect(scene.sessionId).toBe(SESSION)
       expect(scene.name).toBe("The Docks")
       expect(scene.status).toBe("active")
-      // Witnesses default quiet — the ST arms the +2 liability deliberately.
-      expect(scene.sleeperWitnesses).toBe(false)
+      // The Tides open quiet (ADR-0022) — the ST arms the price deliberately.
+      expect(scene.witnessCount).toBe(0)
+      expect(scene.circumstances).toEqual([])
 
       // One system Activity entry, plain provenance (ADR-0015): the ST
       // acting as ST bends no rule, so no Override.
@@ -290,34 +292,66 @@ describe("Flows.scene.closeScene (issue #42)", () => {
   )
 })
 
-describe("Flows.scene.setSceneWitnesses (issue #42)", () => {
-  it.effect("the Storyteller arms the Sleeper-witnesses default — a quiet write, no entry", () =>
+describe("Flows.scene.editTides (ADR-0022)", () => {
+  it.effect("the Storyteller sets the witness count — a quiet write, no entry", () =>
     Effect.gen(function* () {
       const store = seed({ userId: ST_USER }, [activeScene()])
 
-      yield* setSceneWitnesses({ sessionId: SESSION, sleeperWitnesses: true }).pipe(
+      yield* editTides({ sessionId: SESSION, witnessCount: 3 }).pipe(
         Effect.provide(store.layer),
       )
 
-      expect(store.scenes[0]!.sleeperWitnesses).toBe(true)
-      // The strip shows the toggle live to everyone; the log narrates
+      expect(store.scenes[0]!.witnessCount).toBe(3)
+      // The strip shows the Tides live to everyone; the log narrates
       // dramatic beats, not knob positions (issue #42's acceptance is
       // open/close entries only).
       expect(store.messages).toHaveLength(0)
     }),
   )
 
-  it.effect("the toggle disarms too", () =>
+  it.effect("circumstances replace as a whole list — signs in both directions", () =>
     Effect.gen(function* () {
       const store = seed({ userId: ST_USER }, [
-        activeScene({ sleeperWitnesses: true }),
+        activeScene({ circumstances: [{ source: "Old ward", dice: -1 }] }),
       ])
 
-      yield* setSceneWitnesses({ sessionId: SESSION, sleeperWitnesses: false }).pipe(
-        Effect.provide(store.layer),
-      )
+      yield* editTides({
+        sessionId: SESSION,
+        circumstances: [
+          { source: "Ley line nexus", dice: 1 },
+          { source: "Ghost's boon", dice: -2 },
+        ],
+      }).pipe(Effect.provide(store.layer))
 
-      expect(store.scenes[0]!.sleeperWitnesses).toBe(false)
+      expect(store.scenes[0]!.circumstances).toEqual([
+        { source: "Ley line nexus", dice: 1 },
+        { source: "Ghost's boon", dice: -2 },
+      ])
+      // A partial edit leaves the other Tide untouched.
+      expect(store.scenes[0]!.witnessCount).toBe(0)
+    }),
+  )
+
+  it.effect("malformed Tides are refused with the typed error, zero writes", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: ST_USER }, [activeScene()])
+
+      const cases = [
+        { witnessCount: -1 },
+        { witnessCount: 1.5 },
+        { circumstances: [{ source: "   ", dice: 1 }] },
+        { circumstances: [{ source: "Nexus", dice: 0 }] },
+        { circumstances: [{ source: "Nexus", dice: 1.5 }] },
+      ]
+      for (const bad of cases) {
+        const exit = yield* editTides({ sessionId: SESSION, ...bad }).pipe(
+          Effect.provide(store.layer),
+          Effect.exit,
+        )
+        expect(failureTag(exit)).toBe("InvalidTides")
+      }
+      expect(store.scenes[0]!.witnessCount).toBe(0)
+      expect(store.scenes[0]!.circumstances).toEqual([])
     }),
   )
 
@@ -325,9 +359,9 @@ describe("Flows.scene.setSceneWitnesses (issue #42)", () => {
     Effect.gen(function* () {
       const store = seed({ userId: ST_USER })
 
-      const exit = yield* setSceneWitnesses({
+      const exit = yield* editTides({
         sessionId: SESSION,
-        sleeperWitnesses: true,
+        witnessCount: 1,
       }).pipe(Effect.provide(store.layer), Effect.exit)
 
       expect(failureTag(exit)).toBe("NoActiveScene")
@@ -338,13 +372,13 @@ describe("Flows.scene.setSceneWitnesses (issue #42)", () => {
     Effect.gen(function* () {
       const store = seed({ userId: PLAYER }, [activeScene()])
 
-      const exit = yield* setSceneWitnesses({
+      const exit = yield* editTides({
         sessionId: SESSION,
-        sleeperWitnesses: true,
+        witnessCount: 1,
       }).pipe(Effect.provide(store.layer), Effect.exit)
 
       expect(failureTag(exit)).toBe("NotStoryteller")
-      expect(store.scenes[0]!.sleeperWitnesses).toBe(false)
+      expect(store.scenes[0]!.witnessCount).toBe(0)
     }),
   )
 })

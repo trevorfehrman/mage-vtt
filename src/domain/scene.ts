@@ -1,19 +1,26 @@
 import { Result, Schema } from "effect"
 import { ScenePip } from "./cast"
 import { SceneId, SessionId } from "./ids"
+import { ParadoxPoolModifier } from "./paradox"
 
 /**
- * The Scene (issue #42, PRD #39): a unit of narrative time within a Session —
- * one location, one event, opened and closed by the Storyteller (WoD Core
- * p. 121). The rules-visible boundary Paradox accumulation lives inside: a
- * caster's Paradox pool grows per prior roll *for that caster* in the same
- * Scene, and accumulated Paradox dies with the Scene when the fiction moves on.
+ * The Scene (issue #42, PRD #39, ADR-0022): a unit of narrative time within a
+ * Session — one location, one event, opened and closed by the Storyteller
+ * (WoD Core p. 121). The rules-visible boundary Paradox accumulation lives
+ * inside: a caster's Paradox pool grows per prior roll *for that caster* in
+ * the same Scene, and accumulated Paradox dies with the Scene when the
+ * fiction moves on.
+ *
+ * The Scene owns the Tides (ADR-0022): the ambient price of vulgar magic —
+ * the Sleeper witness head count and the ambient circumstance modifiers
+ * ({source, dice}, signs in both directions; advantage circumstances are
+ * first-class). Table-visible at all times, ST-editable on the strip; a Cast
+ * takes the seed frozen at The Price and never mutates the Scene. The
+ * `witnessCount` stepper supersedes the old `sleeperWitnesses` boolean
+ * ("liabilities" retires with it); legacy rows fall back "true is one".
  *
  * At most one Scene is active per Session; no Scene open is a legal state
- * (downtime — play proceeds with nothing accumulating). `sleeperWitnesses` is
- * the Storyteller's table-wide default for the +2 Paradox liability, set on
- * the strip before anyone declares a cast; the negotiation phase (a later
- * slice) reads it as an editable default, never a verdict (ADR-0015).
+ * (downtime — play proceeds with nothing accumulating).
  */
 
 export const SceneStatus = Schema.Literals(["active", "closed"])
@@ -28,8 +35,19 @@ export class Scene extends Schema.Class<Scene>("Scene")({
   sessionId: SessionId,
   name: Schema.String,
   status: SceneStatus,
-  sleeperWitnesses: Schema.Boolean,
+  witnessCount: Schema.Number,
+  circumstances: Schema.Array(ParadoxPoolModifier),
 }) {}
+
+/**
+ * The witness count a stored row means (ADR-0022): rows written before the
+ * stepper carry only the old boolean — "one or more" is 1. Structural, like
+ * the cast leaves: raw `Doc<"scenes">` rows and wire rows both fit.
+ */
+export const sceneWitnessCount = (row: {
+  readonly witnessCount?: number | undefined
+  readonly sleeperWitnesses?: boolean | undefined
+}): number => row.witnessCount ?? (row.sleeperWitnesses ? 1 : 0)
 
 // --- Client seam decode (ADR-0005, issue #49) ---
 
@@ -37,14 +55,17 @@ export class Scene extends Schema.Class<Scene>("Scene")({
  * The `scenes` row as `api.scenes.getActive` returns it — the same document
  * the server adapter translates into `Scene` (`convexLive.getActiveScene`);
  * this is that translation for the client boundary. Extra columns
- * (`_creationTime`, `openedAt`, `closedAt`) fall away in the decode.
+ * (`_creationTime`, `openedAt`, `closedAt`) fall away in the decode; the
+ * Tides columns are optional on legacy rows.
  */
 const SceneWire = Schema.Struct({
   _id: Schema.String,
   sessionId: Schema.String,
   name: Schema.String,
   status: SceneStatus,
-  sleeperWitnesses: Schema.Boolean,
+  sleeperWitnesses: Schema.optional(Schema.Boolean),
+  witnessCount: Schema.optional(Schema.Number),
+  circumstances: Schema.optional(Schema.Array(ParadoxPoolModifier)),
 })
 
 const decodeWire = Schema.decodeUnknownResult(SceneWire)
@@ -68,7 +89,8 @@ export const decodeActiveScene = (input: unknown): Scene | null => {
     sessionId: SessionId.make(row.sessionId),
     name: row.name,
     status: row.status,
-    sleeperWitnesses: row.sleeperWitnesses,
+    witnessCount: sceneWitnessCount(row),
+    circumstances: row.circumstances ?? [],
   })
 }
 

@@ -93,10 +93,25 @@ _Avoid_: Turn (that is one action), Session (that is the whole campaign room).
 
 **Cast**:
 A declared spellcasting working through its lifecycle — for Vulgar magic, a
-multi-step negotiation between caster and Storyteller (declare → negotiate
-liabilities → lock → Paradox roll → contain → casting roll), not a single
-event. At most one unresolved Cast per character.
+four-rung handshake between caster and Storyteller (ADR-0022: Declare → The
+Price → Paradox → Resolved), not a single event. At most one unresolved Cast
+per character.
 _Avoid_: Roll (a Cast contains rolls; it is not one).
+
+**The Tides**:
+The scene-owned ambient price of vulgar magic (ADR-0022): the Sleeper witness
+head count, the ambient circumstance modifiers ({source, dice}, signs in both
+directions — a boon is as first-class as a hazard), and each caster's derived
+prior-Paradox pips. Table-visible on the strip at all times; a Cast takes the
+seed frozen at The Price and never mutates the Scene.
+_Avoid_: Liabilities (retired — it was wrong-signed; a ghost's boon is not a
+liability).
+
+**The freeze**:
+The Storyteller's lock on a Cast's price (ADR-0022): the Tides seed stamps
+onto the card beside any personal adjustments, and from that click the ST is
+irrevocably hands-off — "settled" never lies. Repairs are void-plus-redeclare
+or out-of-band restitution, never an unfreeze.
 
 **Draft** (a Cast "in the wings"):
 A Cast a player has declared but the Storyteller has not yet engaged. Free to
@@ -113,8 +128,8 @@ is rolled — blind insurance against a roll whose outcome nobody knows yet.
 Compare Backlash, which is chosen *after* seeing the roll.
 
 **Point of no return**:
-The caster locking in their intention (mitigation included) after the
-Storyteller locks liabilities. Before it, either party may cancel freely
+The caster committing (mitigation and any precommitted Willpower included)
+against the frozen price. Before it, either party may cancel freely
 in-fiction; after it, the only exits are playing the Cast out or a
 Storyteller void (Override-stamped).
 
