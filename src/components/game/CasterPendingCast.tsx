@@ -57,7 +57,7 @@ export function CasterPendingCast({
     ),
     Match.when(
       "price",
-      () => "on stage — the Price is being set on its card; your dice are spoken for",
+      () => "on stage — the Tides are being set on its card; your dice are spoken for",
     ),
     Match.when(
       "paradox",
@@ -70,7 +70,7 @@ export function CasterPendingCast({
   )
 
   return (
-    <div className="border-t" style={{ borderColor: "var(--line)" }}>
+    <div className="mv-vulgar-floor border-t" style={{ borderColor: "var(--line)" }}>
       {/* what you declared — the zone is yours but spoken for */}
       <div className="flex flex-wrap items-baseline gap-1.5 px-3 pt-2.5">
         <span className="mv-eyebrow flex items-center gap-1.5">
@@ -84,22 +84,22 @@ export function CasterPendingCast({
         <span className="text-[13px] font-medium" style={{ color: "var(--ink)" }}>
           {cast.roteName ?? `Improvised ${capitalize(cast.arcanum)}`}
         </span>
-        <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
+        <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
           vulgar {capitalize(cast.arcanum)} {cast.level}
         </span>
       </div>
 
       {cast.intent && (
-        <p className="px-3 pt-1 text-[11px] italic" style={{ color: "var(--dim)" }}>
+        <p className="px-3 pt-1 text-[12px] italic" style={{ color: "var(--dim)" }}>
           &ldquo;{cast.intent}&rdquo;
         </p>
       )}
 
-      <p className="mv-data px-3 pt-1.5 text-[10px]" style={{ color: "var(--dim)" }}>
+      <p className="mv-data px-3 pt-1.5 text-[12px]" style={{ color: "var(--dim)" }}>
         {castReceipt(cast)}
       </p>
 
-      <p className="px-3 pt-1 text-[11px] italic" style={{ color: "var(--dim)" }}>
+      <p className="px-3 pt-1 text-[12px] italic" style={{ color: "var(--dim)" }}>
         {statusLine}
       </p>
 

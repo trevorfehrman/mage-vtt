@@ -383,7 +383,9 @@ describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
       expect(store.casts[0]!.containedSuccesses).toBe(0)
       // No wounds written: the only sheet write would be containment's.
       expect(store.sheetPatches).toHaveLength(0)
-      expect(store.rolls[0]!.summary).toContain("lets all 2 Paradox successes run")
+      // Paradox is never "successes" (#114) — the table counts Paradox.
+      expect(store.rolls[0]!.summary).toContain("lets all 2 Paradox run")
+      expect(store.rolls[0]!.summary).not.toContain("Paradox successes")
       expect(store.casts[0]!.severity).toBe("bedlam")
     }),
   )

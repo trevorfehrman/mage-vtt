@@ -123,7 +123,9 @@ describe("ladderControls — buttons only for the viewer's role and phase", () =
   test("The Price, frozen: the caster commits or bails; the ST is hands-off but for the repair", () => {
     const frozen = snapshot("price", { tides: TIDES })
     expect(ladderControls(frozen, caster)).toEqual(["commit", "cancel"])
-    expect(ladderControls(frozen, storyteller)).toEqual(["cancel", "void"])
+    // Locked means locked (#114): the freeze took the ST's cancel with it —
+    // the repair door is their one way out of a frozen price.
+    expect(ladderControls(frozen, storyteller)).toEqual(["void"])
     expect(ladderControls(frozen, spectator)).toEqual([])
   })
 

@@ -45,7 +45,11 @@
   --rail-success: var(
     --accent
   ); /* pinned audition: merge default; quantity/mint contend on the rig */
-  --rail-danger: #d0523b; /* the hot slot — placeholder flame until the Paradox color is commissioned */
+  --rail-danger: #d0523b; /* the hot slot — the felt's danger flame (Paradox itself now has --paradox) */
+  /* The Paradox red (#114): commissioned scary, deliberately OUTSIDE the
+   * palette — the one color at the table allowed to yell. Reserved for
+   * Paradox alone (the glyph, its counts, its odds); never a status color. */
+  --paradox: #ff2b2b;
   --mana: #6f93ae; /* Mana's identity blue — verdigris's own recipe, hue-turned to water */
   --turn-caster: var(
     --ember
@@ -348,6 +352,13 @@ pre code {
   letter-spacing: 0.22em;
   font-size: 9px;
   color: var(--dim);
+}
+
+/* The 12px floor audition (#114): nothing inside a vulgar surface renders
+ * below 12px — the global eyebrow/mini sizes stand everywhere else. */
+.mv-vulgar-floor .mv-eyebrow,
+.mv-vulgar-floor .mv-mini {
+  font-size: 12px;
 }
 
 .mv-data {

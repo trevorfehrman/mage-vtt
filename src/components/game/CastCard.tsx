@@ -18,6 +18,7 @@ import { rollOdds } from "#/domain/probability"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
 import { ArcanaGlyph } from "./ArcanaGlyph"
+import { ParadoxGlyph } from "./ParadoxGlyph"
 import { api } from "../../../convex/_generated/api"
 import type { Id } from "../../../convex/_generated/dataModel"
 
@@ -32,7 +33,7 @@ import type { Id } from "../../../convex/_generated/dataModel"
 
 const RUNGS: ReadonlyArray<{ status: CastStatus; label: string }> = [
   { status: "draft", label: "Draft" },
-  { status: "price", label: "The Price" },
+  { status: "price", label: "Tides" },
   { status: "paradox", label: "Paradox" },
   { status: "resolved", label: "Resolved" },
 ]
@@ -159,7 +160,7 @@ export function CastCard({
 
   return (
     <div
-      className="mv-cornered mv-panel rounded-[3px] p-2.5"
+      className="mv-cornered mv-panel mv-vulgar-floor rounded-[3px] p-2.5"
       style={terminal && status !== "resolved" ? { opacity: 0.65 } : undefined}
     >
       {/* header: who casts what */}
@@ -169,14 +170,14 @@ export function CastCard({
           <span className="text-[13px] font-medium" style={{ color: "var(--ink)" }}>
             {cast.casterName}
           </span>
-          <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
+          <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
             vulgar {capitalize(cast.arcanum)} {cast.level}
             {cast.roteName ? ` · Rote “${cast.roteName}”` : ""}
           </span>
         </div>
         <div className="flex gap-1">
           <span
-            className="mv-data rounded-[2px] px-1 py-0.5 text-[9px] uppercase tracking-wide"
+            className="mv-data rounded-[2px] px-1 py-0.5 text-[12px] uppercase tracking-wide"
             style={{
               border: "1px solid var(--accent)",
               color: "var(--accent)",
@@ -186,7 +187,7 @@ export function CastCard({
           </span>
           {status === "voided" && cast.override && (
             <span
-              className="mv-data rounded-[2px] px-1 py-0.5 text-[9px] uppercase tracking-wide"
+              className="mv-data rounded-[2px] px-1 py-0.5 text-[12px] uppercase tracking-wide"
               title={`Invoked by ${cast.override.invokedByName}`}
               style={{ border: "1px solid var(--bad)", color: "var(--bad)" }}
             >
@@ -195,7 +196,7 @@ export function CastCard({
           )}
           {status === "cancelled" && (
             <span
-              className="mv-data rounded-[2px] px-1 py-0.5 text-[9px] uppercase tracking-wide"
+              className="mv-data rounded-[2px] px-1 py-0.5 text-[12px] uppercase tracking-wide"
               style={{ border: "1px solid var(--dim)", color: "var(--dim)" }}
             >
               Cancelled
@@ -205,7 +206,7 @@ export function CastCard({
       </div>
 
       {cast.intent && (
-        <p className="mt-1 text-[11px] italic" style={{ color: "var(--dim)" }}>
+        <p className="mt-1 text-[12px] italic" style={{ color: "var(--dim)" }}>
           &ldquo;{cast.intent}&rdquo;
         </p>
       )}
@@ -216,30 +217,22 @@ export function CastCard({
           {RUNGS.map((rung, i) => {
             const here = i === rungIndex(status)
             const past = i < rungIndex(status)
-            // The two-colored rungs (ADR-0022): only the live rung wears the
-            // hand it waits on — ember yours, verdigris the world's — derived
-            // from the document's stamps. Settled rungs read neutral; a rung
-            // not yet reached makes no claim about whose it will be.
-            const turn = here ? waiting : null
-            const tint =
-              turn === "caster"
-                ? "var(--turn-caster)"
-                : turn === "storyteller"
-                  ? "var(--turn-world)"
-                  : "var(--ink)"
+            // One green in all weathers (#114, reversing ADR-0022's
+            // two-colored rungs): the tracker only says how far the ladder
+            // has climbed — the waiting zone below carries whose move it is.
             return (
               <div key={rung.status} className="flex min-w-0 flex-1 flex-col gap-1">
                 <div
                   className="h-[3px] rounded-full"
                   style={{
-                    background: past || here ? tint : "var(--raise)",
+                    background: past || here ? "var(--accent)" : "var(--raise)",
                     opacity: here ? 1 : past ? 0.55 : 1,
                     boxShadow: here ? "0 0 6px var(--glow)" : undefined,
                   }}
                 />
                 <span
-                  className="mv-data truncate text-center text-[8px] uppercase tracking-wide"
-                  style={{ color: here ? tint : "var(--dim)" }}
+                  className="mv-data truncate text-center text-[12px] uppercase tracking-wide"
+                  style={{ color: here ? "var(--accent)" : "var(--dim)" }}
                 >
                   {rung.label}
                 </span>
@@ -250,7 +243,7 @@ export function CastCard({
       )}
 
       {/* the numbers of the moment */}
-      <div className="mt-2 grid gap-1 text-[11px]" style={{ color: "var(--dim)" }}>
+      <div className="mt-2 grid gap-1 text-[12px]" style={{ color: "var(--dim)" }}>
         <span className="mv-data">
           declared pool {cast.declaredPool}
           {/* The bought floor (issue #107): what a dispel rolls against. */}
@@ -272,11 +265,14 @@ export function CastCard({
           </span>
         )}
         {cast.paradoxSuccesses !== undefined && (
-          <span className="mv-data">
-            Paradox rolled{" "}
-            <b style={{ color: cast.paradoxSuccesses > 0 ? "var(--bad)" : "var(--rail-success)" }}>
-              {cast.paradoxSuccesses} {cast.paradoxSuccesses === 1 ? "success" : "successes"}
+          <span className="mv-data inline-flex items-center gap-1">
+            {/* Paradox is never "successes" (#114): the glyph speaks the word,
+                the count is the fact — you have this many to deal with. */}
+            <ParadoxGlyph size={13} />
+            <b style={{ color: cast.paradoxSuccesses > 0 ? "var(--paradox)" : "var(--rail-success)" }}>
+              {cast.paradoxSuccesses}
             </b>
+            rolled
             {cast.paradoxIsDramaticFailure ? " — dramatic failure, Paradox relents" : ""}
             {cast.containedSuccesses !== undefined
               ? ` · ${cast.containedSuccesses} contained`
@@ -296,38 +292,17 @@ export function CastCard({
         )}
       </div>
 
-      {/* who the table waits on */}
-      {!terminal && (
-        <p className="mt-1.5 text-[11px] italic" style={{ color: "var(--dim)" }}>
-          <span
-            className="inline-flex size-1.5 animate-pulse rounded-full align-middle"
-            style={{
-              background:
-                waiting === "caster" ? "var(--turn-caster)" : "var(--turn-world)",
-            }}
-          />{" "}
-          waiting on {waiting === "storyteller" ? "the Storyteller" : cast.casterName}
-          {(waiting === "caster" && isCaster) ||
-          (waiting === "storyteller" && isStoryteller)
-            ? " — you"
-            : ""}
-        </p>
-      )}
-
       {/* The ST's personal adjustments (ADR-0022): facts about this caster's
-          situation, patched onto the shared document while the price is
+          situation, patched onto the shared document while the Tides are
           fluid — the scene's ambient Tides live on the strip, not here. */}
       {controls.includes("adjust") && (
-        <div
-          className="mt-2 grid gap-2 rounded-[3px] p-2"
-          style={{ border: "1px dashed var(--line)" }}
-        >
-          <span className="mv-eyebrow">Personal adjustments — this caster's situation</span>
+        <div className="mt-2 grid gap-2 py-1">
+          <span className="mv-eyebrow">Tides</span>
           <div className="flex flex-wrap items-center gap-1.5">
             {(cast.adjustments ?? []).map((m, i) => (
               <span
                 key={`${m.source}-${i}`}
-                className="mv-data inline-flex items-center gap-1 rounded-[2px] px-1.5 py-0.5 text-[10px]"
+                className="mv-data inline-flex items-center gap-1 rounded-[2px] px-1.5 py-0.5 text-[12px]"
                 style={{ border: "1px solid var(--line)", color: "var(--ink)" }}
               >
                 {m.source} {m.dice > 0 ? `+${m.dice}` : m.dice}
@@ -355,7 +330,7 @@ export function CastCard({
               value={modSource}
               onChange={(e) => setModSource(e.target.value)}
               placeholder="Name an adjustment…"
-              className="mv-data w-36 rounded-[3px] border bg-transparent px-2 py-0.5 text-[11px] outline-none focus:border-[var(--accent)]"
+              className="mv-data w-36 rounded-[3px] border bg-transparent px-2 py-0.5 text-[12px] outline-none focus:border-[var(--accent)]"
               style={{ borderColor: "var(--line)" }}
             />
             <DiceStepper value={modDice} onChange={setModDice} disabled={busy} />
@@ -410,7 +385,9 @@ export function CastCard({
         />
       )}
 
-      {/* the viewer's controls — and only theirs */}
+      {/* the viewer's controls — and only theirs. Doctrine (#114): the
+          walk-aways (Withdraw, Cancel, Void) live on the left, the verdigris
+          trigger stands alone on the right — every phase, no exceptions. */}
       {controls.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {controls.includes("kill") && (
@@ -422,14 +399,35 @@ export function CastCard({
               Withdraw
             </button>
           )}
+          {controls.includes("cancel") && (
+            <button
+              onClick={() => run(() => cancel(step))}
+              disabled={busy}
+              className="mv-btn rounded-[3px] px-3 py-1.5 text-[12px]"
+            >
+              Cancel
+            </button>
+          )}
+          {controls.includes("void") && (
+            <button
+              onClick={() => run(() => voidCast(step))}
+              disabled={busy}
+              className="mv-btn rounded-[3px] px-2 py-1 text-[12px]"
+              style={{ borderColor: "var(--bad)", color: "var(--bad)" }}
+              title="Override-stamped repair: restores Mana and Willpower, frees the stage, leaves no accumulator trace."
+            >
+              Void
+            </button>
+          )}
+          <span className="flex-1" />
           {controls.includes("lockPrice") && (
             <button
               onClick={() => run(() => lockPrice(step))}
               disabled={busy}
               className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
-              title="THE FREEZE: the Tides stamp onto the card and the price cannot shift again."
+              title="THE FREEZE: the Tides stamp onto the card and cannot shift again."
             >
-              Freeze the Price
+              Freeze the Tides
             </button>
           )}
           {controls.includes("commit") && (
@@ -490,32 +488,34 @@ export function CastCard({
               Cast{contained > 0 ? ` — contain ${contained}` : ""}
             </button>
           )}
-          {controls.includes("cancel") && (
-            <button
-              onClick={() => run(() => cancel(step))}
-              disabled={busy}
-              className="mv-btn rounded-[3px] px-3 py-1.5 text-[12px]"
-            >
-              Cancel
-            </button>
-          )}
-          {controls.includes("void") && (
-            <button
-              onClick={() => run(() => voidCast(step))}
-              disabled={busy}
-              className="mv-btn ml-auto rounded-[3px] px-2 py-1 text-[11px]"
-              style={{ borderColor: "var(--bad)", color: "var(--bad)" }}
-              title="Override-stamped repair: restores Mana and Willpower, frees the stage, leaves no accumulator trace."
-            >
-              Void
-            </button>
-          )}
         </div>
       )}
 
       {error && (
         <p className="mt-1.5 text-[12px]" style={{ color: "var(--bad)" }}>
           {error}
+        </p>
+      )}
+
+      {/* The status zone (#114): who the table waits on, in one dedicated
+          spot — the card's foot, every phase, don't-make-me-think. */}
+      {!terminal && (
+        <p
+          className="mt-2 border-t pt-1.5 text-[12px] italic"
+          style={{ color: "var(--dim)", borderColor: "var(--line)" }}
+        >
+          <span
+            className="inline-flex size-1.5 animate-pulse rounded-full align-middle"
+            style={{
+              background:
+                waiting === "caster" ? "var(--turn-caster)" : "var(--turn-world)",
+            }}
+          />{" "}
+          waiting on {waiting === "storyteller" ? "the Storyteller" : cast.casterName}
+          {(waiting === "caster" && isCaster) ||
+          (waiting === "storyteller" && isStoryteller)
+            ? " — you"
+            : ""}
         </p>
       )}
     </div>
@@ -544,7 +544,7 @@ function NumberInput({
   const clamped = cap === undefined ? value : Math.min(value, cap)
   return (
     <div className="flex items-center gap-1">
-      <span className="mv-data text-[10px] uppercase tracking-wider" style={{ color: "var(--dim)" }}>
+      <span className="mv-data text-[12px] uppercase tracking-wider" style={{ color: "var(--dim)" }}>
         {label}
       </span>
       <button
@@ -563,7 +563,7 @@ function NumberInput({
         +
       </button>
       {cap !== undefined && (
-        <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
+        <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
           / {cap}
         </span>
       )}
@@ -604,15 +604,14 @@ function MitigationPreview({
     return { spend, dice, odds: rollOdds(dice) }
   })
   return (
-    <div
-      className="mt-2 grid gap-1 rounded-[3px] p-2"
-      style={{ border: "1px dashed var(--line)" }}
-    >
-      <span className="mv-eyebrow">Blind insurance — each Mana buys off one Paradox die</span>
-      {/* Danger reads as danger (#102): the risk is the headline, in the hot
-          slot; dice counts stay neutral quantities — never accent-green good
-          news. Picking a spend is the caster's hand, so selection burns ember;
-          the Mana price wears Mana's own blue and glyph. */}
+    // No explainer eyebrow, no dotted frame (#114): the table is the phase's
+    // whole job and its columns speak the rule — Mana in, Paradox dice out.
+    <div className="mt-2 grid gap-1 py-1">
+      {/* Danger reads as danger (#102): the risk is the headline — the
+          Paradox glyph does the yelling (#114), "bites" retired with it.
+          Dice counts stay neutral quantities — never accent-green good news.
+          Picking a spend is the caster's hand, so selection burns ember; the
+          Mana price wears Mana's own glyph alone (no symbol+word doubling). */}
       {rows.map(({ spend, dice, odds }) => {
         const here = spend === Math.min(selected, cap)
         return (
@@ -620,25 +619,25 @@ function MitigationPreview({
             key={spend}
             onClick={() => onSelect(spend)}
             disabled={disabled}
-            className="mv-data grid grid-cols-[3.5rem_5rem_1fr_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[10px] disabled:opacity-40"
+            className="mv-data grid grid-cols-[3.5rem_5.5rem_1fr_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px] disabled:opacity-40"
             style={{
               border: here ? "1px solid var(--ember)" : "1px solid transparent",
               color: here ? "var(--ink)" : "var(--dim)",
             }}
           >
             <span style={{ color: here ? "var(--mana)" : undefined }}>
-              ◈ {spend} Mana
+              ◈ {spend}
             </span>
             <span style={{ color: here ? "var(--ink)" : undefined }}>
               {diceLabel(dice)}
             </span>
-            <span>
-              bites{" "}
-              <b className="text-[11px]" style={{ color: "var(--rail-danger)" }}>
+            <span className="inline-flex items-center gap-1">
+              <ParadoxGlyph size={12} />
+              <b className="text-[12px]" style={{ color: "var(--paradox)" }}>
                 {pct(odds.success)}
               </b>
             </span>
-            <span>~{odds.expected.toFixed(2)} successes</span>
+            <span>~{odds.expected.toFixed(2)} Paradox</span>
           </button>
         )
       })}
@@ -673,13 +672,10 @@ function ContainmentBet({
   const outlook = containmentOutlook({ track, declaredPool, paradoxSuccesses, contained })
   const odds = rollOdds(outlook.castPool)
   return (
-    <div
-      className="mt-2 grid gap-1.5 rounded-[3px] p-2"
-      style={{ border: "1px dashed var(--line)" }}
-    >
+    <div className="mt-2 grid gap-1.5 py-1">
       <span className="mv-eyebrow">The bet — flesh against dice</span>
       <div className="flex items-center gap-2">
-        <span className="mv-data text-[10px] uppercase tracking-wider" style={{ color: "var(--dim)" }}>
+        <span className="mv-data text-[12px] uppercase tracking-wider" style={{ color: "var(--dim)" }}>
           contain
         </span>
         <input
@@ -696,7 +692,7 @@ function ContainmentBet({
           {contained} / {cap}
         </span>
       </div>
-      <div className="mv-data grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] sm:grid-cols-4" style={{ color: "var(--dim)" }}>
+      <div className="mv-data grid grid-cols-2 gap-x-3 gap-y-0.5 text-[12px] sm:grid-cols-4" style={{ color: "var(--dim)" }}>
         <span>
           takes <b style={{ color: outlook.damage > 0 ? "var(--bad)" : "var(--ink)" }}>
             {outlook.damage} Resistant bashing
@@ -711,11 +707,15 @@ function ContainmentBet({
         <span>
           casts on <b style={{ color: "var(--ink)" }}>{diceLabel(outlook.castPool)}</b>
         </span>
-        <span>
-          {outlook.uncontained} {outlook.uncontained === 1 ? "success" : "successes"} loose
+        <span className="inline-flex items-center gap-1">
+          <ParadoxGlyph size={12} />
+          <b style={{ color: outlook.uncontained > 0 ? "var(--paradox)" : "var(--ink)" }}>
+            {outlook.uncontained}
+          </b>{" "}
+          loose
         </span>
       </div>
-      <div className="mv-data flex flex-wrap gap-x-3 gap-y-0.5 text-[10px]" style={{ color: "var(--dim)" }}>
+      <div className="mv-data flex flex-wrap gap-x-3 gap-y-0.5 text-[12px]" style={{ color: "var(--dim)" }}>
         <span>
           success <b style={{ color: "var(--rail-success)" }}>{pct(odds.success)}</b>
         </span>
@@ -728,7 +728,7 @@ function ContainmentBet({
         )}
       </div>
       {outlook.martyr && (
-        <p className="text-[10px] italic" style={{ color: "var(--bad)" }}>
+        <p className="text-[12px] italic" style={{ color: "var(--bad)" }}>
           This fills your last health box with bashing — the book calls that
           unconsciousness (Storyteller adjudicates). The cast still completes.
         </p>

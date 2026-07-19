@@ -930,6 +930,10 @@ export const rollParadox = Effect.fn("Flows.vulgarCast.rollParadox")(function* (
   })
 
   const dice = result.isChanceDie ? "a chance die" : `${result.poolSize} dice`
+  // Paradox is never "successes" (#114): the table counts Paradox, and more
+  // is worse — `outcomeOf`'s exceptional-success fanfare would read backwards.
+  const paradoxCount =
+    result.successes === 0 ? "no Paradox" : `${result.successes} Paradox`
   yield* store.insertRoll({
     sessionId,
     member: storyteller,
@@ -937,7 +941,7 @@ export const rollParadox = Effect.fn("Flows.vulgarCast.rollParadox")(function* (
     result,
     summary: result.isDramaticFailure
       ? `Reality rolls ${dice} against ${cast.casterName} — a dramatic failure! Paradox leaves the caster alone, and the Scene forgives its next accumulation.`
-      : `Reality rolls ${dice} against ${cast.casterName} — ${outcomeOf(result)}${result.successes === 0 ? ". Nothing to contain; the way to the cast is clear" : ""}.`,
+      : `Reality rolls ${dice} against ${cast.casterName} — ${paradoxCount}${result.successes === 0 ? ". Nothing to contain; the way to the cast is clear" : ""}.`,
   })
 
   return castId
@@ -1025,9 +1029,9 @@ export const releaseCast = Effect.fn("Flows.vulgarCast.releaseCast")(function* (
   const dice = result.isChanceDie ? "a chance die" : `${result.poolSize} dice`
   const sacrifice =
     contained > 0
-      ? `contains ${contained} of ${paradoxSuccesses} Paradox ${paradoxSuccesses === 1 ? "success" : "successes"} as Resistant bashing and `
+      ? `contains ${contained} of ${paradoxSuccesses} Paradox as Resistant bashing and `
       : paradoxSuccesses > 0
-        ? `lets all ${paradoxSuccesses} Paradox ${paradoxSuccesses === 1 ? "success" : "successes"} run and `
+        ? `lets all ${paradoxSuccesses} Paradox run and `
         : ""
   yield* store.insertRoll({
     sessionId,

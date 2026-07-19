@@ -85,9 +85,9 @@ export type LadderControl =
   | "adjust" // ST: personal adjustments (ADR-0022), The Price before the freeze
   | "lockPrice" // ST: THE FREEZE — stamp the Tides, go hands-off
   | "commit" // caster: the point of no return (with mitigation)
-  | "cancel" // either party, anywhere on The Price
+  | "cancel" // the Tides rung: either party while fluid, caster-only once frozen
   | "rollParadox" // ST's own button
-  | "contain" // caster: the cockpit's draft box clicks (broadcast state)
+  | "contain" // caster: the cockpit's containment selection (local, #113)
   | "release" // caster: the one Cast click — containment lands, dice fly
   | "void" // ST: the Override-stamped repair
 
@@ -104,10 +104,9 @@ export const ladderControls = (
     ]),
     Match.when("price", () =>
       isPriceFrozen(cast)
-        ? [
-            ...(viewer.isCaster ? (["commit"] as const) : []),
-            ...(eitherParty ? (["cancel"] as const) : []),
-          ]
+        ? // Locked means locked (#114): only the caster may still bail — the
+          // ST froze the price and holds no cancel, just the repair door.
+          [...(viewer.isCaster ? (["commit", "cancel"] as const) : [])]
         : [
             ...(viewer.isStoryteller ? (["adjust", "lockPrice"] as const) : []),
             ...(eitherParty ? (["cancel"] as const) : []),

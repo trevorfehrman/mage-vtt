@@ -54,7 +54,7 @@ export function StorytellerOffer({
   const step = { sessionId, castId: cast._id }
 
   return (
-    <div className="border-t" style={{ borderColor: "var(--line)" }}>
+    <div className="mv-vulgar-floor border-t" style={{ borderColor: "var(--line)" }}>
       {/* who offers what — the waiting pulse wears the world's hand */}
       <div className="flex flex-wrap items-baseline gap-1.5 px-3 pt-2.5">
         <span className="mv-eyebrow flex items-center gap-1.5">
@@ -68,25 +68,25 @@ export function StorytellerOffer({
         <span className="text-[13px] font-medium" style={{ color: "var(--ink)" }}>
           {cast.casterName}
         </span>
-        <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
+        <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
           vulgar {capitalize(cast.arcanum)} {cast.level}
           {cast.roteName ? ` · Rote “${cast.roteName}”` : ""}
         </span>
       </div>
 
       {cast.intent && (
-        <p className="px-3 pt-1 text-[11px] italic" style={{ color: "var(--dim)" }}>
+        <p className="px-3 pt-1 text-[12px] italic" style={{ color: "var(--dim)" }}>
           &ldquo;{cast.intent}&rdquo;
         </p>
       )}
 
       {/* the declared terms — the shared receipt (issue #110) */}
-      <p className="mv-data px-3 pt-1.5 text-[10px]" style={{ color: "var(--dim)" }}>
+      <p className="mv-data px-3 pt-1.5 text-[12px]" style={{ color: "var(--dim)" }}>
         {castReceipt(cast)}
       </p>
 
       {moreWaiting > 0 && (
-        <p className="px-3 pt-1 text-[11px] italic" style={{ color: "var(--dim)" }}>
+        <p className="px-3 pt-1 text-[12px] italic" style={{ color: "var(--dim)" }}>
           {moreWaiting} more {moreWaiting === 1 ? "waits" : "wait"} in the wings
         </p>
       )}
