@@ -294,17 +294,21 @@ const fossilText = (b: Extract<Beat, { kind: "fossil" }>) =>
 function MarginFeed() {
   return (
     <div
-      className="relative pl-4"
-      style={{ borderLeft: "1px solid var(--line)" }}
+      className="relative"
+      style={{
+        marginLeft: 26,
+        paddingLeft: 14,
+        borderLeft: "1px solid var(--line)",
+      }}
     >
       <div className="grid gap-3">
         {BEATS.map((b, i) => {
           if (b.kind === "narration")
             return (
-              <div key={i} className="relative -ml-4 pl-4">
+              <div key={i} className="relative">
                 <span
-                  className="absolute left-0 top-[0.55em] size-[7px] -translate-x-1/2 rotate-45"
-                  style={{ background: "var(--accent)" }}
+                  className="absolute top-[0.45em] size-[7px] rotate-45"
+                  style={{ background: "var(--accent)", left: "-19px" }}
                 />
                 <p
                   className="text-[13px] italic leading-relaxed"
@@ -343,12 +347,13 @@ function MarginFeed() {
             return (
               <div key={i} className="relative pl-2">
                 <span
-                  className="mv-data absolute -left-4 top-1 grid size-[16px] -translate-x-1/2 place-items-center rounded-[2px] border text-[9px]"
+                  className="mv-data absolute top-1 grid size-[15px] place-items-center rounded-[2px] border text-[9px]"
                   style={{
-                    borderColor: "var(--dim)",
-                    color: "var(--dim)",
+                    borderColor: b.successes > 0 ? "var(--accent)" : "var(--dim)",
+                    color: b.successes > 0 ? "var(--accent)" : "var(--dim)",
                     background: "var(--bg, #0a0a0c)",
-                    transform: "translateX(-50%) rotate(45deg)",
+                    left: "-24px",
+                    transform: "rotate(45deg)",
                   }}
                 >
                   <span style={{ transform: "rotate(-45deg)" }}>{b.successes}</span>
@@ -357,10 +362,10 @@ function MarginFeed() {
               </div>
             )
           return (
-            <div key={i} className="relative -ml-4 pl-4">
+            <div key={i} className="relative">
               <span
-                className="absolute left-0 top-[0.4em] -translate-x-1/2"
-                style={{ color: "var(--dim)" }}
+                className="absolute top-[0.3em]"
+                style={{ color: "var(--dim)", left: "-21px" }}
               >
                 <ArcanaGlyph arcanum={b.arcanum} size={11} />
               </span>
