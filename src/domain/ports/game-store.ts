@@ -1,5 +1,5 @@
 import { Context, Effect, Schema, type Option } from "effect"
-import { CastStatus, type Cast } from "../cast"
+import { CastStatus, TidesSnapshot, type Cast } from "../cast"
 import type { CharacterSheet } from "../character"
 import { CombatParticipant, type Combat } from "../combat-tracker"
 import { HealthBox } from "../damage"
@@ -66,24 +66,28 @@ export const SheetPatch = Schema.Struct({
 export type SheetPatch = typeof SheetPatch.Type
 
 /**
- * Intent-level draft of a new `scenes` row (issue #42): always born `active`
- * — the adapter stamps status and the open timestamp (from `Clock`).
+ * Intent-level draft of a new `scenes` row (issue #42, ADR-0022): always born
+ * `active` with its Tides explicit (a new Scene opens quiet — zero witnesses,
+ * no circumstances — armed deliberately on the strip); the adapter stamps
+ * status and the open timestamp (from `Clock`).
  */
 export const SceneDraft = Schema.Struct({
   sessionId: SessionId,
   name: Schema.String,
-  sleeperWitnesses: Schema.Boolean,
+  witnessCount: Schema.Number,
+  circumstances: Schema.Array(ParadoxPoolModifier),
 })
 export type SceneDraft = typeof SceneDraft.Type
 
 /**
  * The only writes a flow can express against a Scene: its lifecycle end and
- * the witnesses default. The name is immutable after open — renaming a Scene
+ * the Tides (ADR-0022). The name is immutable after open — renaming a Scene
  * is a door no flow has earned yet.
  */
 export const ScenePatch = Schema.Struct({
   status: Schema.optionalKey(Schema.Literals(["closed"])),
-  sleeperWitnesses: Schema.optionalKey(Schema.Boolean),
+  witnessCount: Schema.optionalKey(Schema.Number),
+  circumstances: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
 })
 export type ScenePatch = typeof ScenePatch.Type
 
@@ -104,6 +108,8 @@ export const CastDraft = Schema.Struct({
   roteName: Schema.optionalKey(Schema.String),
   intent: Schema.optionalKey(Schema.String),
   usesMagicalTool: Schema.Boolean,
+  /** The blind Willpower precommitment (ADR-0022, WoD p. 133). */
+  spendWillpower: Schema.optionalKey(Schema.Boolean),
   declaredComponents: Schema.Array(RawPoolComponent),
   declaredPool: Schema.Number,
   spellManaCost: Schema.Number,
@@ -113,23 +119,21 @@ export type CastDraft = typeof CastDraft.Type
 /**
  * The writes the beat flows can express against a Cast: each beat stamps its
  * own fields plus the status rung it lands on. The declaration is immutable
- * after draft — except `usesMagicalTool`, the caster's side of the
- * negotiation (issue #44), editable until liabilities lock. The adapter
- * stamps `updatedAt` and any recorded `Override` marker (void's repair
- * provenance) structurally.
+ * after draft — except `usesMagicalTool`, the caster's side of the price
+ * (issue #44), editable until the freeze. The adapter stamps `updatedAt` and
+ * any recorded `Override` marker (void's repair provenance) structurally.
  */
 export const CastPatch = Schema.Struct({
   status: Schema.optionalKey(CastStatus),
   usesMagicalTool: Schema.optionalKey(Schema.Boolean),
   sceneId: Schema.optionalKey(SceneId),
   gnosis: Schema.optionalKey(Schema.Number),
-  sleeperWitnesses: Schema.optionalKey(Schema.Boolean),
-  witnessCount: Schema.optionalKey(Schema.Number),
-  priorParadoxRolls: Schema.optionalKey(Schema.Number),
-  discretionaryModifiers: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
+  adjustments: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
+  tides: Schema.optionalKey(TidesSnapshot),
   manaMitigation: Schema.optionalKey(Schema.Number),
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
   paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
+  draftContainedSuccesses: Schema.optionalKey(Schema.Number),
   containedSuccesses: Schema.optionalKey(Schema.Number),
   castPool: Schema.optionalKey(Schema.Number),
   castSuccesses: Schema.optionalKey(Schema.Number),

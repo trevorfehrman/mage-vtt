@@ -1,5 +1,5 @@
 import { Clock, Effect, Layer, Option } from "effect"
-import { Cast } from "../cast"
+import { Cast, type TidesSnapshot } from "../cast"
 import { CharacterSheet } from "../character"
 import { Combat, type CombatParticipant, type CombatStatus } from "../combat-tracker"
 import type { DiceRollResult, RawPoolComponent, RollVisibility } from "../dice"
@@ -74,13 +74,15 @@ export interface StoredSheetPatch {
   readonly patch: SheetPatch
 }
 
-/** A `scenes` row as stored (issue #42) — timestamps stamped like the rolls'. */
+/** A `scenes` row as stored (issue #42, ADR-0022) — timestamps stamped like
+ * the rolls'; the Tides columns are always present on new rows. */
 export interface StoredScene {
   readonly id: SceneId
   readonly sessionId: SessionId
   readonly name: string
   readonly status: SceneStatus
-  readonly sleeperWitnesses: boolean
+  readonly witnessCount: number
+  readonly circumstances: ReadonlyArray<ParadoxPoolModifier>
   readonly openedAt: number
   readonly closedAt?: number
 }
@@ -106,15 +108,15 @@ export interface StoredCast {
   readonly declaredComponents: ReadonlyArray<RawPoolComponent>
   readonly declaredPool: number
   readonly spellManaCost: number
+  readonly spendWillpower?: boolean
   readonly sceneId?: SceneId
   readonly gnosis?: number
-  readonly sleeperWitnesses?: boolean
-  readonly witnessCount?: number
-  readonly priorParadoxRolls?: number
-  readonly discretionaryModifiers?: ReadonlyArray<ParadoxPoolModifier>
+  readonly adjustments?: ReadonlyArray<ParadoxPoolModifier>
+  readonly tides?: TidesSnapshot
   readonly manaMitigation?: number
   readonly paradoxSuccesses?: number
   readonly paradoxIsDramaticFailure?: boolean
+  readonly draftContainedSuccesses?: number
   readonly containedSuccesses?: number
   readonly castPool?: number
   readonly castSuccesses?: number
@@ -305,7 +307,8 @@ export const makeInMemory = (seed: {
           sessionId: draft.sessionId,
           name: draft.name,
           status: "active",
-          sleeperWitnesses: draft.sleeperWitnesses,
+          witnessCount: draft.witnessCount,
+          circumstances: draft.circumstances,
           openedAt,
         })
         return id
@@ -328,6 +331,9 @@ export const makeInMemory = (seed: {
           ...(draft.roteName !== undefined ? { roteName: draft.roteName } : {}),
           ...(draft.intent !== undefined ? { intent: draft.intent } : {}),
           usesMagicalTool: draft.usesMagicalTool,
+          ...(draft.spendWillpower !== undefined
+            ? { spendWillpower: draft.spendWillpower }
+            : {}),
           declaredComponents: draft.declaredComponents,
           declaredPool: draft.declaredPool,
           spellManaCost: draft.spellManaCost,
@@ -434,8 +440,11 @@ export const makeInMemory = (seed: {
           ...(patch.status !== undefined
             ? { status: patch.status, closedAt }
             : {}),
-          ...(patch.sleeperWitnesses !== undefined
-            ? { sleeperWitnesses: patch.sleeperWitnesses }
+          ...(patch.witnessCount !== undefined
+            ? { witnessCount: patch.witnessCount }
+            : {}),
+          ...(patch.circumstances !== undefined
+            ? { circumstances: patch.circumstances }
             : {}),
         }
       }),

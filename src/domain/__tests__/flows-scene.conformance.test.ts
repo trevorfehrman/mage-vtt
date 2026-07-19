@@ -2,7 +2,7 @@ import { Effect } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import type { MutationCtx } from "../../../convex/_generated/server"
 import { convexLive } from "../../../convex/lib/convexLive"
-import { closeScene, openScene, setSceneWitnesses } from "../flows/scene"
+import { closeScene, editTides, openScene } from "../flows/scene"
 import { PlayerId, SessionId } from "../ids"
 import { Membership } from "../membership"
 import { failureTag } from "../testing/fixtures"
@@ -14,8 +14,9 @@ import { makeInMemory } from "../testing/in-memory"
  * observably identical through `ConvexLive` and `InMemory`. This is the
  * rule-of-two's pin: the store surface grew for this slice, so the suite
  * exercises exactly the ways a live adapter could drift — the compound-index
- * active read, the status/closedAt stamp on close, the quiet witnesses patch,
- * and the plain (no-Override) provenance on the open/close entries.
+ * active read, the status/closedAt stamp on close, the quiet Tides patch
+ * (ADR-0022), and the plain (no-Override) provenance on the open/close
+ * entries.
  */
 
 const SESSION = "session-1"
@@ -121,7 +122,8 @@ describe("Flows.scene conformance (ConvexLive vs InMemory)", () => {
       const observedInMem = {
         name: inMemScene.name,
         status: inMemScene.status,
-        sleeperWitnesses: inMemScene.sleeperWitnesses,
+        witnessCount: inMemScene.witnessCount,
+        circumstances: inMemScene.circumstances,
         text: inMemEntry.text,
         visibility: inMemEntry.visibility,
         senderName: inMemEntry.senderName,
@@ -139,7 +141,8 @@ describe("Flows.scene conformance (ConvexLive vs InMemory)", () => {
       const observedLive = {
         name: liveScene.name,
         status: liveScene.status,
-        sleeperWitnesses: liveScene.sleeperWitnesses,
+        witnessCount: liveScene.witnessCount,
+        circumstances: liveScene.circumstances,
         text: liveEntry.text,
         visibility: liveEntry.visibilityType,
         senderName: liveEntry.senderName,
@@ -149,7 +152,8 @@ describe("Flows.scene conformance (ConvexLive vs InMemory)", () => {
 
       expect(observedLive).toEqual(observedInMem)
       expect(observedLive.status).toBe("active")
-      expect(observedLive.sleeperWitnesses).toBe(false)
+      expect(observedLive.witnessCount).toBe(0)
+      expect(observedLive.circumstances).toEqual([])
       expect(observedLive.override).toBeNull()
       // One atomic entry (ADR-0009), and the row stamps its open time.
       expect(observedLive.activityCount).toBe(1)
@@ -221,13 +225,17 @@ describe("Flows.scene conformance (ConvexLive vs InMemory)", () => {
     }),
   )
 
-  it.effect("both adapters agree on the witnesses toggle: quiet patch, no entry", () =>
+  it.effect("both adapters agree on the Tides edit: quiet patch, no entry", () =>
     Effect.gen(function* () {
+      const tides = {
+        witnessCount: 3,
+        circumstances: [{ source: "Ley line nexus", dice: 1 }],
+      }
       const inMem = makeInMemoryStore({ actor: ST_USER })
       yield* openScene({ sessionId: SESSION, name: "The Docks" }).pipe(
         Effect.provide(inMem.layer),
       )
-      yield* setSceneWitnesses({ sessionId: SESSION, sleeperWitnesses: true }).pipe(
+      yield* editTides({ sessionId: SESSION, ...tides }).pipe(
         Effect.provide(inMem.layer),
       )
 
@@ -236,14 +244,16 @@ describe("Flows.scene conformance (ConvexLive vs InMemory)", () => {
       yield* openScene({ sessionId: SESSION, name: "The Docks" }).pipe(
         Effect.provide(layer),
       )
-      yield* setSceneWitnesses({ sessionId: SESSION, sleeperWitnesses: true }).pipe(
+      yield* editTides({ sessionId: SESSION, ...tides }).pipe(
         Effect.provide(layer),
       )
 
       const liveScene = liveScenes(fake)[0] as Record<string, unknown>
-      expect(liveScene.sleeperWitnesses).toBe(true)
-      expect(inMem.scenes[0]!.sleeperWitnesses).toBe(true)
-      // Still active, still one entry (the open's) — the toggle logs nothing.
+      expect(liveScene.witnessCount).toBe(3)
+      expect(liveScene.circumstances).toEqual(tides.circumstances)
+      expect(inMem.scenes[0]!.witnessCount).toBe(3)
+      expect(inMem.scenes[0]!.circumstances).toEqual(tides.circumstances)
+      // Still active, still one entry (the open's) — the edit logs nothing.
       expect(liveScene.status).toBe("active")
       expect(fake.messages).toHaveLength(1)
       expect(inMem.messages).toHaveLength(1)

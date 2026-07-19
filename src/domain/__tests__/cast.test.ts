@@ -11,6 +11,7 @@ import {
   isOnStage,
   isUnresolved,
   sceneParadoxPips,
+  sceneTides,
   toGnosisRank,
   waitingOn,
   type CastStatus,
@@ -19,10 +20,11 @@ import { healthBox, type HealthTrack } from "../damage"
 import { CharacterId, SceneId } from "../ids"
 
 /**
- * Pure-leaf tests for the Cast vocabulary (issue #43, ADR-0016): the status
- * ladder's classification predicates, the derived per-(Scene, caster) Paradox
- * accumulator (ADR-0012 — read from resolved Cast history, never a tally),
- * the containment cap, and the climax pool arithmetic.
+ * Pure-leaf tests for the Cast vocabulary (issue #43, ADR-0016, ADR-0022): the
+ * four-rung ladder's classification predicates and two-colored phases, the
+ * Tides seed, the derived per-(Scene, caster) Paradox accumulator (ADR-0012 —
+ * read from resolved Cast history, never a tally), the containment cap, and
+ * the climax pool arithmetic.
  */
 
 const SCENE = SceneId.make("scene-1")
@@ -52,28 +54,90 @@ const makeCast = (overrides: Partial<typeof Cast.Encoded> = {}): Cast =>
     ...overrides,
   })
 
-describe("Cast status ladder (ADR-0016)", () => {
+describe("Cast status ladder (ADR-0022: the four-rung collapse)", () => {
   const expectations: ReadonlyArray<
-    [CastStatus, { unresolved: boolean; onStage: boolean; committed: boolean; waiting: "storyteller" | "caster" | null }]
+    [CastStatus, { unresolved: boolean; onStage: boolean; committed: boolean }]
   > = [
-    ["draft", { unresolved: true, onStage: false, committed: false, waiting: "storyteller" }],
-    ["engaged", { unresolved: true, onStage: true, committed: false, waiting: "storyteller" }],
-    ["liabilitiesLocked", { unresolved: true, onStage: true, committed: false, waiting: "caster" }],
-    ["intentionLocked", { unresolved: true, onStage: true, committed: true, waiting: "storyteller" }],
-    ["paradoxRolled", { unresolved: true, onStage: true, committed: true, waiting: "caster" }],
-    ["contained", { unresolved: true, onStage: true, committed: true, waiting: "caster" }],
-    ["resolved", { unresolved: false, onStage: false, committed: false, waiting: null }],
-    ["cancelled", { unresolved: false, onStage: false, committed: false, waiting: null }],
-    ["voided", { unresolved: false, onStage: false, committed: false, waiting: null }],
+    ["draft", { unresolved: true, onStage: false, committed: false }],
+    ["price", { unresolved: true, onStage: true, committed: false }],
+    ["paradox", { unresolved: true, onStage: true, committed: true }],
+    ["resolved", { unresolved: false, onStage: false, committed: false }],
+    ["cancelled", { unresolved: false, onStage: false, committed: false }],
+    ["voided", { unresolved: false, onStage: false, committed: false }],
   ]
 
-  it("classifies every rung: unresolved, on stage, committed, and who is waited on", () => {
+  it("classifies every rung: unresolved, on stage, committed", () => {
     for (const [status, expected] of expectations) {
       expect({ status, unresolved: isUnresolved(status) }).toEqual({ status, unresolved: expected.unresolved })
       expect({ status, onStage: isOnStage(status) }).toEqual({ status, onStage: expected.onStage })
       expect({ status, committed: isCommitted(status) }).toEqual({ status, committed: expected.committed })
-      expect({ status, waiting: waitingOn(status) }).toEqual({ status, waiting: expected.waiting })
     }
+  })
+})
+
+describe("waitingOn (ADR-0022: two-colored phases of one rung)", () => {
+  const tides = { witnessCount: 2, circumstances: [], priorParadoxRolls: 0 }
+
+  it("a draft waits on the Storyteller — engage or decline", () => {
+    expect(waitingOn({ status: "draft" })).toBe("storyteller")
+  })
+
+  it("The Price waits on the Storyteller until the freeze stamps the Tides", () => {
+    expect(waitingOn({ status: "price" })).toBe("storyteller")
+  })
+
+  it("The Price waits on the caster once the Tides are stamped — insure, commit, or bail", () => {
+    expect(waitingOn({ status: "price", tides })).toBe("caster")
+  })
+
+  it("Paradox waits on the Storyteller's own roll button", () => {
+    expect(waitingOn({ status: "paradox", tides })).toBe("storyteller")
+  })
+
+  it("Paradox waits on the caster once successes are stamped — contain and release", () => {
+    expect(waitingOn({ status: "paradox", tides, paradoxSuccesses: 0 })).toBe("caster")
+  })
+
+  it("terminals wait on no one", () => {
+    expect(waitingOn({ status: "resolved" })).toBeNull()
+    expect(waitingOn({ status: "cancelled" })).toBeNull()
+    expect(waitingOn({ status: "voided" })).toBeNull()
+  })
+})
+
+describe("sceneTides (ADR-0022: the scene-owned seed)", () => {
+  const scene = {
+    id: SCENE,
+    witnessCount: 3,
+    circumstances: [{ source: "Ley-line surge", dice: 2 }],
+  }
+
+  it("reads witnesses and circumstances off the Scene and derives the pips", () => {
+    const casts = [
+      makeCast({ id: "cast-1", updatedAt: 1 }),
+      makeCast({ id: "cast-2", updatedAt: 2 }),
+    ]
+    expect(sceneTides(casts, scene, CASTER)).toEqual({
+      witnessCount: 3,
+      circumstances: [{ source: "Ley-line surge", dice: 2 }],
+      priorParadoxRolls: 2,
+    })
+  })
+
+  it("derives the pips per caster, grace and all", () => {
+    const casts = [
+      makeCast({ id: "cast-1", updatedAt: 1, paradoxIsDramaticFailure: true }),
+    ]
+    expect(sceneTides(casts, scene, CASTER).priorParadoxRolls).toBe(0)
+  })
+
+  it("downtime seeds nothing — no Scene, no Tides", () => {
+    const casts = [makeCast({ id: "cast-1", updatedAt: 1 })]
+    expect(sceneTides(casts, undefined, CASTER)).toEqual({
+      witnessCount: 0,
+      circumstances: [],
+      priorParadoxRolls: 0,
+    })
   })
 })
 
@@ -94,7 +158,7 @@ describe("deriveAccumulator (ADR-0012: resolved Cast history, never a tally)", (
       // A voided Cast leaves no accumulator trace (ADR-0016).
       makeCast({ id: "cast-4", status: "voided", updatedAt: 4 }),
       makeCast({ id: "cast-5", status: "cancelled", updatedAt: 5 }),
-      makeCast({ id: "cast-6", status: "contained", updatedAt: 6 }),
+      makeCast({ id: "cast-6", status: "paradox", updatedAt: 6 }),
     ]
     expect(deriveAccumulator(casts, SCENE, CASTER)).toBe(1)
   })

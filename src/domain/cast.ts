@@ -6,30 +6,31 @@ import type { GnosisRank } from "./mana-economy"
 import { ParadoxPoolModifier, ParadoxSeverity } from "./paradox"
 
 /**
- * The Cast (issue #43, PRD #39, ADR-0016): a declared Vulgar spellcasting
- * walking its status ladder as a first-class document — the single source of
- * truth for the caster/Storyteller handshake. One Convex mutation per dramatic
- * beat; the client XState machine is a projection of this document, never an
- * owner of pending state.
+ * The Cast (issue #43, PRD #39, ADR-0016 as amended by ADR-0022): a declared
+ * Vulgar spellcasting walking its status ladder as a first-class document —
+ * the single source of truth for the caster/Storyteller handshake. One Convex
+ * mutation per *commitment* (ADR-0022; drafting is broadcast working state);
+ * the client XState machine is a projection of this document, never an owner
+ * of pending state.
  *
- * The ladder:
+ * The four-rung ladder (ADR-0022):
  *
- *   draft → engaged → liabilitiesLocked → intentionLocked (point of no return)
- *         → paradoxRolled → contained → resolved
+ *   draft (caster declares, the wings)
+ *     → price (The Price: ST assembles seed ± personal adjustments, freezes ·
+ *              caster insures, commits or bails)
+ *     → paradox (ST rolls · caster contains & releases in one Cast click)
+ *     → resolved
  *   terminals: cancelled (free, pre-commitment), voided (ST repair, any stage)
  *
- * `contained` means the containment beat is *behind* the Cast — a zero-success
- * Paradox roll skips straight there (no empty ceremony), so the climax cast
- * roll always launches from `contained`.
+ * Rungs with two actors are two-colored phases of one rung, derived from the
+ * document — `waitingOn` reads the phase off the stamped fields, never off a
+ * status suffix.
  */
 
 export const CastStatus = Schema.Literals([
   "draft",
-  "engaged",
-  "liabilitiesLocked",
-  "intentionLocked",
-  "paradoxRolled",
-  "contained",
+  "price",
+  "paradox",
   "resolved",
   "cancelled",
   "voided",
@@ -43,28 +44,68 @@ export const isUnresolved = (status: CastStatus): boolean =>
   !TERMINAL.includes(status)
 
 /**
- * On stage (CONTEXT.md): engaged through contained — the at-most-one Cast
+ * On stage (CONTEXT.md): The Price through Paradox — the at-most-one Cast
  * holding the table's attention. Drafts queue in the wings; terminals free it.
  */
 export const isOnStage = (status: CastStatus): boolean =>
   isUnresolved(status) && status !== "draft"
 
 /**
- * Past the point of no return: the caster's Mana (mitigation + spell cost) is
- * committed and the only exits are playing the Cast out or an ST void.
+ * Past the point of no return: the caster's Mana (mitigation + spell cost) and
+ * any precommitted Willpower are spent, and the only exits are playing the
+ * Cast out or an ST void. Commitment is what enters the Paradox rung.
  */
-export const isCommitted = (status: CastStatus): boolean =>
-  status === "intentionLocked" || status === "paradoxRolled" || status === "contained"
+export const isCommitted = (status: CastStatus): boolean => status === "paradox"
 
-/** Whose button the table is waiting on; null once the Cast is terminal. */
-export const waitingOn = (status: CastStatus): "storyteller" | "caster" | null =>
-  Match.value(status).pipe(
-    // draft: in the wings — the ST engages (or declines); engaged: negotiation —
-    // the ST locks liabilities; intentionLocked: the ST's own Paradox-roll button
-    Match.whenOr("draft", "engaged", "intentionLocked", () => "storyteller" as const),
-    // liabilitiesLocked: the caster's point-of-no-return lock; paradoxRolled: the
-    // caster's containment choice; contained: the caster's climax cast-roll button
-    Match.whenOr("liabilitiesLocked", "paradoxRolled", "contained", () => "caster" as const),
+/**
+ * The frozen Tides seed as the freeze stamps it onto the card (ADR-0022):
+ * inherited-from-scene ambient truth — witnesses, circumstances, the caster's
+ * prior-Paradox pips — stamped, never re-derived. Its presence on the document
+ * IS the freeze: after it lands the ST is irrevocably hands-off and the caster
+ * weighs insurance against a price that cannot shift under them.
+ */
+export const TidesSnapshot = Schema.Struct({
+  witnessCount: Schema.Number,
+  /** Ambient {source, dice} modifiers, signs in both directions (ADR-0022). */
+  circumstances: Schema.Array(ParadoxPoolModifier),
+  priorParadoxRolls: Schema.Number,
+})
+export type TidesSnapshot = typeof TidesSnapshot.Type
+
+/**
+ * What the phase derivation needs of the document: the rung plus the stamps
+ * that split its two-colored phases. Structural like `AccumulatorCast` — a
+ * decoded `Cast` satisfies it, a feed `CastEntry` too.
+ */
+export const CastPhases = Schema.Struct({
+  status: CastStatus,
+  tides: Schema.optionalKey(TidesSnapshot),
+  paradoxSuccesses: Schema.optionalKey(Schema.Number),
+})
+export type CastPhases = typeof CastPhases.Type
+
+/** The freeze has landed: the price is settled and "settled" never lies. */
+export const isPriceFrozen = (cast: CastPhases): boolean =>
+  cast.tides !== undefined
+
+/**
+ * Whose hand the rung waits on (ADR-0022: two-colored phases replace "waiting
+ * on you" prose); null once the Cast is terminal. Phases derive from stamps:
+ * the frozen Tides flip The Price to the caster, the rolled successes flip
+ * Paradox to the caster.
+ */
+export const waitingOn = (cast: CastPhases): "storyteller" | "caster" | null =>
+  Match.value(cast.status).pipe(
+    // draft: in the wings — the ST engages (or declines).
+    Match.when("draft", () => "storyteller" as const),
+    // price: the ST assembles and freezes; then the caster insures & commits.
+    Match.when("price", () =>
+      isPriceFrozen(cast) ? ("caster" as const) : ("storyteller" as const),
+    ),
+    // paradox: the ST's own roll button; then the caster contains & releases.
+    Match.when("paradox", () =>
+      cast.paradoxSuccesses !== undefined ? ("caster" as const) : ("storyteller" as const),
+    ),
     // Terminals listed, not defaulted (ADR-0018): a new rung is a compile error.
     Match.whenOr("resolved", "cancelled", "voided", () => null),
     Match.exhaustive,
@@ -88,40 +129,69 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   // `isRote` (−1 Paradox die, p. 127) and the trained Rote's name; the
   // arcanum/level pair derives from the Rote's spell. Absent on improvised
   // rows and on rows written before the rote lane existed — both mean false.
+  // `spendWillpower` is the blind precommitment (ADR-0022, WoD p. 133): +3
+  // dice in the declared pool, the point itself deducted at the commit.
   arcanum: Schema.String,
   level: Schema.Number,
   isRote: Schema.optionalKey(Schema.Boolean),
   roteName: Schema.optionalKey(Schema.String),
   intent: Schema.optionalKey(Schema.String),
   usesMagicalTool: Schema.Boolean,
+  spendWillpower: Schema.optionalKey(Schema.Boolean),
   declaredComponents: Schema.Array(
     Schema.Struct({ type: Schema.String, name: Schema.String, dots: Schema.Number }),
   ),
   declaredPool: Schema.Number,
   spellManaCost: Schema.Number,
-  // The stage (the engage beat) — liability defaults frozen off the table,
-  // then live under the ST's negotiation buttons until liabilities lock
-  // (issue #44). `witnessCount` supersedes the boolean (kept for rows written
-  // before the count existed); `discretionaryModifiers` are ST judgment calls.
+  // The stage (the engage beat): where the Cast plays, and the caster's
+  // Gnosis as the sheet stood when it took the stage.
   sceneId: Schema.optionalKey(SceneId),
   gnosis: Schema.optionalKey(Schema.Number),
-  sleeperWitnesses: Schema.optionalKey(Schema.Boolean),
-  witnessCount: Schema.optionalKey(Schema.Number),
-  priorParadoxRolls: Schema.optionalKey(Schema.Number),
-  discretionaryModifiers: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
-  // Commitment (the caster's lock)
+  // The Price (ADR-0022): the ST's personal adjustments accumulate while the
+  // rung is fluid; the freeze stamps the Tides seed — its presence IS the
+  // freeze, and after it nothing on the price moves.
+  adjustments: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
+  tides: Schema.optionalKey(TidesSnapshot),
+  // Commitment (the caster's point of no return)
   manaMitigation: Schema.optionalKey(Schema.Number),
-  // The Paradox roll
+  // The Paradox roll — stamped mid-rung; its presence flips the phase.
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
   paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
-  // Containment
+  // The cockpit's broadcast draft (ADR-0022): the caster's half-built
+  // sacrifice, server-held so spectators watch and reconnects rehydrate.
+  draftContainedSuccesses: Schema.optionalKey(Schema.Number),
+  // The one Cast click (contain + release) and resolution
   containedSuccesses: Schema.optionalKey(Schema.Number),
-  // The cast roll and resolution
   castPool: Schema.optionalKey(Schema.Number),
   castSuccesses: Schema.optionalKey(Schema.Number),
   severity: Schema.optionalKey(ParadoxSeverity),
   updatedAt: Schema.Number,
 }) {}
+
+/**
+ * The Tides seed a freeze stamps (ADR-0022): the Scene's ambient truth plus
+ * this caster's derived pips (ADR-0012). Downtime (no Scene) seeds nothing —
+ * no witnesses, no circumstances, no accumulation. Structural over the Scene
+ * so the strip's raw reads and the flow's decoded `Scene` both fit.
+ */
+export const sceneTides = (
+  casts: ReadonlyArray<AccumulatorCast>,
+  scene:
+    | {
+        readonly id: string
+        readonly witnessCount: number
+        readonly circumstances: ReadonlyArray<ParadoxPoolModifier>
+      }
+    | undefined,
+  characterId: string,
+): TidesSnapshot =>
+  scene === undefined
+    ? { witnessCount: 0, circumstances: [], priorParadoxRolls: 0 }
+    : {
+        witnessCount: scene.witnessCount,
+        circumstances: scene.circumstances,
+        priorParadoxRolls: deriveAccumulator(casts, scene.id, characterId),
+      }
 
 /**
  * The per-(Scene, caster) Paradox accumulator (ADR-0012, ADR-0016): derived by
@@ -174,20 +244,11 @@ export const deriveAccumulator = (
 /**
  * Whether the Cast plays as a trained Rote (issue #47) — −1 Paradox die,
  * page 127. Rows written before the rote lane existed are improvised drafts.
- * Structural like `effectiveWitnessCount`: the card reads raw rows too.
+ * Structural like `sceneWitnessCount`: the card reads raw rows too.
  */
 export const isRoteCast = (cast: {
   readonly isRote?: boolean | undefined
 }): boolean => cast.isRote ?? false
-
-/**
- * The witness count a Cast's pool reads (issue #44): rows written before the
- * count existed carry only the Scene toggle's boolean — "one or more" is 1.
- */
-export const effectiveWitnessCount = (cast: {
-  readonly witnessCount?: number | undefined
-  readonly sleeperWitnesses?: boolean | undefined
-}): number => cast.witnessCount ?? (cast.sleeperWitnesses ? 1 : 0)
 
 /** One caster's standing on the strip: who, and how hard they're pushing.
  * A Schema (ADR-0017): it crosses the wire from `api.casts.paradoxPips` and

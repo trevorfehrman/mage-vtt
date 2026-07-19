@@ -97,6 +97,7 @@ export type DraftSubmission =
       level: number
       intent?: string
       usesMagicalTool?: boolean
+      spendWillpower?: boolean
     }
   | {
       method: "rote"
@@ -104,6 +105,7 @@ export type DraftSubmission =
       skillChoice?: string
       intent?: string
       usesMagicalTool?: boolean
+      spendWillpower?: boolean
     }
 
 const IDLE_CONTEXT: CastContext = {
@@ -281,7 +283,8 @@ export function declaredFactors(context: CastContext): {
 }
 
 /** The wire shape of a Vulgar draft — the declaration by route, extras only
- * when they act (a blank or whitespace intent stays off the wire). */
+ * when they act (a blank or whitespace intent stays off the wire). The
+ * Willpower spend precommits at declaration (ADR-0022, WoD p. 133). */
 export function buildDraftSubmission(context: CastContext): DraftSubmission {
   if (context.selection === null) {
     throw new Error("Cannot build a draft submission with nothing armed")
@@ -290,6 +293,7 @@ export function buildDraftSubmission(context: CastContext): DraftSubmission {
   const extras = {
     ...(intent !== "" ? { intent } : {}),
     ...(context.usesMagicalTool ? { usesMagicalTool: true } : {}),
+    ...(context.spendWillpower ? { spendWillpower: true } : {}),
   }
   if (context.selection.method === "improvised") {
     return {

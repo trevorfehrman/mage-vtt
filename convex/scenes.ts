@@ -2,10 +2,12 @@ import { v } from "convex/values"
 import { query } from "./_generated/server"
 import { requireMember } from "./lib/auth"
 import { enforcedMutation } from "./lib/enforce"
+import { ParadoxPoolModifier } from "../src/domain/paradox"
+import { schemaToConvexValidator } from "../src/domain/schema-bridge"
 import {
   closeScene as closeSceneFlow,
+  editTides as editTidesFlow,
   openScene as openSceneFlow,
-  setSceneWitnesses as setSceneWitnessesFlow,
 } from "../src/domain/flows/scene"
 
 // The Scene lifecycle through the enforcement seam (ADR-0004, issue #42).
@@ -23,12 +25,20 @@ export const close = enforcedMutation({
   flow: closeSceneFlow,
 })
 
-// The Sleeper-witnesses default (issue #42): ST-only to change, visible to
-// all on the strip, read later by the Paradox negotiation as an editable
-// default (ADR-0015) — a quiet write, no Activity entry.
-export const setWitnesses = enforcedMutation({
-  args: { sessionId: v.id("sessions"), sleeperWitnesses: v.boolean() },
-  flow: setSceneWitnessesFlow,
+// The Tides (ADR-0022): the scene-owned ambient price of vulgar magic —
+// witness head count and circumstance modifiers, ST-only to change, visible
+// to all on the strip, frozen onto a Cast at The Price — a quiet write, no
+// Activity entry. The modifier shape derives from the domain Schema
+// (ADR-0005), never hand-written beside it.
+export const editTides = enforcedMutation({
+  args: {
+    sessionId: v.id("sessions"),
+    witnessCount: v.optional(v.number()),
+    circumstances: v.optional(
+      v.array(schemaToConvexValidator(ParadoxPoolModifier)),
+    ),
+  },
+  flow: editTidesFlow,
 })
 
 // The strip's live read: the session's active Scene, or null — null is the

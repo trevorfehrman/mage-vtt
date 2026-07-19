@@ -9,30 +9,33 @@ import {
   CastStatus,
   containmentCap,
   finalCastPool,
-  deriveAccumulator,
-  effectiveWitnessCount,
   isCommitted,
   isOnStage,
+  isPriceFrozen,
   isRoteCast,
   isUnresolved,
+  sceneTides,
   toGnosisRank,
   type Cast,
+  type TidesSnapshot,
 } from "../cast"
 import { ArcanumName } from "../character"
 import { buildPool, rollPool, type RawPoolComponent } from "../dice"
-import { applyDamage, healResistantBashing, isIncapacitated, woundPenalty } from "../health"
+import { applyDamage, isIncapacitated, woundPenalty } from "../health"
 import { CastId, CharacterId, SessionId } from "../ids"
 import { improvisedManaCost, spendMana } from "../mana-economy"
 import {
   calculateParadoxPool,
+  modifierComplaint,
   ParadoxPoolModifier,
   resolveParadox,
 } from "../paradox"
 import { GameStore } from "../ports/game-store"
 import { DocumentNotFound } from "../ports/errors"
-import { Mana } from "../quantities"
+import { Mana, Willpower } from "../quantities"
 import { requireVulgarSpell, resolveRotePool } from "../rote-cast"
 import type { CharacterSheet } from "../character"
+import { spendWillpower, WILLPOWER_BONUS_DICE } from "../willpower-economy"
 import {
   ArcanumTooWeak,
   InvalidCastDeclaration,
@@ -42,22 +45,24 @@ import {
 import { requireKnownRote } from "./rote-cast"
 
 /**
- * The Vulgar Cast ladder (issue #43, PRD #39, ADR-0016): one flow per dramatic
- * beat, each checking actor authority and document status and refusing on the
- * ADR-0010 taxonomy — the first mutual contract under ADR-0015's second
- * regime. The Cast document is the single source of truth; every beat lands
- * one atomic Activity entry (ADR-0009) so spectators experience the reveals as
- * separate gasps.
+ * The Vulgar Cast ladder (issue #43, PRD #39, ADR-0016 as amended by
+ * ADR-0022): one flow per commitment, each checking actor authority, document
+ * status, and phase, and refusing on the ADR-0010 taxonomy — the first mutual
+ * contract under ADR-0015's second regime. The Cast document is the single
+ * source of truth; commitments land atomic Activity entries (ADR-0009) while
+ * drafting stays broadcast working state on the document itself.
  *
- *   draftCast → engageCast (ST) → lockLiabilities (ST) → lockIntention
- *   (caster; Mana committed; POINT OF NO RETURN) → rollParadox (ST's own
- *   button; chance die at zero dice) → containParadox (caster; Resistant
- *   bashing; auto-skipped at zero successes) → rollCastDice (caster's own
- *   button; declared pool − uncontained successes) → resolved
+ *   draftCast → engageCast (ST; the stage) → [adjustPrice*] → lockPrice (ST;
+ *   THE FREEZE — Tides stamped, irrevocably hands-off) → commitCast (caster;
+ *   Mana + precommitted Willpower spent; POINT OF NO RETURN) → rollParadox
+ *   (ST's own button; chance die at zero dice) → [setDraftContainment*] →
+ *   releaseCast (caster's one Cast click: containment lands and the dice fly
+ *   in one commitment) → resolved
  *
- * Exits: killDraft (owner) / declineDraft (ST) / cancelCast (either party,
- * pre-commitment) → cancelled; voidCast (ST repair, any live stage, Override-
- * stamped, restores Mana and Health, leaves no accumulator trace) → voided.
+ * Exits: killDraft (owner) / declineDraft (ST) → cancelled; cancelCast
+ * (either party, anywhere on The Price — the caster may bail on a frozen
+ * price) → cancelled; voidCast (ST repair, any live stage, Override-stamped,
+ * restores Mana and Willpower, leaves no accumulator trace) → voided.
  * No timeouts anywhere — pending Casts persist until a human moves them.
  *
  * Caster beats walk `requireSessionCharacter`'s authority ladder, so the
@@ -88,11 +93,11 @@ export class StageOccupied extends Schema.TaggedErrorClass<StageOccupied>()(
 ) {}
 
 /**
- * Rules/precondition: the beat fired against the wrong rung of the ladder —
- * out of order, already taken, or the Cast is terminal. Inside the contract
- * this refusal is symmetric: it answers the Storyteller as readily as the
- * caster (ADR-0015). `needed` is display prose, not vocabulary — some beats
- * accept a band of rungs.
+ * Rules/precondition: the beat fired against the wrong rung — or the wrong
+ * phase of a two-colored rung (ADR-0022) — out of order, already taken, or
+ * the Cast is terminal. Inside the contract this refusal is symmetric: it
+ * answers the Storyteller as readily as the caster (ADR-0015). `needed` is
+ * display prose, not vocabulary — a phase is prose on its rung.
  */
 export class CastStatusConflict extends Schema.TaggedErrorClass<CastStatusConflict>()(
   "CastStatusConflict",
@@ -103,9 +108,9 @@ export class CastStatusConflict extends Schema.TaggedErrorClass<CastStatusConfli
   },
 ) {}
 
-/** Validation: a liability edit that no ruling could mean (issue #44). */
-export class InvalidLiability extends Schema.TaggedErrorClass<InvalidLiability>()(
-  "InvalidLiability",
+/** Validation: a personal adjustment that no ruling could mean (ADR-0022). */
+export class InvalidAdjustment extends Schema.TaggedErrorClass<InvalidAdjustment>()(
+  "InvalidAdjustment",
   { message: Schema.String },
 ) {}
 
@@ -133,9 +138,6 @@ const WholeCount = Schema.Number.check(
   Schema.isInt(),
   Schema.isGreaterThanOrEqualTo(0),
 )
-
-/** A whole (possibly negative) die count — discretionary modifiers swing both ways. */
-const WholeDice = Schema.Number.check(Schema.isInt())
 
 /** The session-scoped Cast read: a Cast outside this session isn't there. */
 const requireCast = Effect.fn("Flows.vulgarCast.requireCast")(function* (
@@ -165,6 +167,46 @@ const requireStatus = Effect.fn("Flows.vulgarCast.requireStatus")(function* (
 })
 
 /**
+ * The two-colored phase enforcement (ADR-0022): The Price before the freeze
+ * (the ST's fluid assembly) or after it (the caster's settled decision).
+ */
+const requirePricePhase = Effect.fn("Flows.vulgarCast.requirePricePhase")(
+  function* (cast: Cast, phase: "fluid" | "frozen") {
+    yield* requireStatus(cast, "price")
+    if (isPriceFrozen(cast) !== (phase === "frozen")) {
+      return yield* new CastStatusConflict({
+        castId: cast.id,
+        status: cast.status,
+        needed:
+          phase === "fluid"
+            ? "The Price, before the freeze"
+            : "The Price, after the freeze",
+      })
+    }
+  },
+)
+
+/**
+ * The Paradox rung's phase enforcement (ADR-0022): before the ST's roll
+ * (successes unstamped) or after it (the caster's cockpit).
+ */
+const requireParadoxPhase = Effect.fn("Flows.vulgarCast.requireParadoxPhase")(
+  function* (cast: Cast, phase: "unrolled" | "rolled") {
+    yield* requireStatus(cast, "paradox")
+    if ((cast.paradoxSuccesses !== undefined) !== (phase === "rolled")) {
+      return yield* new CastStatusConflict({
+        castId: cast.id,
+        status: cast.status,
+        needed:
+          phase === "unrolled"
+            ? "Paradox, before the roll"
+            : "Paradox, after the roll",
+      })
+    }
+  },
+)
+
+/**
  * A beat field that a prior beat must have stamped: absence at this rung is a
  * document-corruption bug, not a client-actionable failure (Fail/Die split).
  */
@@ -174,23 +216,46 @@ const stamped = <A>(value: A | undefined, field: string): Effect.Effect<A> =>
     : Effect.succeed(value)
 
 /**
- * The Paradox pool's inputs as the engage beat stamped them and the
- * negotiation edited them (issue #44). Rows written before the witness count
- * existed fall back to the coarse boolean ("one or more" = 1).
+ * The one containment rule both cockpit doors enforce (ADR-0022): the draft
+ * box clicks and the release itself bet inside 0..min(successes rolled,
+ * Health remaining). Returns the stamped successes for the release's math.
+ */
+const requireContainable = Effect.fn("Flows.vulgarCast.requireContainable")(
+  function* (cast: Cast, sheet: CharacterSheet, contained: number) {
+    const successes = yield* stamped(cast.paradoxSuccesses, "paradoxSuccesses")
+    const cap = containmentCap(sheet.healthTrack, successes)
+    if (!Schema.is(WholeCount)(contained) || contained > cap) {
+      return yield* new InvalidContainment({
+        message: `Containment must be between 0 and ${cap} (successes rolled, Health remaining), got ${contained}.`,
+        cap,
+      })
+    }
+    return successes
+  },
+)
+
+/**
+ * The Paradox pool's inputs as the freeze stamped them (ADR-0022): the frozen
+ * Tides seed plus the ST's personal adjustments — stamped, never re-derived.
+ * The freeze itself passes the seed it is about to stamp; every later beat
+ * reads it off the document.
  */
 const paradoxInputs = Effect.fn("Flows.vulgarCast.paradoxInputs")(function* (
   cast: Cast,
+  justStamped?: TidesSnapshot,
 ) {
   const gnosis = yield* stamped(cast.gnosis, "gnosis")
-  yield* stamped(cast.sleeperWitnesses, "sleeperWitnesses")
-  const priorParadoxRolls = yield* stamped(cast.priorParadoxRolls, "priorParadoxRolls")
+  const tides = justStamped ?? (yield* stamped(cast.tides, "tides"))
   return {
     gnosis: toGnosisRank(gnosis),
     isRote: isRoteCast(cast),
     usesMagicalTool: cast.usesMagicalTool,
-    witnessCount: effectiveWitnessCount(cast),
-    priorParadoxRollsThisScene: priorParadoxRolls,
-    discretionaryModifiers: cast.discretionaryModifiers ?? [],
+    witnessCount: tides.witnessCount,
+    priorParadoxRollsThisScene: tides.priorParadoxRolls,
+    discretionaryModifiers: [
+      ...tides.circumstances,
+      ...(cast.adjustments ?? []),
+    ],
   }
 })
 
@@ -215,6 +280,9 @@ export const DraftCastArgs = Schema.Struct({
   skillChoice: Schema.optionalKey(Schema.String),
   intent: Schema.optionalKey(Schema.String),
   usesMagicalTool: Schema.optionalKey(Schema.Boolean),
+  /** The blind Willpower precommitment (ADR-0022, WoD p. 133): +3 dice now,
+   * the point deducted at the commit, as losable to Paradox as any die. */
+  spendWillpower: Schema.optionalKey(Schema.Boolean),
 })
 export type DraftCastArgs = typeof DraftCastArgs.Type
 
@@ -319,7 +387,10 @@ const roteDeclaration = Effect.fn("Flows.vulgarCast.roteDeclaration")(function* 
  * spell Mana cost freeze here — the sheet as it stands at declaration is the
  * sheet the Cast plays from. Two lanes, one door (issue #47): an improvised
  * effect (Gnosis + Arcanum) or a trained Rote (its resolved pool, `isRote`
- * stamped for the Paradox pricing) — exactly one per draft.
+ * stamped for the Paradox pricing) — exactly one per draft. A Willpower
+ * spend precommits blind here (ADR-0022, WoD p. 133): its +3 dice join the
+ * declared pool before penalties; only the point's deduction waits for the
+ * commit, so a killed or declined draft costs nothing.
  */
 export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
   args: DraftCastArgs,
@@ -343,10 +414,27 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
       message: "A skill pick belongs to a Rote declaration.",
     })
   }
-  const declaration =
+  const lane =
     args.roteName !== undefined
       ? yield* roteDeclaration(sheet, args.roteName, args.skillChoice)
       : yield* improvisedDeclaration(sheet, args.arcanum, args.level)
+
+  // The Willpower precommitment must be affordable when declared — the check
+  // spends nothing; the point itself commits with the Mana at the commit.
+  const withWillpower = args.spendWillpower ?? false
+  if (withWillpower) {
+    yield* spendWillpower(sheet.willpowerCurrent)
+  }
+  const declaration = withWillpower
+    ? {
+        ...lane,
+        declaredComponents: [
+          ...lane.declaredComponents,
+          { type: "modifier", name: "Willpower", dots: WILLPOWER_BONUS_DICE },
+        ],
+        declaredPool: lane.declaredPool + WILLPOWER_BONUS_DICE,
+      }
+    : lane
 
   // One unresolved Cast per character — the queue means something (PRD #39).
   const casts = yield* store.listCasts(sessionId)
@@ -375,6 +463,7 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
       : {}),
     ...(intent ? { intent } : {}),
     usesMagicalTool: args.usesMagicalTool ?? false,
+    ...(withWillpower ? { spendWillpower: true } : {}),
     declaredComponents: declaration.declaredComponents,
     declaredPool: declaration.declaredPool,
     spellManaCost: declaration.spellManaCost,
@@ -383,10 +472,11 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
   const declared = declaration.isRote
     ? `drafts the Rote "${declaration.roteName}" as a vulgar ${capitalize(declaration.arcanum)} ${declaration.level} cast`
     : `drafts a vulgar ${capitalize(declaration.arcanum)} ${declaration.level} cast`
+  const willpower = withWillpower ? ", Willpower behind it" : ""
   yield* store.insertMessage({
     sessionId,
     sender: { userId: member.userId, displayName: member.displayName },
-    text: `${member.displayName} ${declared}${intent ? ` — "${intent}"` : ""}. It waits in the wings.`,
+    text: `${member.displayName} ${declared}${willpower}${intent ? ` — "${intent}"` : ""}. It waits in the wings.`,
     visibility: "system",
   })
 
@@ -450,11 +540,11 @@ export const declineDraft = Effect.fn("Flows.vulgarCast.declineDraft")(function*
 })
 
 /**
- * The Storyteller engages a draft onto the exclusive stage. The liability
- * defaults freeze off the table here — Gnosis from the sheet, witnesses from
- * the Scene toggle, the accumulator derived from resolved Cast history
- * (ADR-0012) — as computed defaults (ADR-0015; the editing UI is a later
- * slice). No Scene open is legal: downtime casting accumulates nothing.
+ * The Storyteller engages a draft onto the exclusive stage — The Price rung
+ * opens fluid (ADR-0022): the card shows the live Tides off the Scene while
+ * the ST assembles personal adjustments; nothing is settled until the freeze
+ * stamps the seed. Gnosis stamps here — the sheet as it stands when the Cast
+ * takes the stage. No Scene open is legal: downtime casting seeds nothing.
  */
 export const engageCast = Effect.fn("Flows.vulgarCast.engageCast")(function* (
   args: CastStepArgs,
@@ -481,102 +571,60 @@ export const engageCast = Effect.fn("Flows.vulgarCast.engageCast")(function* (
   const scene = yield* store.getActiveScene(sessionId)
   const sceneId = Option.isSome(scene) ? scene.value.id : undefined
 
-  const sleeperWitnesses = Option.isSome(scene)
-    ? scene.value.sleeperWitnesses
-    : false
   yield* store.patchCast(castId, {
-    status: "engaged",
+    status: "price",
     ...(sceneId !== undefined ? { sceneId } : {}),
     gnosis: sheet.gnosis,
-    sleeperWitnesses,
-    // The toggle's "one or more" becomes a countable default the ST's
-    // liability buttons then negotiate over (issue #44).
-    witnessCount: sleeperWitnesses ? 1 : 0,
-    priorParadoxRolls: deriveAccumulator(casts, sceneId, cast.characterId),
   })
 
   yield* store.insertMessage({
     sessionId,
     sender: { userId: storyteller.userId, displayName: storyteller.displayName },
-    text: `${storyteller.displayName} engages ${cast.casterName}'s vulgar cast — it takes the stage.`,
+    text: `${storyteller.displayName} engages ${cast.casterName}'s vulgar cast — it takes the stage, and the Tides set its price.`,
     visibility: "system",
   })
 
   return castId
 })
 
-export const EditLiabilitiesArgs = Schema.Struct({
+export const AdjustPriceArgs = Schema.Struct({
   ...CastStepArgs.fields,
-  /** Sleeper head count; dice stay the book's flat +2 for one-or-more. */
-  witnessCount: Schema.optionalKey(WholeCount),
-  /** The ST's override of the derived accumulator default (ADR-0015). */
-  priorParadoxRolls: Schema.optionalKey(WholeCount),
-  /** The whole discretionary list as it should now read — replace, not merge. */
-  discretionaryModifiers: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
+  /** The whole adjustment list as it should now read — replace, not merge. */
+  adjustments: Schema.Array(ParadoxPoolModifier),
 })
-export type EditLiabilitiesArgs = typeof EditLiabilitiesArgs.Type
+export type AdjustPriceArgs = typeof AdjustPriceArgs.Type
 
 /**
- * The Storyteller's liability buttons (issue #44, PRD #39 stories 14/17): each
- * press patches the shared document during negotiation, and every screen
- * watches the Paradox pool reassemble in realtime. Only the ST's side of the
- * document is reachable here — the caster's fields have their own doors — and
- * only on `engaged`: after the ST locks, the caster commits against a frozen
- * pool, so liability edits refuse. No Activity entry lands: negotiation is
- * table talk, not a reveal (ADR-0016); the lock narrates the final pool.
+ * The Storyteller's personal adjustments (ADR-0022): facts about this
+ * caster's situation — a broken hand, hanging from a ledge, a ghost's boon —
+ * added to the card before the freeze, visibly distinct from the inherited
+ * scene seed. The ST reacts to the world by editing the Scene, to the caster
+ * by adjusting here; only The Price's fluid phase is reachable. No Activity
+ * entry: assembly is table talk, not a reveal (ADR-0016); the freeze narrates
+ * the final pool.
  */
-export const editLiabilities = Effect.fn("Flows.vulgarCast.editLiabilities")(
-  function* (args: EditLiabilitiesArgs) {
-    const sessionId = SessionId.make(args.sessionId)
-    const castId = CastId.make(args.castId)
-    const store = yield* GameStore
+export const adjustPrice = Effect.fn("Flows.vulgarCast.adjustPrice")(function* (
+  args: AdjustPriceArgs,
+) {
+  const sessionId = SessionId.make(args.sessionId)
+  const castId = CastId.make(args.castId)
+  const store = yield* GameStore
 
-    yield* requireStoryteller(sessionId)
-    const cast = yield* requireCast(sessionId, castId)
-    yield* requireStatus(cast, "engaged")
+  yield* requireStoryteller(sessionId)
+  const cast = yield* requireCast(sessionId, castId)
+  yield* requirePricePhase(cast, "fluid")
 
-    if (args.witnessCount !== undefined && !Schema.is(WholeCount)(args.witnessCount)) {
-      return yield* new InvalidLiability({
-        message: `Witnesses must be a whole count of Sleepers, got ${args.witnessCount}.`,
-      })
-    }
-    if (
-      args.priorParadoxRolls !== undefined &&
-      !Schema.is(WholeCount)(args.priorParadoxRolls)
-    ) {
-      return yield* new InvalidLiability({
-        message: `The accumulator must be a whole count of prior rolls, got ${args.priorParadoxRolls}.`,
-      })
-    }
-    yield* Effect.forEach(args.discretionaryModifiers ?? [], (modifier) => {
-      if (modifier.source.trim().length === 0) {
-        return new InvalidLiability({
-          message: "A discretionary modifier needs a name the table can read.",
-        })
-      }
-      if (!Schema.is(WholeDice)(modifier.dice) || modifier.dice === 0) {
-        return new InvalidLiability({
-          message: `A discretionary modifier must be a whole nonzero die count, got ${modifier.dice}.`,
-        })
-      }
-      return Effect.void
-    })
+  yield* Effect.forEach(args.adjustments, (adjustment) => {
+    const complaint = modifierComplaint(adjustment)
+    return complaint === null
+      ? Effect.void
+      : new InvalidAdjustment({ message: `An adjustment ${complaint}` })
+  })
 
-    yield* store.patchCast(castId, {
-      ...(args.witnessCount !== undefined
-        ? { witnessCount: args.witnessCount }
-        : {}),
-      ...(args.priorParadoxRolls !== undefined
-        ? { priorParadoxRolls: args.priorParadoxRolls }
-        : {}),
-      ...(args.discretionaryModifiers !== undefined
-        ? { discretionaryModifiers: args.discretionaryModifiers }
-        : {}),
-    })
+  yield* store.patchCast(castId, { adjustments: args.adjustments })
 
-    return castId
-  },
-)
+  return castId
+})
 
 export const SetMagicalToolArgs = Schema.Struct({
   ...CastStepArgs.fields,
@@ -585,11 +633,11 @@ export const SetMagicalToolArgs = Schema.Struct({
 export type SetMagicalToolArgs = typeof SetMagicalToolArgs.Type
 
 /**
- * The caster's side of the negotiation (issue #44): the magical-tool flag is
- * theirs to change until the ST locks liabilities — after that the caster
- * would be reshaping the very pool the lock froze. Walks the same authority
- * ladder as every caster beat (owner plain; ST/Dev in-stead Override-stamped,
- * ADR-0015). Table talk like the ST's buttons: no Activity entry.
+ * The caster's side of the price (issue #44): the magical-tool flag is theirs
+ * to change until the freeze — after that the caster would be reshaping the
+ * very pool the freeze settled. Walks the same authority ladder as every
+ * caster beat (owner plain; ST/Dev in-stead Override-stamped, ADR-0015).
+ * Table talk like the ST's adjustments: no Activity entry.
  */
 export const setMagicalTool = Effect.fn("Flows.vulgarCast.setMagicalTool")(
   function* (args: SetMagicalToolArgs) {
@@ -600,12 +648,10 @@ export const setMagicalTool = Effect.fn("Flows.vulgarCast.setMagicalTool")(
     const cast = yield* requireCast(sessionId, castId)
     // Authority before status: a stranger learns nothing about the ladder.
     yield* requireSessionCharacter(sessionId, cast.characterId)
-    if (cast.status !== "draft" && cast.status !== "engaged") {
-      return yield* new CastStatusConflict({
-        castId: cast.id,
-        status: cast.status,
-        needed: "draft | engaged",
-      })
+    if (cast.status === "price") {
+      yield* requirePricePhase(cast, "fluid")
+    } else {
+      yield* requireStatus(cast, "draft")
     }
 
     yield* store.patchCast(castId, { usesMagicalTool: args.usesMagicalTool })
@@ -614,45 +660,65 @@ export const setMagicalTool = Effect.fn("Flows.vulgarCast.setMagicalTool")(
   },
 )
 
-/** The Storyteller locks liabilities: the caster now commits against a frozen pool. */
-export const lockLiabilities = Effect.fn("Flows.vulgarCast.lockLiabilities")(
-  function* (args: CastStepArgs) {
-    const sessionId = SessionId.make(args.sessionId)
-    const castId = CastId.make(args.castId)
-    const store = yield* GameStore
+/**
+ * THE FREEZE (ADR-0022): the Storyteller locks the price when satisfied —
+ * the Tides seed stamps onto the card (scene witnesses, circumstances, this
+ * caster's derived pips) beside the personal adjustments, and from this click
+ * the ST is irrevocably hands-off. No unfreeze exists; repairs are void plus
+ * redeclare, or out-of-band restitution. Post-freeze Scene edits never touch
+ * the frozen card — the *next* cast pays the new price.
+ */
+export const lockPrice = Effect.fn("Flows.vulgarCast.lockPrice")(function* (
+  args: CastStepArgs,
+) {
+  const sessionId = SessionId.make(args.sessionId)
+  const castId = CastId.make(args.castId)
+  const store = yield* GameStore
 
-    const storyteller = yield* requireStoryteller(sessionId)
-    const cast = yield* requireCast(sessionId, castId)
-    yield* requireStatus(cast, "engaged")
+  const storyteller = yield* requireStoryteller(sessionId)
+  const cast = yield* requireCast(sessionId, castId)
+  yield* requirePricePhase(cast, "fluid")
 
-    yield* store.patchCast(castId, { status: "liabilitiesLocked" })
+  // The seed stamps off the Scene as it stands at this click — the one
+  // stamping moment, so pre-freeze Scene edits flow through and post-freeze
+  // ones visibly diverge (the strip shows the new world, the card keeps its
+  // snapshot). Downtime seeds nothing.
+  const casts = yield* store.listCasts(sessionId)
+  const scene = yield* store.getActiveScene(sessionId)
+  const tides = sceneTides(
+    casts,
+    Option.isSome(scene) ? scene.value : undefined,
+    cast.characterId,
+  )
 
-    const pool = calculateParadoxPool(yield* paradoxInputs(cast))
-    yield* store.insertMessage({
-      sessionId,
-      sender: { userId: storyteller.userId, displayName: storyteller.displayName },
-      text: `${storyteller.displayName} locks the liabilities: ${cast.casterName} faces a ${pool.totalDice}-die Paradox pool.`,
-      visibility: "system",
-    })
+  yield* store.patchCast(castId, { tides })
 
-    return castId
-  },
-)
+  const pool = calculateParadoxPool(yield* paradoxInputs(cast, tides))
+  yield* store.insertMessage({
+    sessionId,
+    sender: { userId: storyteller.userId, displayName: storyteller.displayName },
+    text: `${storyteller.displayName} freezes the price: ${cast.casterName} faces a ${pool.totalDice}-die Paradox pool. Settled — it cannot shift now.`,
+    visibility: "system",
+  })
 
-export const LockIntentionArgs = Schema.Struct({
+  return castId
+})
+
+export const CommitCastArgs = Schema.Struct({
   ...CastStepArgs.fields,
   /** Mana spent shrinking the Paradox pool, 1 per die — blind insurance. */
   manaMitigation: Schema.Number,
 })
-export type LockIntentionArgs = typeof LockIntentionArgs.Type
+export type CommitCastArgs = typeof CommitCastArgs.Type
 
 /**
- * The caster locks intention — THE POINT OF NO RETURN. Mitigation and the
- * spell's Mana cost commit atomically; from here the only exits are playing
- * the Cast out or a Storyteller void (ADR-0015's contract regime).
+ * The caster commits — THE POINT OF NO RETURN. Mitigation, the spell's Mana
+ * cost, and the precommitted Willpower point (ADR-0022) commit atomically in
+ * one mutation; the Cast enters the Paradox rung and the only exits are
+ * playing it out or a Storyteller void (ADR-0015's contract regime).
  */
-export const lockIntention = Effect.fn("Flows.vulgarCast.lockIntention")(function* (
-  args: LockIntentionArgs,
+export const commitCast = Effect.fn("Flows.vulgarCast.commitCast")(function* (
+  args: CommitCastArgs,
 ) {
   const sessionId = SessionId.make(args.sessionId)
   const castId = CastId.make(args.castId)
@@ -660,7 +726,7 @@ export const lockIntention = Effect.fn("Flows.vulgarCast.lockIntention")(functio
 
   const cast = yield* requireCast(sessionId, castId)
   const sheet = yield* requireSessionCharacter(sessionId, cast.characterId)
-  yield* requireStatus(cast, "liabilitiesLocked")
+  yield* requirePricePhase(cast, "frozen")
 
   const mitigation = args.manaMitigation
   if (!Schema.is(WholeCount)(mitigation)) {
@@ -675,22 +741,34 @@ export const lockIntention = Effect.fn("Flows.vulgarCast.lockIntention")(functio
     })
   }
 
-  // The commit is atomic with the status step: spendMana refuses before any
-  // write, and the Convex transaction carries the rest (ADR-0016).
+  // The commit is atomic with the status step: spendMana and spendWillpower
+  // refuse before any write, and the Convex transaction carries the rest.
   const cost = Mana.make(cast.spellManaCost + mitigation)
   const manaRemaining = yield* spendMana(sheet.manaCurrent, cost)
-  yield* store.patchSheet(sheet.id, { manaCurrent: manaRemaining })
+  const willpowerRemaining = (cast.spendWillpower ?? false)
+    ? yield* spendWillpower(sheet.willpowerCurrent)
+    : null
+  yield* store.patchSheet(sheet.id, {
+    manaCurrent: manaRemaining,
+    ...(willpowerRemaining !== null
+      ? { willpowerCurrent: willpowerRemaining }
+      : {}),
+  })
 
   yield* store.patchCast(castId, {
-    status: "intentionLocked",
+    status: "paradox",
     manaMitigation: mitigation,
   })
 
   const member = yield* casterMembership(cast)
+  const spent = [
+    `${cost} Mana${mitigation > 0 ? ` (${mitigation} to mitigation)` : ""}`,
+    ...(willpowerRemaining !== null ? ["the precommitted Willpower"] : []),
+  ].join(" and ")
   yield* store.insertMessage({
     sessionId,
     sender: { userId: member.userId, displayName: member.displayName },
-    text: `${cast.casterName} locks intention, committing ${cost} Mana${mitigation > 0 ? ` (${mitigation} to mitigation)` : ""}. The point of no return.`,
+    text: `${cast.casterName} commits, spending ${spent}. The point of no return.`,
     visibility: "system",
   })
 
@@ -698,8 +776,10 @@ export const lockIntention = Effect.fn("Flows.vulgarCast.lockIntention")(functio
 })
 
 /**
- * Free cancel, either party, before the caster's lock: an in-fiction
- * reconsideration, not a repair — plain provenance, the stage frees.
+ * Free cancel, either party, anywhere on The Price — before the caster's
+ * commit (a caster may bail on a frozen price; that is the rung's design):
+ * an in-fiction reconsideration, not a repair — plain provenance, the stage
+ * frees.
  */
 export const cancelCast = Effect.fn("Flows.vulgarCast.cancelCast")(function* (
   args: CastStepArgs,
@@ -716,13 +796,7 @@ export const cancelCast = Effect.fn("Flows.vulgarCast.cancelCast")(function* (
     yield* requireStoryteller(sessionId)
   }
 
-  if (cast.status !== "engaged" && cast.status !== "liabilitiesLocked") {
-    return yield* new CastStatusConflict({
-      castId: cast.id,
-      status: cast.status,
-      needed: "engaged | liabilitiesLocked",
-    })
-  }
+  yield* requireStatus(cast, "price")
 
   yield* store.patchCast(castId, { status: "cancelled" })
 
@@ -739,8 +813,9 @@ export const cancelCast = Effect.fn("Flows.vulgarCast.cancelCast")(function* (
 /**
  * The Storyteller's own Paradox-roll button — never auto-fired, never anyone
  * else's. The roll always happens: a fully mitigated pool still throws the
- * chance die (the rules' gamble is honest). Zero successes skip containment —
- * no empty ceremony — landing the Cast directly on `contained`.
+ * chance die (the rules' gamble is honest). The rung doesn't move — the
+ * stamped successes flip its phase to the caster's cockpit, zero included
+ * (nothing to contain is still the caster's release to click).
  */
 export const rollParadox = Effect.fn("Flows.vulgarCast.rollParadox")(function* (
   args: CastStepArgs,
@@ -751,7 +826,7 @@ export const rollParadox = Effect.fn("Flows.vulgarCast.rollParadox")(function* (
 
   const storyteller = yield* requireStoryteller(sessionId)
   const cast = yield* requireCast(sessionId, castId)
-  yield* requireStatus(cast, "intentionLocked")
+  yield* requireParadoxPhase(cast, "unrolled")
 
   const mitigation = yield* stamped(cast.manaMitigation, "manaMitigation")
   const inputs = yield* paradoxInputs(cast)
@@ -764,12 +839,9 @@ export const rollParadox = Effect.fn("Flows.vulgarCast.rollParadox")(function* (
   const dicePool = yield* buildPool(components)
   const result = yield* rollPool(dicePool)
 
-  const skipContainment = result.successes === 0
   yield* store.patchCast(castId, {
-    status: skipContainment ? "contained" : "paradoxRolled",
     paradoxSuccesses: result.successes,
     paradoxIsDramaticFailure: result.isDramaticFailure,
-    ...(skipContainment ? { containedSuccesses: 0 } : {}),
   })
 
   const dice = result.isChanceDie ? "a chance die" : `${result.poolSize} dice`
@@ -780,26 +852,69 @@ export const rollParadox = Effect.fn("Flows.vulgarCast.rollParadox")(function* (
     result,
     summary: result.isDramaticFailure
       ? `Reality rolls ${dice} against ${cast.casterName} — a dramatic failure! Paradox leaves the caster alone, and the Scene forgives its next accumulation.`
-      : `Reality rolls ${dice} against ${cast.casterName} — ${outcomeOf(result)}${skipContainment ? ". Nothing to contain; the way to the cast is clear" : ""}.`,
+      : `Reality rolls ${dice} against ${cast.casterName} — ${outcomeOf(result)}${result.successes === 0 ? ". Nothing to contain; the way to the cast is clear" : ""}.`,
   })
 
   return castId
 })
 
-export const ContainParadoxArgs = Schema.Struct({
+export const SetDraftContainmentArgs = Schema.Struct({
+  ...CastStepArgs.fields,
+  /** The half-built sacrifice: box clicks, broadcast live (ADR-0022). */
+  draftContainedSuccesses: Schema.Number,
+})
+export type SetDraftContainmentArgs = typeof SetDraftContainmentArgs.Type
+
+/**
+ * The cockpit's drafting door (ADR-0022): box clicks write broadcast working
+ * state on the Cast document — cheap, seam-checked (actor is caster, phase is
+ * the cockpit, boxes in range), no rules consequence until the release
+ * finalizes. Spectators watch through the same reactivity as everything
+ * else; a reconnecting caster drops back into their half-built sacrifice.
+ * Deliberately public, un-clicks included — no poker face. No Activity entry.
+ */
+export const setDraftContainment = Effect.fn("Flows.vulgarCast.setDraftContainment")(
+  function* (args: SetDraftContainmentArgs) {
+    const sessionId = SessionId.make(args.sessionId)
+    const castId = CastId.make(args.castId)
+    const store = yield* GameStore
+
+    const cast = yield* requireCast(sessionId, castId)
+    const sheet = yield* requireSessionCharacter(sessionId, cast.characterId)
+    yield* requireParadoxPhase(cast, "rolled")
+    yield* requireContainable(cast, sheet, args.draftContainedSuccesses)
+
+    yield* store.patchCast(castId, {
+      draftContainedSuccesses: args.draftContainedSuccesses,
+    })
+
+    return castId
+  },
+)
+
+export const ReleaseCastArgs = Schema.Struct({
   ...CastStepArgs.fields,
   /** Paradox successes absorbed as Resistant bashing, one wound per success. */
   containedSuccesses: Schema.Number,
 })
-export type ContainParadoxArgs = typeof ContainParadoxArgs.Type
+export type ReleaseCastArgs = typeof ReleaseCastArgs.Type
 
 /**
- * The caster bets their flesh: each contained success writes one Resistant
- * bashing wound (issue #41), capped by the boxes still empty — the martyr play
- * down to the last box is possible, death is not. Zero is a legal choice.
+ * The one Cast click (ADR-0022: one mutation per commitment): containment
+ * lands and the dice fly as a single server commitment — the card may still
+ * play "the sacrifice lands" then "the dice fly" as sequential animations
+ * from this one event. Each contained success writes one Resistant bashing
+ * wound (issue #41), capped by the boxes still empty — the martyr play down
+ * to the last box is possible, death is not; zero is a legal choice. The
+ * pool shrinks twice (issue #45): declared − uncontained successes (p. 124)
+ * and the wound penalty of the track as the sacrifice leaves it (chance die
+ * at zero or below) — the precommitted Willpower dice erode like any others.
+ * Resolution records both rolls' outcomes and the Paradox severity, frees
+ * the stage, and — when containment filled the last box — surfaces the
+ * full-bashing-track unconsciousness rule for the Storyteller to adjudicate.
  */
-export const containParadox = Effect.fn("Flows.vulgarCast.containParadox")(function* (
-  args: ContainParadoxArgs,
+export const releaseCast = Effect.fn("Flows.vulgarCast.releaseCast")(function* (
+  args: ReleaseCastArgs,
 ) {
   const sessionId = SessionId.make(args.sessionId)
   const castId = CastId.make(args.castId)
@@ -807,18 +922,13 @@ export const containParadox = Effect.fn("Flows.vulgarCast.containParadox")(funct
 
   const cast = yield* requireCast(sessionId, castId)
   const sheet = yield* requireSessionCharacter(sessionId, cast.characterId)
-  yield* requireStatus(cast, "paradoxRolled")
+  yield* requireParadoxPhase(cast, "rolled")
 
-  const successes = yield* stamped(cast.paradoxSuccesses, "paradoxSuccesses")
   const contained = args.containedSuccesses
-  const cap = containmentCap(sheet.healthTrack, successes)
-  if (!Schema.is(WholeCount)(contained) || contained > cap) {
-    return yield* new InvalidContainment({
-      message: `Containment must be between 0 and ${cap} (successes rolled, Health remaining), got ${contained}.`,
-      cap,
-    })
-  }
+  const paradoxSuccesses = yield* requireContainable(cast, sheet, contained)
 
+  // The sacrifice lands first: the track the dice pay wound penalties on is
+  // the track as containment leaves it.
   const track =
     contained === 0
       ? sheet.healthTrack
@@ -829,55 +939,8 @@ export const containParadox = Effect.fn("Flows.vulgarCast.containParadox")(funct
     yield* store.patchSheet(sheet.id, { healthTrack: track })
   }
 
-  yield* store.patchCast(castId, {
-    status: "contained",
-    containedSuccesses: contained,
-  })
-
-  const member = yield* casterMembership(cast)
-  const martyred = contained > 0 && isIncapacitated(track)
-  yield* store.insertMessage({
-    sessionId,
-    sender: { userId: member.userId, displayName: member.displayName },
-    text:
-      contained === 0
-        ? `${cast.casterName} lets the Paradox run — all ${successes} ${successes === 1 ? "success" : "successes"} will mar the cast and the world.`
-        : `${cast.casterName} contains ${contained} of ${successes} Paradox ${successes === 1 ? "success" : "successes"}, taking ${contained} Resistant bashing.` +
-          (martyred
-            ? " The last health box fills — the caster is going down with the spell (unconsciousness: Storyteller adjudicates)."
-            : ""),
-    visibility: "system",
-  })
-
-  return castId
-})
-
-/**
- * The climax: the caster's own cast-roll button, a separate beat from
- * containment — picking up the dice is its own moment. The pool shrinks twice
- * (issue #45): declared − uncontained successes (p. 124) and the wound
- * penalty of the track as it stands — containment's self-inflicted Resistant
- * bashing included (chance die at zero or below). Resolution records both
- * rolls' outcomes and the Paradox severity, frees the stage, and — when
- * containment filled the last box — surfaces the full-bashing-track
- * unconsciousness rule for the Storyteller to adjudicate: the martyr's
- * fireball still flies, the aftermath is a human ruling.
- */
-export const rollCastDice = Effect.fn("Flows.vulgarCast.rollCastDice")(function* (
-  args: CastStepArgs,
-) {
-  const sessionId = SessionId.make(args.sessionId)
-  const castId = CastId.make(args.castId)
-  const store = yield* GameStore
-
-  const cast = yield* requireCast(sessionId, castId)
-  const sheet = yield* requireSessionCharacter(sessionId, cast.characterId)
-  yield* requireStatus(cast, "contained")
-
-  const paradoxSuccesses = yield* stamped(cast.paradoxSuccesses, "paradoxSuccesses")
-  const contained = yield* stamped(cast.containedSuccesses, "containedSuccesses")
   const uncontained = paradoxSuccesses - contained
-  const penalty = woundPenalty(sheet.healthTrack)
+  const penalty = woundPenalty(track)
   const castPool = finalCastPool({
     declaredPool: cast.declaredPool,
     paradoxSuccesses,
@@ -901,6 +964,7 @@ export const rollCastDice = Effect.fn("Flows.vulgarCast.rollCastDice")(function*
   const severity = resolveParadox(uncontained).severity
   yield* store.patchCast(castId, {
     status: "resolved",
+    containedSuccesses: contained,
     castPool,
     castSuccesses: result.successes,
     severity,
@@ -908,13 +972,19 @@ export const rollCastDice = Effect.fn("Flows.vulgarCast.rollCastDice")(function*
 
   const member = yield* casterMembership(cast)
   const dice = result.isChanceDie ? "a chance die" : `${result.poolSize} dice`
+  const sacrifice =
+    contained > 0
+      ? `contains ${contained} of ${paradoxSuccesses} Paradox ${paradoxSuccesses === 1 ? "success" : "successes"} as Resistant bashing and `
+      : paradoxSuccesses > 0
+        ? `lets all ${paradoxSuccesses} Paradox ${paradoxSuccesses === 1 ? "success" : "successes"} run and `
+        : ""
   yield* store.insertRoll({
     sessionId,
     member,
     components,
     result,
     summary:
-      `${cast.casterName} releases the vulgar ${capitalize(cast.arcanum)} ${cast.level} spell (${dice}) and gets ${outcomeOf(result)}.` +
+      `${cast.casterName} ${sacrifice}releases the vulgar ${capitalize(cast.arcanum)} ${cast.level} spell (${dice}), getting ${outcomeOf(result)}.` +
       (severity === "none"
         ? " Reality lets it pass."
         : ` The uncontained Paradox manifests as ${capitalize(severity)}.`),
@@ -922,7 +992,7 @@ export const rollCastDice = Effect.fn("Flows.vulgarCast.rollCastDice")(function*
 
   // The martyr's aftermath (PRD #39 story 28): the spell is away; now the
   // full bashing track's unconsciousness rule is the Storyteller's to call.
-  if (contained > 0 && isIncapacitated(sheet.healthTrack)) {
+  if (contained > 0 && isIncapacitated(track)) {
     yield* store.insertMessage({
       sessionId,
       sender: { userId: member.userId, displayName: member.displayName },
@@ -937,8 +1007,10 @@ export const rollCastDice = Effect.fn("Flows.vulgarCast.rollCastDice")(function*
 /**
  * The Storyteller's void: not a quiet retreat but an Override-stamped,
  * table-visible repair (ADR-0015) — any live stage, restores committed Mana
- * and containment Health, frees the stage, and leaves no accumulator trace
- * (the Cast never reaches `resolved`).
+ * and the precommitted Willpower point, frees the stage, and leaves no
+ * accumulator trace (the Cast never reaches `resolved`). Containment can no
+ * longer need restoring: the sacrifice lands only inside the release, which
+ * resolves in the same commitment (ADR-0022).
  */
 export const voidCast = Effect.fn("Flows.vulgarCast.voidCast")(function* (
   args: CastStepArgs,
@@ -957,12 +1029,13 @@ export const voidCast = Effect.fn("Flows.vulgarCast.voidCast")(function* (
     })
   }
 
-  const restoredMana = isCommitted(cast.status)
+  const committed = isCommitted(cast.status)
+  const restoredMana = committed
     ? cast.spellManaCost + (cast.manaMitigation ?? 0)
     : 0
-  const restoredHealth = cast.containedSuccesses ?? 0
+  const restoredWillpower = committed && (cast.spendWillpower ?? false) ? 1 : 0
 
-  if (restoredMana > 0 || restoredHealth > 0) {
+  if (restoredMana > 0 || restoredWillpower > 0) {
     const sheet = yield* store.getSheet(cast.characterId)
     yield* store.patchSheet(sheet.id, {
       ...(restoredMana > 0
@@ -972,8 +1045,12 @@ export const voidCast = Effect.fn("Flows.vulgarCast.voidCast")(function* (
             ),
           }
         : {}),
-      ...(restoredHealth > 0
-        ? { healthTrack: healResistantBashing(sheet.healthTrack, restoredHealth) }
+      ...(restoredWillpower > 0
+        ? {
+            willpowerCurrent: Willpower.make(
+              Math.min(sheet.willpowerCurrent + restoredWillpower, sheet.willpower),
+            ),
+          }
         : {}),
     })
   }
@@ -981,10 +1058,10 @@ export const voidCast = Effect.fn("Flows.vulgarCast.voidCast")(function* (
   yield* store.patchCast(castId, { status: "voided" })
 
   const restored =
-    restoredMana > 0 || restoredHealth > 0
+    restoredMana > 0 || restoredWillpower > 0
       ? ` ${[
           ...(restoredMana > 0 ? [`${restoredMana} Mana`] : []),
-          ...(restoredHealth > 0 ? [`${restoredHealth} Health`] : []),
+          ...(restoredWillpower > 0 ? [`${restoredWillpower} Willpower`] : []),
         ].join(" and ")} restored.`
       : ""
   yield* store.insertMessage({

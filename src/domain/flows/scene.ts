@@ -2,6 +2,7 @@ import { Effect, Option, Schema } from "effect"
 import { requireStoryteller } from "../authz"
 import { isOnStage } from "../cast"
 import { CastId, SessionId } from "../ids"
+import { modifierComplaint, ParadoxPoolModifier } from "../paradox"
 import { GameStore } from "../ports/game-store"
 
 /**
@@ -88,12 +89,13 @@ export const openScene = Effect.fn("Flows.scene.openScene")(function* (
     })
   }
 
-  // Witnesses default quiet: the +2 Sleeper liability is armed deliberately,
-  // on the strip, before anyone declares a cast.
+  // The Tides open quiet (ADR-0022): zero witnesses, no circumstances — the
+  // ambient price is armed deliberately, on the strip, before anyone declares.
   const sceneId = yield* store.insertScene({
     sessionId,
     name,
-    sleeperWitnesses: false,
+    witnessCount: 0,
+    circumstances: [],
   })
 
   yield* store.insertMessage({
@@ -165,25 +167,66 @@ export const closeScene = Effect.fn("Flows.scene.closeScene")(function* (
   return scene.id
 })
 
-export const SetSceneWitnessesArgs = Schema.Struct({
+export const EditTidesArgs = Schema.Struct({
   sessionId: Schema.String,
-  sleeperWitnesses: Schema.Boolean,
+  /** Sleeper head count; dice stay the book's flat +2 for one-or-more. */
+  witnessCount: Schema.optionalKey(Schema.Number),
+  /** The whole circumstance list as it should now read — replace, not merge. */
+  circumstances: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
 })
-export type SetSceneWitnessesArgs = typeof SetSceneWitnessesArgs.Type
+export type EditTidesArgs = typeof EditTidesArgs.Type
 
-export const setSceneWitnesses = Effect.fn("Flows.scene.setSceneWitnesses")(
-  function* (args: SetSceneWitnessesArgs) {
-    const sessionId = SessionId.make(args.sessionId)
-    yield* requireStoryteller(sessionId)
+/** Validation: a Tides edit that no ruling could mean (ADR-0022). */
+export class InvalidTides extends Schema.TaggedErrorClass<InvalidTides>()(
+  "InvalidTides",
+  { message: Schema.String },
+) {}
 
-    const store = yield* GameStore
-    const scene = yield* requireActiveScene(sessionId)
-
-    yield* store.patchScene(scene.id, { sleeperWitnesses: args.sleeperWitnesses })
-
-    return scene.id
-  },
+/** A whole, non-negative count — the witness stepper's legal space. */
+const WholeCount = Schema.Number.check(
+  Schema.isInt(),
+  Schema.isGreaterThanOrEqualTo(0),
 )
+
+/**
+ * The Storyteller's Tides surface (ADR-0022): the scene-owned ambient price
+ * of vulgar magic, edited inline on the strip. A quiet write the strip shows
+ * live — the log narrates dramatic beats, not knob positions. Scene state is
+ * never mutated by a cast; the ST reacts to the world here, and the *next*
+ * freeze pays the new price — a frozen card keeps its snapshot.
+ */
+export const editTides = Effect.fn("Flows.scene.editTides")(function* (
+  args: EditTidesArgs,
+) {
+  const sessionId = SessionId.make(args.sessionId)
+  yield* requireStoryteller(sessionId)
+
+  const store = yield* GameStore
+  const scene = yield* requireActiveScene(sessionId)
+
+  if (args.witnessCount !== undefined && !Schema.is(WholeCount)(args.witnessCount)) {
+    return yield* new InvalidTides({
+      message: `Witnesses must be a whole count of Sleepers, got ${args.witnessCount}.`,
+    })
+  }
+  yield* Effect.forEach(args.circumstances ?? [], (circumstance) => {
+    const complaint = modifierComplaint(circumstance)
+    return complaint === null
+      ? Effect.void
+      : new InvalidTides({ message: `A circumstance ${complaint}` })
+  })
+
+  yield* store.patchScene(scene.id, {
+    ...(args.witnessCount !== undefined
+      ? { witnessCount: args.witnessCount }
+      : {}),
+    ...(args.circumstances !== undefined
+      ? { circumstances: args.circumstances }
+      : {}),
+  })
+
+  return scene.id
+})
 
 /** The precondition close and the toggle share — and Combat's start door
  * (issue #60: a Combat is a child of a Scene): an open Scene, or the refusal. */

@@ -4,14 +4,15 @@ import { decodeActiveScene, decodeScenePips } from "../scene"
 // The Scene strip's client seam (ADR-0005, issue #49): the `getActive` and
 // `paradoxPips` queries decode through domain mirrors before the strip reads
 // them — plain `it()`, pure decode leaves.
-describe("Scene seam decode (issue #49)", () => {
+describe("Scene seam decode (issue #49, ADR-0022: the Tides)", () => {
   const sceneRow = {
     _id: "scn-1",
     _creationTime: 1,
     sessionId: "ses-1",
     name: "The Reliquary",
     status: "active",
-    sleeperWitnesses: true,
+    witnessCount: 3,
+    circumstances: [{ source: "Ley-line surge", dice: 2 }],
     openedAt: 100,
   }
 
@@ -19,7 +20,16 @@ describe("Scene seam decode (issue #49)", () => {
     const scene = decodeActiveScene(sceneRow)
     expect(scene?.name).toBe("The Reliquary")
     expect(scene?.status).toBe("active")
-    expect(scene?.sleeperWitnesses).toBe(true)
+    expect(scene?.witnessCount).toBe(3)
+    expect(scene?.circumstances).toEqual([{ source: "Ley-line surge", dice: 2 }])
+  })
+
+  it("a legacy row speaks the old boolean: true is one witness, no circumstances", () => {
+    const { witnessCount: _w, circumstances: _c, ...legacy } = sceneRow
+    const scene = decodeActiveScene({ ...legacy, sleeperWitnesses: true })
+    expect(scene?.witnessCount).toBe(1)
+    expect(scene?.circumstances).toEqual([])
+    expect(decodeActiveScene({ ...legacy, sleeperWitnesses: false })?.witnessCount).toBe(0)
   })
 
   it("null passes through — downtime is an answer, not a failure", () => {

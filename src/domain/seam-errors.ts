@@ -17,6 +17,7 @@ import { RoteNotKnown } from "./flows/rote-cast"
 import {
   CastOnStage,
   InvalidSceneName,
+  InvalidTides,
   NoActiveScene,
   SceneAlreadyOpen,
 } from "./flows/scene"
@@ -24,8 +25,8 @@ import { InvalidSheetlessCast } from "./flows/sheetless-cast"
 import {
   CastAlreadyPending,
   CastStatusConflict,
+  InvalidAdjustment,
   InvalidContainment,
-  InvalidLiability,
   InvalidMitigation,
   StageOccupied,
 } from "./flows/vulgar-cast"
@@ -79,10 +80,11 @@ export const SeamError = Schema.Union([
   InitiativeNotRolled,
   // Validation
   InvalidSceneName,
+  InvalidTides,
   InvalidCombatant,
   InvalidTickSpend,
   InvalidCastDeclaration,
-  InvalidLiability,
+  InvalidAdjustment,
   InvalidMitigation,
   InvalidSheetlessCast,
   InvalidHandEdit,

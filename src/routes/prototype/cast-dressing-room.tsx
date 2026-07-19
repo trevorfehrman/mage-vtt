@@ -28,7 +28,6 @@
 import { useEffect } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import type { CastEntry, MessageEntry, RollEntry } from "#/domain/activity"
-import type { CastStatus } from "#/domain/cast"
 import { decodeSheet } from "#/domain/character"
 import { initialCurrentState } from "#/domain/character"
 import { arctusData } from "#/domain/fixtures/arctus"
@@ -47,17 +46,18 @@ import type { Id } from "../../../convex/_generated/dataModel"
 
 // ── The knobs ────────────────────────────────────────────────────────────────
 
+// Rig keys, not raw statuses (ADR-0022): the two-colored rungs audition both
+// phases, so The Price and Paradox each get two stops on the knob.
 const RUNG_ORDER = [
   "draft",
-  "engaged",
-  "liabilitiesLocked",
-  "intentionLocked",
+  "priceFluid",
+  "priceFrozen",
+  "paradoxUnrolled",
   "paradoxRolled",
-  "contained",
   "resolved",
   "cancelled",
   "voided",
-] as const satisfies ReadonlyArray<CastStatus>
+] as const
 type RigRung = (typeof RUNG_ORDER)[number]
 
 const SEAT_ORDER = ["caster", "storyteller", "bystander"] as const
@@ -142,45 +142,47 @@ const draft: CastEntry = {
   updatedAt: T0,
 }
 
-const engaged: CastEntry = {
+const priceFluid: CastEntry = {
   ...draft,
-  status: "engaged",
+  status: "price",
   gnosis: 3,
-  witnessCount: 2,
-  priorParadoxRolls: 1,
-  discretionaryModifiers: [{ source: "Hallowed ground", dice: -1 }],
+  adjustments: [{ source: "Hallowed ground", dice: -1 }],
 }
 
-const liabilitiesLocked: CastEntry = { ...engaged, status: "liabilitiesLocked" }
+// THE FREEZE (ADR-0022): the stamped Tides seed — inherited-from-scene —
+// beside the ST's personal adjustment above.
+const priceFrozen: CastEntry = {
+  ...priceFluid,
+  tides: {
+    witnessCount: 2,
+    circumstances: [{ source: "Ley line nexus", dice: 1 }],
+    priorParadoxRolls: 1,
+  },
+}
 
-const intentionLocked: CastEntry = {
-  ...liabilitiesLocked,
-  status: "intentionLocked",
+const paradoxUnrolled: CastEntry = {
+  ...priceFrozen,
+  status: "paradox",
   manaMitigation: 1,
 }
 
 const paradoxRolled: CastEntry = {
-  ...intentionLocked,
-  status: "paradoxRolled",
+  ...paradoxUnrolled,
   paradoxSuccesses: 2,
   paradoxIsDramaticFailure: false,
-}
-
-const contained: CastEntry = {
-  ...paradoxRolled,
-  status: "contained",
-  containedSuccesses: 1,
+  draftContainedSuccesses: 1,
 }
 
 const resolved: CastEntry = {
-  ...contained,
+  ...paradoxRolled,
   status: "resolved",
+  containedSuccesses: 1,
   castPool: 9,
   castSuccesses: 3,
   severity: "havoc",
 }
 
-const cancelled: CastEntry = { ...liabilitiesLocked, status: "cancelled" }
+const cancelled: CastEntry = { ...priceFrozen, status: "cancelled" }
 
 const voided: CastEntry = {
   ...paradoxRolled,
@@ -194,11 +196,10 @@ const voided: CastEntry = {
 
 const CASTS: Record<RigRung, CastEntry> = {
   draft,
-  engaged,
-  liabilitiesLocked,
-  intentionLocked,
+  priceFluid,
+  priceFrozen,
+  paradoxUnrolled,
   paradoxRolled,
-  contained,
   resolved,
   cancelled,
   voided,

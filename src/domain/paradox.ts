@@ -42,6 +42,19 @@ export const ParadoxPoolModifier = Schema.Struct({
 })
 export type ParadoxPoolModifier = typeof ParadoxPoolModifier.Type
 
+/**
+ * Why a named ± is unspeakable at a table, or null if it reads fine — the
+ * one home of the rule every modifier door enforces (the Tides' ambient
+ * circumstances and The Price's personal adjustments, ADR-0022). Callers
+ * prefix their own noun and wrap their own co-located error (ADR-0010).
+ */
+export const modifierComplaint = (modifier: ParadoxPoolModifier): string | null =>
+  modifier.source.trim().length === 0
+    ? "needs a name the table can read."
+    : !Number.isInteger(modifier.dice) || modifier.dice === 0
+      ? `must be a whole nonzero die count, got ${modifier.dice}.`
+      : null
+
 export class ParadoxPool extends Schema.Class<ParadoxPool>("ParadoxPool")({
   baseDice: Schema.Number.check(Schema.isInt()),
   modifiers: Schema.Array(ParadoxPoolModifier),

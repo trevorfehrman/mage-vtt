@@ -6,12 +6,17 @@ import { castLadderMachine, ladderControls, ladderRung } from "../cast-ladder"
 import type { Id } from "../../../convex/_generated/dataModel"
 
 /**
- * Projection tests (issue #43): Cast document snapshot in → machine/UI state
- * out, including rehydration mid-ladder — the machine never owns pending
- * state, so any snapshot must land it on the document's rung directly.
+ * Projection tests (issue #43, ADR-0022): Cast document snapshot in →
+ * machine/UI state out, including rehydration mid-ladder — the machine never
+ * owns pending state, so any snapshot must land it on the document's rung
+ * directly. The two-colored rungs split their controls on the document's
+ * stamps, not on extra statuses.
  */
 
-const snapshot = (status: CastStatus): CastEntry => ({
+const snapshot = (
+  status: CastStatus,
+  overrides?: Partial<CastEntry>,
+): CastEntry => ({
   _tag: "cast",
   _id: "cast-1" as Id<"casts">,
   timestamp: 0,
@@ -30,7 +35,11 @@ const snapshot = (status: CastStatus): CastEntry => ({
   spellManaCost: 0,
   createdAt: 0,
   updatedAt: 0,
+  ...overrides,
 })
+
+/** The frozen seed that flips The Price to the caster's phase. */
+const TIDES = { witnessCount: 0, circumstances: [], priorParadoxRolls: 0 }
 
 describe("castLadderMachine — a projection of the document", () => {
   test("an unstarted actor's snapshot — the card's first render — already sits on the rung", () => {
@@ -50,7 +59,7 @@ describe("castLadderMachine — a projection of the document", () => {
     for (const status of CastStatus.literals) {
       expect(ladderRung(status, snapshot(status))).toBe(status)
     }
-    expect(ladderRung("deriving", snapshot("engaged"))).toBe("engaged")
+    expect(ladderRung("deriving", snapshot("price"))).toBe("price")
   })
 
   test("rehydrates onto every rung directly from a snapshot", () => {
@@ -80,7 +89,7 @@ describe("castLadderMachine — a projection of the document", () => {
 
   test("a SYNC backwards (a void mid-ladder) still lands on the document's rung", () => {
     const actor = createActor(castLadderMachine, {
-      input: { cast: snapshot("paradoxRolled") },
+      input: { cast: snapshot("paradox") },
     })
     actor.start()
     actor.send({ type: "SYNC", cast: snapshot("voided") })
@@ -89,52 +98,53 @@ describe("castLadderMachine — a projection of the document", () => {
   })
 })
 
-describe("ladderControls — buttons only for the viewer's role", () => {
+describe("ladderControls — buttons only for the viewer's role and phase", () => {
   const caster = { isStoryteller: false, isCaster: true }
   const storyteller = { isStoryteller: true, isCaster: false }
   const spectator = { isStoryteller: false, isCaster: false }
 
   test("the wings: owner kills (and may ready a tool), ST engages or declines", () => {
-    expect(ladderControls("draft", caster)).toEqual(["kill", "tool"])
-    expect(ladderControls("draft", storyteller)).toEqual(["engage", "decline"])
-    expect(ladderControls("draft", spectator)).toEqual([])
+    expect(ladderControls(snapshot("draft"), caster)).toEqual(["kill", "tool"])
+    expect(ladderControls(snapshot("draft"), storyteller)).toEqual(["engage", "decline"])
+    expect(ladderControls(snapshot("draft"), spectator)).toEqual([])
   })
 
-  test("negotiation: ST liability buttons and caster tool live here (issue #44)", () => {
-    expect(ladderControls("engaged", storyteller)).toEqual([
-      "negotiate",
-      "lockLiabilities",
+  test("The Price, fluid: ST assembles and freezes, caster readies the tool, either bails", () => {
+    expect(ladderControls(snapshot("price"), storyteller)).toEqual([
+      "adjust",
+      "lockPrice",
       "cancel",
       "void",
     ])
-    expect(ladderControls("engaged", caster)).toEqual(["tool", "cancel"])
-    expect(ladderControls("liabilitiesLocked", caster)).toEqual([
-      "lockIntention",
-      "cancel",
-    ])
-    expect(ladderControls("liabilitiesLocked", storyteller)).toEqual([
-      "cancel",
-      "void",
-    ])
+    expect(ladderControls(snapshot("price"), caster)).toEqual(["tool", "cancel"])
+    expect(ladderControls(snapshot("price"), spectator)).toEqual([])
   })
 
-  test("past the point of no return: no cancel anywhere, only the beats and void", () => {
-    expect(ladderControls("intentionLocked", storyteller)).toEqual([
+  test("The Price, frozen: the caster commits or bails; the ST is hands-off but for the repair", () => {
+    const frozen = snapshot("price", { tides: TIDES })
+    expect(ladderControls(frozen, caster)).toEqual(["commit", "cancel"])
+    expect(ladderControls(frozen, storyteller)).toEqual(["cancel", "void"])
+    expect(ladderControls(frozen, spectator)).toEqual([])
+  })
+
+  test("Paradox: the ST's roll, then the caster's cockpit — no cancel past the commit", () => {
+    expect(ladderControls(snapshot("paradox"), storyteller)).toEqual([
       "rollParadox",
       "void",
     ])
-    expect(ladderControls("intentionLocked", caster)).toEqual([])
-    expect(ladderControls("paradoxRolled", caster)).toEqual(["contain"])
-    expect(ladderControls("paradoxRolled", storyteller)).toEqual(["void"])
-    expect(ladderControls("contained", caster)).toEqual(["rollCast"])
-    expect(ladderControls("contained", spectator)).toEqual([])
+    expect(ladderControls(snapshot("paradox"), caster)).toEqual([])
+
+    const rolled = snapshot("paradox", { tides: TIDES, paradoxSuccesses: 2 })
+    expect(ladderControls(rolled, caster)).toEqual(["contain", "release"])
+    expect(ladderControls(rolled, storyteller)).toEqual(["void"])
+    expect(ladderControls(rolled, spectator)).toEqual([])
   })
 
   test("terminal rungs offer nothing to anyone", () => {
     for (const status of ["resolved", "cancelled", "voided"] as const) {
-      expect(ladderControls(status, caster)).toEqual([])
-      expect(ladderControls(status, storyteller)).toEqual([])
-      expect(ladderControls(status, spectator)).toEqual([])
+      expect(ladderControls(snapshot(status), caster)).toEqual([])
+      expect(ladderControls(snapshot(status), storyteller)).toEqual([])
+      expect(ladderControls(snapshot(status), spectator)).toEqual([])
     }
   })
 })

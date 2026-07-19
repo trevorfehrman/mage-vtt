@@ -24,7 +24,7 @@ import {
 } from "../../src/domain/ids"
 import { NotAMember } from "../../src/domain/authz"
 import { Membership } from "../../src/domain/membership"
-import { Scene } from "../../src/domain/scene"
+import { Scene, sceneWitnessCount } from "../../src/domain/scene"
 import {
   OverrideMarker,
   OverrideStamp,
@@ -293,13 +293,15 @@ export const convexLive = (
         if (!row) return Option.none()
         // A stored row that fails the vocabulary decode is corrupt data — a
         // bug, not a client-actionable failure (ADR-0010's Fail/Die split).
+        // Legacy rows speak the old boolean; `sceneWitnessCount` translates.
         return Option.some(
           yield* Schema.decodeUnknownEffect(Scene)({
             id: row._id,
             sessionId: row.sessionId,
             name: row.name,
             status: row.status,
-            sleeperWitnesses: row.sleeperWitnesses,
+            witnessCount: sceneWitnessCount(row),
+            circumstances: row.circumstances ?? [],
           }).pipe(Effect.orDie),
         )
       }),
@@ -312,7 +314,8 @@ export const convexLive = (
             sessionId: sessionRef(draft.sessionId),
             name: draft.name,
             status: "active",
-            sleeperWitnesses: draft.sleeperWitnesses,
+            witnessCount: draft.witnessCount,
+            circumstances: draft.circumstances.map((c) => ({ ...c })),
             openedAt,
           }),
         )
@@ -341,6 +344,9 @@ export const convexLive = (
             ...(draft.roteName !== undefined ? { roteName: draft.roteName } : {}),
             ...(draft.intent !== undefined ? { intent: draft.intent } : {}),
             usesMagicalTool: draft.usesMagicalTool,
+            ...(draft.spendWillpower !== undefined
+              ? { spendWillpower: draft.spendWillpower }
+              : {}),
             declaredComponents: draft.declaredComponents.map((c) => ({ ...c })),
             declaredPool: draft.declaredPool,
             spellManaCost: draft.spellManaCost,
@@ -391,20 +397,16 @@ export const convexLive = (
               : {}),
             ...(sceneId ? { sceneId } : {}),
             ...(patch.gnosis !== undefined ? { gnosis: patch.gnosis } : {}),
-            ...(patch.sleeperWitnesses !== undefined
-              ? { sleeperWitnesses: patch.sleeperWitnesses }
+            ...(patch.adjustments !== undefined
+              ? { adjustments: patch.adjustments.map((m) => ({ ...m })) }
               : {}),
-            ...(patch.witnessCount !== undefined
-              ? { witnessCount: patch.witnessCount }
-              : {}),
-            ...(patch.priorParadoxRolls !== undefined
-              ? { priorParadoxRolls: patch.priorParadoxRolls }
-              : {}),
-            ...(patch.discretionaryModifiers !== undefined
+            ...(patch.tides !== undefined
               ? {
-                  discretionaryModifiers: patch.discretionaryModifiers.map(
-                    (m) => ({ ...m }),
-                  ),
+                  tides: {
+                    witnessCount: patch.tides.witnessCount,
+                    circumstances: patch.tides.circumstances.map((c) => ({ ...c })),
+                    priorParadoxRolls: patch.tides.priorParadoxRolls,
+                  },
                 }
               : {}),
             ...(patch.manaMitigation !== undefined
@@ -415,6 +417,9 @@ export const convexLive = (
               : {}),
             ...(patch.paradoxIsDramaticFailure !== undefined
               ? { paradoxIsDramaticFailure: patch.paradoxIsDramaticFailure }
+              : {}),
+            ...(patch.draftContainedSuccesses !== undefined
+              ? { draftContainedSuccesses: patch.draftContainedSuccesses }
               : {}),
             ...(patch.containedSuccesses !== undefined
               ? { containedSuccesses: patch.containedSuccesses }
@@ -521,8 +526,11 @@ export const convexLive = (
             ...(patch.status !== undefined
               ? { status: patch.status, closedAt }
               : {}),
-            ...(patch.sleeperWitnesses !== undefined
-              ? { sleeperWitnesses: patch.sleeperWitnesses }
+            ...(patch.witnessCount !== undefined
+              ? { witnessCount: patch.witnessCount }
+              : {}),
+            ...(patch.circumstances !== undefined
+              ? { circumstances: patch.circumstances.map((c) => ({ ...c })) }
               : {}),
           }),
         )

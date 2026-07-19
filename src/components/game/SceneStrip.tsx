@@ -33,7 +33,7 @@ export function SceneStrip({
   const { scene, pips } = useScene(sessionId)
   const openScene = useMutation(api.scenes.open)
   const closeScene = useMutation(api.scenes.close)
-  const setWitnesses = useMutation(api.scenes.setWitnesses)
+  const editTides = useMutation(api.scenes.editTides)
 
   const [draftName, setDraftName] = useState("")
   const [busy, setBusy] = useState(false)
@@ -47,7 +47,7 @@ export function SceneStrip({
       ? "loading"
       : scene === null
         ? "none"
-        : `${scene.id}:${scene.status}:${scene.sleeperWitnesses}`
+        : `${scene.id}:${scene.status}:${scene.witnessCount}`
   useEffect(() => {
     setError(null)
   }, [liveKey])
@@ -127,23 +127,23 @@ export function SceneStrip({
               <button
                 onClick={() =>
                   void run(() =>
-                    setWitnesses({
+                    editTides({
                       sessionId,
-                      sleeperWitnesses: !scene.sleeperWitnesses,
+                      witnessCount: scene.witnessCount > 0 ? 0 : 1,
                     }),
                   )
                 }
                 disabled={busy}
-                className={`mv-mini ${scene.sleeperWitnesses ? "mv-mini-on" : ""}`}
-                title="Sleepers are watching — feeds the +2 Paradox liability default"
+                className={`mv-mini ${scene.witnessCount > 0 ? "mv-mini-on" : ""}`}
+                title="Sleepers are watching — the Tides' +2 Paradox dice (the count stepper is the strip's next growth, ADR-0022)"
               >
                 Sleeper witnesses
               </button>
             ) : (
               <span
-                className={`mv-mini cursor-default ${scene.sleeperWitnesses ? "mv-mini-on" : ""}`}
+                className={`mv-mini cursor-default ${scene.witnessCount > 0 ? "mv-mini-on" : ""}`}
                 title={
-                  scene.sleeperWitnesses
+                  scene.witnessCount > 0
                     ? "Sleepers are watching — vulgar magic risks more"
                     : "No Sleeper witnesses — the Storyteller's call"
                 }
