@@ -730,18 +730,18 @@ function RailFootBench() {
     >
       <div className="flex flex-wrap items-start gap-6">
         <Spec label="funded seat — tray + strip">
-          <div className="mv-panel w-[340px] rounded-[3px]">
+          <div className="mv-panel w-[430px] rounded-[3px]">
             <DicePoolBuilder pool={funded} character={arctusSheet} />
             <ResourceStrip character={arctusSheet} />
           </div>
         </Spec>
         <Spec label="sheetless seat — the Willpower gate refuses with its reason">
-          <div className="mv-panel w-[340px] rounded-[3px]">
+          <div className="mv-panel w-[430px] rounded-[3px]">
             <DicePoolBuilder pool={sheetless} />
           </div>
         </Spec>
         <Spec label="strip — a Willpower spend being weighed (pending ghost)">
-          <div className="mv-panel w-[340px] rounded-[3px]">
+          <div className="mv-panel w-[430px] rounded-[3px]">
             <ResourceStrip character={arctusSheet} pendingWillpower />
           </div>
         </Spec>
