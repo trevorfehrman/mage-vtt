@@ -1,8 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Spectral:ital,wght@0,400;0,500;1,400;1,500&display=swap');
-@import 'tailwindcss';
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Spectral:ital,wght@0,400;0,500;1,400;1,500&display=swap");
+@import "tailwindcss";
 @plugin '@tailwindcss/typography';
 
-@import 'tw-animate-css';
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -18,7 +18,10 @@
   --panel: #0e0d13;
   --raise: #16141d;
   --ink: #d7d2e0;
-  --dim: #797488;
+  /* Amended lighter from the Pass-4 #797488 (ADR-0021's a11y floor, #72):
+   * dim text must clear 4.5:1 on --panel and --bg. Guarded forever by
+   * src/__tests__/token-contrast.test.ts. */
+  --dim: #807b8f;
   --dim2: #3c6b5c;
   --accent: #6fae97;
   --line: #1e2b27;
@@ -39,11 +42,17 @@
    * cancel), never a submit button. The success-ink VALUE and the
    * whose-move rung colors are PINNED until the rail's structural rebuild
    * gives a real surface to judge on (owner call, 2026-07-18). */
-  --rail-success: var(--accent); /* pinned audition: merge default; quantity/mint contend on the rig */
+  --rail-success: var(
+    --accent
+  ); /* pinned audition: merge default; quantity/mint contend on the rig */
   --rail-danger: #d0523b; /* the hot slot — placeholder flame until the Paradox color is commissioned */
   --mana: #6f93ae; /* Mana's identity blue — verdigris's own recipe, hue-turned to water */
-  --turn-caster: var(--ember); /* whose move (PINNED with the root): your hand */
-  --turn-world: var(--accent); /* whose move (PINNED with the root): the world answers */
+  --turn-caster: var(
+    --ember
+  ); /* whose move (PINNED with the root): your hand */
+  --turn-world: var(
+    --accent
+  ); /* whose move (PINNED with the root): the world answers */
   /* The trait-zone pair — plain ink, LOCKED for now (owner call
    * 2026-07-18, closing the color hunt after the night sky landed).
    * Four pairs auditioned and retired: ivory/blue (read as realm
@@ -125,8 +134,8 @@
 }
 
 @theme inline {
-  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -191,7 +200,7 @@ body {
 
 /* Soft vignette — edges of the void fall away. Above content, but only shade. */
 body::after {
-  content: '';
+  content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
@@ -248,7 +257,7 @@ pre code {
 }
 .mv-cornered::before,
 .mv-cornered::after {
-  content: '';
+  content: "";
   position: absolute;
   width: 9px;
   height: 9px;
@@ -270,7 +279,7 @@ pre code {
 }
 
 .mv-h {
-  font-family: 'Cinzel', Georgia, serif;
+  font-family: "Cinzel", Georgia, serif;
   font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--ink);
@@ -346,7 +355,8 @@ pre code {
  * each row's own shapes, and brightened empty dot rings. Trait rows stay
  * fully legible during pool-building; the field never dims. */
 .mv-sky-halo .mv-sky-row {
-  filter: drop-shadow(0 0 2px rgba(8, 8, 10, 0.95)) drop-shadow(0 0 5px rgba(8, 8, 10, 0.75))
+  filter: drop-shadow(0 0 2px rgba(8, 8, 10, 0.95))
+    drop-shadow(0 0 5px rgba(8, 8, 10, 0.75))
     drop-shadow(0 2px 9px rgba(8, 8, 10, 0.55));
 }
 .mv-sky-halo {
@@ -359,7 +369,9 @@ pre code {
   stroke-width: 1;
   stroke-linecap: round;
   fill: none;
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 35%, transparent));
+  filter: drop-shadow(
+    0 0 3px color-mix(in srgb, var(--accent) 35%, transparent)
+  );
 }
 @media (prefers-reduced-motion: reduce) {
   .mv-sky-meteor {
@@ -413,19 +425,67 @@ pre code {
   border-color: var(--accent);
 }
 
-/* ── The rail-foot pilot's vocabulary (issue #79) ────────────────────────────
- * Invented on the felt; #72 promotes what survives into the shared layer. */
+/* ── The promoted state vocabulary (#72) ─────────────────────────────────────
+ * Invented on the rail-foot pilot (#79), promoted into the shared layer.
+ * The rubric these classes serve is docs/component-standards.md. */
 
 /* The a11y floor's focus ring (ADR-0021): keyboard focus is always visible —
- * one accent ring, offset so the control's own border stays legible. */
+ * one accent ring, offset so the control's own border stays legible. One rule
+ * owns the plank: mv-* controls and the restyled shadcn primitives
+ * (data-slot) all take the same ring. */
 .mv-btn:focus-visible,
 .mv-mini:focus-visible,
 .mv-chip:focus-visible,
 .mv-roll:focus-visible,
 .mv-felt:focus-visible,
-.mv-handle:focus-visible {
+.mv-handle:focus-visible,
+.mv-trait:focus-visible,
+.mv-arcana:focus-visible,
+[data-slot="button"]:focus-visible,
+[data-slot="select-trigger"]:focus-visible,
+[data-slot="dialog-close"]:focus-visible,
+[data-slot="switch"]:focus-visible,
+[data-slot="tabs-trigger"]:focus-visible {
   outline: 1px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* The styled field (#72, authored against the pilot's input precedent):
+ * quiet mono on a line border; focus speaks at the border, not a ring —
+ * a field's caret already says where you are. */
+.mv-field {
+  font-family: var(--font-mono);
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  outline: none;
+  transition: border-color 0.12s;
+}
+.mv-field::placeholder {
+  color: var(--dim);
+}
+.mv-field:focus {
+  border-color: var(--accent);
+}
+.mv-field:disabled {
+  opacity: 0.4;
+}
+.mv-field[aria-invalid="true"] {
+  border-color: var(--bad);
+}
+
+/* A designed empty state (the felt's precedent, #79): a quiet mono line,
+ * centered in the space the content will occupy — never bare dim italics,
+ * and it tells you what fills the space, not just that it's empty. The
+ * class owns the centering; call sites add only their own size/position. */
+.mv-empty {
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+  text-align: center;
 }
 
 /* The tray handle: one thin toggle for both postures — barely there at rest,
@@ -490,7 +550,8 @@ pre code {
 }
 .mv-arcana-armed {
   border-color: var(--tile, var(--accent));
-  box-shadow: 0 0 20px -6px color-mix(in srgb, var(--tile, var(--accent)) 55%, transparent);
+  box-shadow: 0 0 20px -6px
+    color-mix(in srgb, var(--tile, var(--accent)) 55%, transparent);
 }
 .mv-arcana-armed .mv-arcana-bloom {
   opacity: 1;
@@ -540,7 +601,8 @@ pre code {
   );
 }
 .mv-arcana-gross.mv-arcana-lit {
-  box-shadow: inset 0 0 30px -4px color-mix(in srgb, var(--tile) 65%, transparent);
+  box-shadow: inset 0 0 30px -4px
+    color-mix(in srgb, var(--tile) 65%, transparent);
 }
 .mv-arcana-gross.mv-arcana-lit .mv-arcana-glyph {
   /* less light than its Subtle sibling but MORE intense: oklch chroma
@@ -640,7 +702,8 @@ pre code {
   z-index: 1;
 }
 .mv-arcana-lit .mv-arcana-caption {
-  filter: drop-shadow(0 0 2px rgba(8, 8, 10, 0.95)) drop-shadow(0 0 5px rgba(8, 8, 10, 0.75))
+  filter: drop-shadow(0 0 2px rgba(8, 8, 10, 0.95))
+    drop-shadow(0 0 5px rgba(8, 8, 10, 0.75))
     drop-shadow(0 2px 9px rgba(8, 8, 10, 0.55));
 }
 /* lit tiles brighten the empty dots' rings — realm-tinted light instead of
@@ -719,7 +782,7 @@ pre code {
    glow, the sigil renders complete, the label swaps instantly. */
 
 .mv-book-text {
-  font-family: 'Spectral', Georgia, serif;
+  font-family: "Spectral", Georgia, serif;
 }
 
 .mv-smoulder {
@@ -791,7 +854,7 @@ pre code {
 }
 
 .display-title {
-  font-family: 'Cinzel', Georgia, serif;
+  font-family: "Cinzel", Georgia, serif;
 }
 
 .island-shell {
@@ -836,7 +899,7 @@ a {
 }
 
 .nav-link::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   bottom: -8px;

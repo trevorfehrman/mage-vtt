@@ -37,7 +37,7 @@ gradients, ornament never reduces legibility).
 | `--panel` | `#0e0d13` | panels |
 | `--raise` | `#16141d` | raised controls |
 | `--ink` | `#d7d2e0` | primary text |
-| `--dim` | `#797488` | secondary text |
+| `--dim` | `#807b8f` | secondary text (amended lighter from Pass-4 `#797488` — ADR-0021's a11y floor requires 4.5:1 on `--panel`/`--bg`; guarded by `src/__tests__/token-contrast.test.ts`) |
 | `--accent` | `#6fae97` | Verdigris — accent/active |
 | `--line` | `#1e2b27` | verdigris-tinted borders |
 | `--glow` | `rgba(111,174,151,.12)` | active bloom / paradox wash |

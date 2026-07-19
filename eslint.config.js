@@ -3,38 +3,43 @@
  * documented convention that prose alone failed to hold. This config is the
  * source of truth for what is banned where; CLAUDE.md points here.
  */
-import tseslint from "typescript-eslint"
+import tseslint from "typescript-eslint";
 
 /** ADR-0018: switch is banned everywhere, zero exceptions — dispatch is Match. */
 const noSwitch = {
   selector: "SwitchStatement",
   message:
     "switch is banned — dispatch through Match: Match.exhaustive for closed unions, Match.orElse for open spaces (ADR-0018).",
-}
+};
 
 /** ADR-0014: domain failures ride the Effect error channel. */
 const noTry = {
   selector: "TryStatement",
   message:
     "domain failures ride the Effect error channel — Schema.TaggedErrorClass, not try/catch (ADR-0014). The one sanctioned try lives in convex-effect.ts.",
-}
+};
 
 /** ADR-0014: ambient nondeterminism goes through Effect's service doors. */
 const noAmbientDoors = [
   {
-    selector: "CallExpression[callee.object.name='Math'][callee.property.name='random']",
+    selector:
+      "CallExpression[callee.object.name='Math'][callee.property.name='random']",
     message:
       "randomness goes through the Random service (Random.nextIntBetween, Random.withSeed) — ADR-0014.",
   },
   {
-    selector: "CallExpression[callee.object.name='Date'][callee.property.name='now']",
-    message: "time goes through the Clock service (Clock.currentTimeMillis) — ADR-0014.",
+    selector:
+      "CallExpression[callee.object.name='Date'][callee.property.name='now']",
+    message:
+      "time goes through the Clock service (Clock.currentTimeMillis) — ADR-0014.",
   },
   {
-    selector: "CallExpression[callee.object.name='process'][callee.property.name='exit']",
-    message: "domain code never exits the process — fail through the Effect error channel.",
+    selector:
+      "CallExpression[callee.object.name='process'][callee.property.name='exit']",
+    message:
+      "domain code never exits the process — fail through the Effect error channel.",
   },
-]
+];
 
 export default [
   {
@@ -85,7 +90,7 @@ export default [
   // Rule 2 — tests import @effect/vitest (it re-exports vitest and adds
   // it.effect / it.scoped), never bare vitest.
   {
-    files: ["src/domain/__tests__/**/*.{ts,tsx}", "src/machines/__tests__/**/*.{ts,tsx}"],
+    files: ["src/**/__tests__/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -101,4 +106,4 @@ export default [
       ],
     },
   },
-]
+];

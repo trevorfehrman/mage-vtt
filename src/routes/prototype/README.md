@@ -25,3 +25,9 @@ settled decisions live in `src/styles.css` and `src/components/game/`.
   imports app code **on purpose** — it exists to audition real components in
   every state (ADR-0021's workbench decision). Still mock data, still never
   linked from shipping navigation. Delete when map #95 clears.
+- `workbench.tsx` — **the durable one** (#72; ADR-0021): the polish
+  campaign's reference surface. Floor I renders the shared `mv-*` vocabulary
+  and restyled shadcn primitives in every state; Floor II renders the
+  prop-driven game components under mock data. Cluster passes check their
+  work here; new vocabulary lands here first. Rubric:
+  `docs/component-standards.md`. Not deleted when its map clears.

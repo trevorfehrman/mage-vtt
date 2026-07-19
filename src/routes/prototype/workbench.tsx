@@ -1,94 +1,78 @@
-// PROTOTYPE — throwaway. The workbench audit (issue #105, map #95).
+// The workbench (#72; ADR-0021) — the polish campaign's reference surface.
+// Durable, unlike the census-era prototypes: cluster passes check their work
+// against this page, and new vocabulary lands here first.
 //
-// The dressing room (#96) shows the CARD's states; this rig shows the
-// WORKBENCH's — the declaration surface the sheet click opens in the rail
-// foot, rebuilt for the ADR-0022 world: declaration priced off the live
-// Tides BEFORE drafting, the tool decision living here exclusively, the
-// card no longer duplicating workbench controls.
+// Two floors:
+//   I  — the mv-* vocabulary sheet: every shared class and restyled shadcn
+//        primitive in every state it owns (rest / lit / disabled / gated /
+//        empty; hover and keyboard focus are live — Tab around).
+//   II — the prop-driven game components under mock data, in their key
+//        states.
 //
-// Four structurally different variants, switchable via ?variant=
-// (UI-prototype pattern; ← → cycle):
-//   felt   — THE LEADING CANDIDATE (owner exchange, 2026-07-18): the
-//            workbench IS the felt in a declaring posture. Dice sit
-//            physically on the felt; the potency/targets fittings ghost
-//            two dice per press (the #102 pending recipe — you watch the
-//            price before you pay it) and wrap-to-reset past the cap;
-//            Willpower is three dice arriving. Evicted per the audit:
-//            mana+ (→ the Mana strip), High Speech (→ the future turn
-//            surface), hidden (→ trigger/roller), tool (→ sheet fact,
-//            reported in the Tides receipt). Bought Potency is STAMPED
-//            onto the feed entry so the ST knows what dispel rolls against.
-//   ledger — every decision its own row, price as the footer receipt
-//   scales — price first: your hand vs the Tides as a two-pane readout,
-//            controls demoted to fitting strips beneath
-//   embryo — the workbench IS the future cast card, edited in place
-//            (drafting-is-broadcast made literal)
-// ?scenario= flips the fixture: improvised / rote (Vulgar, "or" pool) /
-// manaShort. All pool and Paradox numbers are the REAL domain leaves
-// (cast-preview, calculateParadoxPool, rollOdds) over a fake Tides fixture —
-// no Convex writes; Cast/Draft buttons stub to a flash line.
-//
-// DELETE when map #95 clears.
-import { useEffect, useState } from "react"
-import { createFileRoute } from "@tanstack/react-router"
-import { Option } from "effect"
+// Explicitly NOT a Storybook: the Convex-hook-wired components (CastCard,
+// CombatTracker, SceneStrip, ChatInput, …) are verified by driving the live
+// app — no prop-seams get added for this gallery's sake (ADR-0021).
+import { useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { AnimatePresence } from "motion/react";
+import type { CSSProperties, ReactNode } from "react";
+import { decodeSheet, initialCurrentState } from "#/domain/character";
+import { arctusData } from "#/domain/fixtures/arctus";
+import type { MessageEntry, RollEntry } from "#/domain/activity";
+import { Button } from "#/components/ui/button";
 import {
-  previewImprovisedCast,
-  previewRoteCast,
-  type CastPreview,
-} from "#/domain/cast-preview"
-import { toGnosisRank } from "#/domain/cast"
-import { decodeSheet, initialCurrentState, KnownRote } from "#/domain/character"
-import { RotePool } from "#/domain/rote-pool"
-import { arctusData } from "#/domain/fixtures/arctus"
-import { calculateParadoxPool } from "#/domain/paradox"
-import { rollOdds } from "#/domain/probability"
-import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy"
-import type { MessageEntry, RollEntry } from "#/domain/activity"
-import { ScrollArea } from "#/components/ui/scroll-area"
-import { SessionLayout } from "#/components/game/SessionLayout"
-import { MessageItem, RollItem } from "#/components/game/ActivityLog"
-import { ArcanaGlyph } from "#/components/game/ArcanaGlyph"
-import { CharacterSheet } from "#/components/game/CharacterSheet"
-import { ChatInput } from "#/components/game/ChatInput"
-import { ResourceStrip } from "#/components/game/ResourceStrip"
-import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
-import type { Id } from "../../../convex/_generated/dataModel"
-
-// ── The knobs ────────────────────────────────────────────────────────────────
-
-const VARIANT_ORDER = ["felt", "ledger", "scales", "embryo"] as const
-type RigVariant = (typeof VARIANT_ORDER)[number]
-const VARIANT_LABEL: Record<RigVariant, string> = {
-  felt: "D · felt",
-  ledger: "A · ledger",
-  scales: "B · scales",
-  embryo: "C · embryo",
-}
-
-const SCENARIO_ORDER = ["improvised", "rote", "manaShort"] as const
-type RigScenario = (typeof SCENARIO_ORDER)[number]
-
-const isVariant = (v: unknown): v is RigVariant =>
-  typeof v === "string" && (VARIANT_ORDER as ReadonlyArray<string>).includes(v)
-const isScenario = (v: unknown): v is RigScenario =>
-  typeof v === "string" && (SCENARIO_ORDER as ReadonlyArray<string>).includes(v)
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "#/components/ui/dialog";
+import { FeedEntry } from "#/components/ui/entrance";
+import { GateButton } from "#/components/ui/gate-button";
+import { Input } from "#/components/ui/input";
+import { Label } from "#/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "#/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "#/components/ui/tooltip";
+import { MessageItem, RollItem } from "#/components/game/ActivityLog";
+import {
+  ArcanaGlyph,
+  OrderGlyph,
+  PathGlyph,
+  arcanumTint,
+  isGrossArcanum,
+} from "#/components/game/ArcanaGlyph";
+import { DicePoolBuilder } from "#/components/game/DicePoolBuilder";
+import { DotRating } from "#/components/game/DotRating";
+import { ResourceStrip } from "#/components/game/ResourceStrip";
+import { SecondSeatControl } from "#/components/game/SecondSeatControl";
+import { useDicePool } from "#/hooks/use-dice-pool";
+import type { SessionMemberRow } from "#/domain/session";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 export const Route = createFileRoute("/prototype/workbench")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    variant: isVariant(search.variant) ? search.variant : ("felt" as RigVariant),
-    scenario: isScenario(search.scenario)
-      ? search.scenario
-      : ("improvised" as RigScenario),
-  }),
-  component: WorkbenchRig,
-})
+  component: Workbench,
+});
 
-// ── The fixtures ─────────────────────────────────────────────────────────────
+// ── Fixtures ─────────────────────────────────────────────────────────────────
 
-const SESSION_ID = "proto-workbench" as Id<"sessions">
-const CASTER = "dev:proto-arctus"
-const T0 = 1752800000000
+const SESSION_ID = "proto-workbench" as Id<"sessions">;
+const CASTER = "dev:proto-arctus";
+const T0 = 1752800000000;
 
 const arctusSheet = decodeSheet({
   id: "proto-character",
@@ -97,48 +81,8 @@ const arctusSheet = decodeSheet({
   sessionMemberId: "proto-member",
   ...arctusData,
   ...initialCurrentState(arctusData),
-})
+});
 
-// The manaShort scenario runs the same mage nearly dry.
-const poorSheet = decodeSheet({
-  id: "proto-character",
-  sessionId: SESSION_ID,
-  userId: CASTER,
-  sessionMemberId: "proto-member",
-  ...arctusData,
-  ...initialCurrentState(arctusData),
-  manaCurrent: 1,
-})
-
-// A fake Vulgar rote with an "or" pool, so the skill-choice row and the
-// Draft door both have a scenario. Trait names resolve against Arctus.
-const graveMist = new KnownRote({
-  name: "Grave Mist",
-  spellName: "Quicken the Corpse",
-  spellArcanum: "Death",
-  spellLevel: 3,
-  order: "Mysterium",
-  pool: new RotePool({
-    attribute: "Resolve",
-    skills: ["Occult", "Investigation"],
-    arcanum: "Death",
-  }),
-  spellAspect: "Vulgar",
-})
-
-// The Tides — ADR-0022's scene-owned ambient price, as the workbench sees it
-// live from the Scene strip's state. This is the rig's whole reason to exist:
-// the caster prices risk/reward off public truth BEFORE declaring.
-const TIDES = {
-  witnessCount: 2,
-  circumstances: [
-    { source: "Hallowed ground", dice: -1 },
-    { source: "Ley line surge", dice: 1 },
-  ],
-  priorParadoxRolls: 1,
-}
-
-// Feed neighbors, for density honesty.
 const chatMsg: MessageEntry = {
   _tag: "message",
   _id: "proto-msg-1" as MessageEntry["_id"],
@@ -147,7 +91,8 @@ const chatMsg: MessageEntry = {
   text: "The funeral party is still filing out upstairs. Two of them lingering.",
   visibilityType: "public",
   timestamp: T0 - 180000,
-}
+};
+
 const priorRoll: RollEntry = {
   _tag: "roll",
   _id: "proto-roll-1" as RollEntry["_id"],
@@ -158,10 +103,10 @@ const priorRoll: RollEntry = {
     { type: "skill", name: "Investigation", dots: 3 },
   ],
   poolSize: 5,
-  rolls: [8, 3, 9, 1, 6],
-  explosions: [],
+  rolls: [8, 3, 9, 1, 10],
+  explosions: [7],
   roteRerolls: [],
-  successes: 2,
+  successes: 3,
   isChanceDie: false,
   isDramaticFailure: false,
   isExceptionalSuccess: false,
@@ -170,927 +115,706 @@ const priorRoll: RollEntry = {
   isRoteAction: false,
   summary: "Wits + Investigation — reading the warding knot",
   timestamp: T0 - 120000,
-}
+};
 
-// ── The draft (shared across variants so flipping keeps your work) ──────────
+const rosterFixture: ReadonlyArray<SessionMemberRow> = [
+  {
+    _id: "proto-member-1" as SessionMemberRow["_id"],
+    _creationTime: T0,
+    sessionId: SESSION_ID,
+    userId: CASTER,
+    role: "player",
+    displayName: "The Little Bear",
+  },
+  {
+    _id: "proto-member-2" as SessionMemberRow["_id"],
+    _creationTime: T0,
+    sessionId: SESSION_ID,
+    userId: "dev:proto-morrigan",
+    role: "player",
+    displayName: "Morrigan",
+  },
+  {
+    _id: "proto-member-3" as SessionMemberRow["_id"],
+    _creationTime: T0,
+    sessionId: SESSION_ID,
+    userId: "dev:proto-st",
+    role: "storyteller",
+    displayName: "Sagequeen",
+  },
+];
 
-type Draft = {
-  method: "improvised" | "rote"
-  level: number
-  skillChoice: string | null
-  potency: number
-  targets: number
-  extraMana: number
-  highSpeech: boolean
-  spendWillpower: boolean
-  hidden: boolean
-  usesMagicalTool: boolean
-  intent: string
-}
+const ARCANA = [
+  "death",
+  "fate",
+  "forces",
+  "life",
+  "matter",
+  "mind",
+  "prime",
+  "space",
+  "spirit",
+  "time",
+];
+const PATHS = ["acanthus", "mastigos", "moros", "obrimos", "thyrsus"];
+const ORDERS = [
+  "adamantine arrow",
+  "free council",
+  "guardians of the veil",
+  "mysterium",
+  "silver ladder",
+];
 
-const initialDraft = (scenario: RigScenario): Draft => ({
-  method: scenario === "rote" ? "rote" : "improvised",
-  level: 3,
-  skillChoice: null,
-  potency: 1,
-  targets: 1,
-  extraMana: scenario === "manaShort" ? 2 : 0,
-  highSpeech: false,
-  spendWillpower: false,
-  hidden: false,
-  usesMagicalTool: true,
-  intent: "",
-})
+// ── Scaffolding ──────────────────────────────────────────────────────────────
 
-type Priced = {
-  preview: CastPreview | null
-  castOdds: ReturnType<typeof rollOdds> | null
-  paradox: ReturnType<typeof calculateParadoxPool>
-  paradoxOdds: ReturnType<typeof rollOdds>
-  manaShort: boolean
-  needsSkill: boolean
-}
-
-// ── The rig ──────────────────────────────────────────────────────────────────
-
-function WorkbenchRig() {
-  const { variant, scenario } = Route.useSearch()
-  const navigate = Route.useNavigate()
-  const sheet = scenario === "manaShort" ? poorSheet : arctusSheet
-  const [draft, setDraft] = useState<Draft>(() => initialDraft(scenario))
-  const [flash, setFlash] = useState<string | null>(null)
-
-  // Scenario flips reset the draft (each is its own fixture).
-  useEffect(() => {
-    setDraft(initialDraft(scenario))
-    setFlash(null)
-  }, [scenario])
-
-  const stepVariant = (dir: 1 | -1) => {
-    void navigate({
-      search: (prev) => {
-        const i = VARIANT_ORDER.indexOf(prev.variant)
-        return {
-          ...prev,
-          variant:
-            VARIANT_ORDER[(i + dir + VARIANT_ORDER.length) % VARIANT_ORDER.length],
-        }
-      },
-      replace: true,
-    })
-  }
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable))
-        return
-      if (e.key === "ArrowRight") stepVariant(1)
-      if (e.key === "ArrowLeft") stepVariant(-1)
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  })
-
-  if (!sheet) {
-    return <p style={{ color: "var(--bad)" }}>The Arctus fixture failed to decode.</p>
-  }
-
-  // The live price — real leaves, the ADR-0022 payoff. The Tides feed the
-  // Paradox forecast at DECLARATION time, not at The Price rung.
-  const preview: CastPreview | null =
-    draft.method === "rote"
-      ? draft.skillChoice === null
-        ? null
-        : Option.getOrNull(
-            previewRoteCast({
-              sheet,
-              rote: graveMist,
-              skillChoice: draft.skillChoice,
-              potency: draft.potency,
-              targets: draft.targets,
-              highSpeech: draft.highSpeech,
-              extraManaCost: draft.extraMana,
-              spendWillpower: draft.spendWillpower,
-            }),
-          )
-      : Option.getOrNull(
-          previewImprovisedCast({
-            sheet,
-            arcanum: "death",
-            potency: draft.potency,
-            targets: draft.targets,
-            highSpeech: draft.highSpeech,
-            extraManaCost: draft.extraMana,
-            spendWillpower: draft.spendWillpower,
-          }),
-        )
-
-  const paradox = calculateParadoxPool({
-    gnosis: toGnosisRank(sheet.gnosis),
-    isRote: draft.method === "rote",
-    usesMagicalTool: draft.usesMagicalTool,
-    witnessCount: TIDES.witnessCount,
-    priorParadoxRollsThisScene: TIDES.priorParadoxRolls,
-    discretionaryModifiers: TIDES.circumstances,
-  })
-
-  const priced: Priced = {
-    preview,
-    castOdds: preview ? rollOdds(preview.dice) : null,
-    paradox,
-    paradoxOdds: rollOdds(paradox.totalDice),
-    manaShort: preview !== null && preview.manaCost > sheet.manaCurrent,
-    needsSkill: draft.method === "rote" && draft.skillChoice === null,
-  }
-
-  const bench = { sheet, draft, setDraft, priced, flash, setFlash }
-  const workbench =
-    variant === "felt" ? (
-      <FeltBench {...bench} />
-    ) : variant === "ledger" ? (
-      <LedgerBench {...bench} />
-    ) : variant === "scales" ? (
-      <ScalesBench {...bench} />
-    ) : (
-      <EmbryoBench {...bench} />
-    )
-
-  const feed = (
-    <div className="flex h-full flex-col">
-      <div
-        className="flex shrink-0 items-center gap-2 border-b px-3 py-2"
-        style={{ borderColor: "var(--line)" }}
-      >
-        <h2 className="mv-eyebrow">Chronicle</h2>
-        <span className="mv-data ml-auto text-[10px]" style={{ color: "var(--dim)" }}>
-          Tides: {TIDES.witnessCount} witnesses · ley +1 · hallowed −1 · 1 prior
-        </span>
-      </div>
-      <ScrollArea className="min-h-0 flex-1 px-3 py-2">
-        <div className="grid gap-2">
-          <MessageItem message={chatMsg} />
-          <RollItem roll={priorRoll} />
-        </div>
-      </ScrollArea>
-    </div>
-  )
-
-  return (
-    <>
-      <SessionLayout
-        sessionName="The Workbench"
-        inviteCode="PROTO-105"
-        videoRail={<VideoRailPlaceholder />}
-        characterSheet={<CharacterSheet character={sheet} />}
-        activityLog={feed}
-        dicePoolBuilder={
-          <>
-            <ResourceStrip character={sheet} />
-            {workbench}
-          </>
-        }
-        chatInput={
-          <ChatInput sessionId={SESSION_ID} members={[]} currentUserId={CASTER} />
-        }
-        onClearPool={() => {}}
-      />
-
-      {/* The knobs — deliberately foreign to the mv language. */}
-      <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full bg-zinc-100 px-4 py-2 text-zinc-900 shadow-lg">
-        <button
-          onClick={() => stepVariant(-1)}
-          className="rounded-full px-2 py-0.5 text-[13px] font-bold hover:bg-zinc-300"
-          title="Previous variant (←)"
-        >
-          ←
-        </button>
-        <span className="w-24 text-center font-mono text-[11px] font-semibold">
-          {VARIANT_LABEL[variant]}
-        </span>
-        <button
-          onClick={() => stepVariant(1)}
-          className="rounded-full px-2 py-0.5 text-[13px] font-bold hover:bg-zinc-300"
-          title="Next variant (→)"
-        >
-          →
-        </button>
-        <span className="h-4 w-px bg-zinc-400" />
-        <div className="flex items-center gap-1">
-          {SCENARIO_ORDER.map((s) => (
-            <button
-              key={s}
-              onClick={() =>
-                void navigate({ search: (prev) => ({ ...prev, scenario: s }), replace: true })
-              }
-              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                s === scenario ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </div>
-    </>
-  )
-}
-
-// ── Shared bits ──────────────────────────────────────────────────────────────
-
-type BenchProps = {
-  sheet: NonNullable<typeof arctusSheet>
-  draft: Draft
-  setDraft: React.Dispatch<React.SetStateAction<Draft>>
-  priced: Priced
-  flash: string | null
-  setFlash: (f: string | null) => void
-}
-
-const pct = (p: number): string =>
-  p <= 0 ? "0%" : p < 0.001 ? "<0.1%" : `${(p * 100).toFixed(1)}%`
-
-const diceLabel = (n: number): string =>
-  n <= 0 ? "chance die" : n === 1 ? "1 die" : `${n} dice`
-
-function Mini({
-  on,
-  onClick,
-  children,
+/** The named-boundary rule made flesh: an eyebrow + rule header, never
+ * control-shaped geometry. */
+function Bench({
   title,
+  note,
+  children,
 }: {
-  on?: boolean
-  onClick: () => void
-  children: React.ReactNode
-  title?: string
+  title: string;
+  note?: string;
+  children: ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      className={`mv-mini ${on ? "mv-mini-on" : ""}`}
-    >
+    <section className="grid gap-3">
+      <div className="grid gap-1 pt-2">
+        <div className="flex items-baseline gap-3">
+          <h2 className="mv-eyebrow">{title}</h2>
+          {note && (
+            <span className="text-[11px]" style={{ color: "var(--dim)" }}>
+              {note}
+            </span>
+          )}
+        </div>
+        <div className="mv-rule" />
+      </div>
       {children}
-    </button>
-  )
+    </section>
+  );
 }
 
-function Step({
-  value,
-  onChange,
-  min = 0,
-}: {
-  value: number
-  onChange: (v: number) => void
-  min?: number
-}) {
+function Spec({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-center gap-1">
-      <button
-        onClick={() => onChange(Math.max(min, value - 1))}
-        className="mv-btn grid size-5 place-items-center rounded-[3px] text-[12px] leading-none"
-      >
-        −
-      </button>
-      <span className="mv-data w-6 text-center text-[12px] font-bold">{value}</span>
-      <button
-        onClick={() => onChange(value + 1)}
-        className="mv-btn grid size-5 place-items-center rounded-[3px] text-[12px] leading-none"
-      >
-        +
-      </button>
-    </div>
-  )
-}
-
-/** Actions + gate line, shared: the trigger is always verdigris (#102). */
-function BenchActions({ draft, priced, setFlash }: BenchProps) {
-  const gate = priced.needsSkill
-    ? "Pick the rote's skill first."
-    : priced.manaShort
-      ? `Not enough Mana — need ${priced.preview?.manaCost}, have less.`
-      : null
-  const vulgar = draft.method === "rote" || true // the rig's scene is vulgar territory
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <button
-        onClick={() => setFlash("→ would DRAFT into the wings (stub — no server)")}
-        disabled={gate !== null}
-        title={gate ?? "Draft into the wings — the handshake plays out on the docked card."}
-        className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
-      >
-        {priced.preview
-          ? `Draft — ${diceLabel(priced.preview.dice)} declared`
-          : "Draft"}
-      </button>
-      {vulgar ? null : null}
-      <button
-        onClick={() => setFlash("cancelled (stub)")}
-        className="mv-btn rounded-[3px] px-3 py-1.5 text-[12px]"
-      >
-        Cancel
-      </button>
-      {gate && (
-        <span className="mv-data text-[10px]" style={{ color: "var(--bad)" }}>
-          {gate}
-        </span>
-      )}
-    </div>
-  )
-}
-
-// ── Variant D: the felt ──────────────────────────────────────────────────────
-// The workbench is the felt in a declaring posture (owner design, 2026-07-18).
-// The pool sits as physical dice; factor fittings ghost two dice per press
-// (#102 pending recipe) and wrap-to-reset past the cap; Willpower is three
-// dice arriving (ember provenance — a felt-grammar question for the walk).
-// The resting face: identity · felt · price · trigger. Nothing else.
-
-const TARGET_BRACKETS = [1, 2, 4, 8, 16]
-/** Ghosted dice a factor choice costs: potency −2/dot, targets −2/bracket. */
-const ghostCost = (potency: number, targets: number): number => {
-  const t = TARGET_BRACKETS.indexOf(targets)
-  return (potency - 1) * 2 + (t <= 0 ? 0 : t * 2)
-}
-
-function FeltBench(props: BenchProps) {
-  const { draft, setDraft, priced, flash, setFlash, sheet } = props
-  const d = (patch: Partial<Draft>) => setDraft((p) => ({ ...p, ...patch }))
-
-  // The physical pool: factors at neutral (they ghost, not shrink).
-  const prefactor =
-    draft.method === "rote"
-      ? draft.skillChoice === null
-        ? null
-        : Option.getOrNull(
-            previewRoteCast({
-              sheet,
-              rote: graveMist,
-              skillChoice: draft.skillChoice,
-              spendWillpower: draft.spendWillpower,
-            }),
-          )
-      : Option.getOrNull(
-          previewImprovisedCast({
-            sheet,
-            arcanum: "death",
-            spendWillpower: draft.spendWillpower,
-          }),
-        )
-
-  const physical = prefactor?.dice ?? 0
-  const wpDice = draft.spendWillpower ? WILLPOWER_BONUS_DICE : 0
-  const ghosts = Math.min(ghostCost(draft.potency, draft.targets), physical)
-  const live = physical - ghosts
-  const odds = rollOdds(live)
-  const manaCost = prefactor?.manaCost ?? 0
-  const manaShort = prefactor !== null && manaCost > sheet.manaCurrent
-
-  // Fittings: each press ghosts two more dice; a press past the cap wraps
-  // the fitting back to rest (the chevrons' cycle-to-reset, kept).
-  const pressPotency = () => {
-    const next = draft.potency + 1
-    d(
-      ghostCost(next, draft.targets) > physical
-        ? { potency: 1 }
-        : { potency: next },
-    )
-  }
-  const pressTargets = () => {
-    const i = TARGET_BRACKETS.indexOf(draft.targets)
-    const next = TARGET_BRACKETS[i + 1]
-    d(
-      next === undefined || ghostCost(draft.potency, next) > physical
-        ? { targets: 1 }
-        : { targets: next },
-    )
-  }
-
-  const gate =
-    draft.method === "rote" && draft.skillChoice === null
-      ? "Pick the rote's skill."
-      : manaShort
-        ? `Not enough Mana — need ${manaCost}, have ${sheet.manaCurrent}.`
-        : null
-
-  return (
-    <div className="border-t px-3 py-2" style={{ borderColor: "var(--line)" }}>
-      {/* identity — what you're casting, level implied with a quiet override */}
-      <div className="flex items-center gap-1.5">
-        <span className="mv-eyebrow">Declaring</span>
-        <ArcanaGlyph arcanum="death" size={13} className="mv-accent" />
-        <span className="text-[12px]" style={{ color: "var(--ink)" }}>
-          {draft.method === "rote" ? "Grave Mist" : "Improvised Death"}
-        </span>
-        {draft.method === "rote" ? (
-          ["Occult", "Investigation"].map((s) => (
-            <Mini key={s} on={draft.skillChoice === s} onClick={() => d({ skillChoice: s })}>
-              {s}
-            </Mini>
-          ))
-        ) : (
-          <span
-            className="mv-data cursor-pointer text-[10px]"
-            style={{ color: "var(--dim)" }}
-            title="The Practice tier your intent implies — click to override."
-            onClick={() => d({ level: draft.level >= 3 ? 1 : draft.level + 1 })}
-          >
-            Unraveling · {"●".repeat(draft.level)}
-          </span>
-        )}
-      </div>
-
-      {/* the felt — the pool as physical dice; ghosts are the price you're
-          weighing (the #102 pending recipe on your own dice) */}
-      <div
-        className="mt-2 flex min-h-[34px] flex-wrap content-center items-center gap-1 rounded-[3px] border px-2 py-1.5"
-        style={{ borderColor: "var(--line)", background: "var(--panel)" }}
-      >
-        {physical === 0 ? (
-          <span className="mv-data text-[10px] italic" style={{ color: "var(--dim)" }}>
-            {draft.method === "rote" ? "pick a skill — the dice land here" : "no pool"}
-          </span>
-        ) : (
-          Array.from({ length: physical }, (_, i) => {
-            const ghosted = i >= physical - ghosts
-            const willpower = !ghosted && i >= physical - ghosts - wpDice
-            return (
-              <span
-                key={i}
-                className="mv-data grid size-5 place-items-center rounded-[2px] text-[10px] font-bold"
-                style={
-                  ghosted
-                    ? {
-                        border: "1px dashed var(--dim)",
-                        color: "var(--dim)",
-                        opacity: 0.4,
-                      }
-                    : {
-                        background: willpower ? "var(--ember-glow)" : "color-mix(in srgb, var(--accent) 20%, transparent)",
-                        border: `1px solid ${willpower ? "var(--ember)" : "var(--accent)"}`,
-                        color: "var(--ink)",
-                      }
-                }
-                title={ghosted ? "spent on spell factors" : willpower ? "Willpower" : "your pool"}
-              >
-                {ghosted ? "·" : ""}
-              </span>
-            )
-          })
-        )}
-        <span className="mv-data ml-auto pl-2 text-[13px] font-bold" style={{ color: "var(--ink)" }}>
-          {live === 0 && physical > 0 ? "◈" : live}
-          <span className="pl-1 text-[9px] font-normal" style={{ color: "var(--dim)" }}>
-            {live === 0 && physical > 0 ? "chance" : `dice · ${pct(odds.success)}`}
-          </span>
-        </span>
-      </div>
-
-      {/* lip fittings — the two summonable bets + Willpower's arriving dice */}
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        <Mini
-          on={draft.potency > 1}
-          onClick={pressPotency}
-          title="Buy the Potency floor: −2 dice per dot. Insurance against dispel — the bought floor is stamped on the card for the ST to roll against. Press past the cap to reset."
-        >
-          Potency {"◆".repeat(draft.potency)}
-        </Mini>
-        <Mini
-          on={draft.targets > 1}
-          onClick={pressTargets}
-          title="Each bracket doubles targets for −2 dice (2/4/8/16). Press past the cap to reset."
-        >
-          Targets ×{draft.targets}
-        </Mini>
-        <Mini
-          on={draft.spendWillpower}
-          onClick={() => d({ spendWillpower: !draft.spendWillpower })}
-          title="One point, +3 dice, precommitted and blind (WoD p.133) — Paradox can eat them like any others."
-        >
-          Willpower +{WILLPOWER_BONUS_DICE}
-        </Mini>
-      </div>
-
-      {/* the price line — auto Mana + the Tides' ask; the tool is a sheet
-          fact reported in the receipt, not a dial */}
-      <div className="mv-data mt-1.5 text-[10px]" style={{ color: "var(--dim)" }}>
-        Mana{" "}
-        <b style={{ color: manaShort ? "var(--bad)" : "var(--mana)" }}>◈ {manaCost}</b>
-        {" auto"} · the Tides ask{" "}
-        <b style={{ color: "var(--ink)" }}>{diceLabel(priced.paradox.totalDice)}</b> · bites{" "}
-        <b style={{ color: "var(--rail-danger)" }}>{pct(priced.paradoxOdds.success)}</b>
-        <span title="Standing sheet fact — flips on the sheet, not here."> · tool in hand −1</span>
-      </div>
-
-      {/* intent + trigger */}
-      <div className="mt-1.5 flex items-center gap-2">
-        <input
-          value={draft.intent}
-          onChange={(e) => d({ intent: e.target.value })}
-          placeholder="What is the spell for?"
-          className="mv-data min-w-0 flex-1 rounded-[3px] border bg-transparent px-2 py-1 text-[11px] outline-none focus:border-[var(--accent)]"
-          style={{ borderColor: "var(--line)" }}
-        />
-        <button
-          onClick={() =>
-            setFlash(
-              `→ stub: drafts ${live} dice, stamps Potency ${draft.potency} + targets ×${draft.targets} on the card — the ST's dispel rolls against that floor`,
-            )
-          }
-          disabled={gate !== null}
-          title={gate ?? "Draft into the wings — the handshake plays out on the docked card."}
-          className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
-        >
-          Draft
-        </button>
-        <button onClick={() => setFlash(null)} className="mv-btn rounded-[3px] px-2.5 py-1.5 text-[12px]">
-          Cancel
-        </button>
-      </div>
-      {gate && (
-        <p className="mv-data pt-1 text-[10px]" style={{ color: "var(--bad)" }}>
-          {gate}
-        </p>
-      )}
-      {flash && (
-        <p className="mv-data pt-1 text-[10px] italic" style={{ color: "var(--dim)" }}>
-          {flash}
-        </p>
-      )}
-    </div>
-  )
-}
-
-// ── Variant A: the ledger ────────────────────────────────────────────────────
-// Every decision its own row (the #96 comfortable-input standard, maximal);
-// the price is a receipt footer. Tall — tests the tray's "building" posture.
-
-function LedgerBench(props: BenchProps) {
-  const { draft, setDraft, priced, flash } = props
-  const d = (patch: Partial<Draft>) => setDraft((p) => ({ ...p, ...patch }))
-  return (
-    <div className="border-t px-3 py-2" style={{ borderColor: "var(--line)" }}>
-      <div className="flex items-center gap-2">
-        <span className="mv-eyebrow">Declaring</span>
-        <ArcanaGlyph arcanum="death" size={13} className="mv-accent" />
-        <span className="text-[12px]" style={{ color: "var(--ink)" }}>
-          {draft.method === "rote" ? "Grave Mist" : "Improvised Death"}
-        </span>
-        <span
-          className="mv-data ml-auto text-[20px] font-bold leading-none"
-          style={{ color: "var(--accent)" }}
-        >
-          {priced.preview ? (priced.preview.isChanceDie ? "◈" : priced.preview.dice) : "—"}
-        </span>
-        <span className="mv-data text-[9px]" style={{ color: "var(--dim)" }}>
-          dice
-        </span>
-      </div>
-
-      <div className="mt-1.5 grid gap-1.5">
-        {draft.method === "rote" && (
-          <Row label="skill">
-            {["Occult", "Investigation"].map((s) => (
-              <Mini key={s} on={draft.skillChoice === s} onClick={() => d({ skillChoice: s })}>
-                {s}
-              </Mini>
-            ))}
-          </Row>
-        )}
-        {draft.method === "improvised" && (
-          <Row label="level">
-            {[1, 2, 3].map((n) => (
-              <Mini key={n} on={draft.level === n} onClick={() => d({ level: n })}>
-                {n}
-              </Mini>
-            ))}
-          </Row>
-        )}
-        <Row label="potency">
-          <Step value={draft.potency} min={1} onChange={(v) => d({ potency: v })} />
-        </Row>
-        <Row label="targets">
-          <Step value={draft.targets} min={1} onChange={(v) => d({ targets: v })} />
-        </Row>
-        <Row label="mana +">
-          <Step value={draft.extraMana} onChange={(v) => d({ extraMana: v })} />
-        </Row>
-        <Row label="voice">
-          <Mini on={draft.highSpeech} onClick={() => d({ highSpeech: !draft.highSpeech })}>
-            High Speech
-          </Mini>
-          <Mini
-            on={draft.spendWillpower}
-            onClick={() => d({ spendWillpower: !draft.spendWillpower })}
-            title="Precommitted at declaration, by the book (ADR-0022)."
-          >
-            Willpower +{WILLPOWER_BONUS_DICE}
-          </Mini>
-          <Mini on={draft.hidden} onClick={() => d({ hidden: !draft.hidden })}>
-            Hidden
-          </Mini>
-        </Row>
-        <Row label="tool">
-          <Mini
-            on={draft.usesMagicalTool}
-            onClick={() => d({ usesMagicalTool: !draft.usesMagicalTool })}
-            title="The tool decision lives HERE exclusively now — the card never re-asks."
-          >
-            Magical tool −1 Paradox
-          </Mini>
-        </Row>
-        <Row label="intent">
-          <input
-            value={draft.intent}
-            onChange={(e) => d({ intent: e.target.value })}
-            placeholder="What is the spell for?"
-            className="mv-data w-full rounded-[3px] border bg-transparent px-2 py-1 text-[11px] outline-none focus:border-[var(--accent)]"
-            style={{ borderColor: "var(--line)" }}
-          />
-        </Row>
-      </div>
-
-      {/* the receipt */}
-      <div
-        className="mv-data mt-2 grid gap-0.5 border-t pt-1.5 text-[10px]"
-        style={{ borderColor: "var(--line)", color: "var(--dim)" }}
-      >
-        <span>
-          Mana{" "}
-          <b style={{ color: priced.manaShort ? "var(--bad)" : "var(--mana)" }}>
-            ◈ {priced.preview?.manaCost ?? "—"}
-          </b>{" "}
-          of {props.sheet.manaCurrent}
-        </span>
-        <span>
-          Tides price: Paradox{" "}
-          <b style={{ color: "var(--ink)" }}>{diceLabel(priced.paradox.totalDice)}</b> · bites{" "}
-          <b style={{ color: "var(--rail-danger)" }}>{pct(priced.paradoxOdds.success)}</b>
-          {" — "}
-          {priced.paradox.modifiers.map((m) => `${m.source} ${m.dice > 0 ? "+" : ""}${m.dice}`).join(", ")}
-        </span>
-        <span>
-          cast odds <b style={{ color: "var(--rail-success)" }}>{pct(priced.castOdds?.success ?? 0)}</b>
-        </span>
-      </div>
-
-      <div className="mt-2">
-        <BenchActions {...props} />
-      </div>
-      {flash && (
-        <p className="mv-data pt-1 text-[10px] italic" style={{ color: "var(--dim)" }}>
-          {flash}
-        </p>
-      )}
-    </div>
-  )
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-3">
+    <div className="grid content-start gap-1.5">
       <span
-        className="mv-data w-14 shrink-0 text-[9px] uppercase tracking-wider"
+        className="mv-data text-[9px] uppercase tracking-wider"
         style={{ color: "var(--dim)" }}
       >
         {label}
       </span>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">{children}</div>
+      <div className="flex flex-wrap items-center gap-2">{children}</div>
     </div>
-  )
+  );
 }
 
-// ── Variant B: the scales ────────────────────────────────────────────────────
-// Price first: your hand (ember side) weighed against the Tides (verdigris
-// side), the ADR-0022 headline made the workbench's headline. Controls are
-// compact fitting strips beneath the scale.
+// ── Floor I benches ──────────────────────────────────────────────────────────
 
-function ScalesBench(props: BenchProps) {
-  const { draft, setDraft, priced, flash, sheet } = props
-  const d = (patch: Partial<Draft>) => setDraft((p) => ({ ...p, ...patch }))
+const IDENTITY_TOKENS = [
+  ["--bg", "app void"],
+  ["--panel", "panels"],
+  ["--raise", "raised controls"],
+  ["--ink", "primary text"],
+  ["--dim", "secondary text (amended, ≥4.5:1)"],
+  ["--accent", "Verdigris — the world's magic, the trigger"],
+  ["--ember", "the caster's hand — armed, reversible"],
+  ["--bad", "harm"],
+  ["--mana", "Mana's identity blue"],
+  ["--line", "borders"],
+] as const;
+
+const REALM_TOKENS = [
+  ["--realm-aether", "Aether"],
+  ["--realm-arcadia", "Arcadia"],
+  ["--realm-pandemonium", "Pandemonium"],
+  ["--realm-wild", "Primal Wild"],
+  ["--realm-stygia", "Stygia"],
+] as const;
+
+function TokenBench() {
   return (
-    <div className="border-t px-3 py-2" style={{ borderColor: "var(--line)" }}>
-      {/* the scale */}
-      <div className="grid grid-cols-2 gap-2">
-        <div
-          className="rounded-[3px] border p-2"
-          style={{ borderColor: "var(--ember)", background: "var(--ember-glow)" }}
-        >
-          <span className="mv-eyebrow" style={{ color: "var(--ember)" }}>
-            Your hand
-          </span>
-          <div className="mv-data mt-1 text-[20px] font-bold leading-none" style={{ color: "var(--ink)" }}>
-            {priced.preview ? (priced.preview.isChanceDie ? "◈" : priced.preview.dice) : "—"}
-            <span className="pl-1 text-[10px] font-normal" style={{ color: "var(--dim)" }}>
-              dice · {pct(priced.castOdds?.success ?? 0)}
+    <Bench
+      title="Tokens"
+      note="the identity's palette — values live in styles.css, guarded by the token-contrast test"
+    >
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
+        {IDENTITY_TOKENS.map(([name, role]) => (
+          <span key={name} className="flex items-center gap-1.5">
+            <span
+              className="inline-block size-4 rounded-[2px] border"
+              style={{ background: `var(${name})`, borderColor: "var(--line)" }}
+            />
+            <span className="mv-data text-[10px]">{name}</span>
+            <span className="text-[10px]" style={{ color: "var(--dim)" }}>
+              {role}
             </span>
-          </div>
-          <div className="mv-data mt-1 text-[9px]" style={{ color: "var(--dim)" }}>
-            {priced.preview
-              ? priced.preview.components.map((c) => `${c.name} ${c.dots > 0 && c.type === "modifier" ? `+${c.dots}` : c.dots}`).join(" + ")
-              : "pick a skill…"}
-          </div>
-          <div className="mv-data mt-1 text-[9px]" style={{ color: priced.manaShort ? "var(--bad)" : "var(--mana)" }}>
-            ◈ {priced.preview?.manaCost ?? "—"} Mana of {sheet.manaCurrent}
-          </div>
-        </div>
-        <div
-          className="rounded-[3px] border p-2"
-          style={{ borderColor: "var(--accent)", background: "var(--glow)" }}
-        >
-          <span className="mv-eyebrow" style={{ color: "var(--accent)" }}>
-            The Tides
           </span>
-          <div className="mv-data mt-1 text-[20px] font-bold leading-none" style={{ color: "var(--ink)" }}>
-            {priced.paradox.totalDice}
-            <span className="pl-1 text-[10px] font-normal">
-              <span style={{ color: "var(--dim)" }}>Paradox · bites </span>
-              <b style={{ color: "var(--rail-danger)" }}>{pct(priced.paradoxOdds.success)}</b>
-            </span>
-          </div>
-          <div className="mv-data mt-1 grid gap-px text-[9px]" style={{ color: "var(--dim)" }}>
-            {priced.paradox.modifiers.map((m) => (
-              <span key={m.source}>
-                {m.source} {m.dice > 0 ? `+${m.dice}` : m.dice}
-              </span>
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
+        {REALM_TOKENS.map(([name, role]) => (
+          <span key={name} className="flex items-center gap-1.5">
+            <span
+              className="inline-block size-4 rounded-full border"
+              style={{ background: `var(${name})`, borderColor: "var(--line)" }}
+            />
+            <span className="mv-data text-[10px]">{role}</span>
+          </span>
+        ))}
+      </div>
+    </Bench>
+  );
+}
 
-      {/* fitting strips */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        {draft.method === "rote" &&
-          ["Occult", "Investigation"].map((s) => (
-            <Mini key={s} on={draft.skillChoice === s} onClick={() => d({ skillChoice: s })}>
-              {s}
-            </Mini>
-          ))}
-        <span className="mv-data text-[9px] uppercase" style={{ color: "var(--dim)" }}>
-          potency
-        </span>
-        <Step value={draft.potency} min={1} onChange={(v) => d({ potency: v })} />
-        <span className="mv-data text-[9px] uppercase" style={{ color: "var(--dim)" }}>
-          targets
-        </span>
-        <Step value={draft.targets} min={1} onChange={(v) => d({ targets: v })} />
-        <span className="mv-data text-[9px] uppercase" style={{ color: "var(--dim)" }}>
-          mana+
-        </span>
-        <Step value={draft.extraMana} onChange={(v) => d({ extraMana: v })} />
-      </div>
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        <Mini on={draft.highSpeech} onClick={() => d({ highSpeech: !draft.highSpeech })}>
-          High Speech
-        </Mini>
-        <Mini on={draft.spendWillpower} onClick={() => d({ spendWillpower: !draft.spendWillpower })}>
-          Willpower +{WILLPOWER_BONUS_DICE}
-        </Mini>
-        <Mini on={draft.hidden} onClick={() => d({ hidden: !draft.hidden })}>
-          Hidden
-        </Mini>
-        <Mini
-          on={draft.usesMagicalTool}
-          onClick={() => d({ usesMagicalTool: !draft.usesMagicalTool })}
-          title="Lives here exclusively — watch it move the Tides pan live."
-        >
-          Tool −1
-        </Mini>
-      </div>
-      <div className="mt-1.5">
-        <input
-          value={draft.intent}
-          onChange={(e) => d({ intent: e.target.value })}
-          placeholder="Intent — what is the spell for?"
-          className="mv-data w-full rounded-[3px] border bg-transparent px-2 py-1 text-[11px] outline-none focus:border-[var(--accent)]"
-          style={{ borderColor: "var(--line)" }}
-        />
-      </div>
-
-      <div className="mt-2">
-        <BenchActions {...props} />
-      </div>
-      {flash && (
-        <p className="mv-data pt-1 text-[10px] italic" style={{ color: "var(--dim)" }}>
-          {flash}
+function TypeBench() {
+  return (
+    <Bench
+      title="Type roles"
+      note="14px primary · 12–13px secondary · 11px labels · 9px floor"
+    >
+      <div className="grid gap-2">
+        <p className="mv-h text-[17px]">
+          Cinzel carries the named things — mv-h
         </p>
-      )}
-    </div>
-  )
+        <p className="text-[13px]">
+          Manrope carries the prose; primary trait and row names sit at 14px and
+          never wrap.
+        </p>
+        <p className="mv-data text-[12px]">
+          JetBrains Mono carries the data — mv-data · GNOSIS 2 · MANA 11 · WILL
+          6
+        </p>
+        <p className="mv-eyebrow">
+          The eyebrow marks a boundary — mv-eyebrow, 9px, the floor
+        </p>
+        <p className="mv-book-text text-[13px] italic">
+          Spectral speaks only from the Rote book's pages — mv-book-text.
+        </p>
+      </div>
+    </Bench>
+  );
 }
 
-// ── Variant C: the embryo ────────────────────────────────────────────────────
-// The workbench IS the future cast card, edited in place: what you shape at
-// the foot is literally what will dock in the feed (drafting-is-broadcast
-// made a visual promise). A ghosted four-rung ladder shows where it's going.
-
-const EMBRYO_RUNGS = ["Declare", "The Price", "Paradox", "Resolved"]
-
-function EmbryoBench(props: BenchProps) {
-  const { draft, setDraft, priced, flash, sheet } = props
-  const d = (patch: Partial<Draft>) => setDraft((p) => ({ ...p, ...patch }))
+function SurfaceBench() {
   return (
-    <div className="border-t px-3 py-2" style={{ borderColor: "var(--line)" }}>
-      <div className="mv-cornered mv-panel rounded-[3px] p-2.5" style={{ borderStyle: "dashed" }}>
-        {/* the card's header, editable */}
-        <div className="flex items-center gap-1.5">
-          <ArcanaGlyph arcanum="death" size={14} className="mv-accent" />
-          <span className="text-[13px] font-medium" style={{ color: "var(--ink)" }}>
-            The Little Bear
-          </span>
-          <span className="mv-data text-[10px]" style={{ color: "var(--dim)" }}>
-            vulgar Death {draft.level}
-            {draft.method === "rote" ? " · Rote “Grave Mist”" : ""}
-          </span>
-          <span className="mv-data ml-auto text-[9px] uppercase tracking-wide" style={{ color: "var(--ember)" }}>
-            drafting
-          </span>
+    <Bench
+      title="Surfaces"
+      note="boundaries are named (eyebrow + rule), never control-shaped geometry"
+    >
+      <div className="flex flex-wrap gap-4">
+        <div className="mv-panel w-52 rounded-[3px] p-3">
+          <span className="mv-eyebrow">mv-panel</span>
+          <p className="pt-1 text-[12px]">
+            A made object — it occludes the firmament.
+          </p>
         </div>
-        <input
-          value={draft.intent}
-          onChange={(e) => d({ intent: e.target.value })}
-          placeholder="“What is the spell for?” — the card's own intent line"
-          className="mt-1 w-full border-0 bg-transparent text-[11px] italic outline-none"
-          style={{ color: "var(--dim)" }}
-        />
+        <div className="mv-panel mv-cornered w-52 rounded-[3px] p-3">
+          <span className="mv-eyebrow">mv-panel mv-cornered</span>
+          <p className="pt-1 text-[12px]">
+            Corner-ticks mark the important surfaces only.
+          </p>
+        </div>
+        <div className="mv-panel w-52 rounded-[3px] p-3">
+          <span className="mv-eyebrow">mv-empty</span>
+          <div className="mv-empty h-16">an empty felt rolls a chance die</div>
+        </div>
+      </div>
+    </Bench>
+  );
+}
 
-        {/* the ghosted ladder it will climb */}
-        <div className="mt-2 flex items-center gap-1 opacity-50">
-          {EMBRYO_RUNGS.map((r, i) => (
-            <div key={r} className="flex min-w-0 flex-1 flex-col gap-1">
-              <div
-                className="h-[3px] rounded-full"
-                style={{ background: i === 0 ? "var(--turn-caster)" : "var(--raise)" }}
+/** One control class across its states. Hover and focus are live. */
+function ControlRow({
+  label,
+  shape,
+  on,
+  gate,
+}: {
+  label: string;
+  /** The specimen's shape classes (padding, radius, size). */
+  shape: string;
+  /** The class's lit modifier, when it has one. */
+  on?: string;
+  /** The refusal this control can hit, when it can be gated. */
+  gate?: string;
+}) {
+  const cls = (extra = "") => `${label} ${shape} ${extra}`;
+  return (
+    <>
+      <span
+        className="mv-data self-center text-[10px]"
+        style={{ color: "var(--dim)" }}
+      >
+        .{label}
+      </span>
+      <span>
+        <button type="button" className={cls()}>
+          Rest
+        </button>
+      </span>
+      <span>
+        {on ? (
+          <button type="button" className={cls(on)}>
+            Lit
+          </button>
+        ) : (
+          "—"
+        )}
+      </span>
+      <span>
+        <button type="button" disabled className={cls("disabled:opacity-40")}>
+          Disabled
+        </button>
+      </span>
+      <span>
+        {gate ? (
+          <GateButton gate={gate} className={cls()}>
+            Gated
+          </GateButton>
+        ) : (
+          "—"
+        )}
+      </span>
+    </>
+  );
+}
+
+function ControlBench() {
+  const pad = "rounded-[3px] px-3 py-1.5 text-[12px]";
+  return (
+    <Bench
+      title="Controls"
+      note="hover and Tab are live — every control takes the one shared focus ring; a gate keeps pointer events and explains itself"
+    >
+      <div
+        className="grid items-center gap-x-6 gap-y-3"
+        style={{
+          gridTemplateColumns: "6rem repeat(4, auto)",
+          justifyContent: "start",
+        }}
+      >
+        <span className="mv-eyebrow">class</span>
+        <span className="mv-eyebrow">rest</span>
+        <span className="mv-eyebrow">lit</span>
+        <span className="mv-eyebrow">disabled</span>
+        <span className="mv-eyebrow">gated</span>
+        <ControlRow
+          label="mv-btn"
+          shape={pad}
+          gate="The scene isn't yours to touch yet."
+        />
+        <ControlRow
+          label="mv-mini"
+          shape=""
+          on="mv-mini-on"
+          gate="Willpower is a spend — it needs your sheet to fund it."
+        />
+        <ControlRow
+          label="mv-chip"
+          shape="rounded-full px-3 py-1 text-[11px]"
+        />
+        <ControlRow
+          label="mv-trait"
+          shape="rounded-[3px] px-3 py-1.5 text-[13px]"
+          on="mv-trait-on"
+        />
+        <ControlRow
+          label="mv-roll"
+          shape={pad}
+          gate="Not enough Mana — need 2, have 1."
+        />
+        <ControlRow
+          label="mv-handle"
+          shape="rounded-[3px] px-3 py-1 text-[11px]"
+        />
+      </div>
+      <p className="text-[11px]" style={{ color: "var(--dim)" }}>
+        The refusing treatment (<span className="mv-data">mv-refuse</span>) dims
+        like disabled but keeps pointer events — hover a gated control and it
+        explains itself. That's the <span className="mv-data">GateButton</span>{" "}
+        contract.
+      </p>
+    </Bench>
+  );
+}
+
+function FieldBench() {
+  return (
+    <Bench
+      title="Fields"
+      note="mv-field — focus speaks at the border; labels take the eyebrow grammar"
+    >
+      <div className="grid max-w-3xl grid-cols-2 gap-4">
+        <div className="grid gap-1.5">
+          <Label htmlFor="wb-field-rest">Intent</Label>
+          <Input id="wb-field-rest" placeholder="What is the spell for?" />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="wb-field-filled">Filled</Label>
+          <Input
+            id="wb-field-filled"
+            defaultValue="Quicken the corpse below the chapel"
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="wb-field-disabled">Disabled</Label>
+          <Input
+            id="wb-field-disabled"
+            disabled
+            placeholder="Not while the dice fly"
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="wb-field-invalid">Invalid</Label>
+          <Input
+            id="wb-field-invalid"
+            aria-invalid
+            defaultValue="thirteen dice"
+          />
+        </div>
+      </div>
+    </Bench>
+  );
+}
+
+function EntranceBench() {
+  const [entries, setEntries] = useState<ReadonlyArray<number>>([1]);
+  const [nextId, setNextId] = useState(2);
+  return (
+    <Bench
+      title="Entrance"
+      note="FeedEntry — a Chronicle entry lands (rises and settles, exits fade); dice accrete with entranceSpring — the live tray below runs it"
+    >
+      <div className="flex items-start gap-4">
+        <div className="grid gap-1.5">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setEntries((e) => [...e, nextId]);
+              setNextId((n) => n + 1);
+            }}
+          >
+            Land an entry
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setEntries((e) => e.slice(1))}
+            disabled={entries.length === 0}
+          >
+            Let one go
+          </Button>
+        </div>
+        <div className="mv-panel min-h-24 w-80 rounded-[3px] p-2">
+          <div className="grid gap-1.5">
+            <AnimatePresence initial={false}>
+              {entries.map((id) => (
+                <FeedEntry key={id}>
+                  <div
+                    className="rounded-[3px] border px-2 py-1.5 text-[12px]"
+                    style={{ borderColor: "var(--line)" }}
+                  >
+                    <span className="mv-data" style={{ color: "var(--dim)" }}>
+                      beat {id} ·
+                    </span>{" "}
+                    something lands in the Chronicle
+                  </div>
+                </FeedEntry>
+              ))}
+            </AnimatePresence>
+            {entries.length === 0 && (
+              <div className="mv-empty h-16">
+                the Chronicle waits for its first beat
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </Bench>
+  );
+}
+
+function ShadcnBench() {
+  return (
+    <TooltipProvider>
+      <Bench
+        title="Restyled primitives"
+        note="shadcn machinery, mv voice (restyled, not banned) — button · select · dialog · tooltip"
+      >
+        <div className="grid gap-4">
+          <Spec label="button variants">
+            <Button>Default — the trigger</Button>
+            <Button variant="secondary">Secondary</Button>
+            <Button variant="outline">Outline</Button>
+            <Button variant="ghost">Ghost</Button>
+            <Button variant="destructive">Destructive</Button>
+            <Button variant="link">Link</Button>
+            <Button disabled>Disabled</Button>
+          </Spec>
+          <div className="flex flex-wrap items-end gap-6">
+            <Spec label="select — the styled control (native selects are banned where this exists)">
+              <Select defaultValue="occult">
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="Pick the rote's skill" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Rote skill</SelectLabel>
+                    <SelectItem value="occult">Occult</SelectItem>
+                    <SelectItem value="investigation">Investigation</SelectItem>
+                    <SelectItem value="medicine" disabled>
+                      Medicine (untrained)
+                    </SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <Select disabled>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Disabled" />
+                </SelectTrigger>
+                <SelectContent />
+              </Select>
+            </Spec>
+            <Spec label="dialog">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="secondary">Open the dialog</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create a new session</DialogTitle>
+                    <DialogDescription>
+                      An important surface: the panel wears its corner-ticks.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="wb-dialog-name">Session name</Label>
+                    <Input
+                      id="wb-dialog-name"
+                      placeholder="Friday Night Mage"
+                    />
+                  </div>
+                  <DialogFooter showCloseButton>
+                    <Button>Create</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </Spec>
+            <Spec label="tooltip">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="mv-btn rounded-[3px] px-3 py-1.5 text-[12px]"
+                  >
+                    Hover me
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  A raised dark label — the gate-reason's vehicle.
+                </TooltipContent>
+              </Tooltip>
+            </Spec>
+          </div>
+        </div>
+      </Bench>
+    </TooltipProvider>
+  );
+}
+
+// ── Floor II benches ─────────────────────────────────────────────────────────
+
+function DotBench() {
+  return (
+    <Bench
+      title="DotRating"
+      note="7px dots — the one size below the 9px type floor, being marks not text"
+    >
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+        <Spec label="empty">
+          <DotRating current={0} />
+        </Spec>
+        <Spec label="partial">
+          <DotRating current={3} />
+        </Spec>
+        <Spec label="full">
+          <DotRating current={5} />
+        </Spec>
+        <Spec label="in the pool (ember)">
+          <DotRating current={3} active />
+        </Spec>
+        <Spec label="zone tint">
+          <DotRating current={3} color="var(--realm-aether)" />
+        </Spec>
+        <Spec label="lit context (--mv-dot-ring)">
+          <span
+            style={
+              {
+                "--mv-dot-ring": "color-mix(in srgb, var(--accent) 50%, white)",
+              } as CSSProperties
+            }
+          >
+            <DotRating current={2} />
+          </span>
+        </Spec>
+      </div>
+    </Bench>
+  );
+}
+
+function GlyphBench() {
+  return (
+    <Bench
+      title="Glyphs"
+      note="optically normalized to one 18×18 target; Subtle Arcana are line-light, Gross are struck medallions (seal)"
+    >
+      <div className="grid gap-3">
+        <div className="flex flex-wrap items-center gap-4">
+          {ARCANA.map((a) => (
+            <span key={a} className="grid justify-items-center gap-1">
+              <ArcanaGlyph
+                arcanum={a}
+                size={22}
+                variant={isGrossArcanum(a) ? "seal" : "line"}
               />
               <span
-                className="mv-data truncate text-center text-[8px] uppercase tracking-wide"
-                style={{ color: i === 0 ? "var(--turn-caster)" : "var(--dim)" }}
+                className="mv-data text-[9px] uppercase"
+                style={{ color: arcanumTint(a) }}
               >
-                {r}
+                {a}
               </span>
-            </div>
+            </span>
           ))}
         </div>
-
-        {/* the numbers of the moment — live, editable in place */}
-        <div className="mt-2 grid gap-1 text-[11px]" style={{ color: "var(--dim)" }}>
-          <span className="mv-data flex flex-wrap items-center gap-1.5">
-            declared pool{" "}
-            <b style={{ color: "var(--ink)" }}>
-              {priced.preview ? diceLabel(priced.preview.dice) : "—"}
-            </b>
-            {draft.method === "rote" &&
-              ["Occult", "Investigation"].map((s) => (
-                <Mini key={s} on={draft.skillChoice === s} onClick={() => d({ skillChoice: s })}>
-                  {s}
-                </Mini>
-              ))}
-            <Mini on={draft.highSpeech} onClick={() => d({ highSpeech: !draft.highSpeech })}>
-              +HS
-            </Mini>
-            <Mini on={draft.spendWillpower} onClick={() => d({ spendWillpower: !draft.spendWillpower })}>
-              +WP
-            </Mini>
-          </span>
-          <span className="mv-data flex flex-wrap items-center gap-1.5">
-            factors · potency <Step value={draft.potency} min={1} onChange={(v) => d({ potency: v })} />
-            targets <Step value={draft.targets} min={1} onChange={(v) => d({ targets: v })} />
-            mana+ <Step value={draft.extraMana} onChange={(v) => d({ extraMana: v })} />
-          </span>
-          <span className="mv-data flex flex-wrap items-center gap-1.5">
-            the Tides ask{" "}
-            <b style={{ color: "var(--ink)" }}>{diceLabel(priced.paradox.totalDice)}</b>
-            <span>
-              bites <b style={{ color: "var(--rail-danger)" }}>{pct(priced.paradoxOdds.success)}</b>
+        <div className="flex flex-wrap items-center gap-4">
+          {PATHS.map((p) => (
+            <span key={p} className="grid justify-items-center gap-1">
+              <PathGlyph path={p} size={20} className="mv-accent" />
+              <span
+                className="mv-data text-[9px] uppercase"
+                style={{ color: "var(--dim)" }}
+              >
+                {p}
+              </span>
             </span>
-            <Mini
-              on={draft.usesMagicalTool}
-              onClick={() => d({ usesMagicalTool: !draft.usesMagicalTool })}
-              title="The tool decision lives on the embryo — the docked card only reports it."
-            >
-              tool −1
-            </Mini>
-          </span>
-          <span className="mv-data">
-            Mana{" "}
-            <b style={{ color: priced.manaShort ? "var(--bad)" : "var(--mana)" }}>
-              ◈ {priced.preview?.manaCost ?? "—"}
-            </b>{" "}
-            of {sheet.manaCurrent} · cast odds{" "}
-            <b style={{ color: "var(--rail-success)" }}>{pct(priced.castOdds?.success ?? 0)}</b>
-          </span>
+          ))}
+          <span className="w-4" />
+          {ORDERS.map((o) => (
+            <span key={o} className="grid justify-items-center gap-1">
+              <OrderGlyph order={o} size={20} className="mv-accent" />
+              <span
+                className="mv-data text-[9px] uppercase"
+                style={{ color: "var(--dim)" }}
+              >
+                {o}
+              </span>
+            </span>
+          ))}
         </div>
       </div>
+    </Bench>
+  );
+}
 
-      <div className="mt-2">
-        <BenchActions {...props} />
+function RailFootBench() {
+  const sheetless = useDicePool(SESSION_ID);
+  const funded = useDicePool(SESSION_ID, "proto-character" as Id<"characters">);
+  if (!arctusSheet) return null;
+  return (
+    <Bench
+      title="The rail foot"
+      note="the pilot's own components, live — build a pool, fold the tray; Roll meets the seam's honest refusal (no real session behind this bench)"
+    >
+      <div className="flex flex-wrap items-start gap-6">
+        <Spec label="funded seat — tray + strip">
+          <div className="mv-panel w-[340px] rounded-[3px]">
+            <DicePoolBuilder pool={funded} character={arctusSheet} />
+            <ResourceStrip character={arctusSheet} />
+          </div>
+        </Spec>
+        <Spec label="sheetless seat — the Willpower gate refuses with its reason">
+          <div className="mv-panel w-[340px] rounded-[3px]">
+            <DicePoolBuilder pool={sheetless} />
+          </div>
+        </Spec>
+        <Spec label="strip — a Willpower spend being weighed (pending ghost)">
+          <div className="mv-panel w-[340px] rounded-[3px]">
+            <ResourceStrip character={arctusSheet} pendingWillpower />
+          </div>
+        </Spec>
       </div>
-      {flash && (
-        <p className="mv-data pt-1 text-[10px] italic" style={{ color: "var(--dim)" }}>
-          {flash}
+    </Bench>
+  );
+}
+
+function FeedBench() {
+  return (
+    <Bench
+      title="Feed entries"
+      note="MessageItem and RollItem under fixture data"
+    >
+      <div className="mv-panel w-[380px] rounded-[3px] p-2">
+        <div className="grid gap-2">
+          <MessageItem message={chatMsg} />
+          <RollItem roll={priorRoll} />
+        </div>
+      </div>
+    </Bench>
+  );
+}
+
+function SeatBench() {
+  const [seat, setSeat] = useState<Id<"sessionMembers"> | null>(null);
+  return (
+    <Bench
+      title="Second Seat"
+      note="the seat dropdown rides the restyled select"
+    >
+      <SecondSeatControl
+        members={rosterFixture}
+        ownUserId={CASTER}
+        seatId={seat}
+        onSeat={setSeat}
+      />
+    </Bench>
+  );
+}
+
+// ── The page ─────────────────────────────────────────────────────────────────
+
+function Workbench() {
+  return (
+    <div className="mx-auto grid max-w-5xl gap-8 px-6 py-8">
+      <header className="grid gap-1">
+        <h1 className="mv-h text-[22px]">The Workbench</h1>
+        <p className="text-[12px]" style={{ color: "var(--dim)" }}>
+          The polish campaign's reference surface (ADR-0021, #72). Floor I — the
+          shared vocabulary in every state. Floor II — the prop-driven
+          components under mock data. The rubric it serves:{" "}
+          <span className="mv-data">docs/component-standards.md</span>.
         </p>
-      )}
+      </header>
+
+      <TokenBench />
+      <TypeBench />
+      <SurfaceBench />
+      <ControlBench />
+      <FieldBench />
+      <EntranceBench />
+      <ShadcnBench />
+
+      <header className="grid gap-1 pt-4">
+        <h1 className="mv-h text-[17px]">Floor II — the components</h1>
+      </header>
+
+      <DotBench />
+      <GlyphBench />
+      <RailFootBench />
+      <FeedBench />
+      <SeatBench />
     </div>
-  )
+  );
 }
