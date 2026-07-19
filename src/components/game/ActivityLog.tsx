@@ -257,7 +257,13 @@ export function RollItem({ roll }: { roll: RollEntry }) {
 
       <div className="mv-data mt-1.5 text-[10px]" style={{ color: "var(--dim)" }}>
         {roll.components
-          .map((c) => `${c.name} ${c.dots > 0 && c.type === "modifier" ? `+${c.dots}` : c.dots}`)
+          // Loose dice off the felt say "Dice 4" — a count, not a "+4"
+          // modifier (the lie died with #98); legacy "Modifier" rows keep
+          // their sign.
+          .map(
+            (c) =>
+              `${c.name} ${c.dots > 0 && c.type === "modifier" && c.name !== "Dice" ? `+${c.dots}` : c.dots}`,
+          )
           .join(" + ")}
       </div>
     </div>

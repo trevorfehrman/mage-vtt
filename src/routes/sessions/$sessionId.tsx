@@ -338,11 +338,10 @@ function SessionPage() {
         />
       }
       dicePoolBuilder={
-        // The foot of the rail is the readout: the seat's resource meters,
-        // then the pre-roll factor panel while a cast is armed, the plain
-        // dice pool otherwise (issue #20).
+        // The rail foot in reach-order (#104): the tray, then the depletables
+        // strip reading as the felt's caption. The pre-roll factor panel
+        // replaces the tray while a cast is armed (issue #20).
         <>
-          {mySheet && <ResourceStrip character={mySheet} />}
           {rawCast.state !== "idle" && mySheet ? (
             <CastPanel
               cast={cast}
@@ -350,7 +349,13 @@ function SessionPage() {
               hasPendingCast={hasPendingCast === true}
             />
           ) : (
-            <DicePoolBuilder pool={pool} />
+            <DicePoolBuilder pool={pool} character={mySheet ?? undefined} />
+          )}
+          {mySheet && (
+            <ResourceStrip
+              character={mySheet}
+              pendingWillpower={pool.context.spendWillpower}
+            />
           )}
         </>
       }

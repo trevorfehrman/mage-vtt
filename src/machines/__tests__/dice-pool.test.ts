@@ -235,12 +235,17 @@ describe("dice-pool machine", () => {
     expect(snap.context.components).toHaveLength(0)
   })
 
+  test("ROLL from idle rolls the empty pool — the lip's chance die (#79)", () => {
+    const actor = startMachine()
+    actor.send({ type: "ROLL" })
+    const snap = actor.getSnapshot()
+    expect(snap.value).toBe("rolling")
+    expect(snap.context.components).toEqual([])
+    expect(snap.context.poolSize).toBe(0)
+  })
+
   test("invalid events are ignored", () => {
     const actor = startMachine()
-    // Can't ROLL from idle
-    actor.send({ type: "ROLL" })
-    expect(actor.getSnapshot().value).toBe("idle")
-
     // Can't ROLL_COMPLETE from idle
     actor.send({ type: "ROLL_COMPLETE" })
     expect(actor.getSnapshot().value).toBe("idle")

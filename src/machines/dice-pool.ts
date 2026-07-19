@@ -61,6 +61,9 @@ export const dicePoolMachine = setup({
   states: {
     idle: {
       on: {
+        // The lip's sacred gesture (#79/#104): an empty tray still rolls —
+        // the server reads an empty pool as the chance die.
+        ROLL: "rolling",
         ADD_COMPONENT: {
           target: "building",
           actions: assign({

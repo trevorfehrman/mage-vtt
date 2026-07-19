@@ -413,6 +413,28 @@ pre code {
   border-color: var(--accent);
 }
 
+/* ── The rail-foot pilot's vocabulary (issue #79) ────────────────────────────
+ * Invented on the felt; #72 promotes what survives into the shared layer. */
+
+/* The a11y floor's focus ring (ADR-0021): keyboard focus is always visible —
+ * one accent ring, offset so the control's own border stays legible. */
+.mv-btn:focus-visible,
+.mv-mini:focus-visible,
+.mv-chip:focus-visible,
+.mv-roll:focus-visible,
+.mv-felt:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* A refusing control (the gate): dimmed like disabled, but it keeps pointer
+ * events so the reason can surface at the control — every gate explains
+ * itself (ADR-0021), in a tooltip, not silence. */
+.mv-refuse {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* Arcana dashboard tiles — the improvised-cast launchers. --tile is the
  * Realm tint; arming blooms the tile's gradient in and lights its border.
  * Bloom and sheen are child layers, not pseudos — mv-cornered owns the
