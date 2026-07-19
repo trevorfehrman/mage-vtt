@@ -483,7 +483,7 @@ export function CastCard({
                   run(() => lockIntention({ ...step, manaMitigation: mitigation }))
                 }
                 disabled={busy}
-                className="mv-commit rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
+                className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
                 title="The point of no return: mitigation and spell cost commit now."
               >
                 Lock Intention — commit {cast.spellManaCost + mitigation} Mana
@@ -515,21 +515,24 @@ export function CastCard({
                   run(() => contain({ ...step, containedSuccesses: contained }))
                 }
                 disabled={busy}
-                className="mv-commit rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
+                className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
                 title="Each contained success is one Resistant bashing wound."
               >
                 Contain {contained} as Resistant bashing
               </button>
             </>
           )}
-          {/* The caster's own hands burn ember (mv-commit); the world-side
-              buttons (Engage, Lock Liabilities, Roll Paradox) keep the
-              verdigris mv-roll — the ladder's two colors, enacted (#102). */}
+          {/* Triggers are always the verdigris mv-roll — the established
+              right-pane pattern. Ember marks ARMED, reversible selection only
+              (lit skills, the mitigation row, the recitation): things that
+              are their own cancel. Ember-as-submit was auditioned and
+              rescinded (#102, owner walk 2026-07-18) — it read as aimless
+              against the hot Paradox family. */}
           {controls.includes("rollCast") && (
             <button
               onClick={() => run(() => rollCast(step))}
               disabled={busy}
-              className="mv-commit rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
+              className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
             >
               Release the Spell
             </button>

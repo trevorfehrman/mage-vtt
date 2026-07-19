@@ -33,13 +33,17 @@
   /* ── The rail's semantic layer (#102, grilled 2026-07-18) ──
    * Meaning lives in the token name; components never spend --accent /
    * --ember / --bad directly for STATUS. Identity stays identity —
-   * verdigris = the world's magic, ember = the caster's hand — and these
-   * aliases are the whole knob the dressing-room grammar audition turns. */
-  --rail-success: var(--accent); /* grammar A (merge) default; the rig's B/C override it */
+   * verdigris = the world's magic AND the trigger (mv-roll, the established
+   * right-pane pattern); ember = ARMED, reversible selection only (lit
+   * skills, the recitation, a chosen spend row — things that are their own
+   * cancel), never a submit button. The success-ink VALUE and the
+   * whose-move rung colors are PINNED until the rail's structural rebuild
+   * gives a real surface to judge on (owner call, 2026-07-18). */
+  --rail-success: var(--accent); /* pinned audition: merge default; quantity/mint contend on the rig */
   --rail-danger: #d0523b; /* the hot slot — placeholder flame until the Paradox color is commissioned */
   --mana: #6f93ae; /* Mana's identity blue — verdigris's own recipe, hue-turned to water */
-  --turn-caster: var(--ember); /* whose move: your hand */
-  --turn-world: var(--accent); /* whose move: the world answers */
+  --turn-caster: var(--ember); /* whose move (PINNED with the root): your hand */
+  --turn-world: var(--accent); /* whose move (PINNED with the root): the world answers */
   /* The trait-zone pair — plain ink, LOCKED for now (owner call
    * 2026-07-18, closing the color hunt after the night sky landed).
    * Four pairs auditioned and retired: ivory/blue (read as realm
@@ -665,25 +669,6 @@ pre code {
 }
 .mv-roll:hover:not(:disabled) {
   box-shadow: 0 0 16px var(--glow);
-}
-
-/* The caster's point-of-no-return buttons burn ember — the one sanctioned
-   button hue (#102): allowed exactly when the button IS the player's hand
-   acting in-fiction (lock, contain, release), never on generic OKs. The
-   verdigris .mv-roll stays on the world's-side buttons (ST engage/paradox),
-   completing the two-colored negotiation the ladder rungs draw. */
-.mv-commit {
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  background: var(--ember);
-  color: #0a0a0c;
-  border: 1px solid var(--ember);
-  cursor: pointer;
-  font-weight: 600;
-}
-.mv-commit:hover:not(:disabled) {
-  box-shadow: 0 0 16px var(--ember-glow);
 }
 
 /* ── The Rote book (issue #89) — the sheet's grimoire ──

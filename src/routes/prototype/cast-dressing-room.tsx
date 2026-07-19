@@ -3,13 +3,16 @@
 // The cheap viewing rig for the live Cast card: every rung of the ladder
 // (7 live + cancelled/voided) × every seat (caster / storyteller / bystander),
 // flipped through in seconds instead of a two-account Convex playthrough.
-// The #102 grammar audition adds a third knob (?grammar=): three complete
-// success-ink candidates — A merge (success IS verdigris), B quantity (no
-// status hue; count, weight, and pips carry it), C mint (a second green at
-// hard tonal distance). Everything settled at the 2026-07-18 grilling —
-// danger slot, Mana blue + glyph, ember/verdigris rungs and buttons, neutral
-// dice counts — renders identically in all three; the knob only swaps the
-// --rail-success alias.
+// The #102 grammar audition adds a third knob (?grammar=): three success-ink
+// candidates — A merge (success IS verdigris), B quantity (no status hue;
+// count, weight, and pips carry it), C mint (a second green at hard tonal
+// distance). The settled constitution — danger slot, Mana blue + glyph,
+// neutral dice counts — renders identically in all three; the knob only
+// swaps the --rail-success alias. The ROOT VERDICT IS PINNED (owner walk
+// 2026-07-18): the rail's structure changes too much under the campaign to
+// judge hues on this surface; the knob and the two-colored rungs stay as
+// audition material for the re-walk after the rebuild. Ember commit buttons
+// were auditioned here and rescinded — triggers stay verdigris mv-roll.
 // The REAL app shell (SessionLayout), the REAL feed neighbors (MessageItem /
 // RollItem), and the REAL CastCard — fed hand-built fake Cast documents via
 // URL knobs (?rung=…&seat=…), reload-stable and shareable.
