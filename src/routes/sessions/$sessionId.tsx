@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "convex/react"
 import usePresence from "@convex-dev/presence/react"
 import { api } from "../../../convex/_generated/api"
 import type { PoolComponentInput } from "#/domain/dice"
-import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy"
+import { pooledDice } from "#/machines/dice-pool"
 import { useCast } from "#/hooks/use-cast"
 import { useDicePool } from "#/hooks/use-dice-pool"
 import { useSession } from "#/hooks/use-session"
@@ -334,11 +334,7 @@ function SessionPage() {
           // Cast rolls leave it undefined and read plural.
           rollingDiceCount={
             pool.state === "rolling"
-              ? Math.max(
-                  1,
-                  pool.context.poolSize +
-                    (pool.context.spendWillpower ? WILLPOWER_BONUS_DICE : 0),
-                )
+              ? Math.max(1, pooledDice(pool.context))
               : undefined
           }
           // The live Cast card's role gates (issue #43): chrome follows the
@@ -366,7 +362,12 @@ function SessionPage() {
           {mySheet && (
             <ResourceStrip
               character={mySheet}
-              pendingWillpower={pool.context.spendWillpower}
+              // The ghost means "armed on the felt, spent on the roll" — it
+              // only speaks while the tray is the active surface; an armed
+              // cast replaces the tray and runs its own economy.
+              pendingWillpower={
+                rawCast.state === "idle" && pool.context.spendWillpower
+              }
             />
           )}
         </>

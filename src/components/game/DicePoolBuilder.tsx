@@ -8,6 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "#/components/ui/tooltip"
+import { pooledDice } from "#/machines/dice-pool"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
 type DicePoolAPI = ReturnType<typeof useDicePool>
@@ -26,9 +27,12 @@ const diceLabel = (n: number): string => (n === 1 ? "1 die" : `${n} dice`)
  * there: a slim handle carrying only the caret and the pool count.
  */
 
-/** The loose-dice component — the "Modifier" lie is dead; plain dice say so. */
-const LOOSE_TYPE = "modifier" as const
-const LOOSE_NAME = "Dice"
+/** The loose-dice component — the "Modifier" lie is dead; plain dice say so.
+ * One exported sentinel: the feed's breakdown formatting keys off the same
+ * predicate, so a rename here can't silently strand it. */
+export const LOOSE_DICE = { type: "modifier", name: "Dice" } as const
+export const isLooseDice = (c: { type: string; name: string }): boolean =>
+  c.type === LOOSE_DICE.type && c.name === LOOSE_DICE.name
 
 type DieKind = "sheet" | "loose" | "willpower"
 
@@ -62,21 +66,17 @@ export function DicePoolBuilder({
   const canInteract = pool.state === "idle" || building
 
   const components = pool.context.components
-  const looseIndex = components.findIndex(
-    (c) => c.type === LOOSE_TYPE && c.name === LOOSE_NAME,
-  )
+  const looseIndex = components.findIndex(isLooseDice)
   const loose = looseIndex === -1 ? 0 : components[looseIndex]!.dots
   const sheetComponents = components.filter((_, i) => i !== looseIndex)
-  const sheetDots = sheetComponents.reduce((s, c) => s + c.dots, 0)
   const wpDice = pool.context.spendWillpower ? WILLPOWER_BONUS_DICE : 0
-  const total = sheetDots + loose + wpDice
+  const total = pooledDice(pool.context)
 
   const setLoose = (next: number) => {
     const clamped = Math.max(0, next)
     if (!canInteract || clamped === loose) return
     if (looseIndex !== -1) pool.removeComponent(looseIndex)
-    if (clamped > 0)
-      pool.addComponent({ type: LOOSE_TYPE, name: LOOSE_NAME, dots: clamped })
+    if (clamped > 0) pool.addComponent({ ...LOOSE_DICE, dots: clamped })
   }
 
   // The gate speaks at the control that refuses (#79's tooltip pattern).
@@ -96,28 +96,43 @@ export function DicePoolBuilder({
     ? { duration: 0 }
     : { duration: 0.18, ease: "easeOut" as const }
 
-  const die = (kind: DieKind, key: string, title: string, onSkim?: () => void) => (
-    <motion.button
-      key={key}
-      layout={!reduced}
-      initial={{ scale: 0.4, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1, rotate: 45 }}
-      exit={{ scale: 0.4, opacity: 0 }}
-      transition={dieTransition}
-      onClick={(e) => {
-        e.stopPropagation()
-        onSkim?.()
-      }}
-      disabled={onSkim === undefined || !canInteract}
-      title={title}
-      className="size-[20px] rounded-[4px] border"
-      style={{
-        borderColor: DIE_LOOK[kind].border,
-        background: DIE_LOOK[kind].background,
-        cursor: onSkim ? "pointer" : "default",
-      }}
-    />
-  )
+  // Skimmable dice are buttons; the rest are plain marks — not disabled
+  // controls, so their titles stay reachable and nothing pretends to refuse.
+  const die = (kind: DieKind, key: string, title: string, onSkim?: () => void) => {
+    const look = {
+      borderColor: DIE_LOOK[kind].border,
+      background: DIE_LOOK[kind].background,
+    }
+    const anim = {
+      layout: !reduced,
+      initial: { scale: 0.4, opacity: 0 },
+      animate: { scale: 1, opacity: 1, rotate: 45 },
+      exit: { scale: 0.4, opacity: 0 },
+      transition: dieTransition,
+    }
+    return onSkim === undefined ? (
+      <motion.span
+        key={key}
+        {...anim}
+        title={title}
+        className="size-[20px] rounded-[4px] border"
+        style={look}
+      />
+    ) : (
+      <motion.button
+        key={key}
+        {...anim}
+        onClick={(e) => {
+          e.stopPropagation()
+          onSkim()
+        }}
+        disabled={!canInteract}
+        title={title}
+        className="size-[20px] cursor-pointer rounded-[4px] border"
+        style={look}
+      />
+    )
+  }
 
   const sheetDice = sheetComponents.flatMap((c) =>
     Array.from({ length: c.dots }, (_, i) =>
@@ -278,36 +293,38 @@ export function DicePoolBuilder({
                 {[10, 9, 8].map((n) => (
                   <button
                     key={n}
-                    onClick={() => canInteract && pool.setAgainThreshold(n)}
-                    className={`mv-mini grow whitespace-nowrap ${pool.context.againThreshold === n ? "mv-mini-on" : ""}`}
+                    onClick={() => pool.setAgainThreshold(n)}
+                    disabled={!canInteract}
+                    className={`mv-mini grow whitespace-nowrap disabled:opacity-40 ${pool.context.againThreshold === n ? "mv-mini-on" : ""}`}
                   >
                     {n}-ag
                   </button>
                 ))}
                 <button
-                  onClick={() => canInteract && pool.setRoteAction(!pool.context.isRoteAction)}
-                  className={`mv-mini grow whitespace-nowrap ${pool.context.isRoteAction ? "mv-mini-on" : ""}`}
+                  onClick={() => pool.setRoteAction(!pool.context.isRoteAction)}
+                  disabled={!canInteract}
+                  className={`mv-mini grow whitespace-nowrap disabled:opacity-40 ${pool.context.isRoteAction ? "mv-mini-on" : ""}`}
                 >
                   Rote
                 </button>
                 <button
                   onClick={() =>
-                    canInteract &&
                     pool.setVisibility(
                       pool.context.visibility === "hidden" ? "public" : "hidden",
                     )
                   }
-                  className={`mv-mini grow whitespace-nowrap ${pool.context.visibility === "hidden" ? "mv-mini-on" : ""}`}
+                  disabled={!canInteract}
+                  className={`mv-mini grow whitespace-nowrap disabled:opacity-40 ${pool.context.visibility === "hidden" ? "mv-mini-on" : ""}`}
                 >
                   Hidden
                 </button>
                 {willpowerGate === null ? (
                   <button
                     onClick={() =>
-                      canInteract &&
                       pool.setSpendWillpower(!pool.context.spendWillpower)
                     }
-                    className={`mv-mini grow whitespace-nowrap ${pool.context.spendWillpower ? "mv-mini-on" : ""}`}
+                    disabled={!canInteract}
+                    className={`mv-mini grow whitespace-nowrap disabled:opacity-40 ${pool.context.spendWillpower ? "mv-mini-on" : ""}`}
                   >
                     WP +{WILLPOWER_BONUS_DICE}
                   </button>

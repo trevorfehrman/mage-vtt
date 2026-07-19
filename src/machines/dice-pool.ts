@@ -1,5 +1,6 @@
 import { assign, setup } from "xstate"
 import type { PoolComponentInput } from "#/domain/dice"
+import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy"
 
 interface DicePoolContext {
   components: PoolComponentInput[]
@@ -28,6 +29,16 @@ function calcPoolSize(components: PoolComponentInput[]): number {
   return components.reduce((sum, c) => sum + c.dots, 0)
 }
 
+/** Dice the pool will actually cast: components plus the armed Willpower
+ * bonus. The chance-die floor (an empty pool casts one die) stays with the
+ * callers that display it. One home, so the route and the tray can't drift. */
+export function pooledDice(context: {
+  poolSize: number
+  spendWillpower: boolean
+}): number {
+  return context.poolSize + (context.spendWillpower ? WILLPOWER_BONUS_DICE : 0)
+}
+
 function toggleComponent(
   components: PoolComponentInput[],
   component: PoolComponentInput,
@@ -45,6 +56,20 @@ export const dicePoolMachine = setup({
   types: {
     context: {} as DicePoolContext,
     events: {} as DicePoolEvent,
+  },
+  actions: {
+    // The one home for option defaults (plus initial context below).
+    resetOptions: assign({
+      againThreshold: 10,
+      isRoteAction: false,
+      spendWillpower: false,
+      visibility: () => "public" as const,
+      error: null,
+    }),
+    clearPool: assign({
+      components: () => [],
+      poolSize: 0,
+    }),
   },
 }).createMachine({
   id: "dicePool",
@@ -79,13 +104,7 @@ export const dicePoolMachine = setup({
           actions: assign({ visibility: ({ event }) => event.value }),
         },
         RESET: {
-          actions: assign({
-            againThreshold: 10,
-            isRoteAction: false,
-            spendWillpower: false,
-            visibility: () => "public" as const,
-            error: null,
-          }),
+          actions: "resetOptions",
         },
         ADD_COMPONENT: {
           target: "building",
@@ -199,15 +218,7 @@ export const dicePoolMachine = setup({
         ROLL: "rolling",
         RESET: {
           target: "idle",
-          actions: assign({
-            components: () => [],
-            poolSize: 0,
-            againThreshold: 10,
-            isRoteAction: false,
-            spendWillpower: false,
-            visibility: () => "public" as const,
-            error: null,
-          }),
+          actions: ["clearPool", "resetOptions"],
         },
       },
     },
@@ -226,15 +237,7 @@ export const dicePoolMachine = setup({
       on: {
         RESET: {
           target: "idle",
-          actions: assign({
-            components: () => [],
-            poolSize: 0,
-            againThreshold: 10,
-            isRoteAction: false,
-            spendWillpower: false,
-            visibility: () => "public" as const,
-            error: null,
-          }),
+          actions: ["clearPool", "resetOptions"],
         },
       },
     },

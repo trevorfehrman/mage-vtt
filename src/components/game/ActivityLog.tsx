@@ -7,6 +7,7 @@ import type { CharacterSheet } from "#/domain/character"
 import { isDieDramaticFailure, isDieExplosive, isDieSuccess } from "#/domain/dice"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import { CastCard } from "./CastCard"
+import { isLooseDice } from "./DicePoolBuilder"
 import type { Id } from "../../../convex/_generated/dataModel"
 
 /** Within this distance of the log's foot still counts as "at the foot". */
@@ -294,7 +295,7 @@ export function RollItem({ roll }: { roll: RollEntry }) {
           // their sign.
           .map(
             (c) =>
-              `${c.name} ${c.dots > 0 && c.type === "modifier" && c.name !== "Dice" ? `+${c.dots}` : c.dots}`,
+              `${c.name} ${c.dots > 0 && c.type === "modifier" && !isLooseDice(c) ? `+${c.dots}` : c.dots}`,
           )
           .join(" + ")}
       </div>
