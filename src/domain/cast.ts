@@ -138,6 +138,10 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   intent: Schema.optionalKey(Schema.String),
   usesMagicalTool: Schema.Boolean,
   spendWillpower: Schema.optionalKey(Schema.Boolean),
+  // The bought floor (issue #107): declared spell factors, stamped so the
+  // ST's dispel knows what it rolls against. Absent when left at 1.
+  potency: Schema.optionalKey(Schema.Number),
+  targets: Schema.optionalKey(Schema.Number),
   declaredComponents: Schema.Array(
     Schema.Struct({ type: Schema.String, name: Schema.String, dots: Schema.Number }),
   ),

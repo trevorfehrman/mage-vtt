@@ -105,6 +105,8 @@ export interface StoredCast {
   readonly roteName?: string
   readonly intent?: string
   readonly usesMagicalTool: boolean
+  readonly potency?: number
+  readonly targets?: number
   readonly declaredComponents: ReadonlyArray<RawPoolComponent>
   readonly declaredPool: number
   readonly spellManaCost: number
@@ -241,6 +243,9 @@ export const makeInMemory = (seed: {
               ...(patch.manaCurrent !== undefined
                 ? { manaCurrent: patch.manaCurrent }
                 : {}),
+              ...(patch.hasMagicalTool !== undefined
+                ? { hasMagicalTool: patch.hasMagicalTool }
+                : {}),
               ...(patch.willpowerCurrent !== undefined
                 ? { willpowerCurrent: patch.willpowerCurrent }
                 : {}),
@@ -334,6 +339,8 @@ export const makeInMemory = (seed: {
           ...(draft.spendWillpower !== undefined
             ? { spendWillpower: draft.spendWillpower }
             : {}),
+          ...(draft.potency !== undefined ? { potency: draft.potency } : {}),
+          ...(draft.targets !== undefined ? { targets: draft.targets } : {}),
           declaredComponents: draft.declaredComponents,
           declaredPool: draft.declaredPool,
           spellManaCost: draft.spellManaCost,

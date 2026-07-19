@@ -35,9 +35,15 @@ import { DocumentNotFound } from "../ports/errors"
 import { Mana, Willpower } from "../quantities"
 import { requireVulgarSpell, resolveRotePool } from "../rote-cast"
 import type { CharacterSheet } from "../character"
+import {
+  applySpellFactors,
+  calculateImprovisedPool,
+  calculateRotePool,
+} from "../spellcasting"
 import { spendWillpower, WILLPOWER_BONUS_DICE } from "../willpower-economy"
 import {
   ArcanumTooWeak,
+  factorPenaltyComponents,
   InvalidCastDeclaration,
   modifierComponents,
   outcomeOf,
@@ -279,7 +285,13 @@ export const DraftCastArgs = Schema.Struct({
   roteName: Schema.optionalKey(Schema.String),
   skillChoice: Schema.optionalKey(Schema.String),
   intent: Schema.optionalKey(Schema.String),
-  usesMagicalTool: Schema.optionalKey(Schema.Boolean),
+  /** The bought floor (issue #107): Potency beyond 1 (−2 dice per dot) and
+   * the targets bracket (−2 per doubling) — stamped for the ST's dispel. */
+  potency: Schema.optionalKey(Schema.Number),
+  targets: Schema.optionalKey(Schema.Number),
+  /** Declared rider Mana ("the spell text says 1 more") — on top of the
+   * server-computed Path cost, spent at the commit (issue #107). */
+  extraManaCost: Schema.optionalKey(Schema.Number),
   /** The blind Willpower precommitment (ADR-0022, WoD p. 133): +3 dice now,
    * the point deducted at the commit, as losable to Paradox as any die. */
   spendWillpower: Schema.optionalKey(Schema.Boolean),
@@ -294,12 +306,61 @@ const DraftDeclaration = Schema.Struct({
   ),
 })
 
+/** The declared extras both lanes price identically (issue #107). */
+const DraftFactors = Schema.Struct({
+  potency: Schema.optional(
+    Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(1)),
+  ),
+  targets: Schema.optional(
+    Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(1)),
+  ),
+  extraManaCost: Schema.optional(
+    Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
+  ),
+  spendWillpower: Schema.optional(Schema.Boolean),
+})
+type DraftFactors = typeof DraftFactors.Type
+
+/**
+ * The declared pool both lanes finish with (issue #107): Willpower's dice
+ * land in the base pool, then the bought factors take theirs — the same
+ * leaves and the same effective-penalty clamp the covert flows record with.
+ */
+const declaredPoolOf = (
+  basePool: ReturnType<typeof calculateImprovisedPool>,
+  laneComponents: ReadonlyArray<RawPoolComponent>,
+  factors: DraftFactors,
+): {
+  declaredComponents: ReadonlyArray<RawPoolComponent>
+  declaredPool: number
+} => {
+  const pool = applySpellFactors(basePool, {
+    ...(factors.potency !== undefined ? { potency: factors.potency } : {}),
+    ...(factors.targets !== undefined ? { targets: factors.targets } : {}),
+  })
+  return {
+    declaredComponents: [
+      ...laneComponents,
+      ...(factors.spendWillpower
+        ? [{ type: "modifier", name: "Willpower", dots: WILLPOWER_BONUS_DICE }]
+        : []),
+      ...factorPenaltyComponents(pool),
+    ],
+    declaredPool: Math.max(pool.totalDice, 0),
+  }
+}
+
 /**
  * The improvised lane's frozen declaration: Gnosis + Arcanum off the sheet,
  * gated by the caster's dots, priced by the Path (PRD #39 story 8).
  */
 const improvisedDeclaration = Effect.fn("Flows.vulgarCast.improvisedDeclaration")(
-  function* (sheet: CharacterSheet, arcanum: string | undefined, level: number | undefined) {
+  function* (
+    sheet: CharacterSheet,
+    arcanum: string | undefined,
+    level: number | undefined,
+    factors: DraftFactors,
+  ) {
     const declaration = yield* Schema.decodeUnknownEffect(DraftDeclaration)({
       arcanum,
       level,
@@ -321,17 +382,26 @@ const improvisedDeclaration = Effect.fn("Flows.vulgarCast.improvisedDeclaration"
       })
     }
 
-    const declaredComponents: ReadonlyArray<RawPoolComponent> = [
-      { type: "gnosis", name: "Gnosis", dots: sheet.gnosis },
-      { type: "arcanum", name: capitalize(declaration.arcanum), dots },
-    ]
+    const basePool = calculateImprovisedPool({
+      gnosis: sheet.gnosis,
+      arcanumDots: dots,
+      ...(factors.spendWillpower ? { willpower: true } : {}),
+    })
     return {
       isRote: false as const,
       arcanum: declaration.arcanum,
       level: declaration.level,
-      declaredComponents,
-      declaredPool: sheet.gnosis + dots,
-      spellManaCost: improvisedManaCost(sheet.path, declaration.arcanum),
+      ...declaredPoolOf(
+        basePool,
+        [
+          { type: "gnosis", name: "Gnosis", dots: sheet.gnosis },
+          { type: "arcanum", name: capitalize(declaration.arcanum), dots },
+        ],
+        factors,
+      ),
+      spellManaCost:
+        improvisedManaCost(sheet.path, declaration.arcanum) +
+        (factors.extraManaCost ?? 0),
     }
   },
 )
@@ -351,6 +421,7 @@ const roteDeclaration = Effect.fn("Flows.vulgarCast.roteDeclaration")(function* 
   sheet: CharacterSheet,
   roteName: string,
   skillChoice: string | undefined,
+  factors: DraftFactors,
 ) {
   const store = yield* GameStore
   const rote = yield* requireKnownRote(sheet, roteName)
@@ -358,26 +429,34 @@ const roteDeclaration = Effect.fn("Flows.vulgarCast.roteDeclaration")(function* 
   yield* requireVulgarSpell(spell)
   const resolved = yield* resolveRotePool(sheet, rote, skillChoice)
 
-  const declaredComponents: ReadonlyArray<RawPoolComponent> = [
-    { type: "attribute", name: resolved.attribute.name, dots: resolved.attribute.dots },
-    { type: resolved.skill.kind, name: resolved.skill.name, dots: resolved.skill.dots },
-    { type: "arcanum", name: resolved.arcanum.name, dots: resolved.arcanum.dots },
+  const basePool = calculateRotePool({
+    attributeDots: resolved.attribute.dots,
+    skillDots: resolved.skill.dots,
+    arcanumDots: resolved.arcanum.dots,
     ...(resolved.specialty.eligible
-      ? [{ type: "modifier", name: "Rote Specialty", dots: resolved.specialty.bonus }]
-      : []),
-  ]
+      ? { specialtyBonus: resolved.specialty.bonus }
+      : {}),
+    ...(factors.spendWillpower ? { willpower: true } : {}),
+  })
   return {
     isRote: true as const,
     roteName: rote.name,
     arcanum: spell.arcanum.toLowerCase(),
     level: spell.level,
-    declaredComponents,
-    declaredPool:
-      resolved.attribute.dots +
-      resolved.skill.dots +
-      resolved.arcanum.dots +
-      resolved.specialty.bonus,
-    spellManaCost: 0,
+    ...declaredPoolOf(
+      basePool,
+      [
+        { type: "attribute", name: resolved.attribute.name, dots: resolved.attribute.dots },
+        { type: resolved.skill.kind, name: resolved.skill.name, dots: resolved.skill.dots },
+        { type: "arcanum", name: resolved.arcanum.name, dots: resolved.arcanum.dots },
+        ...(resolved.specialty.eligible
+          ? [{ type: "modifier", name: "Rote Specialty", dots: resolved.specialty.bonus }]
+          : []),
+      ],
+      factors,
+    ),
+    // No Path cost for a Rote — only the declared rider rides (issue #107).
+    spellManaCost: factors.extraManaCost ?? 0,
   }
 })
 
@@ -414,27 +493,39 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
       message: "A skill pick belongs to a Rote declaration.",
     })
   }
-  const lane =
+
+  const factors = yield* Schema.decodeUnknownEffect(DraftFactors)({
+    ...(args.potency !== undefined ? { potency: args.potency } : {}),
+    ...(args.targets !== undefined ? { targets: args.targets } : {}),
+    ...(args.extraManaCost !== undefined
+      ? { extraManaCost: args.extraManaCost }
+      : {}),
+    ...(args.spendWillpower !== undefined
+      ? { spendWillpower: args.spendWillpower }
+      : {}),
+  }).pipe(
+    Effect.mapError(
+      () =>
+        new InvalidCastDeclaration({
+          message: "Not castable spell factors.",
+        }),
+    ),
+  )
+
+  const declaration =
     args.roteName !== undefined
-      ? yield* roteDeclaration(sheet, args.roteName, args.skillChoice)
-      : yield* improvisedDeclaration(sheet, args.arcanum, args.level)
+      ? yield* roteDeclaration(sheet, args.roteName, args.skillChoice, factors)
+      : yield* improvisedDeclaration(sheet, args.arcanum, args.level, factors)
 
   // The Willpower precommitment must be affordable when declared — the check
   // spends nothing; the point itself commits with the Mana at the commit.
-  const withWillpower = args.spendWillpower ?? false
+  const withWillpower = factors.spendWillpower ?? false
   if (withWillpower) {
     yield* spendWillpower(sheet.willpowerCurrent)
   }
-  const declaration = withWillpower
-    ? {
-        ...lane,
-        declaredComponents: [
-          ...lane.declaredComponents,
-          { type: "modifier", name: "Willpower", dots: WILLPOWER_BONUS_DICE },
-        ],
-        declaredPool: lane.declaredPool + WILLPOWER_BONUS_DICE,
-      }
-    : lane
+  // The frozen spell cost (Path + rider) walks the same rule (issue #107):
+  // affordable when declared, spent only at the commit.
+  yield* spendMana(sheet.manaCurrent, Mana.make(declaration.spellManaCost))
 
   // One unresolved Cast per character — the queue means something (PRD #39).
   const casts = yield* store.listCasts(sessionId)
@@ -451,6 +542,17 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
   const member = yield* store.getMembership(sheet.sessionId, sheet.userId)
   const intent = args.intent?.trim()
 
+  // The bought floor stamps only when bought — Potency 1 and one target are
+  // the free defaults, not declarations (issue #107).
+  const bought = {
+    ...(factors.potency !== undefined && factors.potency > 1
+      ? { potency: factors.potency }
+      : {}),
+    ...(factors.targets !== undefined && factors.targets > 1
+      ? { targets: factors.targets }
+      : {}),
+  }
+
   const castId = yield* store.insertCast({
     sessionId,
     characterId: sheet.id,
@@ -462,16 +564,25 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
       ? { isRote: true, roteName: declaration.roteName }
       : {}),
     ...(intent ? { intent } : {}),
-    usesMagicalTool: args.usesMagicalTool ?? false,
+    // The standing sheet fact, stamped at declaration (issue #107) — the
+    // bench reports it; no per-cast toggle exists.
+    usesMagicalTool: sheet.magicalTool,
     ...(withWillpower ? { spendWillpower: true } : {}),
+    ...bought,
     declaredComponents: declaration.declaredComponents,
     declaredPool: declaration.declaredPool,
     spellManaCost: declaration.spellManaCost,
   })
 
-  const declared = declaration.isRote
-    ? `drafts the Rote "${declaration.roteName}" as a vulgar ${capitalize(declaration.arcanum)} ${declaration.level} cast`
-    : `drafts a vulgar ${capitalize(declaration.arcanum)} ${declaration.level} cast`
+  const boughtPhrases = [
+    ...(bought.potency !== undefined ? [`Potency ${bought.potency}`] : []),
+    ...(bought.targets !== undefined ? [`${bought.targets} targets`] : []),
+  ]
+  const declared =
+    (declaration.isRote
+      ? `drafts the Rote "${declaration.roteName}" as a vulgar ${capitalize(declaration.arcanum)} ${declaration.level} cast`
+      : `drafts a vulgar ${capitalize(declaration.arcanum)} ${declaration.level} cast`) +
+    (boughtPhrases.length > 0 ? ` with ${boughtPhrases.join(", ")}` : "")
   const willpower = withWillpower ? ", Willpower behind it" : ""
   yield* store.insertMessage({
     sessionId,
@@ -625,40 +736,6 @@ export const adjustPrice = Effect.fn("Flows.vulgarCast.adjustPrice")(function* (
 
   return castId
 })
-
-export const SetMagicalToolArgs = Schema.Struct({
-  ...CastStepArgs.fields,
-  usesMagicalTool: Schema.Boolean,
-})
-export type SetMagicalToolArgs = typeof SetMagicalToolArgs.Type
-
-/**
- * The caster's side of the price (issue #44): the magical-tool flag is theirs
- * to change until the freeze — after that the caster would be reshaping the
- * very pool the freeze settled. Walks the same authority ladder as every
- * caster beat (owner plain; ST/Dev in-stead Override-stamped, ADR-0015).
- * Table talk like the ST's adjustments: no Activity entry.
- */
-export const setMagicalTool = Effect.fn("Flows.vulgarCast.setMagicalTool")(
-  function* (args: SetMagicalToolArgs) {
-    const sessionId = SessionId.make(args.sessionId)
-    const castId = CastId.make(args.castId)
-    const store = yield* GameStore
-
-    const cast = yield* requireCast(sessionId, castId)
-    // Authority before status: a stranger learns nothing about the ladder.
-    yield* requireSessionCharacter(sessionId, cast.characterId)
-    if (cast.status === "price") {
-      yield* requirePricePhase(cast, "fluid")
-    } else {
-      yield* requireStatus(cast, "draft")
-    }
-
-    yield* store.patchCast(castId, { usesMagicalTool: args.usesMagicalTool })
-
-    return castId
-  },
-)
 
 /**
  * THE FREEZE (ADR-0022): the Storyteller locks the price when satisfied —

@@ -72,7 +72,6 @@ export function CastCard({
   const decline = useMutation(api.casts.decline)
   const engage = useMutation(api.casts.engage)
   const adjustPrice = useMutation(api.casts.adjustPrice)
-  const setTool = useMutation(api.casts.setTool)
   const lockPrice = useMutation(api.casts.lockPrice)
   const commit = useMutation(api.casts.commit)
   const cancel = useMutation(api.casts.cancel)
@@ -257,8 +256,11 @@ export function CastCard({
       <div className="mt-2 grid gap-1 text-[11px]" style={{ color: "var(--dim)" }}>
         <span className="mv-data">
           declared pool {cast.declaredPool}
+          {/* The bought floor (issue #107): what a dispel rolls against. */}
+          {cast.potency !== undefined ? ` · Potency ${cast.potency} bought` : ""}
+          {cast.targets !== undefined ? ` · ×${cast.targets} targets` : ""}
           {cast.spellManaCost > 0 ? ` · ${cast.spellManaCost} Mana cost` : ""}
-          {cast.usesMagicalTool ? " · tool" : ""}
+          {cast.usesMagicalTool ? " · tool in hand −1" : ""}
         </span>
         {pool !== null && !terminal && (
           <span className="mv-data">
@@ -440,20 +442,6 @@ export function CastCard({
               className="mv-btn rounded-[3px] px-3 py-1.5 text-[12px]"
             >
               Withdraw
-            </button>
-          )}
-          {controls.includes("tool") && (
-            <button
-              onClick={() =>
-                run(() =>
-                  setTool({ ...step, usesMagicalTool: !cast.usesMagicalTool }),
-                )
-              }
-              disabled={busy}
-              className={`mv-mini disabled:opacity-40 ${cast.usesMagicalTool ? "mv-mini-on" : ""}`}
-              title="−1 Paradox die — yours to change until the Storyteller locks"
-            >
-              Magical tool
             </button>
           )}
           {controls.includes("lockPrice") && (

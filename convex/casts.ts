@@ -17,7 +17,6 @@ import {
   releaseCast as releaseCastFlow,
   rollParadox as rollParadoxFlow,
   setDraftContainment as setDraftContainmentFlow,
-  setMagicalTool as setMagicalToolFlow,
   voidCast as voidCastFlow,
 } from "../src/domain/flows/vulgar-cast"
 
@@ -50,7 +49,11 @@ export const draft = enforcedMutation({
     roteName: v.optional(v.string()),
     skillChoice: v.optional(v.string()),
     intent: v.optional(v.string()),
-    usesMagicalTool: v.optional(v.boolean()),
+    // The bought floor and the rider (issue #107); the tool is the sheet's
+    // standing fact — the flow stamps it, no arg carries it.
+    potency: v.optional(v.number()),
+    targets: v.optional(v.number()),
+    extraManaCost: v.optional(v.number()),
     spendWillpower: v.optional(v.boolean()),
   },
   flow: draftCastFlow,
@@ -67,12 +70,6 @@ export const engage = enforcedMutation({ args: step, flow: engageCastFlow })
 export const adjustPrice = enforcedMutation({
   args: { ...step, adjustments: v.array(modifierValidator) },
   flow: adjustPriceFlow,
-})
-
-// The caster's side of the price (issue #44): theirs until the freeze.
-export const setTool = enforcedMutation({
-  args: { ...step, usesMagicalTool: v.boolean() },
-  flow: setMagicalToolFlow,
 })
 
 // THE FREEZE (ADR-0022): the Tides seed stamps; the ST goes hands-off.

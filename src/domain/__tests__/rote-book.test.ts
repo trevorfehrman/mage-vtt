@@ -9,7 +9,7 @@ import { makeCorvinSheet } from "../testing/fixtures"
 /**
  * The Rote book's numbers (issue #89): the table of contents' dice phrasing
  * and the page's per-alternative breakdown, both resolved through the
- * deepened rote-cast leaf (issue #87) — the row, the page, the CastPanel and
+ * deepened rote-cast leaf (issue #87) — the row, the page, the declaration felt and
  * the log can never disagree, and the UI does no arithmetic of its own.
  */
 
@@ -98,7 +98,7 @@ describe("RoteBook.resolveRotePage", () => {
     expect(page[0]?.total).toBe(7)
   })
 
-  it("every page total agrees with the CastPanel's preview for the same declaration", () => {
+  it("every page total agrees with the declaration felt's preview for the same declaration", () => {
     const sheet = makeCorvinSheet()
     for (const rote of [clamor, seal, rubeGoldberg]) {
       for (const alternative of resolveRotePage(sheet, rote)) {

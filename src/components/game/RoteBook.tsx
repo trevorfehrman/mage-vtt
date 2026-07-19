@@ -23,7 +23,7 @@ type CastAPI = ReturnType<typeof useCast>
  * sanctioned Motion use (ADR-0021, amended 2026-07-17).
  *
  * Every number on the ToC and the pages resolves through the rote-book domain
- * leaf over #87's deepened rote-cast leaf — the row, the page, the CastPanel
+ * leaf over #87's deepened rote-cast leaf — the row, the page, the declaration felt
  * and the log can never disagree. Read-only sheets (no cast controller)
  * render the same book inert: pages browsable, no recitation line.
  */

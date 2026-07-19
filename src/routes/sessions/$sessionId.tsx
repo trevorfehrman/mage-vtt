@@ -7,10 +7,14 @@ import type { PoolComponentInput } from "#/domain/dice"
 import { pooledDice } from "#/machines/dice-pool"
 import { useCast } from "#/hooks/use-cast"
 import { useDicePool } from "#/hooks/use-dice-pool"
+import { useScene } from "#/hooks/use-scene"
 import { useSession } from "#/hooks/use-session"
 import { SessionLayout } from "#/components/game/SessionLayout"
 import { ActivityLog } from "#/components/game/ActivityLog"
-import { CastPanel } from "#/components/game/CastPanel"
+import {
+  armedPreview,
+  DeclarationFelt,
+} from "#/components/game/DeclarationFelt"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { ResourceStrip } from "#/components/game/ResourceStrip"
 import { ChatInput } from "#/components/game/ChatInput"
@@ -25,6 +29,7 @@ import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { SecondSeatControl } from "#/components/game/SecondSeatControl"
 import { seamErrorMessage } from "#/lib/seam-errors"
+import type { TidesSnapshot } from "#/domain/cast"
 import {
   decodeSheet,
   type CharacterSheet as CharacterSheetData,
@@ -137,6 +142,25 @@ function SessionPage() {
     character ? { sessionId, characterId: character._id } : "skip",
   )
 
+  // The scene's live Tides (ADR-0022) feed the declaration felt's price
+  // line: the ambient truth plus this caster's own derived pips — the same
+  // numbers the freeze will stamp, priced before declaring (issue #107).
+  const { scene: activeScene, pips } = useScene(sessionId)
+  const tides = useMemo(
+    (): TidesSnapshot =>
+      activeScene
+        ? {
+            witnessCount: activeScene.witnessCount,
+            circumstances: activeScene.circumstances,
+            priorParadoxRolls:
+              pips?.find((p) => p.characterId === character?._id)?.accumulator ??
+              0,
+          }
+        : { witnessCount: 0, circumstances: [], priorParadoxRolls: 0 },
+    [activeScene, pips, character?._id],
+  )
+  const setMagicalTool = useMutation(api.characters.setMagicalTool)
+
   // Switching sheets clears the pool: its components carry the previous
   // sheet's dots while the roll would anchor to the new one — a stale mix
   // must never travel. Ref-guarded so it fires only on an actual change.
@@ -245,6 +269,18 @@ function SessionPage() {
           character={sheet}
           pool={mayDrivePool ? poolForSheet : undefined}
           cast={isMine ? cast : undefined}
+          // The standing tool fact (issue #107): the owner's to maintain;
+          // the sheet surfaces any refusal at the toggle itself.
+          onSetMagicalTool={
+            isMine
+              ? (hasMagicalTool) =>
+                  setMagicalTool({
+                    sessionId,
+                    characterId: viewed._id,
+                    hasMagicalTool,
+                  })
+              : undefined
+          }
         />
         {/* The hand-edit panel (issue #19): ST-only, on any sheet — the one
             edit affordance in the app; players never see edit controls. */}
@@ -346,14 +382,15 @@ function SessionPage() {
         />
       }
       dicePoolBuilder={
-        // The rail foot in reach-order (#104): the tray, then the depletables
-        // strip reading as the felt's caption. The pre-roll factor panel
-        // replaces the tray while a cast is armed (issue #20).
+        // The rail foot in reach-order (#104): the felt, then the depletables
+        // strip reading as its caption. Arming a cast puts the felt in its
+        // declaring posture (issue #107) — same instrument, same slot.
         <>
           {rawCast.state !== "idle" && mySheet ? (
-            <CastPanel
+            <DeclarationFelt
               cast={cast}
               character={mySheet}
+              tides={tides}
               hasPendingCast={hasPendingCast === true}
             />
           ) : (
@@ -362,11 +399,29 @@ function SessionPage() {
           {mySheet && (
             <ResourceStrip
               character={mySheet}
-              // The ghost means "armed on the felt, spent on the roll" — it
-              // only speaks while the tray is the active surface; an armed
-              // cast replaces the tray and runs its own economy.
+              // The ghost means "armed on the felt, spent on the roll/cast" —
+              // whichever posture holds the felt, the strip weighs its spend.
               pendingWillpower={
-                rawCast.state === "idle" && pool.context.spendWillpower
+                rawCast.state === "idle"
+                  ? pool.context.spendWillpower
+                  : rawCast.context.spendWillpower
+              }
+              // Mana armed on the declaring felt (auto + rider), ghosted at
+              // the resource it will spend from (issue #107).
+              pendingMana={
+                rawCast.state !== "idle"
+                  ? (armedPreview(rawCast.context, mySheet)?.manaCost ?? 0)
+                  : 0
+              }
+              // The rider spend lives where the resource lives: no bench
+              // stepper — "the spell text says 1 more" is declared here.
+              rider={
+                rawCast.state === "declaring"
+                  ? {
+                      value: rawCast.context.extraMana,
+                      onChange: rawCast.setExtraMana,
+                    }
+                  : undefined
               }
             />
           )}

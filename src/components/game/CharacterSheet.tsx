@@ -1,9 +1,10 @@
-import type { CSSProperties, ReactNode } from "react"
+import { useState, type CSSProperties, type ReactNode } from "react"
 import {
   rulingArcanaOf,
   type ArcanumName,
   type CharacterSheet as CharacterSheetData,
 } from "#/domain/character"
+import { seamErrorMessage } from "#/lib/seam-errors"
 import type { BoxSeverity } from "#/domain/damage"
 import type { PoolComponentInput, PoolComponentType } from "#/domain/dice"
 import {
@@ -65,14 +66,29 @@ interface CharacterSheetProps {
    * triggers. Absent on read-only sheets — Rotes render as inert rows.
    */
   cast?: CastAPI | undefined
+  /**
+   * Flips the standing tool fact (issue #107): a magical tool in hand, −1
+   * Paradox die on every vulgar cast. Absent = read-only (the fact still
+   * shows when held); present only on the owner's sheet. Returns the
+   * mutation's promise so a refusal can speak at the toggle.
+   */
+  onSetMagicalTool?: ((hasMagicalTool: boolean) => Promise<unknown>) | undefined
 }
 
 /**
  * The sheet is the dice-pool input surface (docs/component-polish.md): every
  * rated Attribute / Skill / Arcanum is a toggle button feeding the pool.
  */
-export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
+export function CharacterSheet({
+  character,
+  pool,
+  cast,
+  onSetMagicalTool,
+}: CharacterSheetProps) {
   const { healthTrack } = character
+  // The tool toggle's refusal speaks in place (ADR-0021: never a
+  // console-only failure); the next successful flip clears it.
+  const [toolError, setToolError] = useState<string | null>(null)
   const canToggle =
     pool !== undefined && (pool.state === "idle" || pool.state === "building")
   const ruling = rulingArcanaOf(character.path)
@@ -188,6 +204,39 @@ export function CharacterSheet({ character, pool, cast }: CharacterSheetProps) {
             <span style={{ color: "var(--dim)" }}> · VICE </span>
             <span style={{ color: "var(--ink)" }}>{character.vice}</span>
           </span>
+          {/* The standing tool fact (issue #107): a sheet fact, not a bench
+              dial — every vulgar cast stamps it, the bench reports it. */}
+          {onSetMagicalTool ? (
+            <span className="grid justify-items-end gap-1">
+              <button
+                onClick={() => {
+                  setToolError(null)
+                  onSetMagicalTool(!character.magicalTool).catch((err) =>
+                    setToolError(seamErrorMessage(err)),
+                  )
+                }}
+                className={`mv-mini whitespace-nowrap ${character.magicalTool ? "mv-mini-on" : ""}`}
+                title="A magical tool in hand: −1 Paradox die on every vulgar cast. A standing fact of your practice — casts stamp it as declared."
+              >
+                Tool {character.magicalTool ? "in hand −1" : "set aside"}
+              </button>
+              {toolError && (
+                <span className="text-[11px]" style={{ color: "var(--bad)" }}>
+                  {toolError}
+                </span>
+              )}
+            </span>
+          ) : (
+            character.magicalTool && (
+              <span
+                className="text-[12px]"
+                style={{ color: "var(--dim)" }}
+                title="A magical tool in hand: −1 Paradox die on every vulgar cast."
+              >
+                TOOL <span style={{ color: "var(--ink)" }}>in hand −1</span>
+              </span>
+            )
+          )}
         </div>
       </div>
 

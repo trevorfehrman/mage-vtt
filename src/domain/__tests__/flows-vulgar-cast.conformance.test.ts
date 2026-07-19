@@ -12,7 +12,6 @@ import {
   lockPrice,
   releaseCast,
   rollParadox,
-  setMagicalTool,
   voidCast,
 } from "../flows/vulgar-cast"
 import { PlayerId, SessionId } from "../ids"
@@ -68,6 +67,8 @@ const aldousDoc = () => ({
   healthTrack: ["empty", "empty", "empty", "empty", "empty", "empty", "empty"],
   willpowerCurrent: 6,
   manaCurrent: 10,
+  // The standing tool fact (issue #107): stamped onto the draft by the flow.
+  hasMagicalTool: true,
 })
 
 // --- Minimal fake Convex ctx with characters + casts + scenes + entries ---
@@ -158,7 +159,7 @@ const makeInMemoryStore = () => {
   return makeInMemory({
     members,
     actor: { userId: PlayerId.make(PLAYER), isDev: false },
-    sheets: [makeAldousSheet()],
+    sheets: [makeAldousSheet({ hasMagicalTool: true })],
   })
 }
 
@@ -174,27 +175,27 @@ const runHandshake = (
   layerFor: (userId: string) => Layer.Layer<GameStore | CurrentActor | OverrideStamp>,
 ) =>
   Effect.gen(function* () {
+    // The draft carries the bought floor (issue #107); the tool rides in
+    // from the sheet's standing fact, not an arg.
     const castId = yield* draftCast({
       sessionId: SESSION,
       characterId: CHARACTER,
       arcanum: "death",
       level: 2,
       intent: "Rot the door",
+      potency: 2,
     }).pipe(Effect.provide(layerFor(PLAYER)))
     yield* engageCast({ sessionId: SESSION, castId }).pipe(
       Effect.provide(layerFor(ST_USER)),
     )
     // The Price beats (ADR-0022) pin the new patch fields through both
-    // adapters. Deliberately net-zero on the pool (+1 adjustment, −1 tool)
-    // so the seeded dice downstream stay byte-identical.
+    // adapters. Deliberately net-zero on the pool (+1 adjustment, −1 tool
+    // from the sheet fact) so the seeded dice downstream stay byte-identical.
     yield* adjustPrice({
       sessionId: SESSION,
       castId,
       adjustments: [{ source: "Ley line hum", dice: 1 }],
     }).pipe(Effect.provide(layerFor(ST_USER)))
-    yield* setMagicalTool({ sessionId: SESSION, castId, usesMagicalTool: true }).pipe(
-      Effect.provide(layerFor(PLAYER)),
-    )
     yield* lockPrice({ sessionId: SESSION, castId }).pipe(
       Effect.provide(layerFor(ST_USER)),
     )
@@ -219,6 +220,8 @@ const observedCast = (row: Record<string, unknown>) => ({
   level: row.level,
   intent: row.intent,
   usesMagicalTool: row.usesMagicalTool,
+  potency: row.potency ?? null,
+  targets: row.targets ?? null,
   declaredPool: row.declaredPool,
   spellManaCost: row.spellManaCost,
   sceneId: row.sceneId ?? null,
@@ -259,7 +262,8 @@ describe("Flows.vulgarCast conformance (ConvexLive vs InMemory)", () => {
       expect(liveRow.status).toBe("resolved")
       expect(liveRow.paradoxSuccesses).toBe(1)
       expect(liveRow.containedSuccesses).toBe(1)
-      expect(liveRow.castPool).toBe(4)
+      expect(liveRow.potency).toBe(2) // the bought floor, stamped for the ST
+      expect(liveRow.castPool).toBe(2) // Gnosis 1 + Death 3, −2 Potency
       expect(liveRow.updatedAt).toBeTypeOf("number")
       expect(liveRow.createdAt).toBeTypeOf("number")
 

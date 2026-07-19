@@ -15,7 +15,6 @@ import {
   releaseCast,
   rollParadox,
   setDraftContainment,
-  setMagicalTool,
   voidCast,
 } from "../flows/vulgar-cast"
 import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "../ids"
@@ -525,6 +524,164 @@ describe("Flows.vulgarCast — the Willpower precommitment (ADR-0022, WoD p. 133
   )
 })
 
+describe("Flows.vulgarCast — the bought floor (issue #107)", () => {
+  it.effect("bought Potency stamps the declaration and the pool pays its dice", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        arcanum: "death",
+        level: 2,
+        potency: 2,
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      const cast = store.casts[0]!
+      // The stamp the ST's dispel rolls against.
+      expect(cast.potency).toBe(2)
+      expect(cast.targets).toBeUndefined()
+      // Gnosis 1 + Death 3, −2 for the second Potency dot.
+      expect(cast.declaredPool).toBe(2)
+      expect(cast.declaredComponents).toContainEqual({
+        type: "modifier",
+        name: "Spell factors",
+        dots: -2,
+      })
+      expect(store.messages[0]!.text).toContain("Potency 2")
+    }),
+  )
+
+  it.effect("a targets bracket stamps and pays like Potency", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        arcanum: "death",
+        level: 2,
+        targets: 4,
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      const cast = store.casts[0]!
+      expect(cast.targets).toBe(4)
+      expect(cast.potency).toBeUndefined()
+      // Gnosis 1 + Death 3, −4 for the ×4 bracket.
+      expect(cast.declaredPool).toBe(0)
+      expect(store.messages[0]!.text).toContain("4 targets")
+    }),
+  )
+
+  it.effect("factor penalties floor at the chance die — the pool never goes negative", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        arcanum: "death",
+        level: 2,
+        potency: 6, // −10 dice against a pool of 4
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      const cast = store.casts[0]!
+      expect(cast.potency).toBe(6)
+      expect(cast.declaredPool).toBe(0)
+      // Only the effective portion of the penalty is recorded (the
+      // factor-penalty convention in flows/casting.ts).
+      expect(cast.declaredComponents).toContainEqual({
+        type: "modifier",
+        name: "Spell factors",
+        dots: -4,
+      })
+    }),
+  )
+
+  it.effect("Willpower's dice land before the factors take theirs", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        arcanum: "death",
+        level: 2,
+        potency: 2,
+        spendWillpower: true,
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      const cast = store.casts[0]!
+      // Gnosis 1 + Death 3 + Willpower 3, −2 Potency.
+      expect(cast.declaredPool).toBe(5)
+      expect(cast.declaredComponents).toContainEqual({
+        type: "modifier",
+        name: "Willpower",
+        dots: 3,
+      })
+      expect(cast.declaredComponents).toContainEqual({
+        type: "modifier",
+        name: "Spell factors",
+        dots: -2,
+      })
+    }),
+  )
+
+  it.effect("a rider Mana declaration adds to the frozen spell cost", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        arcanum: "death",
+        level: 2,
+        extraManaCost: 2,
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      // Death is Moros-ruling (0 Path cost) + the declared rider.
+      expect(store.casts[0]!.spellManaCost).toBe(2)
+      // The check spends nothing — Mana waits for the commit.
+      expect(store.sheets.get(CHARACTER)!.manaCurrent).toBe(10)
+    }),
+  )
+
+  it.effect("an unaffordable rider is refused at declaration — the Willpower rule, same door", () =>
+    Effect.gen(function* () {
+      const store = seed({ sheet: makeSheet({ manaCurrent: 1 }) })
+
+      const exit = yield* draftCast({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        arcanum: "death",
+        level: 2,
+        extraManaCost: 2,
+      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("InsufficientMana")
+      expect(store.casts).toHaveLength(0)
+    }),
+  )
+
+  it.effect("degenerate factors are refused with the typed error", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      for (const bad of [{ potency: 0 }, { targets: 0 }, { potency: 1.5 }, { extraManaCost: -1 }]) {
+        const exit = yield* draftCast({
+          sessionId: SESSION,
+          characterId: CHARACTER,
+          arcanum: "death",
+          level: 2,
+          ...bad,
+        }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+        expect(failureTag(exit)).toBe("InvalidCastDeclaration")
+      }
+      expect(store.casts).toHaveLength(0)
+    }),
+  )
+})
+
 describe("Flows.vulgarCast — The Price (ADR-0022)", () => {
   const CAST = CastId.make("cast-prior")
 
@@ -614,26 +771,31 @@ describe("Flows.vulgarCast — The Price (ADR-0022)", () => {
     }),
   )
 
-  it.effect("the caster's magical-tool flag is theirs to change until the freeze", () =>
+  it.effect("the tool is the sheet's standing fact — the draft stamps it, the freeze prices it (issue #107)", () =>
     Effect.gen(function* () {
-      const store = seed({ casts: [castAt("price")] })
+      const store = seed({ sheet: makeSheet({ hasMagicalTool: true }) })
 
-      yield* setMagicalTool({
+      const castId = yield* draftCast({
         sessionId: SESSION,
-        castId: CAST,
-        usesMagicalTool: true,
+        characterId: CHARACTER,
+        arcanum: "death",
+        level: 2,
       }).pipe(as(PLAYER), Effect.provide(store.layer))
 
+      // Stamped off the sheet at declaration — no per-cast toggle exists.
       expect(store.casts[0]!.usesMagicalTool).toBe(true)
-      expect(store.messages).toHaveLength(0) // table talk, no ceremony
 
       // The freeze's narrated pool wears the tool: base 1, −1 tool = chance
       // die territory — but the pool floors at 0 dice.
-      yield* lockPrice({ sessionId: SESSION, castId: CAST }).pipe(
+      yield* engageCast({ sessionId: SESSION, castId }).pipe(
         as(ST_USER),
         Effect.provide(store.layer),
       )
-      expect(store.messages[0]!.text).toContain("0-die Paradox pool")
+      yield* lockPrice({ sessionId: SESSION, castId }).pipe(
+        as(ST_USER),
+        Effect.provide(store.layer),
+      )
+      expect(store.messages.at(-1)!.text).toContain("0-die Paradox pool")
     }),
   )
 
@@ -659,7 +821,7 @@ describe("Flows.vulgarCast — The Price (ADR-0022)", () => {
     }),
   )
 
-  it.effect("the adjustments are the Storyteller's; the tool flag is the caster's", () =>
+  it.effect("the adjustments are the Storyteller's", () =>
     Effect.gen(function* () {
       const store = seed({ casts: [castAt("price")] })
 
@@ -669,27 +831,7 @@ describe("Flows.vulgarCast — The Price (ADR-0022)", () => {
       }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
       expect(failureTag(casterExit)).toBe("NotStoryteller")
 
-      // …and a third player reaching for the caster's.
-      const strangerExit = yield* setMagicalTool({
-        sessionId: SESSION, castId: CAST, usesMagicalTool: true,
-      }).pipe(as(OTHER_PLAYER), Effect.provide(store.layer), Effect.exit)
-      expect(failureTag(strangerExit)).toBe("NotYourCharacter")
-
       expect(store.casts[0]!.adjustments).toBeUndefined()
-      expect(store.casts[0]!.usesMagicalTool).toBe(false)
-    }),
-  )
-
-  it.effect("the tool flag freezes with the price — the caster commits against that pool", () =>
-    Effect.gen(function* () {
-      const store = seed({ casts: [castAt("price", { tides: NO_TIDES })] })
-
-      const exit = yield* setMagicalTool({
-        sessionId: SESSION, castId: CAST, usesMagicalTool: true,
-      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
-
-      expect(failureTag(exit)).toBe("CastStatusConflict")
-      expect(store.casts[0]!.usesMagicalTool).toBe(false)
     }),
   )
 
@@ -712,18 +854,6 @@ describe("Flows.vulgarCast — The Price (ADR-0022)", () => {
     }),
   )
 
-  it.effect("an ST toggling the tool in the caster's stead is Override-stamped (ADR-0015)", () =>
-    Effect.gen(function* () {
-      const store = seed({ casts: [castAt("price")] })
-
-      yield* setMagicalTool({
-        sessionId: SESSION, castId: CAST, usesMagicalTool: true,
-      }).pipe(as(ST_USER), Effect.provide(store.layer))
-
-      expect(store.casts[0]!.usesMagicalTool).toBe(true)
-      expect(store.casts[0]!.override?.kind).toBe("storyteller-action")
-    }),
-  )
 })
 
 describe("Flows.vulgarCast — the wings and free exits", () => {

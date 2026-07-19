@@ -1,5 +1,9 @@
 import { Effect, Schema } from "effect"
-import { getSessionScopedSheet, requireRepairAuthority } from "../authz"
+import {
+  getSessionScopedSheet,
+  requireRepairAuthority,
+  requireSessionCharacter,
+} from "../authz"
 import { type CharacterSheet } from "../character"
 import { DamageType, HealthTrack, type HealthBox } from "../damage"
 import { CharacterId, SessionId } from "../ids"
@@ -165,3 +169,33 @@ export const handEditSheet = Effect.fn("Flows.handEdit.handEditSheet")(function*
     visibility: "system",
   })
 })
+
+export const SetMagicalToolArgs = Schema.Struct({
+  sessionId: Schema.String,
+  characterId: Schema.String,
+  hasMagicalTool: Schema.Boolean,
+})
+export type SetMagicalToolArgs = typeof SetMagicalToolArgs.Type
+
+/**
+ * The standing tool fact (issue #107): a magical tool in hand is −1 Paradox
+ * die on every vulgar cast, and it lives on the sheet — the bench merely
+ * reports it. Unlike `handEditSheet` this walks the *normal* authority ladder
+ * (`requireSessionCharacter`): the fact is the owner's to maintain, plainly;
+ * an ST or Dev flipping it in their stead is Override-recorded by the seam.
+ * A quiet write, like the Tides edit — a sheet fact, not a reveal.
+ */
+export const setMagicalTool = Effect.fn("Flows.handEdit.setMagicalTool")(
+  function* (args: SetMagicalToolArgs) {
+    const store = yield* GameStore
+
+    const sheet = yield* requireSessionCharacter(
+      SessionId.make(args.sessionId),
+      CharacterId.make(args.characterId),
+    )
+
+    yield* store.patchSheet(sheet.id, { hasMagicalTool: args.hasMagicalTool })
+
+    return sheet.id
+  },
+)

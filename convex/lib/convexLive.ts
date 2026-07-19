@@ -214,6 +214,9 @@ export const convexLive = (
             ...(patch.willpowerCurrent !== undefined
               ? { willpowerCurrent: patch.willpowerCurrent }
               : {}),
+            ...(patch.hasMagicalTool !== undefined
+              ? { hasMagicalTool: patch.hasMagicalTool }
+              : {}),
             ...(patch.healthTrack !== undefined
               ? { healthTrack: patch.healthTrack.map((box) => ({ ...box })) }
               : {}),
@@ -347,6 +350,8 @@ export const convexLive = (
             ...(draft.spendWillpower !== undefined
               ? { spendWillpower: draft.spendWillpower }
               : {}),
+            ...(draft.potency !== undefined ? { potency: draft.potency } : {}),
+            ...(draft.targets !== undefined ? { targets: draft.targets } : {}),
             declaredComponents: draft.declaredComponents.map((c) => ({ ...c })),
             declaredPool: draft.declaredPool,
             spellManaCost: draft.spellManaCost,
@@ -392,9 +397,6 @@ export const convexLive = (
         yield* Effect.promise(() =>
           ctx.db.patch(id, {
             ...(patch.status !== undefined ? { status: patch.status } : {}),
-            ...(patch.usesMagicalTool !== undefined
-              ? { usesMagicalTool: patch.usesMagicalTool }
-              : {}),
             ...(sceneId ? { sceneId } : {}),
             ...(patch.gnosis !== undefined ? { gnosis: patch.gnosis } : {}),
             ...(patch.adjustments !== undefined

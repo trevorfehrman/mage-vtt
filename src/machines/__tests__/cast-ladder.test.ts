@@ -103,20 +103,20 @@ describe("ladderControls — buttons only for the viewer's role and phase", () =
   const storyteller = { isStoryteller: true, isCaster: false }
   const spectator = { isStoryteller: false, isCaster: false }
 
-  test("the wings: owner kills (and may ready a tool), ST engages or declines", () => {
-    expect(ladderControls(snapshot("draft"), caster)).toEqual(["kill", "tool"])
+  test("the wings: owner kills, ST engages or declines — the tool is a sheet fact (issue #107)", () => {
+    expect(ladderControls(snapshot("draft"), caster)).toEqual(["kill"])
     expect(ladderControls(snapshot("draft"), storyteller)).toEqual(["engage", "decline"])
     expect(ladderControls(snapshot("draft"), spectator)).toEqual([])
   })
 
-  test("The Price, fluid: ST assembles and freezes, caster readies the tool, either bails", () => {
+  test("The Price, fluid: ST assembles and freezes, either bails", () => {
     expect(ladderControls(snapshot("price"), storyteller)).toEqual([
       "adjust",
       "lockPrice",
       "cancel",
       "void",
     ])
-    expect(ladderControls(snapshot("price"), caster)).toEqual(["tool", "cancel"])
+    expect(ladderControls(snapshot("price"), caster)).toEqual(["cancel"])
     expect(ladderControls(snapshot("price"), spectator)).toEqual([])
   })
 

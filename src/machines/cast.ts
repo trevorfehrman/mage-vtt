@@ -31,16 +31,14 @@ export interface CastContext {
   level: number
   /** Rote only: the picked "or" alternative; auto-set for single-skill pools. */
   skillChoice: string | null
+  /** The bought floor (issue #107): Potency beyond 1 and the targets bracket. */
   potency: number
   targets: number
-  highSpeech: boolean
+  /** Declared rider Mana — driven from the Mana strip, never a bench dial. */
   extraMana: number
   spendWillpower: boolean
-  visibility: "public" | "hidden"
   /** Vulgar draft only (issue #66/#69): the caster's one-line intent. */
   intent: string
-  /** Vulgar draft only: the steadying tool (−1 Paradox die), caster's until the ST locks. */
-  usesMagicalTool: boolean
   error: CastError | null
 }
 
@@ -51,17 +49,17 @@ type CastEvent =
   | { type: "SET_SKILL_CHOICE"; value: string }
   | { type: "SET_POTENCY"; value: number }
   | { type: "SET_TARGETS"; value: number }
-  | { type: "SET_HIGH_SPEECH"; value: boolean }
   | { type: "SET_EXTRA_MANA"; value: number }
   | { type: "SET_SPEND_WILLPOWER"; value: boolean }
-  | { type: "SET_VISIBILITY"; value: "public" | "hidden" }
   | { type: "SET_INTENT"; value: string }
-  | { type: "SET_USES_MAGICAL_TOOL"; value: boolean }
   | { type: "CAST" }
   | { type: "DRAFT_VULGAR" }
   | { type: "CANCEL" }
 
-/** What the submit actor sends over the wire — the mutation args minus ids. */
+/** What the submit actor sends over the wire — the mutation args minus ids.
+ * The audit's evictions (issue #107) hold here too: no High Speech, no
+ * hidden visibility, no per-cast tool — the sheet and the ST's ebb door own
+ * those facts now. */
 export type CastSubmission =
   | {
       method: "improvised"
@@ -69,10 +67,8 @@ export type CastSubmission =
       level: number
       potency?: number
       targets?: number
-      highSpeech?: boolean
       extraManaCost?: number
       spendWillpower?: boolean
-      visibility?: "hidden"
     }
   | {
       method: "rote"
@@ -80,15 +76,14 @@ export type CastSubmission =
       skillChoice?: string
       potency?: number
       targets?: number
-      highSpeech?: boolean
       extraManaCost?: number
       spendWillpower?: boolean
-      visibility?: "hidden"
     }
 
 /**
  * The wire shape of a Vulgar draft (issue #43/#66/#69) — `casts.draft`'s args
  * minus ids: the declaration by route, plus the caster's extras when they act.
+ * The tool is the sheet's standing fact; the server stamps it (issue #107).
  */
 export type DraftSubmission =
   | {
@@ -96,7 +91,9 @@ export type DraftSubmission =
       arcanum: ArcanumName
       level: number
       intent?: string
-      usesMagicalTool?: boolean
+      potency?: number
+      targets?: number
+      extraManaCost?: number
       spendWillpower?: boolean
     }
   | {
@@ -104,7 +101,9 @@ export type DraftSubmission =
       roteName: string
       skillChoice?: string
       intent?: string
-      usesMagicalTool?: boolean
+      potency?: number
+      targets?: number
+      extraManaCost?: number
       spendWillpower?: boolean
     }
 
@@ -114,12 +113,9 @@ const IDLE_CONTEXT: CastContext = {
   skillChoice: null,
   potency: 1,
   targets: 1,
-  highSpeech: false,
   extraMana: 0,
   spendWillpower: false,
-  visibility: "public",
   intent: "",
-  usesMagicalTool: false,
   error: null,
 }
 
@@ -211,23 +207,14 @@ export const castMachine = setup({
         SET_TARGETS: {
           actions: assign({ targets: ({ event }) => Math.max(1, event.value) }),
         },
-        SET_HIGH_SPEECH: {
-          actions: assign({ highSpeech: ({ event }) => event.value }),
-        },
         SET_EXTRA_MANA: {
           actions: assign({ extraMana: ({ event }) => Math.max(0, event.value) }),
         },
         SET_SPEND_WILLPOWER: {
           actions: assign({ spendWillpower: ({ event }) => event.value }),
         },
-        SET_VISIBILITY: {
-          actions: assign({ visibility: ({ event }) => event.value }),
-        },
         SET_INTENT: {
           actions: assign({ intent: ({ event }) => event.value }),
-        },
-        SET_USES_MAGICAL_TOOL: {
-          actions: assign({ usesMagicalTool: ({ event }) => event.value }),
         },
         CAST: { target: "casting", guard: "canSubmit" },
         DRAFT_VULGAR: { target: "drafting", guard: "canSubmit" },
@@ -269,14 +256,12 @@ export const castMachine = setup({
 export function declaredFactors(context: CastContext): {
   potency?: number
   targets?: number
-  highSpeech?: boolean
   extraManaCost?: number
   spendWillpower?: boolean
 } {
   return {
     ...(context.potency > 1 ? { potency: context.potency } : {}),
     ...(context.targets > 1 ? { targets: context.targets } : {}),
-    ...(context.highSpeech ? { highSpeech: true } : {}),
     ...(context.extraMana > 0 ? { extraManaCost: context.extraMana } : {}),
     ...(context.spendWillpower ? { spendWillpower: true } : {}),
   }
@@ -284,7 +269,8 @@ export function declaredFactors(context: CastContext): {
 
 /** The wire shape of a Vulgar draft — the declaration by route, extras only
  * when they act (a blank or whitespace intent stays off the wire). The
- * Willpower spend precommits at declaration (ADR-0022, WoD p. 133). */
+ * Willpower spend precommits at declaration (ADR-0022, WoD p. 133); the
+ * bought floor and the rider ride the same way (issue #107). */
 export function buildDraftSubmission(context: CastContext): DraftSubmission {
   if (context.selection === null) {
     throw new Error("Cannot build a draft submission with nothing armed")
@@ -292,8 +278,7 @@ export function buildDraftSubmission(context: CastContext): DraftSubmission {
   const intent = context.intent.trim()
   const extras = {
     ...(intent !== "" ? { intent } : {}),
-    ...(context.usesMagicalTool ? { usesMagicalTool: true } : {}),
-    ...(context.spendWillpower ? { spendWillpower: true } : {}),
+    ...declaredFactors(context),
   }
   if (context.selection.method === "improvised") {
     return {
@@ -316,10 +301,7 @@ export function buildSubmission(context: CastContext): CastSubmission {
   if (context.selection === null) {
     throw new Error("Cannot build a cast submission with nothing armed")
   }
-  const factors = {
-    ...declaredFactors(context),
-    ...(context.visibility === "hidden" ? { visibility: "hidden" as const } : {}),
-  }
+  const factors = declaredFactors(context)
   if (context.selection.method === "improvised") {
     return {
       method: "improvised",

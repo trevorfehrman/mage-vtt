@@ -16,10 +16,19 @@ import { healthBoxGlyph, ResistantDot } from "./CharacterSheet"
 export function ResourceStrip({
   character,
   pendingWillpower = false,
+  pendingMana = 0,
+  rider,
 }: {
   character: CharacterSheet
   /** A Willpower spend is armed on the felt — ghost the point being weighed. */
   pendingWillpower?: boolean
+  /** Mana armed on the felt (auto cost + rider) — the pending-ghost recipe
+   * (#102) over Mana's own identity, spent when the cast commits. */
+  pendingMana?: number
+  /** The rider spend lives where the resource lives (issue #107): while a
+   * cast is armed, "the spell text says 1 more" is declared here, never on
+   * a bench stepper. */
+  rider?: { value: number; onChange: (next: number) => void } | undefined
 }) {
   return (
     <div
@@ -27,15 +36,43 @@ export function ResourceStrip({
       style={{ borderColor: "var(--line)" }}
     >
       <HealthMini track={character.healthTrack} />
-      <span className="mv-eyebrow">
+      <span className="mv-eyebrow flex items-center gap-1">
         <span aria-hidden style={{ color: "var(--mana)" }}>
-          ◈{" "}
+          ◈
         </span>
         Mana{" "}
         <span className="mv-data text-[12px] font-bold" style={{ color: "var(--mana)" }}>
           {character.manaCurrent}
           <span className="font-normal opacity-60">/{character.maxMana}</span>
         </span>
+        {pendingMana > 0 && (
+          <span
+            className="mv-data text-[11px]"
+            style={{ color: "var(--mana)", opacity: 0.55 }}
+            title="Pending — armed on the felt, spent when the cast commits"
+          >
+            −{pendingMana}
+          </span>
+        )}
+        {rider && (
+          <span className="flex items-center gap-0.5 pl-1">
+            <button
+              onClick={() => rider.onChange(Math.max(0, rider.value - 1))}
+              disabled={rider.value === 0}
+              className="mv-mini px-1.5 disabled:opacity-40"
+              title="Take back a rider Mana"
+            >
+              −
+            </button>
+            <button
+              onClick={() => rider.onChange(rider.value + 1)}
+              className={`mv-mini px-1.5 ${rider.value > 0 ? "mv-mini-on" : ""}`}
+              title="Rider Mana — the spell text asks more; it spends with the cast"
+            >
+              +
+            </button>
+          </span>
+        )}
       </span>
       <WillMeter
         filled={character.willpowerCurrent}

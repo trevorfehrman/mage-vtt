@@ -226,6 +226,10 @@ export const CharacterData = Schema.Struct({
   manaCurrent: Schema.Number,
   // Optional column: rows stored before issue #16 have no knownRotes.
   knownRotes: Schema.optionalKey(Schema.Array(KnownRoteDoc)),
+  // The standing tool fact (issue #107): the mage keeps a magical tool in
+  // hand (−1 Paradox die on every vulgar cast). A sheet fact, never a
+  // per-cast dial; absent on rows written before it existed (= false).
+  hasMagicalTool: Schema.optionalKey(Schema.Boolean),
 })
 
 /**
@@ -294,6 +298,10 @@ export const CastDoc = Schema.Struct({
   intent: Schema.optionalKey(Schema.String),
   usesMagicalTool: Schema.Boolean,
   spendWillpower: Schema.optionalKey(Schema.Boolean),
+  // The bought floor (issue #107): declared spell factors, stamped so the
+  // ST's dispel knows what it rolls against. Absent when left at 1.
+  potency: Schema.optionalKey(Schema.Number),
+  targets: Schema.optionalKey(Schema.Number),
   declaredComponents: Schema.Array(DiceRollComponentDoc),
   declaredPool: Schema.Number,
   spellManaCost: Schema.Number,

@@ -55,8 +55,9 @@ const SYMPATHETIC_PENALTIES: Record<SympatheticConnection, number> = {
 
 // --- Helpers ---
 
-/** Spell factor penalty (page 118): Potency 1 free, then -2 per point. */
-function potencyPenalty(potency: number): number {
+/** Spell factor penalty (page 118): Potency 1 free, then -2 per point.
+ * Exported for the declaration felt's ghost-dice pricing (issue #107). */
+export function potencyPenalty(potency: number): number {
   if (potency <= 1) return 0
   return (potency - 1) * -2
 }
@@ -74,6 +75,10 @@ const TARGET_COUNT_PENALTY: Record<number, number> = {
   16: -8,
 }
 
+/** The printed bracket ladder, in press order — the declaration felt's
+ * targets fitting cycles it (issue #107). One source with the table above. */
+export const TARGET_BRACKETS: ReadonlyArray<number> = [1, 2, 4, 8, 16]
+
 /** The open tail every bracket table shares: -8 at the last printed bracket,
  * then -2 per ×`factor` step beyond it. */
 const beyondBracketPenalty = (
@@ -86,7 +91,8 @@ const beyondBracketPenalty = (
     ? penalty
     : beyondBracketPenalty(target, threshold * factor, factor, penalty - 2)
 
-function targetCountPenalty(targets: number): number {
+/** Exported for the declaration felt's ghost-dice pricing (issue #107). */
+export function targetCountPenalty(targets: number): number {
   if (targets <= 1) return 0
   const exact = TARGET_COUNT_PENALTY[targets]
   if (exact !== undefined) return exact

@@ -108,8 +108,10 @@ const widenedColumns = {
 
 // Columns added after the migration, each *optional* so every document stored
 // under the frozen shape above still validates. `knownRotes`: issue #16;
-// its `spellAspect` stamp: issue #68; its `spellPage` stamp: issue #89.
+// its `spellAspect` stamp: issue #68; its `spellPage` stamp: issue #89;
+// `hasMagicalTool` (the standing tool fact): issue #107.
 const addedColumns = {
+  hasMagicalTool: v.optional(v.boolean()),
   knownRotes: v.optional(
     v.array(
       v.object({

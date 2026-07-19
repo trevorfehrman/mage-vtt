@@ -62,6 +62,9 @@ export const SheetPatch = Schema.Struct({
   manaCurrent: Schema.optionalKey(Mana),
   willpowerCurrent: Schema.optionalKey(Willpower),
   healthTrack: Schema.optionalKey(Schema.Array(HealthBox)),
+  /** The standing tool fact (issue #107) — the one identity column a flow
+   * may flip; everything else here is current state. */
+  hasMagicalTool: Schema.optionalKey(Schema.Boolean),
 })
 export type SheetPatch = typeof SheetPatch.Type
 
@@ -110,6 +113,9 @@ export const CastDraft = Schema.Struct({
   usesMagicalTool: Schema.Boolean,
   /** The blind Willpower precommitment (ADR-0022, WoD p. 133). */
   spendWillpower: Schema.optionalKey(Schema.Boolean),
+  /** The bought floor (issue #107): declared factors, stamped for the ST. */
+  potency: Schema.optionalKey(Schema.Number),
+  targets: Schema.optionalKey(Schema.Number),
   declaredComponents: Schema.Array(RawPoolComponent),
   declaredPool: Schema.Number,
   spellManaCost: Schema.Number,
@@ -125,7 +131,6 @@ export type CastDraft = typeof CastDraft.Type
  */
 export const CastPatch = Schema.Struct({
   status: Schema.optionalKey(CastStatus),
-  usesMagicalTool: Schema.optionalKey(Schema.Boolean),
   sceneId: Schema.optionalKey(SceneId),
   gnosis: Schema.optionalKey(Schema.Number),
   adjustments: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),

@@ -353,10 +353,17 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   willpowerCurrent: Willpower,
   manaCurrent: Mana,
   knownRotes: Schema.optionalKey(Schema.Array(KnownRote)),
+  hasMagicalTool: Schema.optionalKey(Schema.Boolean),
 }) {
   /** Known Rotes, absent-column-safe: rows stored before issue #16 have none. */
   get rotes(): ReadonlyArray<KnownRote> {
     return this.knownRotes ?? []
+  }
+
+  /** The standing tool fact (issue #107), absent-column-safe: a magical tool
+   * in hand is −1 Paradox die on every vulgar cast. */
+  get magicalTool(): boolean {
+    return this.hasMagicalTool ?? false
   }
 
   get resistanceBonus() {

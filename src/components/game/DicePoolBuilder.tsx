@@ -2,8 +2,8 @@ import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy";
 import type { CharacterSheet } from "#/domain/character";
-import { entranceSpring } from "#/components/ui/entrance";
 import { GateButton } from "#/components/ui/gate-button";
+import { FeltDie, type DieKind } from "./FeltDie";
 import { pooledDice } from "#/machines/dice-pool";
 import type { useDicePool } from "#/hooks/use-dice-pool";
 
@@ -29,23 +29,6 @@ const diceLabel = (n: number): string => (n === 1 ? "1 die" : `${n} dice`);
 export const LOOSE_DICE = { type: "modifier", name: "Dice" } as const;
 export const isLooseDice = (c: { type: string; name: string }): boolean =>
   c.type === LOOSE_DICE.type && c.name === LOOSE_DICE.name;
-
-type DieKind = "sheet" | "loose" | "willpower";
-
-const DIE_LOOK: Record<DieKind, { border: string; background: string }> = {
-  sheet: {
-    border: "var(--accent)",
-    background: "color-mix(in srgb, var(--accent) 22%, transparent)",
-  },
-  loose: {
-    border: "var(--dim)",
-    background: "color-mix(in srgb, var(--ink) 6%, transparent)",
-  },
-  willpower: {
-    border: "var(--ember)",
-    background: "var(--ember-glow)",
-  },
-};
 
 export function DicePoolBuilder({
   pool,
@@ -84,54 +67,26 @@ export function DicePoolBuilder({
       ? "No Willpower left to spend."
       : null;
 
-  const dieTransition = reduced ? { duration: 0 } : entranceSpring;
   // A plain tween, no bounce (owner call): the tray folds like a drawer.
   const postureTransition = reduced
     ? { duration: 0 }
     : { duration: 0.18, ease: "easeOut" as const };
 
-  // Skimmable dice are buttons; the rest are plain marks — not disabled
-  // controls, so their titles stay reachable and nothing pretends to refuse.
   const die = (
     kind: DieKind,
     key: string,
     title: string,
     onSkim?: () => void,
-  ) => {
-    const look = {
-      borderColor: DIE_LOOK[kind].border,
-      background: DIE_LOOK[kind].background,
-    };
-    const anim = {
-      layout: !reduced,
-      initial: { scale: 0.4, opacity: 0 },
-      animate: { scale: 1, opacity: 1, rotate: 45 },
-      exit: { scale: 0.4, opacity: 0 },
-      transition: dieTransition,
-    };
-    return onSkim === undefined ? (
-      <motion.span
-        key={key}
-        {...anim}
-        title={title}
-        className="size-[20px] rounded-[4px] border"
-        style={look}
-      />
-    ) : (
-      <motion.button
-        key={key}
-        {...anim}
-        onClick={(e) => {
-          e.stopPropagation();
-          onSkim();
-        }}
-        disabled={!canInteract}
-        title={title}
-        className="size-[20px] cursor-pointer rounded-[4px] border"
-        style={look}
-      />
-    );
-  };
+  ) => (
+    <FeltDie
+      key={key}
+      kind={kind}
+      title={title}
+      reduced={reduced}
+      onSkim={onSkim}
+      disabled={!canInteract}
+    />
+  );
 
   const sheetDice = sheetComponents.flatMap((c) =>
     Array.from({ length: c.dots }, (_, i) =>

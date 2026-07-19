@@ -87,15 +87,10 @@ export function useCast(
     setSkillChoice: (value: string) => send({ type: "SET_SKILL_CHOICE", value }),
     setPotency: (value: number) => send({ type: "SET_POTENCY", value }),
     setTargets: (value: number) => send({ type: "SET_TARGETS", value }),
-    setHighSpeech: (value: boolean) => send({ type: "SET_HIGH_SPEECH", value }),
     setExtraMana: (value: number) => send({ type: "SET_EXTRA_MANA", value }),
     setSpendWillpower: (value: boolean) =>
       send({ type: "SET_SPEND_WILLPOWER", value }),
-    setVisibility: (value: "public" | "hidden") =>
-      send({ type: "SET_VISIBILITY", value }),
     setIntent: (value: string) => send({ type: "SET_INTENT", value }),
-    setUsesMagicalTool: (value: boolean) =>
-      send({ type: "SET_USES_MAGICAL_TOOL", value }),
     cast: () => send({ type: "CAST" }),
     draftVulgar: () => send({ type: "DRAFT_VULGAR" }),
     cancel: () => send({ type: "CANCEL" }),

@@ -83,7 +83,6 @@ export type LadderControl =
   | "decline" // ST: refuse a draft
   | "engage" // ST: put a draft on stage
   | "adjust" // ST: personal adjustments (ADR-0022), The Price before the freeze
-  | "tool" // caster: the magical-tool toggle, free until the freeze
   | "lockPrice" // ST: THE FREEZE — stamp the Tides, go hands-off
   | "commit" // caster: the point of no return (with mitigation)
   | "cancel" // either party, anywhere on The Price
@@ -100,7 +99,7 @@ export const ladderControls = (
   const rung = Match.value(cast.status).pipe(
     Match.withReturnType<ReadonlyArray<LadderControl>>(),
     Match.when("draft", () => [
-      ...(viewer.isCaster ? (["kill", "tool"] as const) : []),
+      ...(viewer.isCaster ? (["kill"] as const) : []),
       ...(viewer.isStoryteller ? (["engage", "decline"] as const) : []),
     ]),
     Match.when("price", () =>
@@ -111,7 +110,6 @@ export const ladderControls = (
           ]
         : [
             ...(viewer.isStoryteller ? (["adjust", "lockPrice"] as const) : []),
-            ...(viewer.isCaster ? (["tool"] as const) : []),
             ...(eitherParty ? (["cancel"] as const) : []),
           ],
     ),

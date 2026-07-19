@@ -75,10 +75,8 @@ describe("cast machine", () => {
     expect(snap.context.level).toBe(1)
     expect(snap.context.potency).toBe(1)
     expect(snap.context.targets).toBe(1)
-    expect(snap.context.highSpeech).toBe(false)
     expect(snap.context.extraMana).toBe(0)
     expect(snap.context.spendWillpower).toBe(false)
-    expect(snap.context.visibility).toBe("public")
   })
 
   test("ARM_ROTE auto-picks the skill of a single-skill pool", () => {
@@ -108,13 +106,13 @@ describe("cast machine", () => {
     const actor = startMachine()
     actor.send({ type: "ARM_IMPROVISED", arcanum: "death", dots: 3 })
     actor.send({ type: "SET_POTENCY", value: 4 })
-    actor.send({ type: "SET_HIGH_SPEECH", value: true })
+    actor.send({ type: "SET_TARGETS", value: 4 })
 
     actor.send({ type: "ARM_ROTE", rote: graveMien })
     const snap = actor.getSnapshot()
     expect(snap.value).toBe("declaring")
     expect(snap.context.potency).toBe(1)
-    expect(snap.context.highSpeech).toBe(false)
+    expect(snap.context.targets).toBe(1)
   })
 
   test("SET_LEVEL clamps to the armed Arcanum's dots", () => {
@@ -189,12 +187,12 @@ describe("cast machine", () => {
     const actor = startMachine()
     actor.send({ type: "ARM_ROTE", rote: graveMien })
     actor.send({ type: "SET_INTENT", value: "melt the lock" })
-    actor.send({ type: "SET_USES_MAGICAL_TOOL", value: true })
+    actor.send({ type: "SET_EXTRA_MANA", value: 2 })
 
     actor.send({ type: "ARM_ROTE", rote: orPoolRote })
     const snap = actor.getSnapshot()
     expect(snap.context.intent).toBe("")
-    expect(snap.context.usesMagicalTool).toBe(false)
+    expect(snap.context.extraMana).toBe(0)
   })
 
   test("an 'or'-pool Rote cannot DRAFT_VULGAR until a skill is picked", () => {
@@ -216,7 +214,6 @@ describe("cast machine", () => {
     })
     actor.send({ type: "ARM_ROTE", rote: graveMien })
     actor.send({ type: "SET_INTENT", value: "  melt the lock  " })
-    actor.send({ type: "SET_USES_MAGICAL_TOOL", value: true })
     actor.send({ type: "DRAFT_VULGAR" })
 
     await waitFor(actor, (s) => s.matches("idle"))
@@ -227,7 +224,6 @@ describe("cast machine", () => {
         roteName: "Grave Mien",
         skillChoice: "Occult",
         intent: "melt the lock",
-        usesMagicalTool: true,
       },
     ])
   })
@@ -298,6 +294,22 @@ describe("buildDraftSubmission", () => {
       spendWillpower: true,
     })
   })
+
+  test("the bought floor and the rider ride the draft wire when they act (issue #107)", () => {
+    const actor = startMachine()
+    actor.send({ type: "ARM_IMPROVISED", arcanum: "forces", dots: 2 })
+    actor.send({ type: "SET_POTENCY", value: 2 })
+    actor.send({ type: "SET_TARGETS", value: 4 })
+    actor.send({ type: "SET_EXTRA_MANA", value: 1 })
+    expect(buildDraftSubmission(actor.getSnapshot().context)).toEqual({
+      method: "improvised",
+      arcanum: "forces",
+      level: 1,
+      potency: 2,
+      targets: 4,
+      extraManaCost: 1,
+    })
+  })
 })
 
 describe("buildSubmission", () => {
@@ -317,14 +329,12 @@ describe("buildSubmission", () => {
     actor.send({ type: "SET_SKILL_CHOICE", value: "Occult" })
     actor.send({ type: "SET_POTENCY", value: 3 })
     actor.send({ type: "SET_SPEND_WILLPOWER", value: true })
-    actor.send({ type: "SET_VISIBILITY", value: "hidden" })
     expect(buildSubmission(actor.getSnapshot().context)).toEqual({
       method: "rote",
       roteName: "Witnessed Ward",
       skillChoice: "Occult",
       potency: 3,
       spendWillpower: true,
-      visibility: "hidden",
     })
   })
 })

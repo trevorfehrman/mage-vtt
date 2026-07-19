@@ -7,7 +7,7 @@ import { calculateRotePool } from "./spellcasting"
  * The Rote book's numbers (issue #89): pure leaves the book's table of
  * contents, pages and recitation trigger all read. Every figure resolves
  * through the deepened rote-cast leaf (issue #87) and the same pool math the
- * cast flows use — the row, the page, the CastPanel and the log can never
+ * cast flows use — the row, the page, the declaration felt and the log can never
  * disagree, and the UI does no arithmetic of its own.
  */
 

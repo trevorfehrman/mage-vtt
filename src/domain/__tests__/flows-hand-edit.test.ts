@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import { healthBox } from "../damage"
-import { handEditSheet } from "../flows/hand-edit"
+import { handEditSheet, setMagicalTool } from "../flows/hand-edit"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "../ids"
 import { Membership } from "../membership"
 import { failureTag, makeAldousSheet as makeSheet } from "../testing/fixtures"
@@ -406,6 +406,59 @@ describe("Flows.handEdit.handEditSheet (issue #19)", () => {
 
       expect(failureTag(exit)).toBe("DocumentNotFound")
       expect(store.sheetPatches).toHaveLength(0)
+    }),
+  )
+})
+
+describe("Flows.handEdit.setMagicalTool (issue #107)", () => {
+  it.effect("the owner flips their standing tool fact plainly — a quiet write", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: PLAYER })
+
+      yield* setMagicalTool({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        hasMagicalTool: true,
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.magicalTool).toBe(true)
+      expect(store.messages).toHaveLength(0) // a sheet fact, not a reveal
+
+      yield* setMagicalTool({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        hasMagicalTool: false,
+      }).pipe(Effect.provide(store.layer))
+      expect(store.sheets.get(CHARACTER)!.magicalTool).toBe(false)
+    }),
+  )
+
+  it.effect("another player is refused — the fact is the owner's", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: OTHER_PLAYER })
+
+      const exit = yield* setMagicalTool({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        hasMagicalTool: true,
+      }).pipe(Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("NotYourCharacter")
+      expect(store.sheetPatches).toHaveLength(0)
+    }),
+  )
+
+  it.effect("the Storyteller may flip it in the owner's stead (the authority ladder)", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: ST_USER })
+
+      yield* setMagicalTool({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        hasMagicalTool: true,
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.magicalTool).toBe(true)
     }),
   )
 })

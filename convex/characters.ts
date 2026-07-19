@@ -7,7 +7,10 @@ import { initialCurrentState, PathName } from "../src/domain/character"
 import { HealthBox } from "../src/domain/damage"
 import { castSpell as castSpellFlow } from "../src/domain/flows/casting"
 import { castRote as castRoteFlow } from "../src/domain/flows/rote-cast"
-import { handEditSheet as handEditSheetFlow } from "../src/domain/flows/hand-edit"
+import {
+  handEditSheet as handEditSheetFlow,
+  setMagicalTool as setMagicalToolFlow,
+} from "../src/domain/flows/hand-edit"
 import { schemaToConvexValidator } from "../src/domain/schema-bridge"
 import { CharacterSeedData } from "../src/domain/tables"
 
@@ -66,6 +69,18 @@ export const handEdit = enforcedMutation({
     healthTrack: v.optional(schemaToConvexValidator(Schema.Array(HealthBox))),
   },
   flow: handEditSheetFlow,
+})
+
+// The standing tool fact (issue #107): a magical tool in hand, −1 Paradox die
+// on every vulgar cast. The owner's to maintain through the normal authority
+// ladder (ST/Dev in-stead is Override-recorded); the flow writes quietly.
+export const setMagicalTool = enforcedMutation({
+  args: {
+    sessionId: v.id("sessions"),
+    characterId: v.id("characters"),
+    hasMagicalTool: v.boolean(),
+  },
+  flow: setMagicalToolFlow,
 })
 
 export const getForSession = query({
