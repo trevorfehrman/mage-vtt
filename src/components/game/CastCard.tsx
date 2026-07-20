@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useMutation } from "convex/react"
 import { useMachine } from "@xstate/react"
+import { AnimatePresence, useReducedMotion } from "motion/react"
 import type { CastEntry } from "#/domain/activity"
 import {
   containmentCap,
@@ -16,19 +17,24 @@ import type { HealthTrack } from "#/domain/damage"
 import { calculateParadoxPool } from "#/domain/paradox"
 import { rollOdds } from "#/domain/probability"
 import { seamErrorMessage } from "#/lib/seam-errors"
+import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
 import { ArcanaGlyph } from "./ArcanaGlyph"
+import { FeltDie } from "./FeltDie"
 import { ParadoxGlyph } from "./ParadoxGlyph"
 import { api } from "../../../convex/_generated/api"
 import type { Id } from "../../../convex/_generated/dataModel"
 
 /**
- * The live Cast card (issue #43, ADR-0016): a projection of the Cast document
- * rendered in the Activity feed — the whole table watches one ladder climb,
- * with buttons only for the viewer's role. The XState machine mirrors the
- * subscribed document (rehydrating mid-ladder on reload is just "render the
- * snapshot"); every button is a Convex mutation whose refusal surfaces inline
- * in table language (ADR-0010).
+ * The live Cast card (issue #43, ADR-0016; the card takeover, owner ruling
+ * 2026-07-19): a projection of the Cast document — one artifact rendered by
+ * seat. While the cast is live it IS the caster's and the Storyteller's roll
+ * zones (the vulgar UI is the card, standing where the dice roller was, with
+ * every control the seat needs — engage/decline included); the Activity feed
+ * carries it only for spectators. The XState machine mirrors the subscribed
+ * document (rehydrating mid-ladder on reload is just "render the snapshot");
+ * every button is a Convex mutation whose refusal surfaces inline in table
+ * language (ADR-0010).
  */
 
 const RUNGS: ReadonlyArray<{ status: CastStatus; label: string }> = [
@@ -51,6 +57,7 @@ export function CastCard({
   isStoryteller,
   viewerUserId,
   mySheet,
+  moreWaiting = 0,
 }: {
   cast: CastEntry
   sessionId: Id<"sessions">
@@ -58,6 +65,8 @@ export function CastCard({
   viewerUserId: string
   /** The viewer's own decoded sheet — the caster's input caps read from it. */
   mySheet: CharacterSheet | null
+  /** Drafts queued behind this one — the ST zone's wings note. */
+  moreWaiting?: number
 }) {
   // The machine is a projection of the document (ADR-0016): input rehydrates
   // mid-ladder, SYNC tracks every realtime update, and the card renders from
@@ -65,15 +74,16 @@ export function CastCard({
   const [state, send] = useMachine(castLadderMachine, { input: { cast } })
   useEffect(() => send({ type: "SYNC", cast }), [cast, send])
   const status = ladderRung(state.value, cast)
+  const reduced = useReducedMotion()
 
   const isCaster = cast.casterUserId === viewerUserId
-  // Engage/decline moved to the ST's roll zone (owner call 2026-07-19): the
-  // offer occupies the Storyteller's felt, and the card stays the table's
-  // record — the decision never doubles.
-  const controls = ladderControls(cast, { isStoryteller, isCaster }).filter(
-    (c) => c !== "engage" && c !== "decline",
-  )
+  // The full vocabulary, engage/decline included (card takeover, 2026-07-19):
+  // the card is the ST's roll zone now, so the offer's decision lives on it —
+  // and the feed hides the live card from the ST, so it never doubles.
+  const controls = ladderControls(cast, { isStoryteller, isCaster })
 
+  const engage = useMutation(api.casts.engage)
+  const decline = useMutation(api.casts.decline)
   const kill = useMutation(api.casts.kill)
   const adjustPrice = useMutation(api.casts.adjustPrice)
   const lockPrice = useMutation(api.casts.lockPrice)
@@ -158,33 +168,75 @@ export function CastCard({
   const waiting = waitingOn(cast)
   const terminal = waiting === null
 
+  // The declared pool as physical dice (card takeover, 2026-07-19): the felt
+  // grammar, never the sentence "declared pool 3" — Willpower's precommitted
+  // dice keep their ember provenance, the rest are the sheet's verdigris.
+  // During the caster's containment bet, the dice the bet would eat
+  // (uncontained Paradox + the new wound penalty) ghost from the row's end:
+  // the price being weighed before the one Cast click. The end is where the
+  // embers sit, and that's doctrine, not an accident — the Willpower dice
+  // are pool members "as losable to Paradox as any other die" (ADR-0022).
+  const willpowerDice =
+    cast.declaredComponents.find((c) => c.name === WILLPOWER_COMPONENT_NAME)
+      ?.dots ?? 0
+  const eaten =
+    controls.includes("contain") && mySheet !== null
+      ? containmentOutlook({
+          track: mySheet.healthTrack,
+          declaredPool: cast.declaredPool,
+          paradoxSuccesses: cast.paradoxSuccesses ?? 0,
+          contained: Math.min(contained, containCap),
+        }).eaten
+      : 0
+  const feltDice = Array.from({ length: cast.declaredPool }, (_, i) => {
+    const kind = i >= cast.declaredPool - willpowerDice ? "willpower" : "sheet"
+    const ghosted = i >= cast.declaredPool - eaten
+    return (
+      <FeltDie
+        key={`${kind}:${i}`}
+        kind={kind}
+        reduced={reduced}
+        ghosted={ghosted}
+        title={
+          ghosted
+            ? "Eaten by the bet — uncontained Paradox and its wound penalty"
+            : kind === "willpower"
+              ? "Willpower — precommitted and blind; Paradox can eat these like any others"
+              : "The declared pool, from the sheet"
+        }
+      />
+    )
+  })
+  const lineage = cast.declaredComponents
+    .filter((c) => c.dots > 0 && c.name !== "Willpower")
+    .map((c) => c.name)
+    .join(" + ")
+  const declaredTerms = [
+    // The bought floor (issue #107): what a dispel rolls against.
+    ...(cast.potency !== undefined ? [`Potency ${cast.potency} bought`] : []),
+    ...(cast.targets !== undefined ? [`×${cast.targets} targets`] : []),
+    ...(cast.usesMagicalTool ? ["tool in hand −1"] : []),
+  ]
+
   return (
     <div
       className="mv-cornered mv-panel mv-vulgar-floor rounded-[3px] p-2.5"
       style={terminal && status !== "resolved" ? { opacity: 0.65 } : undefined}
     >
-      {/* header: who casts what */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          <ArcanaGlyph arcanum={cast.arcanum} size={14} className="mv-accent" />
-          <span className="text-[13px] font-medium" style={{ color: "var(--ink)" }}>
-            {cast.casterName}
-          </span>
-          <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
-            vulgar {capitalize(cast.arcanum)} {cast.level}
-            {cast.roteName ? ` · Rote “${cast.roteName}”` : ""}
+      {/* the loud header (card takeover, 2026-07-19): the cast names itself
+          in your face — VULGAR PRIME 1 — the caster and their intent beneath.
+          The old "Vulgar Cast" badge died with it: the headline IS the word. */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <ArcanaGlyph arcanum={cast.arcanum} size={18} className="mv-accent shrink-0" />
+          <span
+            className="mv-h truncate text-[18px] uppercase tracking-[0.06em]"
+            style={{ color: "var(--ink)" }}
+          >
+            Vulgar {cast.arcanum} {cast.level}
           </span>
         </div>
-        <div className="flex gap-1">
-          <span
-            className="mv-data rounded-[2px] px-1 py-0.5 text-[12px] uppercase tracking-wide"
-            style={{
-              border: "1px solid var(--accent)",
-              color: "var(--accent)",
-            }}
-          >
-            Vulgar Cast
-          </span>
+        <div className="flex gap-1 pt-1">
           {status === "voided" && cast.override && (
             <span
               className="mv-data rounded-[2px] px-1 py-0.5 text-[12px] uppercase tracking-wide"
@@ -205,8 +257,18 @@ export function CastCard({
         </div>
       </div>
 
+      <p className="mt-0.5 text-[13px]" style={{ color: "var(--ink)" }}>
+        <span className="font-medium">{cast.casterName}</span>
+        {cast.roteName && (
+          <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
+            {" "}
+            · Rote &ldquo;{cast.roteName}&rdquo;
+          </span>
+        )}
+      </p>
+
       {cast.intent && (
-        <p className="mt-1 text-[12px] italic" style={{ color: "var(--dim)" }}>
+        <p className="mt-0.5 text-[12px] italic" style={{ color: "var(--dim)" }}>
           &ldquo;{cast.intent}&rdquo;
         </p>
       )}
@@ -242,16 +304,48 @@ export function CastCard({
         </div>
       )}
 
+      {/* the declared pool on the felt — provenance left, terms right in the
+          gutter, the same physical grammar as the declaring felt */}
+      <div
+        className="mv-felt mt-2 rounded-[6px] border"
+        style={{
+          borderColor: "var(--line)",
+          background: "color-mix(in srgb, var(--accent) 6%, transparent)",
+        }}
+      >
+        <div className="flex flex-wrap content-start gap-2.5 p-2.5">
+          <AnimatePresence initial={false}>{feltDice}</AnimatePresence>
+          {cast.declaredPool === 0 && (
+            <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
+              no pool — a chance die waits
+            </span>
+          )}
+        </div>
+        <div
+          className="mv-data flex flex-wrap items-baseline justify-between gap-x-2 px-2.5 pb-2 text-[12px] leading-none"
+          style={{ color: "var(--dim)" }}
+        >
+          <span className="truncate">{lineage}</span>
+          <span className="whitespace-nowrap">
+            {declaredTerms.join(" · ")}
+            {cast.spellManaCost > 0 && (
+              <>
+                {declaredTerms.length > 0 ? " · " : ""}
+                <b
+                  className="text-[12px]"
+                  style={{ color: "var(--mana)" }}
+                  title="Mana cost — it spends when the cast commits"
+                >
+                  ◈{cast.spellManaCost}
+                </b>
+              </>
+            )}
+          </span>
+        </div>
+      </div>
+
       {/* the numbers of the moment */}
       <div className="mt-2 grid gap-1 text-[12px]" style={{ color: "var(--dim)" }}>
-        <span className="mv-data">
-          declared pool {cast.declaredPool}
-          {/* The bought floor (issue #107): what a dispel rolls against. */}
-          {cast.potency !== undefined ? ` · Potency ${cast.potency} bought` : ""}
-          {cast.targets !== undefined ? ` · ×${cast.targets} targets` : ""}
-          {cast.spellManaCost > 0 ? ` · ${cast.spellManaCost} Mana cost` : ""}
-          {cast.usesMagicalTool ? " · tool in hand −1" : ""}
-        </span>
         {pool !== null && !terminal && (
           <span className="mv-data">
             Paradox pool{" "}
@@ -385,9 +479,17 @@ export function CastCard({
         />
       )}
 
+      {/* the wings note — more drafts queue behind this one (ST zone) */}
+      {moreWaiting > 0 && (
+        <p className="mt-1.5 text-[12px] italic" style={{ color: "var(--dim)" }}>
+          {moreWaiting} more {moreWaiting === 1 ? "waits" : "wait"} in the wings
+        </p>
+      )}
+
       {/* the viewer's controls — and only theirs. Doctrine (#114): the
-          walk-aways (Withdraw, Cancel, Void) live on the left, the verdigris
-          trigger stands alone on the right — every phase, no exceptions. */}
+          walk-aways (Withdraw, Decline, Cancel, Void) live on the left, the
+          verdigris trigger stands alone on the right — every phase, no
+          exceptions. */}
       {controls.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {controls.includes("kill") && (
@@ -397,6 +499,15 @@ export function CastCard({
               className="mv-btn rounded-[3px] px-3 py-1.5 text-[12px]"
             >
               Withdraw
+            </button>
+          )}
+          {controls.includes("decline") && (
+            <button
+              onClick={() => run(() => decline(step))}
+              disabled={busy}
+              className="mv-btn rounded-[3px] px-3 py-1.5 text-[12px]"
+            >
+              Decline
             </button>
           )}
           {controls.includes("cancel") && (
@@ -420,6 +531,21 @@ export function CastCard({
             </button>
           )}
           <span className="flex-1" />
+          {/* No StageOccupied gate mirror here (ADR-0021): the ST zone only
+              surfaces the offer when the stage is free — an engaged cast
+              holds the zone instead — and the ST is the sole engager, so a
+              refusable Engage click is structurally unreachable. The seam
+              still refuses and the refusal renders inline. */}
+          {controls.includes("engage") && (
+            <button
+              onClick={() => run(() => engage(step))}
+              disabled={busy}
+              className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
+              title="Put the offer on stage — the Tides get set on this card."
+            >
+              Engage
+            </button>
+          )}
           {controls.includes("lockPrice") && (
             <button
               onClick={() => run(() => lockPrice(step))}

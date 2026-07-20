@@ -395,10 +395,21 @@ export function DeclarationFelt({
         </p>
       )}
 
-      {/* the trigger row — Cancel walks away on the left, intent holds the
-          center, Cast commits on the right; a Mana cost rides inside the
-          trigger (owner call 2026-07-19: about to spend, said where you
-          press) */}
+      {/* intent gets its own full-width line (owner call 2026-07-19): room
+          for the player to add color; the triggers move beneath */}
+      <div className="px-3 pt-2">
+        <Input
+          value={cast.context.intent}
+          onChange={(e) => cast.setIntent(e.target.value)}
+          placeholder="What is the spell for?"
+          disabled={busy}
+          className="w-full"
+        />
+      </div>
+
+      {/* the trigger row — Cancel walks away on the left, Cast commits on
+          the right; a Mana cost rides inside the trigger (owner call
+          2026-07-19: about to spend, said where you press) */}
       <div className="flex flex-wrap items-center gap-2 p-3">
         <button
           onClick={cast.cancel}
@@ -407,13 +418,7 @@ export function DeclarationFelt({
         >
           Cancel
         </button>
-        <Input
-          value={cast.context.intent}
-          onChange={(e) => cast.setIntent(e.target.value)}
-          placeholder="What is the spell for?"
-          disabled={busy}
-          className="w-auto flex-1 basis-40"
-        />
+        <span className="flex-1" />
         {showCast && (
           <GateButton
             gate={castGate}

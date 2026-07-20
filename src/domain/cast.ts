@@ -364,6 +364,9 @@ export const ContainmentOutlook = Schema.Struct({
   newPenalty: Schema.Number,
   /** Declared − uncontained + penaltyAfter; zero or below rolls a chance die. */
   castPool: Schema.Number,
+  /** Dice the bet eats off the declared pool (uncontained Paradox plus the
+   * new wound penalty), clamped to the pool — the felt ghosts exactly these. */
+  eaten: Schema.Number,
   /** The stop fills the last box: the full-track unconsciousness rule looms. */
   martyr: Schema.Boolean,
 })
@@ -383,18 +386,23 @@ export const containmentOutlook = (input: {
   const penaltyBefore = woundPenalty(input.track)
   const penaltyAfter = woundPenalty(after)
   const uncontained = input.paradoxSuccesses - input.contained
+  const castPool = finalCastPool({
+    declaredPool: input.declaredPool,
+    paradoxSuccesses: input.paradoxSuccesses,
+    contained: input.contained,
+    woundPenalty: penaltyAfter,
+  })
   return {
     damage: input.contained,
     uncontained,
     penaltyBefore,
     penaltyAfter,
     newPenalty: penaltyAfter - penaltyBefore,
-    castPool: finalCastPool({
-      declaredPool: input.declaredPool,
-      paradoxSuccesses: input.paradoxSuccesses,
-      contained: input.contained,
-      woundPenalty: penaltyAfter,
-    }),
+    castPool,
+    eaten: Math.min(
+      input.declaredPool,
+      Math.max(0, input.declaredPool - castPool),
+    ),
     martyr: input.contained > 0 && isIncapacitated(after),
   }
 }

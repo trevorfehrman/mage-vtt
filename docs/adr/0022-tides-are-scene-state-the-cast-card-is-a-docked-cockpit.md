@@ -17,6 +17,18 @@
 > strips the Storyteller's cancel — chrome only for now; the server still
 > honors either party's cancel, enforcement deferred with the ST-UI
 > project.
+>
+> **Amended** (2026-07-19, the card takeover): "docked, never a takeover"
+> answered a question about the FEED, and for the feed it stands — record
+> plus at most one live card. New doctrine for the **roll zones**: while a
+> cast is live, the card IS the caster's and the Storyteller's roll zones —
+> one artifact, rendered by seat, engage/decline included — and the feed
+> carries the live card **only for spectators** (total absence for the two
+> seats holding it). The takeover-rejection rationale below is superseded
+> for those zones: burying the caster's plain roller is honest (the #109
+> seam already refuses their rolls), and the ST watching a live cast has no
+> other roll to make. On resolution the zones free and the record card
+> lands in the feed for everyone, as before.
 
 Adopted from the 2026-07-18 stage-question grilling (issue #101, worked with
 eyes on the #96 dressing-room rig). This ADR **amends ADR-0016**: the Cast
@@ -136,21 +148,26 @@ un-clicks included. No poker face.
 
 ## The stage answer
 
-**The card, docked — never a takeover.** While a Cast is live (engaged →
-resolved) its card pins to the foot end of the feed: the record scrolls
-above it, the plain roller and input foot stay reachable below it. On
-resolution the card releases into the record flow at its chronological
+**The card, docked — never a takeover.** *(Amended 2026-07-19, the card
+takeover: this answered the feed, where it stands for spectators — but the
+roll zones ARE taken over now; see the header note.)* While a Cast is live
+(engaged → resolved) its card pins to the foot end of the feed: the record
+scrolls above it, the plain roller and input foot stay reachable below it.
+On resolution the card releases into the record flow at its chronological
 place, shrunk to its record form. The feed's identity, for #103: **pure
 record, plus at most one docked cockpit while the stage is occupied.**
 
 A takeover was rejected on the map's own standing rules: it buries the
 sacred plain roller for the length of every vulgar cast, and it blinds the
 table to its own record — the stage is exclusive but the world doesn't
-pause; chat and plain rolls land in the feed mid-drama. An in-flow card
-was rejected because arriving entries scroll the live cockpit off-screen,
-which is fatal for a two-colored "your move" rung. Docking at the foot
-also honors the charting decision that the dice-fiddle area lives in one
-place, every time: the cockpit *is* dice-fiddle.
+pause; chat and plain rolls land in the feed mid-drama. *(Amended
+2026-07-19: for the caster's and ST's roll zones this rationale is
+superseded — the #109 seam already buries the caster's roller in law, and
+the zone takeover leaves the feed's record fully readable beside the card.)*
+An in-flow card was rejected because arriving entries scroll the live
+cockpit off-screen, which is fatal for a two-colored "your move" rung.
+Docking at the foot also honors the charting decision that the dice-fiddle
+area lives in one place, every time: the cockpit *is* dice-fiddle.
 
 ## Consequences
 

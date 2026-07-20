@@ -8,7 +8,7 @@ import {
   calculateImprovisedPool,
   calculateRotePool,
 } from "./spellcasting"
-import { WILLPOWER_BONUS_DICE } from "./willpower-economy"
+import { WILLPOWER_BONUS_DICE, WILLPOWER_COMPONENT_NAME } from "./willpower-economy"
 import type { RawPoolComponent } from "./dice"
 
 /**
@@ -72,7 +72,7 @@ export const previewImprovisedCast: (input: {
       ? [{ type: "modifier", name: "High Speech", dots: 2 }]
       : []),
     ...(input.spendWillpower
-      ? [{ type: "modifier", name: "Willpower", dots: WILLPOWER_BONUS_DICE }]
+      ? [{ type: "modifier", name: WILLPOWER_COMPONENT_NAME, dots: WILLPOWER_BONUS_DICE }]
       : []),
     ...factorPenaltyComponents(pool),
   ]
@@ -130,7 +130,7 @@ const rotePreview = (input: RotePreviewInput, resolved: ResolvedRotePool): CastP
       ? [{ type: "modifier", name: "High Speech", dots: 2 }]
       : []),
     ...(input.spendWillpower
-      ? [{ type: "modifier", name: "Willpower", dots: WILLPOWER_BONUS_DICE }]
+      ? [{ type: "modifier", name: WILLPOWER_COMPONENT_NAME, dots: WILLPOWER_BONUS_DICE }]
       : []),
     ...factorPenaltyComponents(pool),
   ]

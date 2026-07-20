@@ -10,6 +10,10 @@ import { Willpower } from "./quantities"
 /** The dice a spent Willpower point buys (page 75). */
 export const WILLPOWER_BONUS_DICE = 3
 
+/** The component name the spend stamps on a declared pool — the one string
+ * the felt's ember-provenance check matches against (never retyped). */
+export const WILLPOWER_COMPONENT_NAME = "Willpower"
+
 // --- Errors ---
 
 /**

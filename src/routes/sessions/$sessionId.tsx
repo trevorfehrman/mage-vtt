@@ -17,8 +17,7 @@ import {
 } from "#/components/game/DeclarationFelt"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { ResourceStrip } from "#/components/game/ResourceStrip"
-import { CasterPendingCast } from "#/components/game/CasterPendingCast"
-import { StorytellerOffer } from "#/components/game/StorytellerOffer"
+import { CastCard } from "#/components/game/CastCard"
 import { ChatInput } from "#/components/game/ChatInput"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { SheetSky } from "#/components/game/TraitSky"
@@ -145,27 +144,30 @@ function SessionPage() {
 
   const setMagicalTool = useMutation(api.characters.setMagicalTool)
 
-  // The offer occupies the ST's roll zone (owner call 2026-07-19): a vulgar
-  // draft in the wings replaces the felt until answered — the same feed the
-  // Chronicle subscribes to (Convex dedupes), read for the oldest waiting
-  // draft (FIFO through the wings). Engage/decline live only there; the card
-  // stays the record. The stage gate mirrors the server's StageOccupied
-  // refusal so Engage explains itself before the click (ADR-0021).
+  // The live cast occupies the ST's roll zone (the card takeover, owner
+  // ruling 2026-07-19, superseding #110's postures): the engaged cast holds
+  // the zone through the entire ladder; with the stage free, the oldest
+  // waiting draft stands as the offer (FIFO through the wings) — the same
+  // feed the Chronicle subscribes to (Convex dedupes). No StageOccupied
+  // mirror travels with the offer: it only surfaces when the stage is free,
+  // so the gate could never fire (the seam still refuses, inline).
   const activity = useActivity(sessionId, seatMember?._id)
-  const { pendingOffer, moreWaiting, stageGate } = useMemo(() => {
-    if (!activity) return { pendingOffer: null, moreWaiting: 0, stageGate: null }
+  const { pendingOffer, stageCast, moreWaiting } = useMemo(() => {
+    if (!activity) return { pendingOffer: null, stageCast: null, moreWaiting: 0 }
     // The feed arrives newest-first — the last match is the oldest draft.
     const drafts = activity.flatMap((e) =>
       e._tag === "cast" && e.status === "draft" ? [e] : [],
     )
-    const onStage = activity.find((e) => e._tag === "cast" && isOnStage(e.status))
+    const onStage =
+      activity.flatMap((e) =>
+        e._tag === "cast" && isOnStage(e.status) ? [e] : [],
+      )[0] ?? null
     return {
       pendingOffer: drafts[drafts.length - 1] ?? null,
-      moreWaiting: Math.max(0, drafts.length - 1),
-      stageGate:
-        onStage && onStage._tag === "cast"
-          ? `The stage is taken — ${onStage.casterName}'s cast is still playing out.`
-          : null,
+      stageCast: onStage,
+      // Behind an engaged cast the whole wings queue waits; behind the offer
+      // itself, everyone but the offer.
+      moreWaiting: onStage ? drafts.length : Math.max(0, drafts.length - 1),
     }
   }, [activity])
 
@@ -246,10 +248,10 @@ function SessionPage() {
   // (issues #15, #19).
   const isStoryteller = effectiveMember?.role === "storyteller"
 
-  // The caster's occupied roll zone (issue #110): the viewer's own pending
-  // vulgar cast, read off the same feed as the offer. While it stands, the
-  // seam refuses their every other roll (issue #109) — the posture is that
-  // fact, not the enforcement.
+  // The caster's occupied roll zone (the card takeover; was #110's posture):
+  // the viewer's own pending vulgar cast, read off the same feed as the
+  // offer. While it stands, their roll zone IS the cast — honest, since the
+  // seam refuses their every other roll (issue #109).
   const viewerUserId = effectiveMember?.userId ?? user._id
   const myPendingCast =
     activity?.flatMap((e) =>
@@ -257,6 +259,11 @@ function SessionPage() {
         ? [e]
         : [],
     )[0] ?? null
+
+  // The ST's zone cast: the engaged cast through the whole ladder — during
+  // beats where the ST has no move they watch the cast live, never a freed
+  // roller — else the oldest waiting offer.
+  const stZoneCast = isStoryteller ? (stageCast ?? pendingOffer) : null
 
   // Build character sheet content
   let sheetContent: React.ReactNode = undefined
@@ -435,21 +442,38 @@ function SessionPage() {
               beat (.mv-assemble): the zone doesn't swap, it re-marshals
               beneath the masthead, which never remounts — the constant
               presence that makes the boundary read (styles.css). */}
-          {isStoryteller && pendingOffer ? (
-            <div key="offer" className="mv-assemble mv-stage">
-              <StorytellerOffer
-                cast={pendingOffer}
-                sessionId={sessionId}
-                stageGate={stageGate}
-                moreWaiting={moreWaiting}
-              />
+          {stZoneCast ? (
+            // The card takeover (owner ruling 2026-07-19): the live cast IS
+            // the ST's roll zone — the offer's engage/decline, the Tides,
+            // Paradox, Void, all on the one card the feed hides from them.
+            // Keyed by cast so a new occupant re-assembles; rung climbs
+            // render in place.
+            <div key={`cast-${stZoneCast._id}`} className="mv-assemble mv-stage">
+              <div className="border-t p-2" style={{ borderColor: "var(--line)" }}>
+                <CastCard
+                  cast={stZoneCast}
+                  sessionId={sessionId}
+                  isStoryteller={isStoryteller}
+                  viewerUserId={viewerUserId}
+                  mySheet={mySheet}
+                  moreWaiting={moreWaiting}
+                />
+              </div>
             </div>
           ) : myPendingCast ? (
-            // The caster's own pending cast holds their zone (issue #110) —
-            // spectators keep the chronicle card; this seat's dice are
-            // spoken for until the cast resolves.
-            <div key="pending" className="mv-assemble mv-stage">
-              <CasterPendingCast cast={myPendingCast} sessionId={sessionId} />
+            // The caster's own live cast holds their zone the same way, from
+            // draft clear through resolution — controls as their beats come,
+            // the felt-dice declared pool standing where the roller was.
+            <div key={`cast-${myPendingCast._id}`} className="mv-assemble mv-stage">
+              <div className="border-t p-2" style={{ borderColor: "var(--line)" }}>
+                <CastCard
+                  cast={myPendingCast}
+                  sessionId={sessionId}
+                  isStoryteller={isStoryteller}
+                  viewerUserId={viewerUserId}
+                  mySheet={mySheet}
+                />
+              </div>
             </div>
           ) : rawCast.state !== "idle" && mySheet ? (
             <div key="declaring" className="mv-assemble mv-stage">

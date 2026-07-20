@@ -11,8 +11,9 @@ import { healthBoxGlyph, ResistantDot } from "./CharacterSheet"
  * ghost during pool composition — filled pip = held (each in its identity
  * color), hollow ember ◇ = the point being weighed (the #102 pending
  * recipe), line-dark = spent. Pips group in fives so a count reads without
- * counting; Mana keeps a small numeral — a currency is counted in numbers.
- * Personal only; the sheet is the document, this is the HUD.
+ * counting. No words, no numerals (owner call 2026-07-19): the glyphs and
+ * the pip grammar are the labels — hover still names each meter. Personal
+ * only; the sheet is the document, this is the HUD.
  */
 export function ResourceStrip({
   character,
@@ -41,10 +42,9 @@ export function ResourceStrip({
           current={character.manaCurrent}
           max={character.maxMana}
           pending={pendingMana}
-          numeral
         />
         <PipMeter
-          label="Will"
+          label="Willpower"
           glyph="◆"
           color="var(--accent)"
           current={character.willpowerCurrent}
@@ -65,8 +65,7 @@ export function ResourceStrip({
 function HealthMini({ track }: { track: CharacterSheet["healthTrack"] }) {
   const penalty = woundPenalty(track)
   return (
-    <div className="flex items-center gap-2">
-      <span className="mv-eyebrow">Health</span>
+    <div className="flex items-center gap-2" title="Health">
       <span className="flex gap-[3px]">
         {track.map((box, i) => (
           <span key={i} className="relative">
@@ -106,7 +105,8 @@ function HealthMini({ track }: { track: CharacterSheet["healthTrack"] }) {
 /**
  * The shared spendable-pool meter — one grammar for Mana and Will. Points
  * being weighed right now render as the pending ghost (hollow ember ◇, the
- * #102 recipe); a gap after every fifth pip makes the count skimmable.
+ * #102 recipe); a gap after every fifth pip makes the count skimmable. The
+ * label survives only as the hover name — the glyph is the visible label.
  */
 function PipMeter({
   label,
@@ -115,7 +115,6 @@ function PipMeter({
   current,
   max,
   pending,
-  numeral = false,
 }: {
   label: string
   glyph: string
@@ -124,13 +123,10 @@ function PipMeter({
   max: number
   /** Points armed on the felt — ghosted here, spent when the act commits. */
   pending: number
-  /** A currency is counted in numbers — Mana keeps its small count. */
-  numeral?: boolean
 }) {
   const ghosts = Math.min(pending, current)
   return (
-    <span className="flex items-center gap-2">
-      <span className="mv-eyebrow">{label}</span>
+    <span className="flex items-center gap-2" title={label}>
       <span className="inline-flex gap-[3px]">
         {Array.from({ length: max }, (_, i) => {
           const isGhost = i >= current - ghosts && i < current
@@ -156,21 +152,6 @@ function PipMeter({
           )
         })}
       </span>
-      {numeral && (
-        <span className="mv-data text-[11px]" style={{ color }}>
-          {current}
-          <span className="font-normal opacity-60">/{max}</span>
-          {pending > 0 && (
-            <span
-              className="opacity-60"
-              title="Pending — armed on the felt, spent when it commits"
-            >
-              {" "}
-              −{pending}
-            </span>
-          )}
-        </span>
-      )}
     </span>
   )
 }

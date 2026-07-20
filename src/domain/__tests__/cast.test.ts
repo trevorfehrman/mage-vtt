@@ -318,7 +318,27 @@ describe("containmentOutlook (issue #45: the informed bet, double shrink and all
     expect(outlook.penaltyAfter).toBe(0)
     expect(outlook.newPenalty).toBe(0)
     expect(outlook.castPool).toBe(2)
+    expect(outlook.eaten).toBe(3)
     expect(outlook.martyr).toBe(false)
+  })
+
+  it("eaten counts the felt's ghosts and never exceeds the pool", () => {
+    // Uncontained 3 + new penalty −1 eats 4 of 5 declared dice.
+    const shrunkTwice = containmentOutlook({
+      track: track(3, 4),
+      declaredPool: 5,
+      paradoxSuccesses: 3,
+      contained: 1,
+    })
+    expect(shrunkTwice.eaten).toBe(5 - shrunkTwice.castPool)
+    // A pool eaten past zero ghosts everything — never more dice than exist.
+    const overrun = containmentOutlook({
+      track: track(7, 0),
+      declaredPool: 2,
+      paradoxSuccesses: 4,
+      contained: 0,
+    })
+    expect(overrun.eaten).toBe(2)
   })
 
   it("containment into the last three boxes shrinks the pool twice", () => {

@@ -3,6 +3,7 @@ import { Match } from "effect"
 import { ScrollArea } from "#/components/ui/scroll-area"
 import { useActivity } from "#/hooks/use-activity"
 import type { MessageEntry, OverrideMark, RollEntry } from "#/domain/activity"
+import { isUnresolved } from "#/domain/cast"
 import type { CharacterSheet } from "#/domain/character"
 import { isDieDramaticFailure, isDieExplosive, isDieSuccess } from "#/domain/dice"
 import { ArcanaGlyph } from "./ArcanaGlyph"
@@ -130,18 +131,25 @@ export function ActivityLog({
                 />
               )),
               Match.tag("roll", (roll) => <RollItem key={roll._id} roll={roll} />),
-              // The live Cast card (issue #43): a projection of the Cast
-              // document, climbing its ladder in place among the beats.
-              Match.tag("cast", (cast) => (
-                <CastCard
-                  key={cast._id}
-                  cast={cast}
-                  sessionId={sessionId}
-                  isStoryteller={isStoryteller}
-                  viewerUserId={viewerUserId}
-                  mySheet={mySheet}
-                />
-              )),
+              // The live Cast card (issue #43; the card takeover,
+              // 2026-07-19): while the cast is live it stands in the
+              // caster's and the Storyteller's roll zones, so the feed
+              // carries it only for spectators — total absence for the two
+              // seats holding it, never a slimmed stub. On resolution the
+              // zones free and the record renders here for everyone.
+              Match.tag("cast", (cast) =>
+                isUnresolved(cast.status) &&
+                (isStoryteller || cast.casterUserId === viewerUserId) ? null : (
+                  <CastCard
+                    key={cast._id}
+                    cast={cast}
+                    sessionId={sessionId}
+                    isStoryteller={isStoryteller}
+                    viewerUserId={viewerUserId}
+                    mySheet={mySheet}
+                  />
+                ),
+              ),
               Match.exhaustive,
             ),
           )}
