@@ -355,6 +355,55 @@ pre code {
   margin: 0;
 }
 
+/* Reality breaking down (2026-07-20): a chromatic-aberration glitch on the
+   Paradox severity word. The base sits in --paradox; two clipped ghost copies
+   (cyan + hot magenta) tear left and right on their own offbeat loops, so the
+   word stutters like a signal that can't hold. Needs `data-text` on the
+   element (the ::before/::after pull their content from it). */
+.mv-glitch {
+  position: relative;
+  display: inline-block;
+}
+.mv-glitch::before,
+.mv-glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.mv-glitch::before {
+  color: #57e0ff;
+  animation: mv-glitch-a 2.1s infinite steps(2, jump-none);
+}
+.mv-glitch::after {
+  color: #ff2e63;
+  animation: mv-glitch-b 1.55s infinite steps(2, jump-none);
+}
+@keyframes mv-glitch-a {
+  0%, 100% { clip-path: inset(0 0 62% 0); transform: translate(-1px, 0); }
+  18% { clip-path: inset(12% 0 46% 0); transform: translate(-3px, -1px); }
+  36% { clip-path: inset(48% 0 22% 0); transform: translate(2px, 1px); }
+  54% { clip-path: inset(6% 0 74% 0); transform: translate(-2px, 0); }
+  72% { clip-path: inset(66% 0 8% 0); transform: translate(3px, 1px); }
+  90% { clip-path: inset(34% 0 40% 0); transform: translate(-1px, -1px); }
+}
+@keyframes mv-glitch-b {
+  0%, 100% { clip-path: inset(58% 0 4% 0); transform: translate(1px, 0); }
+  22% { clip-path: inset(20% 0 52% 0); transform: translate(3px, 1px); }
+  44% { clip-path: inset(70% 0 6% 0); transform: translate(-2px, -1px); }
+  66% { clip-path: inset(38% 0 34% 0); transform: translate(2px, 0); }
+  88% { clip-path: inset(4% 0 78% 0); transform: translate(-3px, 1px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mv-glitch::before { clip-path: inset(0 0 62% 0); transform: translate(-2px, 0); animation: none; }
+  .mv-glitch::after { clip-path: inset(58% 0 4% 0); transform: translate(2px, 0); animation: none; }
+}
+
 .mv-eyebrow {
   font-family: var(--font-mono);
   text-transform: uppercase;

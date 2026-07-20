@@ -24,7 +24,7 @@ import { rollOdds } from "#/domain/probability"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
-import { ArcanaGlyph } from "./ArcanaGlyph"
+import { ArcanaGlyph, arcanumRealm } from "./ArcanaGlyph"
 import { healthBoxGlyph, ResistantDot } from "./CharacterSheet"
 import { Die } from "./Die"
 import { FeltDie } from "./FeltDie"
@@ -313,10 +313,6 @@ export function CastCard({
     : feltPool !== null
       ? feltPool.modifiers.filter((m) => m.source !== MANA_MITIGATION_SOURCE)
       : (cast.adjustments ?? [])
-  const lineage = cast.declaredComponents
-    .filter((c) => c.dots > 0 && c.name !== WILLPOWER_COMPONENT_NAME)
-    .map((c) => c.name)
-    .join(" + ")
   const declaredTerms = [
     // The bought floor (issue #107): what a dispel rolls against.
     ...(cast.potency !== undefined ? [`Potency ${cast.potency} bought`] : []),
@@ -443,26 +439,112 @@ export function CastCard({
         </div>
       )}
 
-      {/* the declared pool on the felt — provenance left, terms right in the
-          gutter, the same physical grammar as the declaring felt; the Paradox
-          pool stands beneath it in red, and the Tides badges explain both */}
+      {/* Provenance ABOVE the felt (2026-07-20): the pool's lineage and the
+          declared terms sit above the dice; the felt itself holds only the
+          physical dice, and the Tides tags stand directly beneath it. */}
       <div
-        className="mv-felt mt-2 rounded-[6px] border"
+        className="mv-data mt-2 flex flex-wrap items-baseline justify-between gap-x-2 text-[12px] leading-none"
+        style={{ color: "var(--dim)" }}
+      >
+        {/* Each pool component as an outlined tag (2026-07-20), the flood-tag
+            grammar: Gnosis in theme-green (it still ADDS dice — the pool is
+            Gnosis + Arcanum), the Arcanum in its Supernal realm color (Matter →
+            Stygia lead). */}
+        <span className="flex flex-wrap items-center gap-1.5">
+          {cast.declaredComponents
+            .filter((c) => c.dots > 0 && c.name !== WILLPOWER_COMPONENT_NAME)
+            .map((c) => {
+              const tint =
+                c.type === "arcanum"
+                  ? `var(--realm-${arcanumRealm(c.name.toLowerCase())})`
+                  : "var(--accent)"
+              return (
+                <span
+                  key={c.name}
+                  className="whitespace-nowrap rounded-[2px] px-1 py-px"
+                  style={{ border: `1px solid ${tint}`, color: tint }}
+                >
+                  {c.name} + {c.dots}
+                </span>
+              )
+            })}
+        </span>
+        <span className="whitespace-nowrap">{declaredTerms.join(" · ")}</span>
+      </div>
+      <div
+        className="mv-felt mt-1.5 rounded-[6px] border"
         style={{
           borderColor: "var(--line)",
           background: "color-mix(in srgb, var(--accent) 6%, transparent)",
         }}
       >
-        <div className="flex flex-wrap content-start gap-2.5 p-2.5">
-          <AnimatePresence initial={false}>{feltDice}</AnimatePresence>
-          {cast.declaredPool === 0 && (
-            <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
-              no pool — a chance die waits
-            </span>
-          )}
-        </div>
+        {status === "resolved" && cast.castRolls !== undefined ? (
+          // The cast roll on ONE row (2026-07-20): rolled faces, then the dice
+          // the containment bet ATE as empty ghosts (declared − rolled), so the
+          // felt shows the whole Gnosis + Arcanum pool. Explosions sit inline.
+          <div className="flex flex-wrap content-start gap-4 p-2.5">
+            {cast.castRolls.map((v, i) => (
+              <Die
+                key={`fb${i}`}
+                v={v}
+                again={10}
+                chance={
+                  cast.castIsChanceDie ??
+                  (cast.castPool !== undefined && cast.castPool <= 0)
+                }
+                size="md"
+                diamond
+              />
+            ))}
+            {Array.from({
+              length: Math.max(0, cast.declaredPool - cast.castRolls.length),
+            }).map((_, i) => (
+              <Die key={`fg${i}`} v={0} again={10} size="md" diamond ghost />
+            ))}
+            {(cast.castRoteRerolls ?? []).map((v, i) => (
+              <Die key={`fr${i}`} v={v} again={10} ring="rote" size="md" diamond />
+            ))}
+            {(cast.castExplosions ?? []).map((v, i) => (
+              <Die key={`fe${i}`} v={v} again={10} size="md" diamond />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-wrap content-start gap-4 p-2.5">
+            <AnimatePresence initial={false}>{feltDice}</AnimatePresence>
+            {cast.declaredPool === 0 && (
+              <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
+                no pool — a chance die waits
+              </span>
+            )}
+          </div>
+        )}
+        {status === "resolved" && (cast.paradoxRolls ?? []).length > 0 && (
+          <div className="flex flex-wrap content-start gap-4 px-2.5 pb-2.5 pt-1">
+            {(cast.paradoxRolls ?? []).map((v, i) => (
+              <Die
+                key={`fp${i}`}
+                v={v}
+                again={10}
+                chance={cast.paradoxIsChanceDie ?? false}
+                tone="paradox"
+                size="md"
+                diamond
+              />
+            ))}
+            {(cast.paradoxExplosions ?? []).map((v, i) => (
+              <Die
+                key={`fpe${i}`}
+                v={v}
+                again={10}
+                tone="paradox"
+                size="md"
+                diamond
+              />
+            ))}
+          </div>
+        )}
         {paradoxDiceCount !== null && (
-          <div className="flex flex-wrap content-start gap-2.5 px-2.5 pb-2.5">
+          <div className="flex flex-wrap content-start gap-3 px-2.5 pb-2.5 pt-1">
             <AnimatePresence initial={false}>
               {Array.from({ length: paradoxDiceCount }, (_, i) => (
                 <FeltDie
@@ -490,27 +572,15 @@ export function CastCard({
             </AnimatePresence>
           </div>
         )}
-        <div
-          className="mv-data flex flex-wrap items-baseline justify-between gap-x-2 px-2.5 pb-2 text-[12px] leading-none"
-          style={{ color: "var(--dim)" }}
-        >
-          <span className="truncate">{lineage}</span>
-          {/* No ◈ here (2026-07-19 pass 2, note 1): the spell's Mana cost
-              ghosts on the caster's masthead from the first on-stage phase —
-              the felt keeps to dice and provenance. */}
-          <span className="whitespace-nowrap">{declaredTerms.join(" · ")}</span>
-        </div>
-        {/* The pass-2 "Gnosis base" badge is retired (pass 3, note 6): the
-            base dice themselves wear gnosis-green on the felt above, so
-            green base + tags = the felt's total without a badge. */}
-        {tideBadges.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 px-2.5 pb-2.5">
-            {tideBadges.map((m, i) => (
-              <TideBadge key={`${m.source}-${i}`} modifier={m} />
-            ))}
-          </div>
-        )}
       </div>
+      {/* The Tides tags directly BENEATH the felt (2026-07-20). */}
+      {tideBadges.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {tideBadges.map((m, i) => (
+            <TideBadge key={`${m.source}-${i}`} modifier={m} />
+          ))}
+        </div>
+      )}
 
       {/* the odds line — directly beneath the felt (note 16); ONE line, and
           in the Tides phase it prices the spell, not the table's Paradox
@@ -880,12 +950,14 @@ function TideBadge({
   disabled?: boolean
 }) {
   const ebb = modifier.dice < 0
+  const tint = ebb ? "var(--accent)" : "var(--ember)"
   return (
     <span
       className="mv-data inline-flex items-center gap-1 rounded-[2px] px-1 py-px text-[12px] leading-tight"
       style={{
-        background: ebb ? "var(--accent)" : "var(--ember)",
-        color: "var(--chip-ink)",
+        background: "transparent",
+        border: `1px solid ${tint}`,
+        color: tint,
       }}
       title={
         ebb
@@ -893,13 +965,14 @@ function TideBadge({
           : "Flood — the Tides rise: more Paradox dice"
       }
     >
-      {modifier.source} {modifier.dice > 0 ? `+${modifier.dice}` : modifier.dice}
+      {modifier.source}{" "}
+      {modifier.dice > 0 ? `+ ${modifier.dice}` : `− ${Math.abs(modifier.dice)}`}
       {onRemove && (
         <button
           onClick={onRemove}
           disabled={disabled}
           className="leading-none opacity-80 disabled:opacity-40"
-          style={{ color: "var(--chip-ink)" }}
+          style={{ color: tint }}
           title="Remove this adjustment"
         >
           ×
@@ -1285,65 +1358,50 @@ function ParadoxCockpit({
  */
 function Resolution({ cast }: { cast: CastEntry }) {
   const successes = cast.castSuccesses ?? 0
-  const chance = cast.castIsChanceDie ?? (cast.castPool !== undefined && cast.castPool <= 0)
+  const won = successes > 0
+  const manifested = cast.severity !== undefined && cast.severity !== "none"
   return (
-    <div className="mt-2 grid gap-1.5">
-      <div className="flex items-baseline gap-2">
-        <span
-          className="mv-data text-[18px] font-bold uppercase leading-none tracking-[0.08em]"
-          style={{ color: successes > 0 ? "var(--rail-success)" : "var(--dim)" }}
-        >
-          {successes} {successes === 1 ? "success" : "successes"}
-        </span>
-        <span className="flex-1" />
-        {cast.castIsDramaticFailure && <ResolutionTag kind="bad">Dramatic Failure</ResolutionTag>}
-        {cast.castIsExceptionalSuccess && <ResolutionTag kind="good">Exceptional</ResolutionTag>}
-      </div>
-      {/* The release roll always throws 10-again today (rollPool's default;
-          the flow passes no options) — stamp an again field beside the faces
-          before any variant threshold reaches the vulgar ladder. */}
-      {cast.castRolls !== undefined && (
-        <div className="flex flex-wrap gap-1">
-          {cast.castRolls.map((v, i) => (
-            <Die key={`b${i}`} v={v} again={10} chance={chance} size="md" />
-          ))}
-          {(cast.castRoteRerolls ?? []).map((v, i) => (
-            <Die key={`r${i}`} v={v} again={10} ring="rote" size="md" />
-          ))}
-          {(cast.castExplosions ?? []).map((v, i) => (
-            <Die key={`e${i}`} v={v} again={10} ring="exp" size="md" />
-          ))}
+    <div className="mt-2 grid justify-items-center gap-1.5">
+      {(cast.castIsDramaticFailure || cast.castIsExceptionalSuccess) && (
+        <div className="flex items-baseline gap-2">
+          {cast.castIsDramaticFailure && <ResolutionTag kind="bad">Dramatic Failure</ResolutionTag>}
+          {cast.castIsExceptionalSuccess && <ResolutionTag kind="good">Exceptional</ResolutionTag>}
         </div>
       )}
-      {/* The Paradox roll's faces, bare (note 9): the red tone (#114's
-          more-is-worse) is the row's whole label. */}
-      {(cast.paradoxRolls ?? []).length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {(cast.paradoxRolls ?? []).map((v, i) => (
-            <Die
-              key={`p${i}`}
-              v={v}
-              again={10}
-              chance={cast.paradoxIsChanceDie ?? false}
-              tone="paradox"
-              size="md"
-            />
-          ))}
-          {(cast.paradoxExplosions ?? []).map((v, i) => (
-            <Die key={`pe${i}`} v={v} again={10} ring="exp" tone="paradox" size="md" />
-          ))}
+      {/* Prototype (2026-07-20): the outcome on ONE centered line — SUCCESS
+          first (green), a dim divider, then the Paradox severity noun in the
+          reality-bending face. The "N success" count is gone; the felt's
+          diamonds show every roll at once. */}
+      {(won || manifested) && (
+        <div className="flex items-baseline justify-center gap-3 text-[18px] uppercase leading-none tracking-[0.1em]">
+          {won && (
+            <span
+              className="mv-h"
+              style={{
+                color: "var(--rail-success)",
+                textShadow: "0 0 12px color-mix(in srgb, var(--rail-success) 50%, transparent)",
+              }}
+            >
+              Success
+            </span>
+          )}
+          {won && manifested && (
+            <span aria-hidden style={{ color: "var(--dim)" }}>
+              ·
+            </span>
+          )}
+          {manifested && (
+            <span
+              className="mv-h"
+              style={{
+                color: "var(--paradox)",
+                textShadow: "0 0 12px color-mix(in srgb, var(--paradox) 55%, transparent)",
+              }}
+            >
+              {cast.severity}
+            </span>
+          )}
         </div>
-      )}
-      {cast.severity !== undefined && cast.severity !== "none" && (
-        <span
-          className="mv-h text-[18px] uppercase leading-none tracking-[0.1em]"
-          style={{
-            color: "var(--paradox)",
-            textShadow: "0 0 12px color-mix(in srgb, var(--paradox) 50%, transparent)",
-          }}
-        >
-          {cast.severity}
-        </span>
       )}
     </div>
   )
