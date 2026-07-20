@@ -215,15 +215,16 @@ describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
       expect(store.messages[3]!.override).toBeNull()
 
       // Beat 5 — the ST's own Paradox roll: 3 − 1 mitigated = 2 dice. The
-      // rung holds; the stamped successes flip its phase to the caster.
+      // rung holds; the stamped successes flip its phase to the caster. The
+      // roll's faces stamp the document like the release's (pass 2, note 5):
+      // no roll entry lands — the card is the one artifact in the feed.
       yield* rollParadox({ sessionId: SESSION, castId }).pipe(
         as(ST_USER),
         Effect.provide(store.layer),
       )
-      expect(store.rolls).toHaveLength(1)
-      const paradoxEntry = store.rolls[0]!
-      expect(paradoxEntry.userId).toBe(ST_USER) // the ST's act, the ST's entry
-      expect(paradoxEntry.result.poolSize).toBe(2)
+      expect(store.rolls).toHaveLength(0)
+      expect(store.casts[0]!.paradoxRolls).toHaveLength(2)
+      expect(store.casts[0]!.paradoxIsChanceDie).toBe(false)
       // This seed rolls ≥1 success, so the cockpit has something to contain.
       const paradoxSuccesses = store.casts[0]!.paradoxSuccesses!
       expect(paradoxSuccesses).toBeGreaterThan(0)
@@ -243,10 +244,10 @@ describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
       const track = store.sheets.get(CHARACTER)!.healthTrack
       expect(track.filter((b) => b.severity === "bashing" && b.resistant)).toHaveLength(1)
       expect(resolved.castPool).toBe(4 - uncontained)
-      // The resolution merge (2026-07-19): no second roll entry — the
-      // release's faces stamp onto the Cast document, and the resolved card
-      // is the record every seat reads.
-      expect(store.rolls).toHaveLength(1)
+      // The resolution merge (2026-07-19, completed by pass 2's note 5): NO
+      // roll entries at all — both rolls' faces stamp onto the Cast document,
+      // and the one card is the record every seat reads.
+      expect(store.rolls).toHaveLength(0)
       expect(resolved.castRolls).toHaveLength(Math.max(4 - uncontained, 1))
       expect(resolved.castIsChanceDie).toBe(false)
       expect(resolved.castSuccesses).toBeDefined()
@@ -254,8 +255,8 @@ describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
       expect(resolved.severity).toBe(uncontained === 0 ? "none" : "havoc")
 
       // Every commitment landed its own atomic Activity entry (ADR-0009):
-      // four system messages + the Paradox roll — resolution rides the card.
-      expect(store.messages.length + store.rolls.length).toBe(5)
+      // four system messages — both rolls ride the card, not the feed.
+      expect(store.messages.length + store.rolls.length).toBe(4)
 
       // The resolved Cast now prices the next one: the accumulator derives
       // from Cast history at the fix, never a tally (ADR-0012).
@@ -291,11 +292,13 @@ describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
         Effect.provide(store.layer),
       )
 
-      expect(store.rolls[0]!.result.isChanceDie).toBe(true)
-      expect(store.rolls[0]!.result.successes).toBe(0)
+      // The chance die stamps the document, no roll entry (pass 2, note 5):
+      // the card's quiet slot speaks "nothing to contain" itself.
+      expect(store.rolls).toHaveLength(0)
+      expect(store.casts[0]!.paradoxIsChanceDie).toBe(true)
+      expect(store.casts[0]!.paradoxRolls).toHaveLength(1)
       expect(store.casts[0]!.status).toBe("paradox") // caster phase now
       expect(store.casts[0]!.paradoxSuccesses).toBe(0)
-      expect(store.rolls[0]!.summary).toContain("Nothing to contain")
 
       // The one Cast click with nothing to contain: zero is the only choice.
       yield* releaseCast({
@@ -716,16 +719,16 @@ describe("Flows.vulgarCast — The Price (ADR-0022)", () => {
         manaMitigation: 0,
       }).pipe(as(PLAYER), Effect.provide(store.layer))
 
-      // The roll itself throws the stamped pool, every source readable.
+      // The roll itself throws the stamped pool, its faces stamped one per
+      // die onto the document (pass 2, note 5) — no roll entry lands; the
+      // sources stay readable on the doc's tides and adjustments above.
       yield* rollParadox({ sessionId: SESSION, castId: CAST }).pipe(
         as(ST_USER),
         Effect.provide(store.layer),
       )
-      expect(store.rolls[0]!.result.poolSize).toBe(7)
-      const names = store.rolls[0]!.components.map((c) => c.name)
-      expect(names).toContain("Sleeper witnesses (3)")
-      expect(names).toContain("Ley line nexus")
-      expect(names).toContain("Broken hand")
+      expect(store.rolls).toHaveLength(0)
+      expect(store.casts[2]!.paradoxRolls).toHaveLength(7)
+      expect(store.casts[2]!.paradoxIsChanceDie).toBe(false)
     }).pipe(Random.withSeed("negotiation")),
   )
 
@@ -1575,13 +1578,14 @@ describe("Flows.vulgarCast — the rote lane (issue #47)", () => {
         Effect.provide(store.layer),
       )
 
-      // The roll itself wears the modifier, readable in the entry's components.
+      // The roll throws the rote-priced pool — 2 faces stamp the document
+      // (pass 2, note 5); the −1 already spoke in the fix's narration above.
       yield* rollParadox({ sessionId: SESSION, castId }).pipe(
         as(ST_USER),
         Effect.provide(store.layer),
       )
-      expect(store.rolls[0]!.result.poolSize).toBe(2)
-      expect(store.rolls[0]!.components.map((c) => c.name)).toContain("Rote casting")
+      expect(store.rolls).toHaveLength(0)
+      expect(store.casts[0]!.paradoxRolls).toHaveLength(2)
     }).pipe(Random.withSeed("rote-paradox")),
   )
 })

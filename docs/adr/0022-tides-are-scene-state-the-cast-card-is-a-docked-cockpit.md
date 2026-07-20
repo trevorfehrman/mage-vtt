@@ -1,5 +1,20 @@
 # Tides are scene state; the cast card is a docked cockpit
 
+> **Amended** (2026-07-19, vulgar polish pass 2): the Paradox-roll merge —
+> the owner flagged the separate Paradox roll card in the spectator feed, so
+> the roll now gets the same treatment as the release: its faces stamp onto
+> the Cast document (`paradoxRolls`/`paradoxExplosions`/`paradoxIsChanceDie`
+> beside the existing successes) and `rollParadox` inserts no roll entry —
+> a spectator's feed carries exactly ONE artifact per cast. The pass-1 note
+> below ("the Paradox roll keeps its own roll entry") is withdrawn; the
+> different-actor-beats rule stands for MUTATIONS (the roll is still its own
+> ST-gated mutation), it just no longer implies a separate feed record. The
+> dramatic-failure grace note that lived in the roll's summary now speaks
+> from the card (cockpit quiet slot, Resolution record). Also chrome: the
+> ST's cancel leaves the fluid Tides phase too (redundant beside Void
+> pre-commitment — nothing is spent yet); the seam still honors either
+> party's cancel, same posture as #114's fixed-price strip.
+>
 > **Amended** (2026-07-19, #112 audit → #113): containment drafting is no
 > longer broadcast working state — the per-click `setDraftContainment`
 > mutation made the cockpit sluggish, and the owner reversed it. Containment
@@ -27,7 +42,8 @@
 > release roll's faces stamp onto the Cast document (`castRolls` and kin)
 > and the resolved card IS the record, one card in the feed instead of two.
 > The Paradox roll keeps its own roll entry (a different actor's beat; the
-> owner did not flag it). ADR-0012 stands: the accumulator reads resolved
+> owner did not flag it). *(Withdrawn by pass 2, above: the owner flagged
+> it.)* ADR-0012 stands: the accumulator reads resolved
 > Cast rows, which never stopped being written.
 >
 > **Amended** (2026-07-19, the card takeover): "docked, never a takeover"
@@ -119,7 +135,9 @@ click (one server commitment instead of two), and the card may still play
 "the sacrifice lands" then "the dice fly" as sequential animations from one
 event. Different-actor beats never fuse: the ST's Paradox roll and the
 freeze remain their own mutations — same logic 0016 used when it collapsed
-declare+mitigate but kept the rest apart.
+declare+mitigate but kept the rest apart. *(Pass-2 clarification, header
+note: "own mutation" no longer implies "own feed record" — the Paradox
+roll's faces stamp the Cast document and no roll entry lands.)*
 
 ## The cockpit
 

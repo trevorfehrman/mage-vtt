@@ -315,8 +315,15 @@ export const CastDoc = Schema.Struct({
   tides: Schema.optionalKey(TidesSnapshot),
   // Commitment (the caster's point of no return)
   manaMitigation: Schema.optionalKey(Schema.Number),
-  // The Paradox roll — stamped mid-rung; its presence flips the phase.
+  // The Paradox roll — stamped mid-rung; its presence flips the phase. The
+  // roll's faces ride the document too (the 2026-07-19 polish, note 5: the
+  // same resolution-merge treatment as the release), so a spectator's feed
+  // carries the one live card and no roll entry beside it. Rows rolled
+  // before the merge carry only successes; the card renders what's there.
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
+  paradoxRolls: Schema.optionalKey(Schema.Array(Schema.Number)),
+  paradoxExplosions: Schema.optionalKey(Schema.Array(Schema.Number)),
+  paradoxIsChanceDie: Schema.optionalKey(Schema.Boolean),
   paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
   // The one Cast click and resolution. The release roll's faces live here
   // (the resolution-merge ruling, 2026-07-19): the resolved card is the

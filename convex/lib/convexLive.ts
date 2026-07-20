@@ -417,6 +417,15 @@ export const convexLive = (
             ...(patch.paradoxSuccesses !== undefined
               ? { paradoxSuccesses: patch.paradoxSuccesses }
               : {}),
+            ...(patch.paradoxRolls !== undefined
+              ? { paradoxRolls: [...patch.paradoxRolls] }
+              : {}),
+            ...(patch.paradoxExplosions !== undefined
+              ? { paradoxExplosions: [...patch.paradoxExplosions] }
+              : {}),
+            ...(patch.paradoxIsChanceDie !== undefined
+              ? { paradoxIsChanceDie: patch.paradoxIsChanceDie }
+              : {}),
             ...(patch.paradoxIsDramaticFailure !== undefined
               ? { paradoxIsDramaticFailure: patch.paradoxIsDramaticFailure }
               : {}),

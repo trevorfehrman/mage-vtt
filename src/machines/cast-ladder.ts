@@ -95,7 +95,6 @@ export const ladderControls = (
   cast: CastPhases,
   viewer: { isStoryteller: boolean; isCaster: boolean },
 ): ReadonlyArray<LadderControl> => {
-  const eitherParty = viewer.isCaster || viewer.isStoryteller
   const rung = Match.value(cast.status).pipe(
     Match.withReturnType<ReadonlyArray<LadderControl>>(),
     Match.when("draft", () => [
@@ -107,9 +106,13 @@ export const ladderControls = (
         ? // Locked means locked (#114): only the caster may still bail — the
           // ST fixed the price and holds no cancel, just the repair door.
           [...(viewer.isCaster ? (["commit", "cancel"] as const) : [])]
-        : [
+        : // The caster alone wears cancel on the fluid Tides too (owner note,
+          // 2026-07-19): for the ST it was redundant chrome beside Void —
+          // pre-commitment nothing is spent, so the outcomes near-coincide.
+          // The seam still honors either party's cancel; this is chrome only.
+          [
             ...(viewer.isStoryteller ? (["adjust", "lockPrice"] as const) : []),
-            ...(eitherParty ? (["cancel"] as const) : []),
+            ...(viewer.isCaster ? (["cancel"] as const) : []),
           ],
     ),
     Match.when("paradox", () =>

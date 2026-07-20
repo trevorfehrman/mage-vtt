@@ -63,6 +63,12 @@ const rungIndex = (status: CastStatus): number => {
   return i === -1 ? RUNGS.length : i
 }
 
+/** The chance-die grace, one voice (note 5): it lived in the retired Paradox
+ * roll card's summary; now the cockpit's quiet slot and the Resolution both
+ * speak it — from one string, so the two can't drift. */
+const PARADOX_GRACE =
+  "dramatic failure — Paradox relents, and the Scene forgives its next accumulation"
+
 export function CastCard({
   cast,
   sessionId,
@@ -85,8 +91,9 @@ export function CastCard({
   casterSheet?: CharacterSheet | null
   /** Drafts queued behind this one — the ST zone's wings note. */
   moreWaiting?: number
-  /** The masthead's Mana ghost (2026-07-19 polish, note 8): reports spell
-   * cost + selected mitigation while the commit decision is live, 0 after. */
+  /** The masthead's Mana ghost (2026-07-19 pass 2, note 1): reports the
+   * spell's cost from the first on-stage phase, plus the selected mitigation
+   * while the commit decision is live; 0 once committed (truly spent). */
   onPendingMana?: ((mana: number) => void) | undefined
 }) {
   // The machine is a projection of the document (ADR-0016): input rehydrates
@@ -145,6 +152,23 @@ export function CastCard({
   }
 
   const step = { sessionId, castId: cast._id }
+
+  // One door for both gestures (pass 2, note 2): the Add press and Enter in
+  // the name input land the same tide.
+  const addTide = async () => {
+    const source = modSource.trim()
+    if (source.length === 0 || busy) return
+    const ok = await run(() =>
+      adjustPrice({
+        ...step,
+        adjustments: [
+          ...(cast.adjustments ?? []).map((d) => ({ ...d })),
+          { source, dice: modDice },
+        ],
+      }),
+    )
+    if (ok) setModSource("")
+  }
 
   // The Paradox pool as the fix stamped it (ADR-0022) — the same leaf the
   // server rolls with, never a reimplementation. Before the fix nothing is
@@ -276,11 +300,16 @@ export function CastCard({
   const paradoxOdds = paradoxDiceCount !== null ? rollOdds(paradoxDiceCount) : null
   const castOdds = outlook !== null ? rollOdds(outlook.castPool) : null
 
-  // The masthead's Mana ghost (note 8): the pending spend while the commit
-  // decision is live — spell cost plus the selected mitigation row.
-  const pendingManaNow = controls.includes("commit")
-    ? cast.spellManaCost + Math.min(mitigation, mitigateCap)
-    : 0
+  // The masthead's Mana ghost (pass 2, note 1): the spell's cost ghosts from
+  // the moment the cast is on stage ("phase 1" read as the first on-stage
+  // phase — a waiting draft doesn't ghost), the selected mitigation joining
+  // while the commit decision is live. After the commit the Mana is truly
+  // spent and the masthead's real count carries it.
+  const pendingManaNow =
+    status === "price"
+      ? cast.spellManaCost +
+        (controls.includes("commit") ? Math.min(mitigation, mitigateCap) : 0)
+      : 0
   useEffect(() => {
     if (onPendingMana === undefined) return
     onPendingMana(pendingManaNow)
@@ -419,24 +448,26 @@ export function CastCard({
           style={{ color: "var(--dim)" }}
         >
           <span className="truncate">{lineage}</span>
-          <span className="whitespace-nowrap">
-            {declaredTerms.join(" · ")}
-            {cast.spellManaCost > 0 && (
-              <>
-                {declaredTerms.length > 0 ? " · " : ""}
-                <b
-                  className="text-[12px]"
-                  style={{ color: "var(--mana)" }}
-                  title="Mana cost — it spends when the cast commits"
-                >
-                  ◈{cast.spellManaCost}
-                </b>
-              </>
-            )}
-          </span>
+          {/* No ◈ here (2026-07-19 pass 2, note 1): the spell's Mana cost
+              ghosts on the caster's masthead from the first on-stage phase —
+              the felt keeps to dice and provenance. */}
+          <span className="whitespace-nowrap">{declaredTerms.join(" · ")}</span>
         </div>
-        {tideBadges.length > 0 && (
+        {(pool !== null || tideBadges.length > 0) && (
           <div className="flex flex-wrap gap-1.5 px-2.5 pb-2.5">
+            {/* The base dice made legible (pass 2, note 10): reality's own
+                dice get a badge worded as DICE so the felt's red count is
+                the visible sum — never worded as the Gnosis rank (the
+                original bug this vocabulary guards against). */}
+            {pool !== null && (
+              <span
+                className="mv-data inline-flex items-center gap-1 rounded-[2px] px-1.5 py-0.5 text-[12px]"
+                style={{ border: "1px solid var(--paradox)", color: "var(--ink)" }}
+                title="Reality's base Paradox dice — one die per two Gnosis ranks (a dice count, not the Gnosis rank). The Tides ebb and flood around these."
+              >
+                Gnosis base +{pool.baseDice}
+              </span>
+            )}
             {tideBadges.map((m, i) => (
               <TideBadge key={`${m.source}-${i}`} modifier={m} />
             ))}
@@ -450,21 +481,19 @@ export function CastCard({
           className="mv-data mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px]"
           style={{ color: "var(--dim)" }}
         >
+          {/* Slimmed (pass 2, note 7): the success % is the odds line — no
+              exceptional %, no ~expected counts. The dramatic-failure warning
+              stays; danger reads as danger. */}
           {paradoxOdds !== null ? (
-            <>
-              <span className="inline-flex items-center gap-1">
-                <ParadoxGlyph size={12} />
-                <b style={{ color: "var(--paradox)" }}>{pct(paradoxOdds.success)}</b>
-              </span>
-              <span>~{paradoxOdds.expected.toFixed(2)} Paradox</span>
-            </>
+            <span className="inline-flex items-center gap-1">
+              <ParadoxGlyph size={12} />
+              <b style={{ color: "var(--paradox)" }}>{pct(paradoxOdds.success)}</b>
+            </span>
           ) : castOdds !== null ? (
             <>
               <span>
                 success <b style={{ color: "var(--rail-success)" }}>{pct(castOdds.success)}</b>
               </span>
-              <span>~{castOdds.expected.toFixed(2)} successes</span>
-              <span>exceptional {pct(castOdds.exceptional)}</span>
               {castOdds.isChanceDie && (
                 <span style={{ color: "var(--bad)" }}>
                   dramatic failure {pct(castOdds.dramaticFailure)}
@@ -475,24 +504,9 @@ export function CastCard({
         </div>
       )}
 
-      {/* the numbers of the moment */}
-      <div className="mt-2 grid gap-1 text-[12px]" style={{ color: "var(--dim)" }}>
-        {cast.paradoxSuccesses !== undefined && (
-          <span className="mv-data inline-flex items-center gap-1">
-            {/* Paradox is never "successes" (#114): the glyph speaks the word,
-                the count is the fact — you have this many to deal with. */}
-            <ParadoxGlyph size={13} />
-            <b style={{ color: cast.paradoxSuccesses > 0 ? "var(--paradox)" : "var(--rail-success)" }}>
-              {cast.paradoxSuccesses}
-            </b>
-            rolled
-            {cast.paradoxIsDramaticFailure ? " — dramatic failure, Paradox relents" : ""}
-            {cast.containedSuccesses !== undefined
-              ? ` · ${cast.containedSuccesses} contained`
-              : ""}
-          </span>
-        )}
-      </div>
+      {/* No "⟐ N rolled" numbers-line (pass 2, note 8): the cockpit's glyph
+          column IS the count during the bet, and the Resolution carries the
+          record — sentences don't restate what the symbols already say. */}
 
       {/* Resolution lives IN the card (the resolution merge, 2026-07-19):
           the faces stamped on the document, the successes, and the severity
@@ -502,28 +516,35 @@ export function CastCard({
       {/* The ST's personal adjustments (ADR-0022): facts about this caster's
           situation, patched onto the shared document while the Tides are
           fluid — the scene's ambient Tides live on the strip, not here.
-          Relaid by note 2: name row, then a full-width stepper row (− left,
-          + right, Add rightmost), the ebb/flood tags stacked beneath. */}
+          Relaid again by pass 2, note 2: a left-aligned block taking only the
+          space it needs — the name input (Enter adds), then equal-width ebb
+          and flood buttons stepping the count in the Tides' own colors, Add
+          beside them, the tags stacked beneath. */}
       {controls.includes("adjust") && (
-        <div className="mt-2 grid gap-2 py-1">
+        <div className="mt-2 grid justify-start gap-2 py-1">
           <span className="mv-eyebrow">Tides</span>
           <input
             value={modSource}
             onChange={(e) => setModSource(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void addTide()
+            }}
             placeholder="Name an adjustment…"
-            className="mv-data w-full rounded-[3px] border bg-transparent px-2 py-0.5 text-[12px] outline-none focus:border-[var(--accent)]"
+            className="mv-data w-64 rounded-[3px] border bg-transparent px-2 py-0.5 text-[12px] outline-none focus:border-[var(--accent)]"
             style={{ borderColor: "var(--line)" }}
           />
-          <div className="flex w-full items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => setModDice(stepOverZero(modDice, -1))}
               disabled={busy || modDice <= -10}
-              className="mv-btn grid size-6 place-items-center rounded-[3px] text-[13px] leading-none disabled:opacity-40"
+              className="mv-btn w-16 rounded-[3px] py-1 text-[12px] leading-none disabled:opacity-40"
+              style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
+              title="Ebb — the Tides pull back: fewer Paradox dice"
             >
-              −
+              ebb
             </button>
             <span
-              className="mv-data flex-1 text-center text-[13px] font-bold"
+              className="mv-data w-8 text-center text-[13px] font-bold"
               style={{ color: modDice < 0 ? "var(--accent)" : "var(--ember)" }}
               title={modDice < 0 ? "Ebb — fewer Paradox dice" : "Flood — more Paradox dice"}
             >
@@ -532,25 +553,14 @@ export function CastCard({
             <button
               onClick={() => setModDice(stepOverZero(modDice, 1))}
               disabled={busy || modDice >= 10}
-              className="mv-btn grid size-6 place-items-center rounded-[3px] text-[13px] leading-none disabled:opacity-40"
+              className="mv-btn w-16 rounded-[3px] py-1 text-[12px] leading-none disabled:opacity-40"
+              style={{ borderColor: "var(--ember)", color: "var(--ember)" }}
+              title="Flood — the Tides rise: more Paradox dice"
             >
-              +
+              flood
             </button>
             <button
-              onClick={async () => {
-                const source = modSource.trim()
-                if (source.length === 0) return
-                const ok = await run(() =>
-                  adjustPrice({
-                    ...step,
-                    adjustments: [
-                      ...(cast.adjustments ?? []).map((d) => ({ ...d })),
-                      { source, dice: modDice },
-                    ],
-                  }),
-                )
-                if (ok) setModSource("")
-              }}
+              onClick={() => void addTide()}
               disabled={busy || modSource.trim().length === 0}
               className="mv-mini disabled:opacity-40"
             >
@@ -601,20 +611,21 @@ export function CastCard({
           (#113) until the one Cast click. ST and spectator watch the same
           cockpit read-only (note 14). */}
       {/* outlook non-null already implies the rolled Paradox phase and a
-          decodable caster sheet — the cockpit's whole precondition. */}
-      {outlook !== null &&
-        (cast.paradoxSuccesses ?? 0) > 0 &&
-        cockpitSheet !== null && (
-          <ParadoxCockpit
-            track={cockpitSheet.healthTrack}
-            paradoxSuccesses={cast.paradoxSuccesses ?? 0}
-            cap={containCap}
-            contained={cockpitContained}
-            outlook={outlook}
-            onChange={controls.includes("contain") ? setContained : undefined}
-            disabled={busy}
-          />
-        )}
+          decodable caster sheet — the cockpit's whole precondition. Zero
+          Paradox renders the same column (pass 2, note 8): no glyphs, the
+          quiet word in the lore slot — the dead "⟐ 0 rolled" line's job. */}
+      {outlook !== null && cockpitSheet !== null && (
+        <ParadoxCockpit
+          track={cockpitSheet.healthTrack}
+          paradoxSuccesses={cast.paradoxSuccesses ?? 0}
+          dramaticFailure={cast.paradoxIsDramaticFailure ?? false}
+          cap={containCap}
+          contained={cockpitContained}
+          outlook={outlook}
+          onChange={controls.includes("contain") ? setContained : undefined}
+          disabled={busy}
+        />
+      )}
 
       {/* the wings note — more drafts queue behind this one (ST zone) */}
       {moreWaiting > 0 && (
@@ -628,7 +639,10 @@ export function CastCard({
           verdigris trigger stands alone on the right — every phase, no
           exceptions. */}
       {controls.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        // items-end (pass 2, note 4): the commit column's spend glyphs stand
+        // ABOVE their button, so bottom-aligning the row keeps Cancel and
+        // Commit on one baseline at one size — the glyph never breaks it.
+        <div className="mt-2 flex flex-wrap items-end gap-2">
           {controls.includes("kill") && (
             <button
               onClick={() => run(() => kill(step))}
@@ -763,7 +777,9 @@ export function CastCard({
               className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
               title="One commitment: the containment lands as Resistant bashing and the dice fly."
             >
-              Cast{contained > 0 ? ` — contain ${contained}` : ""}
+              {/* One word, one width (pass 2, notes 6/9): the tracker shows
+                  the bet — the button never restates or resizes with it. */}
+              Cast
             </button>
           )}
         </div>
@@ -957,13 +973,13 @@ function MitigationPreview({
             <span style={{ color: here ? "var(--ink)" : undefined }}>
               {diceLabel(dice)}
             </span>
+            {/* No ~expected column (pass 2, note 7): the % is the odds. */}
             <span className="inline-flex items-center gap-1">
               <ParadoxGlyph size={12} />
               <b className="text-[12px]" style={{ color: "var(--paradox)" }}>
                 {pct(odds.success)}
               </b>
             </span>
-            <span>~{odds.expected.toFixed(2)} Paradox</span>
           </>
         )
         // A locked row is a mark, not a disabled control (the FeltDie idiom):
@@ -971,7 +987,7 @@ function MitigationPreview({
         return locked ? (
           <span
             key={spend}
-            className="mv-data grid grid-cols-[3.5rem_5.5rem_1fr_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px]"
+            className="mv-data grid grid-cols-[3.5rem_5.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px]"
             style={{ border: "1px dashed var(--line)", color: "var(--dim)", opacity: 0.5 }}
             title={`Needs ${spend} Mana free after the spell's cost — ${affordable} ${affordable === 1 ? "is" : "are"} free.`}
           >
@@ -982,7 +998,7 @@ function MitigationPreview({
             key={spend}
             onClick={() => onSelect(spend)}
             disabled={disabled}
-            className="mv-data grid grid-cols-[3.5rem_5.5rem_1fr_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px] disabled:opacity-40"
+            className="mv-data grid grid-cols-[3.5rem_5.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px] disabled:opacity-40"
             style={{
               border: here ? "1px solid var(--ember)" : "1px solid transparent",
               color: here ? "var(--ink)" : "var(--dim)",
@@ -997,18 +1013,27 @@ function MitigationPreview({
 }
 
 /**
- * The Paradox cockpit (notes 13–15, replacing the slider): the caster's own
- * health track rendered in-card — box clicks ARE the containment bet, each
- * selected box one Paradox success absorbed as Resistant bashing. The
- * severity lore term burns above it in --paradox, keyed off what would run
- * loose, recomputing at every click. Read-only (no `onChange`) for the ST
- * and spectator seats: the same cockpit, watched (ADR-0022's spectator
- * suspense) — their view prices the un-contained worst case, since the
- * caster's clicks stay local until the Cast (#113).
+ * The Paradox cockpit (notes 13–15; rebuilt symbolic by pass 2, notes 6/8/9):
+ * a centered column that IS the phase's headline — one Paradox glyph per
+ * success still to deal with (shrinking as boxes are clicked), the English
+ * lore term beneath, the caster's health track beneath that. Box clicks ARE
+ * the containment bet: each selected box one Paradox success absorbed as
+ * Resistant bashing, worn in the printed sheet's own grammar — the damage
+ * glyph in the box, the Resistant dot beneath it (Mage p. 124's "place a dot
+ * beneath the marked box"), the −1/−2/−3 wound penalties standing at the last
+ * three boxes as the paper sheet prints them (WoD p. 171), burning when the
+ * bet brings them into effect. No prose rows: the felt's ghosting dice carry
+ * "casts on", the track carries the damage and the penalty. Every slot holds
+ * a reserved height so a click never shifts the track under the cursor
+ * (note 6). Read-only (no `onChange`) for the ST and spectator seats: the
+ * same cockpit, watched (ADR-0022's spectator suspense) — their view prices
+ * the un-contained worst case, since the caster's clicks stay local until
+ * the Cast (#113).
  */
 function ParadoxCockpit({
   track,
   paradoxSuccesses,
+  dramaticFailure,
   cap,
   contained,
   outlook,
@@ -1017,6 +1042,8 @@ function ParadoxCockpit({
 }: {
   track: HealthTrack
   paradoxSuccesses: number
+  /** The stamped chance-die grace — the quiet slot speaks it (note 5). */
+  dramaticFailure: boolean
   cap: number
   contained: number
   outlook: ReturnType<typeof containmentOutlook>
@@ -1032,32 +1059,50 @@ function ParadoxCockpit({
       ? track.slice(0, i).filter((b) => b.severity === "empty").length
       : null,
   )
+  // The bet can fill the last box: the martyr slot pre-reserves its height.
+  const martyrReachable =
+    interactive && cap >= track.filter((b) => b.severity === "empty").length
   return (
-    <div className="mt-2 grid gap-2 py-1">
-      {outlook.uncontained > 0 ? (
-        // The lore term, big and scary (note 15): the scale of what
-        // manifests if this much Paradox runs loose.
-        <div className="flex items-center gap-2">
-          <ParadoxGlyph size={16} />
+    <div className="mt-2 grid justify-items-center gap-1.5 py-1">
+      {/* One glyph per Paradox still loose — the count nobody reads as a
+          number (note 8). The row keeps its height at zero glyphs. */}
+      <div className="flex min-h-[18px] flex-wrap items-center justify-center gap-1.5">
+        {Array.from({ length: outlook.uncontained }, (_, i) => (
+          <ParadoxGlyph
+            key={i}
+            size={16}
+            title="A Paradox success still loose — contain it on the track below, or it manifests"
+          />
+        ))}
+      </div>
+      {/* The lore slot: a fixed-height line the severity term burns in, or
+          the quiet word when nothing runs loose — same height either way. */}
+      <div className="flex h-[24px] items-center justify-center">
+        {outlook.uncontained > 0 ? (
           <span
             className="mv-h text-[22px] uppercase leading-none tracking-[0.1em]"
             style={{
               color: "var(--paradox)",
-              textShadow: "0 0 14px color-mix(in srgb, var(--paradox) 55%, transparent)",
+              textShadow:
+                "0 0 14px color-mix(in srgb, var(--paradox) 55%, transparent)",
             }}
           >
             {severity}
           </span>
-          <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
-            if {outlook.uncontained} run{outlook.uncontained === 1 ? "s" : ""} loose
+        ) : (
+          <span
+            className="mv-data text-[12px]"
+            style={{ color: "var(--rail-success)" }}
+          >
+            {paradoxSuccesses === 0
+              ? dramaticFailure
+                ? PARADOX_GRACE
+                : "no Paradox — the way to the cast is clear"
+              : "all contained — reality lets it pass"}
           </span>
-        </div>
-      ) : (
-        <span className="mv-data text-[12px]" style={{ color: "var(--rail-success)" }}>
-          all contained — reality lets it pass
-        </span>
-      )}
-      <div className="flex flex-wrap gap-[5px]">
+        )}
+      </div>
+      <div className="flex flex-wrap justify-center gap-[5px]">
         {track.map((box, i) => {
           const ordinal = emptyOrdinals[i] ?? null
           const ghosted = ordinal !== null && ordinal < contained
@@ -1071,9 +1116,20 @@ function ParadoxCockpit({
                   ? interactive
                     ? "Contain one more Paradox here — Resistant bashing, one fewer loose"
                     : "A box the caster could offer"
-                  : paradoxSuccesses <= cap
-                    ? `Only ${paradoxSuccesses} Paradox rolled — nothing more to contain`
-                    : "Beyond the bet — containment can fill the track, never pass it"
+                  : paradoxSuccesses === 0
+                    ? "No Paradox rolled — nothing to contain"
+                    : paradoxSuccesses <= cap
+                      ? `Only ${paradoxSuccesses} Paradox rolled — nothing more to contain`
+                      : "Beyond the bet — containment can fill the track, never pass it"
+          // The printed sheet's wound penalties (WoD p. 171): −1/−2/−3 at
+          // the last three boxes — standing above them here, since the
+          // Resistant dot owns the space beneath (Mage p. 124). Exactly one
+          // penalty is ever in effect (the rightmost filled box's), and only
+          // that one burns as the bet reaches it.
+          const fromEnd = track.length - i
+          const penaltyLabel = fromEnd <= 3 ? fromEnd - 4 : null
+          const penaltyLive =
+            penaltyLabel !== null && outlook.penaltyAfter === penaltyLabel
           const boxMark = (
             <span
               className="mv-data grid size-6 place-items-center rounded-[2px] border text-[12px] font-bold"
@@ -1095,7 +1151,26 @@ function ParadoxCockpit({
             </span>
           )
           return (
-            <span key={i} className="relative pb-[7px]">
+            // Every box wears the label band (pt) whether or not it carries a
+            // label, so the track's boxes align and never shift (note 6).
+            <span key={i} className="relative pb-[7px] pt-[15px]">
+              {penaltyLabel !== null && (
+                <span
+                  className="mv-data absolute left-1/2 top-0 -translate-x-1/2 whitespace-nowrap text-[12px] leading-none"
+                  style={{
+                    color: penaltyLive ? "var(--bad)" : "var(--dim)",
+                    opacity: penaltyLive ? 1 : 0.6,
+                    fontWeight: penaltyLive ? 700 : 400,
+                  }}
+                  title={
+                    penaltyLive
+                      ? "Wound penalty in effect — it rides every roll, this cast's included"
+                      : "Wound penalty once this box is filled (the printed sheet's −1/−2/−3)"
+                  }
+                >
+                  −{-penaltyLabel}
+                </span>
+              )}
               {interactive && ordinal !== null && (reachable || ghosted) ? (
                 <button
                   onClick={() => onChange(ghosted ? ordinal : ordinal + 1)}
@@ -1108,11 +1183,11 @@ function ParadoxCockpit({
               ) : (
                 <span title={title}>{boxMark}</span>
               )}
-              <span className="absolute left-1/2 top-6 mt-[1px] flex -translate-x-1/2">
+              <span className="absolute bottom-0 left-1/2 flex -translate-x-1/2">
                 {ghosted ? (
                   <span
                     className="size-[5px] rounded-full"
-                    title="Resistant — heals only naturally"
+                    title="Resistant — heals only naturally (the sheet's dot beneath the box)"
                     style={{ background: "var(--ember)", opacity: 0.7 }}
                   />
                 ) : (
@@ -1123,33 +1198,18 @@ function ParadoxCockpit({
           )
         })}
       </div>
-      {interactive && (
-        <div
-          className="mv-data grid grid-cols-2 gap-x-3 gap-y-0.5 text-[12px] sm:grid-cols-3"
-          style={{ color: "var(--dim)" }}
+      {/* The martyr warning's slot reserves its height whenever the bet CAN
+          fill the track (note 6): the last box's click must not shift the
+          Cast button that gets clicked next. Unreachable = no slot, and no
+          click can make one appear. */}
+      {(martyrReachable || outlook.martyr) && (
+        <p
+          className={`${martyrReachable ? "min-h-[30px] " : ""}text-center text-[12px] italic`}
+          style={{ color: "var(--bad)" }}
         >
-          <span>
-            takes{" "}
-            <b style={{ color: outlook.damage > 0 ? "var(--bad)" : "var(--ink)" }}>
-              {outlook.damage} Resistant bashing
-            </b>
-          </span>
-          <span>
-            wound penalty{" "}
-            <b style={{ color: outlook.newPenalty < 0 ? "var(--bad)" : "var(--ink)" }}>
-              {outlook.penaltyAfter}
-            </b>
-            {outlook.newPenalty < 0 ? ` (${outlook.newPenalty} new)` : ""}
-          </span>
-          <span>
-            casts on <b style={{ color: "var(--ink)" }}>{diceLabel(outlook.castPool)}</b>
-          </span>
-        </div>
-      )}
-      {outlook.martyr && (
-        <p className="text-[12px] italic" style={{ color: "var(--bad)" }}>
-          This fills your last health box with bashing — the book calls that
-          unconsciousness (Storyteller adjudicates). The cast still completes.
+          {outlook.martyr
+            ? "This fills your last health box with bashing — the book calls that unconsciousness (Storyteller adjudicates). The cast still completes."
+            : ""}
         </p>
       )}
     </div>
@@ -1207,6 +1267,43 @@ function Resolution({ cast }: { cast: CastEntry }) {
           ))}
         </div>
       )}
+      {/* The Paradox record (pass 2, note 5): the roll that used to be its
+          own feed card — faces in --paradox tone (more is worse, #114), the
+          count, the contained share. Rows rolled before the merge carry no
+          faces and render just their counts. */}
+      {cast.paradoxSuccesses !== undefined && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <ParadoxGlyph size={13} />
+          <b
+            className="mv-data text-[12px]"
+            style={{
+              color:
+                cast.paradoxSuccesses > 0 ? "var(--paradox)" : "var(--dim)",
+            }}
+            title="Paradox rolled against this cast"
+          >
+            {cast.paradoxSuccesses}
+          </b>
+          {(cast.paradoxRolls ?? []).map((v, i) => (
+            <Die
+              key={`p${i}`}
+              v={v}
+              again={10}
+              chance={cast.paradoxIsChanceDie ?? false}
+              tone="paradox"
+              size="md"
+            />
+          ))}
+          {(cast.paradoxExplosions ?? []).map((v, i) => (
+            <Die key={`pe${i}`} v={v} again={10} ring="exp" tone="paradox" size="md" />
+          ))}
+          {(cast.containedSuccesses ?? 0) > 0 && (
+            <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
+              {cast.containedSuccesses} contained
+            </span>
+          )}
+        </div>
+      )}
       {cast.severity !== undefined && cast.severity !== "none" ? (
         <div className="flex items-center gap-2">
           <ParadoxGlyph size={14} />
@@ -1225,7 +1322,7 @@ function Resolution({ cast }: { cast: CastEntry }) {
         </div>
       ) : (
         <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
-          reality lets it pass
+          {cast.paradoxIsDramaticFailure ? PARADOX_GRACE : "reality lets it pass"}
         </span>
       )}
     </div>

@@ -136,7 +136,12 @@ export const CastPatch = Schema.Struct({
   adjustments: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
   tides: Schema.optionalKey(TidesSnapshot),
   manaMitigation: Schema.optionalKey(Schema.Number),
+  /** The Paradox roll's faces (the 2026-07-19 polish, note 5): the roll
+   * stamps onto the document like the release's — one card, no roll entry. */
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
+  paradoxRolls: Schema.optionalKey(Schema.Array(Schema.Number)),
+  paradoxExplosions: Schema.optionalKey(Schema.Array(Schema.Number)),
+  paradoxIsChanceDie: Schema.optionalKey(Schema.Boolean),
   paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
   containedSuccesses: Schema.optionalKey(Schema.Number),
   castPool: Schema.optionalKey(Schema.Number),

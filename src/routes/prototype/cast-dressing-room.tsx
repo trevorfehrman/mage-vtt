@@ -168,6 +168,11 @@ const paradoxUnrolled: CastEntry = {
 const paradoxRolled: CastEntry = {
   ...paradoxUnrolled,
   paradoxSuccesses: 2,
+  // The Paradox merge (2026-07-19 pass 2, note 5): the roll's faces ride the
+  // document — the 3-die pool the fixed Tides + mitigation leave, two landing.
+  paradoxRolls: [8, 9, 4],
+  paradoxExplosions: [],
+  paradoxIsChanceDie: false,
   paradoxIsDramaticFailure: false,
 }
 

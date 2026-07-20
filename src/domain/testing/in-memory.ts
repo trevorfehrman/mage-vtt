@@ -117,6 +117,9 @@ export interface StoredCast {
   readonly tides?: TidesSnapshot
   readonly manaMitigation?: number
   readonly paradoxSuccesses?: number
+  readonly paradoxRolls?: ReadonlyArray<number>
+  readonly paradoxExplosions?: ReadonlyArray<number>
+  readonly paradoxIsChanceDie?: boolean
   readonly paradoxIsDramaticFailure?: boolean
   readonly containedSuccesses?: number
   readonly castPool?: number

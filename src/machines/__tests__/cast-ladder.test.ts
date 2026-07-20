@@ -109,11 +109,12 @@ describe("ladderControls — buttons only for the viewer's role and phase", () =
     expect(ladderControls(snapshot("draft"), spectator)).toEqual([])
   })
 
-  test("The Price, fluid: ST assembles and fixes, either bails", () => {
+  test("The Price, fluid: ST assembles and fixes; only the caster bails", () => {
+    // The ST's cancel died as chrome (owner note, 2026-07-19 pass 2):
+    // redundant beside Void pre-commitment. The seam still honors it.
     expect(ladderControls(snapshot("price"), storyteller)).toEqual([
       "adjust",
       "lockPrice",
-      "cancel",
       "void",
     ])
     expect(ladderControls(snapshot("price"), caster)).toEqual(["cancel"])

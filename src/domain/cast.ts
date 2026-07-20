@@ -159,8 +159,14 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   tides: Schema.optionalKey(TidesSnapshot),
   // Commitment (the caster's point of no return)
   manaMitigation: Schema.optionalKey(Schema.Number),
-  // The Paradox roll — stamped mid-rung; its presence flips the phase.
+  // The Paradox roll — stamped mid-rung; its presence flips the phase. Its
+  // faces ride the document like the release's (the 2026-07-19 polish,
+  // note 5): one live card in the feed, no roll entry beside it. Rows
+  // rolled before the merge carry only successes.
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
+  paradoxRolls: Schema.optionalKey(Schema.Array(Schema.Number)),
+  paradoxExplosions: Schema.optionalKey(Schema.Array(Schema.Number)),
+  paradoxIsChanceDie: Schema.optionalKey(Schema.Boolean),
   paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
   // The one Cast click (contain + release) and resolution. The release roll's
   // faces stamp onto the document (the resolution-merge ruling, 2026-07-19):

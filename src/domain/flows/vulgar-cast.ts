@@ -901,7 +901,11 @@ export const cancelCast = Effect.fn("Flows.vulgarCast.cancelCast")(function* (
  * else's. The roll always happens: a fully mitigated pool still throws the
  * chance die (the rules' gamble is honest). The rung doesn't move — the
  * stamped successes flip its phase to the caster's cockpit, zero included
- * (nothing to contain is still the caster's release to click).
+ * (nothing to contain is still the caster's release to click). The roll's
+ * faces stamp onto the Cast document like the release's (the 2026-07-19
+ * polish, note 5) — no roll entry lands beside the live card, so a
+ * spectator's feed carries exactly one artifact per cast; the card renders
+ * the faces and speaks the dramatic-failure grace itself.
  */
 export const rollParadox = Effect.fn("Flows.vulgarCast.rollParadox")(function* (
   args: CastStepArgs,
@@ -910,7 +914,7 @@ export const rollParadox = Effect.fn("Flows.vulgarCast.rollParadox")(function* (
   const castId = CastId.make(args.castId)
   const store = yield* GameStore
 
-  const storyteller = yield* requireStoryteller(sessionId)
+  yield* requireStoryteller(sessionId)
   const cast = yield* requireCast(sessionId, castId)
   yield* requireParadoxPhase(cast, "unrolled")
 
@@ -927,22 +931,10 @@ export const rollParadox = Effect.fn("Flows.vulgarCast.rollParadox")(function* (
 
   yield* store.patchCast(castId, {
     paradoxSuccesses: result.successes,
+    paradoxRolls: result.rolls,
+    paradoxExplosions: result.explosions,
+    paradoxIsChanceDie: result.isChanceDie,
     paradoxIsDramaticFailure: result.isDramaticFailure,
-  })
-
-  const dice = result.isChanceDie ? "a chance die" : `${result.poolSize} dice`
-  // Paradox is never "successes" (#114): the table counts Paradox, and more
-  // is worse — `outcomeOf`'s exceptional-success fanfare would read backwards.
-  const paradoxCount =
-    result.successes === 0 ? "no Paradox" : `${result.successes} Paradox`
-  yield* store.insertRoll({
-    sessionId,
-    member: storyteller,
-    components,
-    result,
-    summary: result.isDramaticFailure
-      ? `Reality rolls ${dice} against ${cast.casterName} — a dramatic failure! Paradox leaves the caster alone, and the Scene forgives its next accumulation.`
-      : `Reality rolls ${dice} against ${cast.casterName} — ${paradoxCount}${result.successes === 0 ? ". Nothing to contain; the way to the cast is clear" : ""}.`,
   })
 
   return castId
