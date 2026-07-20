@@ -305,18 +305,6 @@ function SessionPage() {
           character={sheet}
           pool={mayDrivePool ? poolForSheet : undefined}
           cast={isMine ? cast : undefined}
-          // The standing tool fact (issue #107): the owner's to maintain;
-          // the sheet surfaces any refusal at the toggle itself.
-          onSetMagicalTool={
-            isMine
-              ? (hasMagicalTool) =>
-                  setMagicalTool({
-                    sessionId,
-                    characterId: viewed._id,
-                    hasMagicalTool,
-                  })
-              : undefined
-          }
         />
         {/* The hand-edit panel (issue #19): ST-only, on any sheet — the one
             edit affordance in the app; players never see edit controls. */}
@@ -445,6 +433,19 @@ function SessionPage() {
                 rawCast.state !== "idle"
                   ? (armedPreview(rawCast.context, mySheet)?.manaCost ?? 0)
                   : castPendingMana
+              }
+              // The standing tool fact (issue #107; masthead-seated by pass
+              // 3, note 10): the seat's own to maintain — the refusal speaks
+              // at the toggle.
+              onSetMagicalTool={
+                character
+                  ? (hasMagicalTool) =>
+                      setMagicalTool({
+                        sessionId,
+                        characterId: character._id,
+                        hasMagicalTool,
+                      })
+                  : undefined
               }
             />
           )}

@@ -1,5 +1,37 @@
 # Tides are scene state; the cast card is a docked cockpit
 
+> **Amended** (2026-07-19, vulgar polish pass 3): six notes. **The felt's
+> Paradox pool goes provisional:** the red dice no longer wait for the fix —
+> from engage the felt carries a PROVISIONAL pool (Gnosis base + rote/tool +
+> the ST's live adjustments; the Scene seed joins at the fix), growing and
+> shrinking as tags land, on every seat's card. **The base dice are green:**
+> pass 2's "Gnosis base +N" badge is withdrawn — reality's base dice
+> themselves render gnosis-green (the sheet's Gnosis color) wearing the red
+> torn-circle glyph, so green base + tide tags = the felt's total without a
+> badge ever implying the rank. **The Tides-phase odds line prices the
+> spell:** the under-felt line speaks the declared pool's success % in every
+> pre-roll phase's grammar; the Paradox % lives in the mitigation table's
+> rows (and alone on the committed-but-unrolled beat). **The spend rides in
+> the Commit button:** "Commit − 1 ◈" on a dark inset in Mana's blue,
+> reversing pass 2's glyph column; Willpower joins the inset in its own
+> color, and Will wears the Mana glyph SHAPE everywhere — hue is the whole
+> identity. **The Resolution is four rows:** result word in caps and green,
+> cast faces, Paradox faces bare, severity lore word alone — no glyphs, no
+> counts, no "manifests", no "N contained" (the ghosted track boxes carry
+> containment history). No Paradox manifesting = no fourth row, which
+> retires the record's grace note — pass 2's "Resolution record" home below
+> is withdrawn; the cockpit's quiet slot is the grace's one voice, and the
+> record carries no dramatic-failure note (flagged to the owner). **The red
+> softens:** `--paradox` steps down from the commissioned #ff2b2b to a
+> blood red built the palette's way — still reserved for Paradox alone.
+> Chrome riding along: the tide tags are filled chips (tide color ground,
+> white text — the owner's explicit call, standing as a ~2.5:1 exception
+> to ADR-0021's 4.5 contrast floor, flagged for his eye rather than
+> silently darkened); the mitigation modifier never badges
+> the felt; the masthead stacks Will over Mana and seats the tool fact
+> (the sheet header sheds its numerals and toggle); the card's felt dice
+> no longer layout-glide — the frame snaps, so the dice snap with it.
+>
 > **Amended** (2026-07-19, vulgar polish pass 2): the Paradox-roll merge —
 > the owner flagged the separate Paradox roll card in the spectator feed, so
 > the roll now gets the same treatment as the release: its faces stamp onto
@@ -10,7 +42,8 @@
 > different-actor-beats rule stands for MUTATIONS (the roll is still its own
 > ST-gated mutation), it just no longer implies a separate feed record. The
 > dramatic-failure grace note that lived in the roll's summary now speaks
-> from the card (cockpit quiet slot, Resolution record). Also chrome: the
+> from the card (cockpit quiet slot, Resolution record *(the Resolution
+> half withdrawn by pass 3, above: no Paradox, no fourth row)*). Also chrome: the
 > ST's cancel leaves the fluid Tides phase too (redundant beside Void
 > pre-commitment — nothing is spent yet); the seam still honors either
 > party's cancel, same posture as #114's fixed-price strip.

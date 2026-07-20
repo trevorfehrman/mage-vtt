@@ -46,11 +46,20 @@
     --accent
   ); /* pinned audition: merge default; quantity/mint contend on the rig */
   --rail-danger: #d0523b; /* the hot slot — the felt's danger flame (Paradox itself now has --paradox) */
-  /* The Paradox red (#114): commissioned scary, deliberately OUTSIDE the
-   * palette — the one color at the table allowed to yell. Reserved for
-   * Paradox alone (the glyph, its counts, its odds); never a status color. */
-  --paradox: #ff2b2b;
+  /* The Paradox red (#114; softened by the 2026-07-19 pass 3, note 2): still
+   * the one color at the table allowed to yell — reserved for Paradox alone
+   * (the glyph, its dice, its lore words, its odds); never a status color.
+   * The commissioned #ff2b2b read too neon against the muted palette, so it
+   * stands down to a blood red built the palette's own way (desaturated,
+   * warm-adjacent to --bad/--rail-danger without collapsing into either).
+   * 4.9:1 on --panel — clears the 4.5 floor for its 12px odds text. */
+  --paradox: #e34b4b;
   --mana: #6f93ae; /* Mana's identity blue — verdigris's own recipe, hue-turned to water */
+  /* Filled tide-chip text (pass 3, note 6): the owner's explicit call is
+   * white on the tide's own ground. That runs ~2.5:1 against accent/ember —
+   * a standing exception to ADR-0021's 4.5 floor, flagged for the owner's
+   * eye rather than silently darkened. */
+  --chip-ink: #ffffff;
   --turn-caster: var(
     --ember
   ); /* whose move (PINNED with the root): your hand */

@@ -69,6 +69,11 @@ export class ParadoxResult extends Schema.Class<ParadoxResult>("ParadoxResult")(
 
 // --- Public API ---
 
+/** The mitigation modifier's name — exported so surfaces that keep the tag
+ * off the felt (the table and the dice count carry it, 2026-07-19 pass 3,
+ * note 5) filter by the same string the pool stamps. */
+export const MANA_MITIGATION_SOURCE = "Mana mitigation"
+
 export const calculateParadoxPool = (input: {
   gnosis: GnosisRank
   isRote?: boolean
@@ -117,7 +122,7 @@ export const calculateParadoxPool = (input: {
   modifiers.push(...(input.discretionaryModifiers ?? []))
 
   if (input.manaMitigation && input.manaMitigation > 0) {
-    modifiers.push({ source: "Mana mitigation", dice: -input.manaMitigation })
+    modifiers.push({ source: MANA_MITIGATION_SOURCE, dice: -input.manaMitigation })
   }
 
   const totalDice = Math.max(

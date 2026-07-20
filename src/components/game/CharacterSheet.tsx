@@ -1,10 +1,9 @@
-import { useState, type CSSProperties, type ReactNode } from "react"
+import { type CSSProperties, type ReactNode } from "react"
 import {
   rulingArcanaOf,
   type ArcanumName,
   type CharacterSheet as CharacterSheetData,
 } from "#/domain/character"
-import { seamErrorMessage } from "#/lib/seam-errors"
 import type { BoxSeverity } from "#/domain/damage"
 import type { PoolComponentInput, PoolComponentType } from "#/domain/dice"
 import {
@@ -21,7 +20,6 @@ import { ArcanaSubstance, hasSubstance } from "./ArcanaSubstance"
 import { RoteBook } from "./RoteBook"
 import { TraitSky } from "./TraitSky"
 import { Separator } from "#/components/ui/separator"
-import { Switch } from "#/components/ui/switch"
 import { DotRating } from "./DotRating"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
@@ -38,6 +36,12 @@ const HEALTH_BOX_GLYPHS: Record<BoxSeverity, string> = {
 }
 export const healthBoxGlyph = (severity: BoxSeverity): string =>
   HEALTH_BOX_GLYPHS[severity]
+
+/** The standing tool fact's one explanation (issue #107) — spoken by the
+ * masthead's toggle and the sheet's read-only line alike, so the two
+ * surfaces can't drift. */
+export const MAGICAL_TOOL_TITLE =
+  "A magical tool in hand: −1 Paradox die on every vulgar cast."
 
 /**
  * The dot beneath a health box — Resistant damage (issue #41), the wound
@@ -67,13 +71,6 @@ interface CharacterSheetProps {
    * triggers. Absent on read-only sheets — Rotes render as inert rows.
    */
   cast?: CastAPI | undefined
-  /**
-   * Flips the standing tool fact (issue #107): a magical tool in hand, −1
-   * Paradox die on every vulgar cast. Absent = read-only (the fact still
-   * shows when held); present only on the owner's sheet. Returns the
-   * mutation's promise so a refusal can speak at the toggle.
-   */
-  onSetMagicalTool?: ((hasMagicalTool: boolean) => Promise<unknown>) | undefined
 }
 
 /**
@@ -84,12 +81,8 @@ export function CharacterSheet({
   character,
   pool,
   cast,
-  onSetMagicalTool,
 }: CharacterSheetProps) {
   const { healthTrack } = character
-  // The tool toggle's refusal speaks in place (ADR-0021: never a
-  // console-only failure); the next successful flip clears it.
-  const [toolError, setToolError] = useState<string | null>(null)
   const canToggle =
     pool !== undefined && (pool.state === "idle" || pool.state === "building")
   const ruling = rulingArcanaOf(character.path)
@@ -184,12 +177,9 @@ export function CharacterSheet({
             <span className="mv-accent text-[32px] font-semibold">{character.gnosis}</span>
           </span>
           <span className="grid justify-items-end gap-2">
-            <span className="text-[12px]">
-              <span style={{ color: "var(--dim)" }}>MANA </span>
-              <span style={{ color: "var(--ink)" }}>{character.maxMana}</span>
-              <span style={{ color: "var(--dim)" }}> · WILL </span>
-              <span style={{ color: "var(--ink)" }}>{character.willpower}</span>
-            </span>
+            {/* No MANA · WILL numerals here (pass 3, note 10): the masthead's
+                pips carry the counts — the header keeps only what the HUD
+                doesn't. */}
             <span className="text-[12px]">
               <span style={{ color: "var(--dim)" }}>DEFENSE </span>
               <span style={{ color: "var(--ink)" }}>{character.defense}</span>
@@ -205,51 +195,18 @@ export function CharacterSheet({
             <span style={{ color: "var(--dim)" }}> · VICE </span>
             <span style={{ color: "var(--ink)" }}>{character.vice}</span>
           </span>
-          {/* The standing tool fact (issue #107): a sheet fact, not a bench
-              dial — every vulgar cast stamps it, the bench reports it. A
-              Switch, not a button (owner call 2026-07-19): a standing fact
-              should read on/off at a glance. */}
-          {onSetMagicalTool ? (
-            <span className="grid justify-items-end gap-1">
-              <label
-                className="flex cursor-pointer items-center gap-1.5"
-                title="A magical tool in hand: −1 Paradox die on every vulgar cast. A standing fact of your practice — casts stamp it as declared."
-              >
-                <span
-                  className="mv-data text-[10px] uppercase tracking-[0.06em]"
-                  style={{
-                    color: character.magicalTool ? "var(--ink)" : "var(--dim)",
-                  }}
-                >
-                  Tool {character.magicalTool ? "in hand −1" : "set aside"}
-                </span>
-                <Switch
-                  size="sm"
-                  checked={character.magicalTool}
-                  onCheckedChange={(checked) => {
-                    setToolError(null)
-                    onSetMagicalTool(checked).catch((err) =>
-                      setToolError(seamErrorMessage(err)),
-                    )
-                  }}
-                />
-              </label>
-              {toolError && (
-                <span className="text-[11px]" style={{ color: "var(--bad)" }}>
-                  {toolError}
-                </span>
-              )}
+          {/* The standing tool fact (issue #107) moved to the masthead for
+              the seat's own mage (pass 3, note 10) — the sheet still states
+              it on OTHER mages' sheets, where no masthead speaks for them.
+              `cast` present = this is the viewer's own controller sheet. */}
+          {cast === undefined && character.magicalTool && (
+            <span
+              className="text-[12px]"
+              style={{ color: "var(--dim)" }}
+              title={MAGICAL_TOOL_TITLE}
+            >
+              TOOL <span style={{ color: "var(--ink)" }}>in hand −1</span>
             </span>
-          ) : (
-            character.magicalTool && (
-              <span
-                className="text-[12px]"
-                style={{ color: "var(--dim)" }}
-                title="A magical tool in hand: −1 Paradox die on every vulgar cast."
-              >
-                TOOL <span style={{ color: "var(--ink)" }}>in hand −1</span>
-              </span>
-            )
           )}
         </div>
       </div>
