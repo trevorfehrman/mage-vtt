@@ -1,5 +1,10 @@
 import { Effect, Result, Schema } from "effect"
-import { HealthTrack, healthBox, type HealthBox } from "./damage"
+import {
+  HealthTrack,
+  healthBox,
+  normalizeHealthTrack,
+  type HealthBox,
+} from "./damage"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "./ids"
 import { Dots, Mana, Willpower } from "./quantities"
 import { RoteArcanumName, RotePool } from "./rote-pool"
@@ -434,7 +439,13 @@ export const decodeSheet = (input: unknown): CharacterSheet | null => {
     console.warn("Character: dropped an unreadable sheet document", result.failure)
     return null
   }
-  return result.success
+  // The box invariant (#118): documents written before the hand-edit door
+  // learned it can carry a Resistant dot under an empty box — collapse it
+  // here so the meaningless state is impossible to render anywhere.
+  const track = normalizeHealthTrack(result.success.healthTrack)
+  return track === result.success.healthTrack
+    ? result.success
+    : new CharacterSheet({ ...result.success, healthTrack: track })
 }
 
 // --- Public API ---

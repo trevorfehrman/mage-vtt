@@ -1,6 +1,12 @@
 import { Effect, Schema } from "effect"
 import { describe, expect, it } from "@effect/vitest"
-import { HealthTrack, healthBox, type HealthBox } from "../damage"
+import {
+  HealthTrack,
+  healthBox,
+  normalizeHealthBox,
+  normalizeHealthTrack,
+  type HealthBox,
+} from "../damage"
 import {
   createHealthTrack,
   applyDamage,
@@ -256,5 +262,27 @@ describe("Health Track", () => {
     expect(() =>
       Schema.decodeUnknownSync(HealthTrack)([{ severity: "bashing" }]),
     ).toThrow()
+  })
+
+  // --- The box invariant (#118): an empty box never carries a dot ---
+
+  it("normalization collapses a Resistant dot under an empty box (#118)", () => {
+    expect(normalizeHealthBox(healthBox("empty", true))).toEqual(healthBox("empty"))
+    expect(normalizeHealthBox(healthBox("bashing", true))).toEqual(
+      healthBox("bashing", true),
+    )
+
+    expect(
+      normalizeHealthTrack([
+        healthBox("empty", true),
+        healthBox("lethal", true),
+        healthBox("empty"),
+      ]),
+    ).toEqual([healthBox("empty"), healthBox("lethal", true), healthBox("empty")])
+  })
+
+  it("normalization returns the same track untouched when nothing is orphaned", () => {
+    const track = [healthBox("bashing", true), healthBox("empty")]
+    expect(normalizeHealthTrack(track)).toBe(track)
   })
 })

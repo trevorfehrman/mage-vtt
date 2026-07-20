@@ -32,6 +32,22 @@ export const healthBox = (severity: BoxSeverity, resistant = false): HealthBox =
 })
 
 /**
+ * The box invariant (#118, owner ruling 2026-07-19): the Resistant dot marks
+ * a property of the wound IN the box — an empty box has no wound, so
+ * `empty + resistant` is a meaningless state. The domain's damage/heal paths
+ * never produce it; these leaves make every other door (the hand-edit flow's
+ * arbitrary track, the sheet decode over old stored documents) collapse it,
+ * so the state is impossible to create and impossible to render.
+ */
+export const normalizeHealthBox = (box: HealthBox): HealthBox =>
+  box.severity === "empty" && box.resistant ? { ...box, resistant: false } : box
+
+export const normalizeHealthTrack = (track: HealthTrack): HealthTrack =>
+  track.some((box) => box.severity === "empty" && box.resistant)
+    ? track.map(normalizeHealthBox)
+    : track
+
+/**
  * A box as documents stored before issue #41 hold it: the bare severity
  * string, decoding to a non-resistant box.
  */

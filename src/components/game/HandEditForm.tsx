@@ -43,17 +43,21 @@ const sameBox = (a: HealthBox, b: HealthBox) =>
   a.severity === b.severity && a.resistant === b.resistant
 
 // Two orthogonal axes, two gestures (issue #41): click cycles the wound
-// severity; shift-click toggles the Resistant dot beneath the box.
-const cycleSeverity = (box: HealthBox): HealthBox => ({
-  ...box,
-  severity:
-    HEALTH_CYCLE[(HEALTH_CYCLE.indexOf(box.severity) + 1) % HEALTH_CYCLE.length]!,
-})
+// severity; shift-click toggles the Resistant dot beneath the box. The box
+// invariant (#118, owner ruling 2026-07-19): the dot marks a property of the
+// wound IN the box, so an empty box can never carry one — cycling around to
+// empty drops the dot, and shift-click on an empty box is a no-op.
+const cycleSeverity = (box: HealthBox): HealthBox => {
+  const severity =
+    HEALTH_CYCLE[(HEALTH_CYCLE.indexOf(box.severity) + 1) % HEALTH_CYCLE.length]!
+  return {
+    severity,
+    resistant: severity === "empty" ? false : box.resistant,
+  }
+}
 
-const toggleResistant = (box: HealthBox): HealthBox => ({
-  ...box,
-  resistant: !box.resistant,
-})
+const toggleResistant = (box: HealthBox): HealthBox =>
+  box.severity === "empty" ? box : { ...box, resistant: !box.resistant }
 
 type WorkingCopy = typeof HandEditWorkingCopy.Encoded
 

@@ -205,7 +205,7 @@ export function CharacterSheet({
               style={{ color: "var(--dim)" }}
               title={MAGICAL_TOOL_TITLE}
             >
-              TOOL <span style={{ color: "var(--ink)" }}>in hand −1</span>
+              TOOL <span style={{ color: "var(--ink)" }}>in hand</span>
             </span>
           )}
         </div>

@@ -3,6 +3,7 @@ import { describe, expect, it } from "@effect/vitest"
 import {
   CharacterSheet,
   createCharacter,
+  decodeSheet as decodeSheetBoundary,
   initialCurrentState,
   rulingArcanaOf,
   validateCreationRules,
@@ -11,6 +12,7 @@ import {
   applyWisdomTradeoff,
   activeSpellPenalty,
 } from "../character"
+import { healthBox } from "../damage"
 import { arctusData } from "../fixtures/arctus"
 
 /**
@@ -97,6 +99,26 @@ describe("Character Sheet", () => {
       expect(character.arcana.matter).toBe(2)
     }),
   )
+
+  it("the boundary decode collapses a stored orphaned Resistant dot (#118)", () => {
+    const sheet = decodeSheetBoundary(
+      sheetInput({
+        healthTrack: [
+          { severity: "empty", resistant: true },
+          { severity: "bashing", resistant: true },
+          "empty",
+          "empty",
+          "empty",
+          "empty",
+          "empty",
+        ],
+      }),
+    )
+
+    expect(sheet).not.toBeNull()
+    expect(sheet!.healthTrack[0]).toEqual(healthBox("empty"))
+    expect(sheet!.healthTrack[1]).toEqual(healthBox("bashing", true))
+  })
 
   it.effect("CharacterSheet computes derived stats correctly", () =>
     Effect.gen(function* () {

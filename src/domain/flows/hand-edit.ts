@@ -5,7 +5,12 @@ import {
   requireSessionCharacter,
 } from "../authz"
 import { type CharacterSheet } from "../character"
-import { DamageType, HealthTrack, type HealthBox } from "../damage"
+import {
+  DamageType,
+  HealthTrack,
+  normalizeHealthTrack,
+  type HealthBox,
+} from "../damage"
 import { CharacterId, SessionId } from "../ids"
 import { GameStore, type SheetPatch } from "../ports/game-store"
 import { Mana, Willpower } from "../quantities"
@@ -103,7 +108,7 @@ const describeChanges = (
 export const handEditSheet = Effect.fn("Flows.handEdit.handEditSheet")(function* (
   args: HandEditArgs,
 ) {
-  const patch: SheetPatch = yield* Schema.decodeUnknownEffect(HandEditPatch)({
+  const decoded = yield* Schema.decodeUnknownEffect(HandEditPatch)({
     ...(args.manaCurrent !== undefined ? { manaCurrent: args.manaCurrent } : {}),
     ...(args.willpowerCurrent !== undefined
       ? { willpowerCurrent: args.willpowerCurrent }
@@ -114,6 +119,13 @@ export const handEditSheet = Effect.fn("Flows.handEdit.handEditSheet")(function*
       () => new InvalidHandEdit({ message: "That value doesn't fit the sheet." }),
     ),
   )
+  // The box invariant (#118): this is the one door that admits an arbitrary
+  // track, so an orphaned Resistant dot under an empty box collapses here —
+  // the stored document can never carry the meaningless state again.
+  const patch: SheetPatch =
+    decoded.healthTrack !== undefined
+      ? { ...decoded, healthTrack: normalizeHealthTrack(decoded.healthTrack) }
+      : decoded
 
   if (
     patch.manaCurrent === undefined &&

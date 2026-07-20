@@ -91,7 +91,10 @@ function ToolFact({
       className="mv-data text-[10px] uppercase tracking-[0.06em]"
       style={{ color: magicalTool ? "var(--ink)" : "var(--dim)" }}
     >
-      Tool {magicalTool ? "in hand −1" : "set aside"}
+      {/* No "−1" in the label (owner call 2026-07-19): the discount shows
+          up resolved in the dice systems — the felt's declared terms and
+          the Paradox pool. The hover still teaches the number. */}
+      Tool {magicalTool ? "in hand" : "set aside"}
     </span>
   )
   if (onSetMagicalTool === undefined) {
@@ -180,8 +183,12 @@ function HealthMini({ track }: { track: CharacterSheet["healthTrack"] }) {
  * holds at least two pips: on a short meter the break landed one pip from
  * the end and read as a layout bug, not a counting aid (note 11's other
  * half) — and an 11-pip meter reproduces the same orphan one row down, so
- * a break that would strand a single trailing pip is dropped too. The
- * label survives only as the hover name — the glyph is the visible label.
+ * a break that would strand a single trailing pip is dropped too. Meters
+ * deplete left to right (owner call 2026-07-19): the spent pips gather at
+ * the LEFT end, the held ones stand at the right, and the pending ghost
+ * sits at the left edge of the held run — the next point the felt would
+ * take. The label survives only as the hover name — the glyph is the
+ * visible label.
  */
 function PipMeter({
   label,
@@ -199,11 +206,12 @@ function PipMeter({
 }) {
   const ghosts = Math.min(pending, current)
   const grouped = max >= 10 && max % 5 !== 1
+  const spent = max - current
   return (
     <span className="flex items-center gap-2" title={label}>
       <span className="inline-flex gap-[3px]">
         {Array.from({ length: max }, (_, i) => {
-          const isGhost = i >= current - ghosts && i < current
+          const isGhost = i >= spent && i < spent + ghosts
           return (
             <span
               key={i}
@@ -211,7 +219,7 @@ function PipMeter({
               style={{
                 color: isGhost
                   ? "var(--ember)"
-                  : i < current
+                  : i >= spent
                     ? color
                     : "var(--line)",
               }}

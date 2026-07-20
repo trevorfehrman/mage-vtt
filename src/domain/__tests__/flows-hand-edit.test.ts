@@ -239,6 +239,28 @@ describe("Flows.handEdit.handEditSheet (issue #19)", () => {
     }),
   )
 
+  it.effect("the door collapses a Resistant dot under an empty box (#118)", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: ST_USER })
+
+      yield* handEditSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        healthTrack: [
+          healthBox("empty", true),
+          healthBox("bashing", true),
+          ...Array.from({ length: 5 }, () => healthBox("empty")),
+        ],
+      }).pipe(Effect.provide(store.layer))
+
+      // The orphan normalizes away; the real wound keeps its dot.
+      expect(store.sheets.get(CHARACTER)!.healthTrack.slice(0, 2)).toEqual([
+        healthBox("empty"),
+        healthBox("bashing", true),
+      ])
+    }),
+  )
+
   it.effect("resistance is hand-settable per box, and the narration counts the dots (issue #41)", () =>
     Effect.gen(function* () {
       const store = seed({ userId: ST_USER })
