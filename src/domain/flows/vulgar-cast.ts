@@ -68,7 +68,7 @@ import { requireKnownRote } from "./rote-cast"
  *   in one commitment) → resolved
  *
  * Exits: killDraft (owner) / declineDraft (ST) → cancelled; cancelCast
- * (either party, anywhere on The Price — the caster may bail on a frozen
+ * (either party, anywhere on the Tides rung — the caster may bail on a frozen
  * price) → cancelled; voidCast (ST repair, any live stage, Override-stamped,
  * restores Mana and Willpower, leaves no accumulator trace) → voided.
  * No timeouts anywhere — pending Casts persist until a human moves them.
@@ -175,8 +175,9 @@ const requireStatus = Effect.fn("Flows.vulgarCast.requireStatus")(function* (
 })
 
 /**
- * The two-colored phase enforcement (ADR-0022): The Price before the freeze
- * (the ST's fluid assembly) or after it (the caster's settled decision).
+ * The two-colored phase enforcement (ADR-0022): the Tides rung before the
+ * freeze (the ST's fluid assembly) or after it (the caster's settled
+ * decision). The wire status stays "price"; the table says Tides (#114).
  */
 const requirePricePhase = Effect.fn("Flows.vulgarCast.requirePricePhase")(
   function* (cast: Cast, phase: "fluid" | "frozen") {
@@ -187,8 +188,8 @@ const requirePricePhase = Effect.fn("Flows.vulgarCast.requirePricePhase")(
         status: cast.status,
         needed:
           phase === "fluid"
-            ? "The Price, before the freeze"
-            : "The Price, after the freeze",
+            ? "the Tides, before the freeze"
+            : "the Tides, after the freeze",
       })
     }
   },
@@ -659,7 +660,7 @@ export const declineDraft = Effect.fn("Flows.vulgarCast.declineDraft")(function*
 })
 
 /**
- * The Storyteller engages a draft onto the exclusive stage — The Price rung
+ * The Storyteller engages a draft onto the exclusive stage — the Tides rung
  * opens fluid (ADR-0022): the card shows the live Tides off the Scene while
  * the ST assembles personal adjustments; nothing is settled until the freeze
  * stamps the seed. Gnosis stamps here — the sheet as it stands when the Cast
@@ -718,7 +719,7 @@ export type AdjustPriceArgs = typeof AdjustPriceArgs.Type
  * caster's situation — a broken hand, hanging from a ledge, a ghost's boon —
  * added to the card before the freeze, visibly distinct from the inherited
  * scene seed. The ST reacts to the world by editing the Scene, to the caster
- * by adjusting here; only The Price's fluid phase is reachable. No Activity
+ * by adjusting here; only the Tides rung's fluid phase is reachable. No Activity
  * entry: assembly is table talk, not a reveal (ADR-0016); the freeze narrates
  * the final pool.
  */
@@ -861,7 +862,7 @@ export const commitCast = Effect.fn("Flows.vulgarCast.commitCast")(function* (
 })
 
 /**
- * Free cancel, either party, anywhere on The Price — before the caster's
+ * Free cancel, either party, anywhere on the Tides rung — before the caster's
  * commit (a caster may bail on a frozen price; that is the rung's design):
  * an in-fiction reconsideration, not a repair — plain provenance, the stage
  * frees.

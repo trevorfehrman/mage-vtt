@@ -45,7 +45,7 @@ export type ParadoxPoolModifier = typeof ParadoxPoolModifier.Type
 /**
  * Why a named ± is unspeakable at a table, or null if it reads fine — the
  * one home of the rule every modifier door enforces (the Tides' ambient
- * circumstances and The Price's personal adjustments, ADR-0022). Callers
+ * circumstances and the Tides rung's personal adjustments, ADR-0022). Callers
  * prefix their own noun and wrap their own co-located error (ADR-0010).
  */
 export const modifierComplaint = (modifier: ParadoxPoolModifier): string | null =>

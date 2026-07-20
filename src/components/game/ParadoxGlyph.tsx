@@ -9,11 +9,9 @@
  */
 export function ParadoxGlyph({
   size = 14,
-  className = "",
   title = "Paradox",
 }: {
   size?: number
-  className?: string
   /** Accessible name; the glyph replaces the word, so it must speak it. */
   title?: string
 }) {
@@ -22,7 +20,6 @@ export function ParadoxGlyph({
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      className={className}
       fill="currentColor"
       stroke="none"
       role="img"

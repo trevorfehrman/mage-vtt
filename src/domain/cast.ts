@@ -16,7 +16,7 @@ import { ParadoxPoolModifier, ParadoxSeverity } from "./paradox"
  * The four-rung ladder (ADR-0022):
  *
  *   draft (caster declares, the wings)
- *     → price (The Price: ST assembles seed ± personal adjustments, freezes ·
+ *     → price (the Tides rung: ST assembles seed ± personal adjustments, freezes ·
  *              caster insures, commits or bails)
  *     → paradox (ST rolls · caster contains & releases in one Cast click)
  *     → resolved
@@ -44,7 +44,7 @@ export const isUnresolved = (status: CastStatus): boolean =>
   !TERMINAL.includes(status)
 
 /**
- * On stage (CONTEXT.md): The Price through Paradox — the at-most-one Cast
+ * On stage (CONTEXT.md): the Tides rung through Paradox — the at-most-one Cast
  * holding the table's attention. Drafts queue in the wings; terminals free it.
  */
 export const isOnStage = (status: CastStatus): boolean =>
@@ -91,7 +91,7 @@ export const isPriceFrozen = (cast: CastPhases): boolean =>
 /**
  * Whose hand the rung waits on (ADR-0022: two-colored phases replace "waiting
  * on you" prose); null once the Cast is terminal. Phases derive from stamps:
- * the frozen Tides flip The Price to the caster, the rolled successes flip
+ * the frozen Tides flip the Tides rung to the caster, the rolled successes flip
  * Paradox to the caster.
  */
 export const waitingOn = (cast: CastPhases): "storyteller" | "caster" | null =>
@@ -151,7 +151,7 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   // Gnosis as the sheet stood when it took the stage.
   sceneId: Schema.optionalKey(SceneId),
   gnosis: Schema.optionalKey(Schema.Number),
-  // The Price (ADR-0022): the ST's personal adjustments accumulate while the
+  // The Tides rung (ADR-0022; wire status stays "price", #114): the ST's personal adjustments accumulate while the
   // rung is fluid; the freeze stamps the Tides seed — its presence IS the
   // freeze, and after it nothing on the price moves.
   adjustments: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),

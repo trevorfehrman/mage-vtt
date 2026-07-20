@@ -46,7 +46,7 @@ import type { Id } from "../../../convex/_generated/dataModel"
 // ── The knobs ────────────────────────────────────────────────────────────────
 
 // Rig keys, not raw statuses (ADR-0022): the two-colored rungs audition both
-// phases, so The Price and Paradox each get two stops on the knob.
+// phases, so Tides and Paradox each get two stops on the knob.
 const RUNG_ORDER = [
   "draft",
   "priceFluid",

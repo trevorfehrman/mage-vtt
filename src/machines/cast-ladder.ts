@@ -82,7 +82,7 @@ export type LadderControl =
   | "kill" // caster: withdraw own draft
   | "decline" // ST: refuse a draft
   | "engage" // ST: put a draft on stage
-  | "adjust" // ST: personal adjustments (ADR-0022), The Price before the freeze
+  | "adjust" // ST: personal adjustments (ADR-0022), the Tides rung before the freeze
   | "lockPrice" // ST: THE FREEZE — stamp the Tides, go hands-off
   | "commit" // caster: the point of no return (with mitigation)
   | "cancel" // the Tides rung: either party while fluid, caster-only once frozen

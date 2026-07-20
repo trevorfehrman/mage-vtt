@@ -308,7 +308,7 @@ export const CastDoc = Schema.Struct({
   // The stage (the engage beat)
   sceneId: Schema.optionalKey(ConvexId("scenes")),
   gnosis: Schema.optionalKey(Schema.Number),
-  // The Price (ADR-0022): the ST's personal adjustments, then the frozen
+  // The Tides rung (ADR-0022; wire status stays "price", #114): the ST's personal adjustments, then the frozen
   // Tides seed — the snapshot's presence IS the freeze. Both reuse the
   // domain shapes (raw primitives already, ADR-0011), never a hand-mirror.
   adjustments: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),

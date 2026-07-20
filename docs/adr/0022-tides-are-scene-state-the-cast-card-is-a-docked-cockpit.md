@@ -7,6 +7,16 @@
 > the table) hears of the sacrifice. "One mutation per commitment" stands;
 > the "drafting is broadcast" half and its no-poker-face consequence are
 > withdrawn. Reconnecting mid-cockpit now resets the selection to zero.
+>
+> **Amended** (2026-07-19, #112 audit → #114): the two-colored rungs are
+> withdrawn — the tracker wears one green in all weathers, and the
+> whose-move job returns to "waiting on" prose in a dedicated status zone
+> at the card's foot (the don't-make-me-think ruling outweighed the
+> charter's prose ban). The rung's table name is **Tides**, not "The
+> Price" (the wire status literal stays `"price"`). And a frozen price
+> strips the Storyteller's cancel — chrome only for now; the server still
+> honors either party's cancel, enforcement deferred with the ST-UI
+> project.
 
 Adopted from the 2026-07-18 stage-question grilling (issue #101, worked with
 eyes on the #96 dressing-room rig). This ADR **amends ADR-0016**: the Cast
@@ -65,10 +75,14 @@ Declare (caster) → The Price (ST assembles seed ± personal, locks
 
 Rungs with two actors are **two-colored phases of one rung** — player-active
 vs ST-active styling — which replaces "waiting on you" prose entirely (the
-ticket's original charter question).
+ticket's original charter question). *(Amended 2026-07-19, #114: withdrawn —
+the phases still gate the mutations, but the tracker renders one green and
+the prose returned in a dedicated status zone; see the header note.)*
 
 **One mutation per commitment; drafting is broadcast working state;
-presentation may unpack a commitment into multiple beats.** This refines
+presentation may unpack a commitment into multiple beats.** *(Amended
+2026-07-19, #113: the broadcast-drafting clause is withdrawn — containment
+drafting is client-local until the Cast click.)* This refines
 ADR-0016's "one mutation per beat." That ADR fused mutation boundaries with
 dramatic beats because drafting was private then — a reveal was the only
 place drama could live. With drafting broadcast, suspense moves upstream of
@@ -107,7 +121,9 @@ post-Paradox liberty the book grants. The existing declaration-time
 dice-line simply renders the Willpower dice as pool members, as losable to
 Paradox as any other die.
 
-**Drafting lives on the Cast document.** Box clicks and the Willpower
+**Drafting lives on the Cast document.** *(Amended 2026-07-19, #113: it
+doesn't anymore — this whole section is withdrawn; containment selection is
+client-local and the Cast click is its first server contact.)* Box clicks and the Willpower
 toggle write draft fields via cheap seam-checked mutations (actor is
 caster, status is the Paradox phase, boxes in range — no rules consequence
 until commit); the Cast click finalizes them. Spectators watch through the
