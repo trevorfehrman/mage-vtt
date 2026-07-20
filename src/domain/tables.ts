@@ -308,8 +308,8 @@ export const CastDoc = Schema.Struct({
   // The stage (the engage beat)
   sceneId: Schema.optionalKey(ConvexId("scenes")),
   gnosis: Schema.optionalKey(Schema.Number),
-  // The Tides rung (ADR-0022; wire status stays "price", #114): the ST's personal adjustments, then the frozen
-  // Tides seed — the snapshot's presence IS the freeze. Both reuse the
+  // The Tides rung (ADR-0022; wire status stays "price", #114): the ST's personal adjustments, then the fixed
+  // Tides seed — the snapshot's presence IS the fix. Both reuse the
   // domain shapes (raw primitives already, ADR-0011), never a hand-mirror.
   adjustments: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
   tides: Schema.optionalKey(TidesSnapshot),
@@ -318,10 +318,19 @@ export const CastDoc = Schema.Struct({
   // The Paradox roll — stamped mid-rung; its presence flips the phase.
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
   paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
-  // The one Cast click and resolution.
+  // The one Cast click and resolution. The release roll's faces live here
+  // (the resolution-merge ruling, 2026-07-19): the resolved card is the
+  // record — no separate roll row rides beside it. Rows resolved before the
+  // merge carry only castPool/castSuccesses; the card renders what's there.
   containedSuccesses: Schema.optionalKey(Schema.Number),
   castPool: Schema.optionalKey(Schema.Number),
   castSuccesses: Schema.optionalKey(Schema.Number),
+  castRolls: Schema.optionalKey(Schema.Array(Schema.Number)),
+  castExplosions: Schema.optionalKey(Schema.Array(Schema.Number)),
+  castRoteRerolls: Schema.optionalKey(Schema.Array(Schema.Number)),
+  castIsChanceDie: Schema.optionalKey(Schema.Boolean),
+  castIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
+  castIsExceptionalSuccess: Schema.optionalKey(Schema.Boolean),
   severity: Schema.optionalKey(Schema.String),
   // Legacy negotiation columns — seven-rung rows only; no new writes.
   sleeperWitnesses: Schema.optionalKey(Schema.Boolean),

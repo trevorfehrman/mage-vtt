@@ -82,7 +82,7 @@ describe("waitingOn (ADR-0022: two-colored phases of one rung)", () => {
     expect(waitingOn({ status: "draft" })).toBe("storyteller")
   })
 
-  it("The Price waits on the Storyteller until the freeze stamps the Tides", () => {
+  it("The Price waits on the Storyteller until the fix stamps the Tides", () => {
     expect(waitingOn({ status: "price" })).toBe("storyteller")
   })
 

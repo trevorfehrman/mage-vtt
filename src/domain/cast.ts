@@ -16,7 +16,7 @@ import { ParadoxPoolModifier, ParadoxSeverity } from "./paradox"
  * The four-rung ladder (ADR-0022):
  *
  *   draft (caster declares, the wings)
- *     → price (the Tides rung: ST assembles seed ± personal adjustments, freezes ·
+ *     → price (the Tides rung: ST assembles seed ± personal adjustments, fixes ·
  *              caster insures, commits or bails)
  *     → paradox (ST rolls · caster contains & releases in one Cast click)
  *     → resolved
@@ -58,10 +58,11 @@ export const isOnStage = (status: CastStatus): boolean =>
 export const isCommitted = (status: CastStatus): boolean => status === "paradox"
 
 /**
- * The frozen Tides seed as the freeze stamps it onto the card (ADR-0022):
+ * The fixed Tides seed as the fix stamps it onto the card (ADR-0022, verb
+ * renamed by the 2026-07-19 polish pass — "Fix the Tides", never "freeze"):
  * inherited-from-scene ambient truth — witnesses, circumstances, the caster's
  * prior-Paradox pips — stamped, never re-derived. Its presence on the document
- * IS the freeze: after it lands the ST is irrevocably hands-off and the caster
+ * IS the fix: after it lands the ST is irrevocably hands-off and the caster
  * weighs insurance against a price that cannot shift under them.
  */
 export const TidesSnapshot = Schema.Struct({
@@ -84,23 +85,23 @@ export const CastPhases = Schema.Struct({
 })
 export type CastPhases = typeof CastPhases.Type
 
-/** The freeze has landed: the price is settled and "settled" never lies. */
-export const isPriceFrozen = (cast: CastPhases): boolean =>
+/** The fix has landed: the price is settled and "settled" never lies. */
+export const isPriceFixed = (cast: CastPhases): boolean =>
   cast.tides !== undefined
 
 /**
  * Whose hand the rung waits on (ADR-0022: two-colored phases replace "waiting
  * on you" prose); null once the Cast is terminal. Phases derive from stamps:
- * the frozen Tides flip the Tides rung to the caster, the rolled successes flip
+ * the fixed Tides flip the Tides rung to the caster, the rolled successes flip
  * Paradox to the caster.
  */
 export const waitingOn = (cast: CastPhases): "storyteller" | "caster" | null =>
   Match.value(cast.status).pipe(
     // draft: in the wings — the ST engages (or declines).
     Match.when("draft", () => "storyteller" as const),
-    // price: the ST assembles and freezes; then the caster insures & commits.
+    // price: the ST assembles and fixes; then the caster insures & commits.
     Match.when("price", () =>
-      isPriceFrozen(cast) ? ("caster" as const) : ("storyteller" as const),
+      isPriceFixed(cast) ? ("caster" as const) : ("storyteller" as const),
     ),
     // paradox: the ST's own roll button; then the caster contains & releases.
     Match.when("paradox", () =>
@@ -152,8 +153,8 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   sceneId: Schema.optionalKey(SceneId),
   gnosis: Schema.optionalKey(Schema.Number),
   // The Tides rung (ADR-0022; wire status stays "price", #114): the ST's personal adjustments accumulate while the
-  // rung is fluid; the freeze stamps the Tides seed — its presence IS the
-  // freeze, and after it nothing on the price moves.
+  // rung is fluid; the fix stamps the Tides seed — its presence IS the
+  // fix, and after it nothing on the price moves.
   adjustments: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
   tides: Schema.optionalKey(TidesSnapshot),
   // Commitment (the caster's point of no return)
@@ -161,16 +162,24 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   // The Paradox roll — stamped mid-rung; its presence flips the phase.
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
   paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
-  // The one Cast click (contain + release) and resolution
+  // The one Cast click (contain + release) and resolution. The release roll's
+  // faces stamp onto the document (the resolution-merge ruling, 2026-07-19):
+  // the resolved card IS the record, no separate roll entry beside it.
   containedSuccesses: Schema.optionalKey(Schema.Number),
   castPool: Schema.optionalKey(Schema.Number),
   castSuccesses: Schema.optionalKey(Schema.Number),
+  castRolls: Schema.optionalKey(Schema.Array(Schema.Number)),
+  castExplosions: Schema.optionalKey(Schema.Array(Schema.Number)),
+  castRoteRerolls: Schema.optionalKey(Schema.Array(Schema.Number)),
+  castIsChanceDie: Schema.optionalKey(Schema.Boolean),
+  castIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
+  castIsExceptionalSuccess: Schema.optionalKey(Schema.Boolean),
   severity: Schema.optionalKey(ParadoxSeverity),
   updatedAt: Schema.Number,
 }) {}
 
 /**
- * The Tides seed a freeze stamps (ADR-0022): the Scene's ambient truth plus
+ * The Tides seed a fix stamps (ADR-0022): the Scene's ambient truth plus
  * this caster's derived pips (ADR-0012). Downtime (no Scene) seeds nothing —
  * no witnesses, no circumstances, no accumulation. Structural over the Scene
  * so the strip's raw reads and the flow's decoded `Scene` both fit.

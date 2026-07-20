@@ -18,6 +18,18 @@
 > honors either party's cancel, enforcement deferred with the ST-UI
 > project.
 >
+> **Amended** (2026-07-19, the vulgar polish pass): two notes. **Vocabulary:**
+> the settling verb is **fix**, not freeze — the button reads "Fix the
+> Tides", the narration "fixes the Tides", the domain predicate is
+> `isPriceFixed` — everywhere the table can read (the wire status literal
+> stays `"price"`, as #114 ruled). **The resolution merge:** the release no
+> longer inserts a separate roll entry beside the resolved card — the
+> release roll's faces stamp onto the Cast document (`castRolls` and kin)
+> and the resolved card IS the record, one card in the feed instead of two.
+> The Paradox roll keeps its own roll entry (a different actor's beat; the
+> owner did not flag it). ADR-0012 stands: the accumulator reads resolved
+> Cast rows, which never stopped being written.
+>
 > **Amended** (2026-07-19, the card takeover): "docked, never a takeover"
 > answered a question about the FEED, and for the feed it stands — record
 > plus at most one live card. New doctrine for the **roll zones**: while a
@@ -65,6 +77,10 @@ Color grammar note: the Tides are the world's magic and render verdigris;
 the caster's hand (drafting, insurance, the Cast click) is ember.
 
 ## The freeze
+
+*(Amended 2026-07-19, the vulgar polish pass: the verb is **fix** — "Fix
+the Tides" — everywhere the table reads; this section keeps its original
+wording as adopted. The mechanics are unchanged.)*
 
 The ST locks the price when satisfied. After that click the ST is
 **irrevocably hands-off** — no unfreeze exists. "Settled" never lies: once

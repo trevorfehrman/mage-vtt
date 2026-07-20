@@ -30,10 +30,8 @@ import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { SecondSeatControl } from "#/components/game/SecondSeatControl"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { isOnStage, isUnresolved } from "#/domain/cast"
-import {
-  decodeSheet,
-  type CharacterSheet as CharacterSheetData,
-} from "#/domain/character"
+import type { CharacterSheet as CharacterSheetData } from "#/domain/character"
+import { decodeSheetDoc } from "#/lib/sheet-doc"
 import { arctusData } from "#/domain/fixtures/arctus"
 import type { Id } from "../../../convex/_generated/dataModel"
 
@@ -208,11 +206,23 @@ function SessionPage() {
 
   // The caster's own decoded sheet — the cast panel's readout needs the real
   // ratings whichever roster sheet is being viewed.
-  const mySheet = useMemo(() => {
-    if (!character) return null
-    const { _id, _creationTime, ...fields } = character
-    return decodeSheet({ id: _id, ...fields })
-  }, [character])
+  const mySheet = useMemo(
+    () => (character ? decodeSheetDoc(character) : null),
+    [character],
+  )
+
+  // The watched cockpit's sheet (2026-07-19 polish, note 14): the ST's zone
+  // card renders the CASTER's health track, decoded off the roster.
+  const casterSheetOf = (characterId: string) => {
+    const doc = roster?.find((c) => c._id === characterId)
+    return doc ? decodeSheetDoc(doc) : null
+  }
+
+  // The masthead's Mana ghost while the caster's own live card holds the
+  // zone (2026-07-19 polish, note 8): the card reports spell cost + selected
+  // mitigation during the commit decision; the declaring felt keeps its own
+  // armedPreview path.
+  const [castPendingMana, setCastPendingMana] = useState(0)
 
   // Lazy seed: if no character exists, seed Arctus once. Never while seated —
   // a characterless seat must read as empty, not conjure a sheet for the
@@ -287,8 +297,7 @@ function SessionPage() {
     // lost while seated (ADR-0013), so only the seat's own sheet drives.
     const isMine = viewed._id === character?._id
     const mayDrivePool = isMine || isStoryteller || (user.isDev && !seatMember)
-    const { _id, _creationTime, ...fields } = viewed
-    const sheet = decodeSheet({ id: _id, ...fields })
+    const sheet = decodeSheetDoc(viewed)
 
     sheetContent = sheet ? (
       <div className="grid gap-6">
@@ -430,11 +439,12 @@ function SessionPage() {
               // Mana armed on the declaring felt (auto + rider), ghosted at
               // the resource it will spend from (issue #107). The rider's
               // controls are felt fittings now (owner call 2026-07-19) —
-              // the masthead only weighs.
+              // the masthead only weighs. With the live card holding the
+              // zone, the card's commit decision reports instead (note 8).
               pendingMana={
                 rawCast.state !== "idle"
                   ? (armedPreview(rawCast.context, mySheet)?.manaCost ?? 0)
-                  : 0
+                  : castPendingMana
               }
             />
           )}
@@ -456,6 +466,7 @@ function SessionPage() {
                   isStoryteller={isStoryteller}
                   viewerUserId={viewerUserId}
                   mySheet={mySheet}
+                  casterSheet={casterSheetOf(stZoneCast.characterId)}
                   moreWaiting={moreWaiting}
                 />
               </div>
@@ -472,6 +483,8 @@ function SessionPage() {
                   isStoryteller={isStoryteller}
                   viewerUserId={viewerUserId}
                   mySheet={mySheet}
+                  casterSheet={mySheet}
+                  onPendingMana={setCastPendingMana}
                 />
               </div>
             </div>

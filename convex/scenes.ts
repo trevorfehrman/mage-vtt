@@ -27,7 +27,7 @@ export const close = enforcedMutation({
 
 // The Tides (ADR-0022): the scene-owned ambient price of vulgar magic —
 // witness head count and circumstance modifiers, ST-only to change, visible
-// to all on the strip, frozen onto a Cast at The Price — a quiet write, no
+// to all on the strip, fixed onto a Cast at the Tides rung — a quiet write, no
 // Activity entry. The modifier shape derives from the domain Schema
 // (ADR-0005), never hand-written beside it.
 export const editTides = enforcedMutation({

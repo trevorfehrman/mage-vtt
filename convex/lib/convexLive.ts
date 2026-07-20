@@ -427,6 +427,24 @@ export const convexLive = (
             ...(patch.castSuccesses !== undefined
               ? { castSuccesses: patch.castSuccesses }
               : {}),
+            ...(patch.castRolls !== undefined
+              ? { castRolls: [...patch.castRolls] }
+              : {}),
+            ...(patch.castExplosions !== undefined
+              ? { castExplosions: [...patch.castExplosions] }
+              : {}),
+            ...(patch.castRoteRerolls !== undefined
+              ? { castRoteRerolls: [...patch.castRoteRerolls] }
+              : {}),
+            ...(patch.castIsChanceDie !== undefined
+              ? { castIsChanceDie: patch.castIsChanceDie }
+              : {}),
+            ...(patch.castIsDramaticFailure !== undefined
+              ? { castIsDramaticFailure: patch.castIsDramaticFailure }
+              : {}),
+            ...(patch.castIsExceptionalSuccess !== undefined
+              ? { castIsExceptionalSuccess: patch.castIsExceptionalSuccess }
+              : {}),
             ...(patch.severity !== undefined ? { severity: patch.severity } : {}),
             ...(marker ? { override: marker } : {}),
             updatedAt,

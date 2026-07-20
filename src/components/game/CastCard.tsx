@@ -14,12 +14,18 @@ import {
 } from "#/domain/cast"
 import type { CharacterSheet } from "#/domain/character"
 import type { HealthTrack } from "#/domain/damage"
-import { calculateParadoxPool } from "#/domain/paradox"
+import {
+  calculateParadoxPool,
+  resolveParadox,
+  type ParadoxPoolModifier,
+} from "#/domain/paradox"
 import { rollOdds } from "#/domain/probability"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
 import { ArcanaGlyph } from "./ArcanaGlyph"
+import { healthBoxGlyph, ResistantDot } from "./CharacterSheet"
+import { Die } from "./Die"
 import { FeltDie } from "./FeltDie"
 import { ParadoxGlyph } from "./ParadoxGlyph"
 import { api } from "../../../convex/_generated/api"
@@ -35,6 +41,14 @@ import type { Id } from "../../../convex/_generated/dataModel"
  * document (rehydrating mid-ladder on reload is just "render the snapshot");
  * every button is a Convex mutation whose refusal surfaces inline in table
  * language (ADR-0010).
+ *
+ * The vulgar polish pass (owner notes, 2026-07-19): the felt explains the
+ * whole bet — Paradox stands on it as red dice beneath the declared pool,
+ * the Tides ride its gutter as ebb/flood badges every seat watches live, and
+ * the odds line sits directly beneath. Containment is the caster's own
+ * health track rendered in-card (box clicks are the bet — the slider died),
+ * the severity lore term burns big in --paradox, and resolution lands IN
+ * this card (faces stamped on the document) — one card, never two.
  */
 
 const RUNGS: ReadonlyArray<{ status: CastStatus; label: string }> = [
@@ -49,15 +63,15 @@ const rungIndex = (status: CastStatus): number => {
   return i === -1 ? RUNGS.length : i
 }
 
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-
 export function CastCard({
   cast,
   sessionId,
   isStoryteller,
   viewerUserId,
   mySheet,
+  casterSheet = null,
   moreWaiting = 0,
+  onPendingMana,
 }: {
   cast: CastEntry
   sessionId: Id<"sessions">
@@ -65,8 +79,15 @@ export function CastCard({
   viewerUserId: string
   /** The viewer's own decoded sheet — the caster's input caps read from it. */
   mySheet: CharacterSheet | null
+  /** The CASTER's decoded sheet — the cockpit track every seat watches
+   * (spectator suspense is a design goal, ADR-0022). For the caster it is
+   * their own sheet; null renders the count fallback instead of the track. */
+  casterSheet?: CharacterSheet | null
   /** Drafts queued behind this one — the ST zone's wings note. */
   moreWaiting?: number
+  /** The masthead's Mana ghost (2026-07-19 polish, note 8): reports spell
+   * cost + selected mitigation while the commit decision is live, 0 after. */
+  onPendingMana?: ((mana: number) => void) | undefined
 }) {
   // The machine is a projection of the document (ADR-0016): input rehydrates
   // mid-ladder, SYNC tracks every realtime update, and the card renders from
@@ -125,8 +146,8 @@ export function CastCard({
 
   const step = { sessionId, castId: cast._id }
 
-  // The Paradox pool as the freeze stamped it (ADR-0022) — the same leaf the
-  // server rolls with, never a reimplementation. Before the freeze nothing is
+  // The Paradox pool as the fix stamped it (ADR-0022) — the same leaf the
+  // server rolls with, never a reimplementation. Before the fix nothing is
   // settled, so the card prices nothing (the strip shows the live Tides).
   const poolInputs =
     cast.gnosis !== undefined && cast.tides !== undefined
@@ -142,11 +163,11 @@ export function CastCard({
           ],
         }
       : null
-  const priceFrozenUncommitted = status === "price" && cast.tides !== undefined
+  const priceFixedUncommitted = status === "price" && cast.tides !== undefined
   const pool = poolInputs
     ? calculateParadoxPool({
         ...poolInputs,
-        ...(priceFrozenUncommitted
+        ...(priceFixedUncommitted
           ? { manaMitigation: mitigation }
           : cast.manaMitigation !== undefined
             ? { manaMitigation: cast.manaMitigation }
@@ -161,9 +182,28 @@ export function CastCard({
   const mitigateCap = mySheet
     ? mitigationCap(poolBeforeMitigation, mySheet.manaCurrent, cast.spellManaCost)
     : 0
-  const containCap = mySheet
-    ? containmentCap(mySheet.healthTrack, cast.paradoxSuccesses ?? 0)
+
+  // The cockpit's sheet: the CASTER's track, whichever seat is watching —
+  // the caster's own when they hold the card, the passed-in caster sheet on
+  // every other seat (the 2026-07-19 polish, note 14).
+  const cockpitSheet = isCaster ? mySheet : casterSheet
+  const containCap = cockpitSheet
+    ? containmentCap(cockpitSheet.healthTrack, cast.paradoxSuccesses ?? 0)
     : (cast.paradoxSuccesses ?? 0)
+  const cockpitContained = controls.includes("contain")
+    ? Math.min(contained, containCap)
+    : 0
+  const outlook =
+    status === "paradox" &&
+    cast.paradoxSuccesses !== undefined &&
+    cockpitSheet !== null
+      ? containmentOutlook({
+          track: cockpitSheet.healthTrack,
+          declaredPool: cast.declaredPool,
+          paradoxSuccesses: cast.paradoxSuccesses,
+          contained: cockpitContained,
+        })
+      : null
 
   const waiting = waitingOn(cast)
   const terminal = waiting === null
@@ -179,15 +219,7 @@ export function CastCard({
   const willpowerDice =
     cast.declaredComponents.find((c) => c.name === WILLPOWER_COMPONENT_NAME)
       ?.dots ?? 0
-  const eaten =
-    controls.includes("contain") && mySheet !== null
-      ? containmentOutlook({
-          track: mySheet.healthTrack,
-          declaredPool: cast.declaredPool,
-          paradoxSuccesses: cast.paradoxSuccesses ?? 0,
-          contained: Math.min(contained, containCap),
-        }).eaten
-      : 0
+  const eaten = controls.includes("contain") && outlook !== null ? outlook.eaten : 0
   const feltDice = Array.from({ length: cast.declaredPool }, (_, i) => {
     const kind = i >= cast.declaredPool - willpowerDice ? "willpower" : "sheet"
     const ghosted = i >= cast.declaredPool - eaten
@@ -207,8 +239,28 @@ export function CastCard({
       />
     )
   })
+  // Paradox on the felt (2026-07-19 polish, note 11): the pool reality will
+  // roll, standing as red dice beneath the declared pool from the fix until
+  // the ST's roll — shrinking live as mitigation rows are clicked. A fully
+  // mitigated pool still throws the chance die (the gamble is honest), so a
+  // ghosted die stands for it.
+  const paradoxDiceCount =
+    pool !== null && cast.paradoxSuccesses === undefined && !terminal
+      ? pool.totalDice
+      : null
+  // The Tides on the felt (notes 3/4/17): the pool's named ±s as ebb/flood
+  // badges in the gutter, live on every seat's card. While the Tides are
+  // fluid the pool isn't computable yet, so the badges are the ST's live
+  // adjustments — except on the ST's own card, where they stand editable in
+  // the Tides block below instead of doubling here.
+  const tideBadges: ReadonlyArray<ParadoxPoolModifier> =
+    pool !== null
+      ? pool.modifiers
+      : controls.includes("adjust")
+        ? []
+        : (cast.adjustments ?? [])
   const lineage = cast.declaredComponents
-    .filter((c) => c.dots > 0 && c.name !== "Willpower")
+    .filter((c) => c.dots > 0 && c.name !== WILLPOWER_COMPONENT_NAME)
     .map((c) => c.name)
     .join(" + ")
   const declaredTerms = [
@@ -217,6 +269,23 @@ export function CastCard({
     ...(cast.targets !== undefined ? [`×${cast.targets} targets`] : []),
     ...(cast.usesMagicalTool ? ["tool in hand −1"] : []),
   ]
+
+  // The odds line beneath the felt (note 16): before the Paradox roll it
+  // prices the red dice; in the cockpit it prices the surviving cast pool,
+  // recomputing as boxes are clicked.
+  const paradoxOdds = paradoxDiceCount !== null ? rollOdds(paradoxDiceCount) : null
+  const castOdds = outlook !== null ? rollOdds(outlook.castPool) : null
+
+  // The masthead's Mana ghost (note 8): the pending spend while the commit
+  // decision is live — spell cost plus the selected mitigation row.
+  const pendingManaNow = controls.includes("commit")
+    ? cast.spellManaCost + Math.min(mitigation, mitigateCap)
+    : 0
+  useEffect(() => {
+    if (onPendingMana === undefined) return
+    onPendingMana(pendingManaNow)
+    return () => onPendingMana(0)
+  }, [onPendingMana, pendingManaNow])
 
   return (
     <div
@@ -305,7 +374,8 @@ export function CastCard({
       )}
 
       {/* the declared pool on the felt — provenance left, terms right in the
-          gutter, the same physical grammar as the declaring felt */}
+          gutter, the same physical grammar as the declaring felt; the Paradox
+          pool stands beneath it in red, and the Tides badges explain both */}
       <div
         className="mv-felt mt-2 rounded-[6px] border"
         style={{
@@ -321,6 +391,29 @@ export function CastCard({
             </span>
           )}
         </div>
+        {paradoxDiceCount !== null && (
+          <div className="flex flex-wrap content-start gap-2.5 px-2.5 pb-2.5">
+            <AnimatePresence initial={false}>
+              {Array.from({ length: paradoxDiceCount }, (_, i) => (
+                <FeltDie
+                  key={`paradox:${i}`}
+                  kind="paradox"
+                  reduced={reduced}
+                  title="Paradox — a die reality will roll against this cast; Mana mitigation buys these off"
+                />
+              ))}
+              {paradoxDiceCount === 0 && (
+                <FeltDie
+                  key="paradox:chance"
+                  kind="paradox"
+                  ghosted
+                  reduced={reduced}
+                  title="Fully mitigated — reality still throws a single chance die"
+                />
+              )}
+            </AnimatePresence>
+          </div>
+        )}
         <div
           className="mv-data flex flex-wrap items-baseline justify-between gap-x-2 px-2.5 pb-2 text-[12px] leading-none"
           style={{ color: "var(--dim)" }}
@@ -342,22 +435,48 @@ export function CastCard({
             )}
           </span>
         </div>
+        {tideBadges.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 px-2.5 pb-2.5">
+            {tideBadges.map((m, i) => (
+              <TideBadge key={`${m.source}-${i}`} modifier={m} />
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* the odds line — directly beneath the felt (note 16) */}
+      {(paradoxOdds !== null || castOdds !== null) && (
+        <div
+          className="mv-data mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px]"
+          style={{ color: "var(--dim)" }}
+        >
+          {paradoxOdds !== null ? (
+            <>
+              <span className="inline-flex items-center gap-1">
+                <ParadoxGlyph size={12} />
+                <b style={{ color: "var(--paradox)" }}>{pct(paradoxOdds.success)}</b>
+              </span>
+              <span>~{paradoxOdds.expected.toFixed(2)} Paradox</span>
+            </>
+          ) : castOdds !== null ? (
+            <>
+              <span>
+                success <b style={{ color: "var(--rail-success)" }}>{pct(castOdds.success)}</b>
+              </span>
+              <span>~{castOdds.expected.toFixed(2)} successes</span>
+              <span>exceptional {pct(castOdds.exceptional)}</span>
+              {castOdds.isChanceDie && (
+                <span style={{ color: "var(--bad)" }}>
+                  dramatic failure {pct(castOdds.dramaticFailure)}
+                </span>
+              )}
+            </>
+          ) : null}
+        </div>
+      )}
 
       {/* the numbers of the moment */}
       <div className="mt-2 grid gap-1 text-[12px]" style={{ color: "var(--dim)" }}>
-        {pool !== null && !terminal && (
-          <span className="mv-data">
-            Paradox pool{" "}
-            {/* A dice count is a quantity, never good news (#102) — the
-                insurance table below headlines the actual risk. */}
-            <b style={{ color: "var(--ink)" }}>
-              {pool.totalDice === 0 ? "chance die" : `${pool.totalDice} dice`}
-            </b>
-            {" — "}
-            {[`Gnosis ${pool.baseDice}`, ...pool.modifiers.map((m) => `${m.source} ${m.dice > 0 ? "+" : ""}${m.dice}`)].join(", ")}
-          </span>
-        )}
         {cast.paradoxSuccesses !== undefined && (
           <span className="mv-data inline-flex items-center gap-1">
             {/* Paradox is never "successes" (#114): the glyph speaks the word,
@@ -373,61 +492,50 @@ export function CastCard({
               : ""}
           </span>
         )}
-        {status === "resolved" && (
-          <span className="mv-data">
-            cast rolled{" "}
-            <b style={{ color: (cast.castSuccesses ?? 0) > 0 ? "var(--rail-success)" : "var(--dim)" }}>
-              {cast.castSuccesses} {cast.castSuccesses === 1 ? "success" : "successes"}
-            </b>
-            {cast.severity && cast.severity !== "none"
-              ? ` · Paradox manifests: ${capitalize(cast.severity)}`
-              : " · reality lets it pass"}
-          </span>
-        )}
       </div>
+
+      {/* Resolution lives IN the card (the resolution merge, 2026-07-19):
+          the faces stamped on the document, the successes, and the severity
+          lore term — the record every seat reads, no roll card beside it. */}
+      {status === "resolved" && <Resolution cast={cast} />}
 
       {/* The ST's personal adjustments (ADR-0022): facts about this caster's
           situation, patched onto the shared document while the Tides are
-          fluid — the scene's ambient Tides live on the strip, not here. */}
+          fluid — the scene's ambient Tides live on the strip, not here.
+          Relaid by note 2: name row, then a full-width stepper row (− left,
+          + right, Add rightmost), the ebb/flood tags stacked beneath. */}
       {controls.includes("adjust") && (
         <div className="mt-2 grid gap-2 py-1">
           <span className="mv-eyebrow">Tides</span>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {(cast.adjustments ?? []).map((m, i) => (
-              <span
-                key={`${m.source}-${i}`}
-                className="mv-data inline-flex items-center gap-1 rounded-[2px] px-1.5 py-0.5 text-[12px]"
-                style={{ border: "1px solid var(--line)", color: "var(--ink)" }}
-              >
-                {m.source} {m.dice > 0 ? `+${m.dice}` : m.dice}
-                <button
-                  onClick={() =>
-                    run(() =>
-                      adjustPrice({
-                        ...step,
-                        adjustments: (cast.adjustments ?? [])
-                          .filter((_, j) => j !== i)
-                          .map((d) => ({ ...d })),
-                      }),
-                    )
-                  }
-                  disabled={busy}
-                  className="leading-none disabled:opacity-40"
-                  style={{ color: "var(--dim)" }}
-                  title="Remove this adjustment"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-            <input
-              value={modSource}
-              onChange={(e) => setModSource(e.target.value)}
-              placeholder="Name an adjustment…"
-              className="mv-data w-36 rounded-[3px] border bg-transparent px-2 py-0.5 text-[12px] outline-none focus:border-[var(--accent)]"
-              style={{ borderColor: "var(--line)" }}
-            />
-            <DiceStepper value={modDice} onChange={setModDice} disabled={busy} />
+          <input
+            value={modSource}
+            onChange={(e) => setModSource(e.target.value)}
+            placeholder="Name an adjustment…"
+            className="mv-data w-full rounded-[3px] border bg-transparent px-2 py-0.5 text-[12px] outline-none focus:border-[var(--accent)]"
+            style={{ borderColor: "var(--line)" }}
+          />
+          <div className="flex w-full items-center gap-1.5">
+            <button
+              onClick={() => setModDice(stepOverZero(modDice, -1))}
+              disabled={busy || modDice <= -10}
+              className="mv-btn grid size-6 place-items-center rounded-[3px] text-[13px] leading-none disabled:opacity-40"
+            >
+              −
+            </button>
+            <span
+              className="mv-data flex-1 text-center text-[13px] font-bold"
+              style={{ color: modDice < 0 ? "var(--accent)" : "var(--ember)" }}
+              title={modDice < 0 ? "Ebb — fewer Paradox dice" : "Flood — more Paradox dice"}
+            >
+              {modDice > 0 ? `+${modDice}` : modDice}
+            </span>
+            <button
+              onClick={() => setModDice(stepOverZero(modDice, 1))}
+              disabled={busy || modDice >= 10}
+              className="mv-btn grid size-6 place-items-center rounded-[3px] text-[13px] leading-none disabled:opacity-40"
+            >
+              +
+            </button>
             <button
               onClick={async () => {
                 const source = modSource.trim()
@@ -449,35 +557,64 @@ export function CastCard({
               Add
             </button>
           </div>
+          {(cast.adjustments ?? []).length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(cast.adjustments ?? []).map((m, i) => (
+                <TideBadge
+                  key={`${m.source}-${i}`}
+                  modifier={m}
+                  disabled={busy}
+                  onRemove={() =>
+                    run(() =>
+                      adjustPrice({
+                        ...step,
+                        adjustments: (cast.adjustments ?? [])
+                          .filter((_, j) => j !== i)
+                          .map((d) => ({ ...d })),
+                      }),
+                    )
+                  }
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* The blind insurance, priced (issue #45): every affordable Mana spend,
-          the Paradox pool it buys, and exact odds — before the caster commits. */}
+      {/* The blind insurance, priced (issue #45; note 7): one row per Paradox
+          die whatever the Mana — unaffordable rows stand visible and refuse,
+          so the table always shows the full shape of the risk. */}
       {controls.includes("commit") && poolInputs !== null && (
         <MitigationPreview
           poolInputs={poolInputs}
-          cap={mitigateCap}
+          poolBefore={poolBeforeMitigation}
+          affordable={mitigateCap}
           selected={mitigation}
           onSelect={setMitigation}
           disabled={busy}
         />
       )}
 
-      {/* The informed bet (issue #45): drag the slider, watch the double
-          shrink — uncontained dice bought back, wound penalties paid for.
-          Every stop is local (#113): the table hears one Cast click. */}
-      {controls.includes("contain") && mySheet !== null && (
-        <ContainmentBet
-          track={mySheet.healthTrack}
-          declaredPool={cast.declaredPool}
-          paradoxSuccesses={cast.paradoxSuccesses ?? 0}
-          cap={containCap}
-          contained={Math.min(contained, containCap)}
-          onChange={setContained}
-          disabled={busy}
-        />
-      )}
+      {/* The informed bet (issue #45; rebuilt by note 13): the caster's own
+          health track IS the containment control — box clicks are the bet,
+          the severity lore term burns above it, and every stop is local
+          (#113) until the one Cast click. ST and spectator watch the same
+          cockpit read-only (note 14). */}
+      {/* outlook non-null already implies the rolled Paradox phase and a
+          decodable caster sheet — the cockpit's whole precondition. */}
+      {outlook !== null &&
+        (cast.paradoxSuccesses ?? 0) > 0 &&
+        cockpitSheet !== null && (
+          <ParadoxCockpit
+            track={cockpitSheet.healthTrack}
+            paradoxSuccesses={cast.paradoxSuccesses ?? 0}
+            cap={containCap}
+            contained={cockpitContained}
+            outlook={outlook}
+            onChange={controls.includes("contain") ? setContained : undefined}
+            disabled={busy}
+          />
+        )}
 
       {/* the wings note — more drafts queue behind this one (ST zone) */}
       {moreWaiting > 0 && (
@@ -551,20 +688,36 @@ export function CastCard({
               onClick={() => run(() => lockPrice(step))}
               disabled={busy}
               className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
-              title="THE FREEZE: the Tides stamp onto the card and cannot shift again."
+              title="THE FIX: the Tides stamp onto the card and cannot shift again."
             >
-              Freeze the Tides
+              Fix the Tides
             </button>
           )}
           {controls.includes("commit") && (
-            <>
-              <NumberInput
-                label="mitigate"
-                value={mitigation}
-                cap={mitigateCap}
-                onChange={setMitigation}
-                disabled={busy}
-              />
+            // The commit column (note 10): the spend speaks in glyphs above
+            // the trigger — ◈ for the Mana leaving, ◆ for the precommitted
+            // Willpower point — never inside the button's words.
+            <div className="flex flex-col items-center gap-1">
+              {(pendingManaNow > 0 || cast.spendWillpower) && (
+                <span className="mv-data text-[12px] leading-none">
+                  {pendingManaNow > 0 && (
+                    <b
+                      style={{ color: "var(--mana)" }}
+                      title="The Mana this commit spends — spell cost plus the selected mitigation"
+                    >
+                      ◈{pendingManaNow}
+                    </b>
+                  )}
+                  {cast.spendWillpower && (
+                    <b
+                      style={{ color: "var(--accent)" }}
+                      title="The precommitted Willpower point — it spends at the commit"
+                    >
+                      {pendingManaNow > 0 ? " " : ""}◆1
+                    </b>
+                  )}
+                </span>
+              )}
               <button
                 onClick={() =>
                   run(() => commit({ ...step, manaMitigation: mitigation }))
@@ -573,10 +726,9 @@ export function CastCard({
                 className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
                 title="The point of no return: mitigation, spell cost, and any precommitted Willpower commit now."
               >
-                Commit — {cast.spellManaCost + mitigation} Mana
-                {cast.spendWillpower ? " + Willpower" : ""}
+                Commit
               </button>
-            </>
+            </div>
           )}
           {controls.includes("rollParadox") && (
             <button
@@ -587,7 +739,7 @@ export function CastCard({
               Roll Paradox
             </button>
           )}
-          {controls.includes("contain") && mySheet === null && (
+          {controls.includes("contain") && cockpitSheet === null && (
             <NumberInput
               label="contain"
               value={contained}
@@ -598,8 +750,8 @@ export function CastCard({
           )}
           {/* Triggers are always the verdigris mv-roll — the established
               right-pane pattern. Ember marks ARMED, reversible selection only
-              (lit skills, the mitigation row, the recitation): things that
-              are their own cancel. Ember-as-submit was auditioned and
+              (lit skills, the mitigation row, the containment boxes): things
+              that are their own cancel. Ember-as-submit was auditioned and
               rescinded (#102, owner walk 2026-07-18) — it read as aimless
               against the hot Paradox family. */}
           {controls.includes("release") && (
@@ -649,10 +801,63 @@ export function CastCard({
 }
 
 /**
+ * One named ± on the Paradox pool, worn as a tide (notes 2–4, 17): ebb
+ * (−dice, the Tides pulling back) borders verdigris, flood (+dice, the Tides
+ * rising) borders ember-hot — the border carries the color so the remove ×
+ * stays readable on the ST's editable tags. Read-only everywhere else.
+ */
+function TideBadge({
+  modifier,
+  onRemove,
+  disabled = false,
+}: {
+  modifier: ParadoxPoolModifier
+  onRemove?: () => void
+  disabled?: boolean
+}) {
+  const ebb = modifier.dice < 0
+  const c = ebb ? "var(--accent)" : "var(--ember)"
+  return (
+    <span
+      className="mv-data inline-flex items-center gap-1 rounded-[2px] px-1.5 py-0.5 text-[12px]"
+      style={{ border: `1px solid ${c}`, color: "var(--ink)" }}
+      title={
+        ebb
+          ? "Ebb — the Tides pull back: fewer Paradox dice"
+          : "Flood — the Tides rise: more Paradox dice"
+      }
+    >
+      {modifier.source} {modifier.dice > 0 ? `+${modifier.dice}` : modifier.dice}
+      {onRemove && (
+        <button
+          onClick={onRemove}
+          disabled={disabled}
+          className="leading-none disabled:opacity-40"
+          style={{ color: "var(--dim)" }}
+          title="Remove this adjustment"
+        >
+          ×
+        </button>
+      )}
+    </span>
+  )
+}
+
+/**
+ * The stepper's ± die count (issue #44): steps over zero (a zero-die
+ * modifier means nothing) and stays within the ±10 a single ruling plausibly
+ * reaches; a wilder swing is several named rulings, each readable.
+ */
+const stepOverZero = (value: number, dir: 1 | -1): number => {
+  const next = value + dir
+  return next === 0 ? next + dir : next
+}
+
+/**
  * A plain number input. With a `cap` it clamps and shows the ceiling; without
  * one it counts freely from 0 — the ST's liability counts have no rules
- * ceiling (issue #44). The caster's betting controls pair it with (mitigate)
- * or trade it for (contain) the live previews above (issue #45).
+ * ceiling (issue #44). Survives only as the containment fallback for a
+ * caster whose sheet failed to decode — the track cockpit is the real control.
  */
 function NumberInput({
   label,
@@ -708,24 +913,29 @@ const diceLabel = (dice: number): string =>
   dice <= 0 ? "chance die" : dice === 1 ? "1 die" : `${dice} dice`
 
 /**
- * Pricing the blind insurance (issue #45): one row per affordable Mana spend —
- * the shrunken Paradox pool and its exact odds, live off the same leaves the
- * server rolls with. Rows select; the lock button commits.
+ * Pricing the blind insurance (issue #45; note 7): one row per Paradox die
+ * regardless of the caster's Mana — the shrunken pool and its exact odds,
+ * live off the same leaves the server rolls with. Affordable rows select
+ * (they ARE the mitigation control — the stepper died with note 9);
+ * unaffordable rows stand visible and refuse, their titles explaining the
+ * gate (ADR-0021).
  */
 function MitigationPreview({
   poolInputs,
-  cap,
+  poolBefore,
+  affordable,
   selected,
   onSelect,
   disabled,
 }: {
   poolInputs: Omit<Parameters<typeof calculateParadoxPool>[0], "manaMitigation">
-  cap: number
+  poolBefore: number
+  affordable: number
   selected: number
   onSelect: (spend: number) => void
   disabled: boolean
 }) {
-  const rows = Array.from({ length: cap + 1 }, (_, spend) => {
+  const rows = Array.from({ length: poolBefore + 1 }, (_, spend) => {
     const dice = calculateParadoxPool({ ...poolInputs, manaMitigation: spend }).totalDice
     return { spend, dice, odds: rollOdds(dice) }
   })
@@ -734,26 +944,16 @@ function MitigationPreview({
     // whole job and its columns speak the rule — Mana in, Paradox dice out.
     <div className="mt-2 grid gap-1 py-1">
       {/* Danger reads as danger (#102): the risk is the headline — the
-          Paradox glyph does the yelling (#114), "bites" retired with it.
-          Dice counts stay neutral quantities — never accent-green good news.
-          Picking a spend is the caster's hand, so selection burns ember; the
-          Mana price wears Mana's own glyph alone (no symbol+word doubling). */}
+          Paradox glyph does the yelling (#114). Dice counts stay neutral
+          quantities — never accent-green good news. Picking a spend is the
+          caster's hand, so selection burns ember; the Mana price wears
+          Mana's own glyph alone (no symbol+word doubling). */}
       {rows.map(({ spend, dice, odds }) => {
-        const here = spend === Math.min(selected, cap)
-        return (
-          <button
-            key={spend}
-            onClick={() => onSelect(spend)}
-            disabled={disabled}
-            className="mv-data grid grid-cols-[3.5rem_5.5rem_1fr_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px] disabled:opacity-40"
-            style={{
-              border: here ? "1px solid var(--ember)" : "1px solid transparent",
-              color: here ? "var(--ink)" : "var(--dim)",
-            }}
-          >
-            <span style={{ color: here ? "var(--mana)" : undefined }}>
-              ◈ {spend}
-            </span>
+        const locked = spend > affordable
+        const here = !locked && spend === Math.min(selected, affordable)
+        const cells = (
+          <>
+            <span style={{ color: here ? "var(--mana)" : undefined }}>◈ {spend}</span>
             <span style={{ color: here ? "var(--ink)" : undefined }}>
               {diceLabel(dice)}
             </span>
@@ -764,6 +964,31 @@ function MitigationPreview({
               </b>
             </span>
             <span>~{odds.expected.toFixed(2)} Paradox</span>
+          </>
+        )
+        // A locked row is a mark, not a disabled control (the FeltDie idiom):
+        // its title stays reachable and nothing pretends it could be clicked.
+        return locked ? (
+          <span
+            key={spend}
+            className="mv-data grid grid-cols-[3.5rem_5.5rem_1fr_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px]"
+            style={{ border: "1px dashed var(--line)", color: "var(--dim)", opacity: 0.5 }}
+            title={`Needs ${spend} Mana free after the spell's cost — ${affordable} ${affordable === 1 ? "is" : "are"} free.`}
+          >
+            {cells}
+          </span>
+        ) : (
+          <button
+            key={spend}
+            onClick={() => onSelect(spend)}
+            disabled={disabled}
+            className="mv-data grid grid-cols-[3.5rem_5.5rem_1fr_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px] disabled:opacity-40"
+            style={{
+              border: here ? "1px solid var(--ember)" : "1px solid transparent",
+              color: here ? "var(--ink)" : "var(--dim)",
+            }}
+          >
+            {cells}
           </button>
         )
       })}
@@ -772,87 +997,155 @@ function MitigationPreview({
 }
 
 /**
- * The informed bet (issue #45): per slider stop, the Resistant bashing to be
- * taken, the wound penalty it newly causes, the surviving cast pool — shrunk
- * twice, by uncontained successes and by that self-inflicted penalty — and
- * the pool's exact odds, recomputing at every stop. The martyr stop announces
- * the full-track unconsciousness rule before the caster takes it.
+ * The Paradox cockpit (notes 13–15, replacing the slider): the caster's own
+ * health track rendered in-card — box clicks ARE the containment bet, each
+ * selected box one Paradox success absorbed as Resistant bashing. The
+ * severity lore term burns above it in --paradox, keyed off what would run
+ * loose, recomputing at every click. Read-only (no `onChange`) for the ST
+ * and spectator seats: the same cockpit, watched (ADR-0022's spectator
+ * suspense) — their view prices the un-contained worst case, since the
+ * caster's clicks stay local until the Cast (#113).
  */
-function ContainmentBet({
+function ParadoxCockpit({
   track,
-  declaredPool,
   paradoxSuccesses,
   cap,
   contained,
+  outlook,
   onChange,
-  disabled,
+  disabled = false,
 }: {
   track: HealthTrack
-  declaredPool: number
   paradoxSuccesses: number
   cap: number
   contained: number
-  onChange: (value: number) => void
-  disabled: boolean
+  outlook: ReturnType<typeof containmentOutlook>
+  onChange?: ((value: number) => void) | undefined
+  disabled?: boolean
 }) {
-  const outlook = containmentOutlook({ track, declaredPool, paradoxSuccesses, contained })
-  const odds = rollOdds(outlook.castPool)
+  const interactive = onChange !== undefined
+  const severity = resolveParadox(outlook.uncontained).severity
+  // Bashing fills leftmost empty boxes first (applyDamage), so the bet
+  // ghosts the first `contained` empties; each box knows its empty ordinal.
+  const emptyOrdinals = track.map((box, i) =>
+    box.severity === "empty"
+      ? track.slice(0, i).filter((b) => b.severity === "empty").length
+      : null,
+  )
   return (
-    <div className="mt-2 grid gap-1.5 py-1">
-      <span className="mv-eyebrow">The bet — flesh against dice</span>
-      <div className="flex items-center gap-2">
-        <span className="mv-data text-[12px] uppercase tracking-wider" style={{ color: "var(--dim)" }}>
-          contain
-        </span>
-        <input
-          type="range"
-          min={0}
-          max={cap}
-          step={1}
-          value={contained}
-          onChange={(e) => onChange(Number(e.target.value))}
-          disabled={disabled || cap === 0}
-          className="flex-1 accent-[var(--ember)]"
-        />
-        <span className="mv-data w-10 text-center text-[13px] font-bold">
-          {contained} / {cap}
-        </span>
-      </div>
-      <div className="mv-data grid grid-cols-2 gap-x-3 gap-y-0.5 text-[12px] sm:grid-cols-4" style={{ color: "var(--dim)" }}>
-        <span>
-          takes <b style={{ color: outlook.damage > 0 ? "var(--bad)" : "var(--ink)" }}>
-            {outlook.damage} Resistant bashing
-          </b>
-        </span>
-        <span>
-          wound penalty <b style={{ color: outlook.newPenalty < 0 ? "var(--bad)" : "var(--ink)" }}>
-            {outlook.penaltyAfter}
-          </b>
-          {outlook.newPenalty < 0 ? ` (${outlook.newPenalty} new)` : ""}
-        </span>
-        <span>
-          casts on <b style={{ color: "var(--ink)" }}>{diceLabel(outlook.castPool)}</b>
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <ParadoxGlyph size={12} />
-          <b style={{ color: outlook.uncontained > 0 ? "var(--paradox)" : "var(--ink)" }}>
-            {outlook.uncontained}
-          </b>{" "}
-          loose
-        </span>
-      </div>
-      <div className="mv-data flex flex-wrap gap-x-3 gap-y-0.5 text-[12px]" style={{ color: "var(--dim)" }}>
-        <span>
-          success <b style={{ color: "var(--rail-success)" }}>{pct(odds.success)}</b>
-        </span>
-        <span>~{odds.expected.toFixed(2)} successes</span>
-        <span>exceptional {pct(odds.exceptional)}</span>
-        {odds.isChanceDie && (
-          <span style={{ color: "var(--bad)" }}>
-            dramatic failure {pct(odds.dramaticFailure)}
+    <div className="mt-2 grid gap-2 py-1">
+      {outlook.uncontained > 0 ? (
+        // The lore term, big and scary (note 15): the scale of what
+        // manifests if this much Paradox runs loose.
+        <div className="flex items-center gap-2">
+          <ParadoxGlyph size={16} />
+          <span
+            className="mv-h text-[22px] uppercase leading-none tracking-[0.1em]"
+            style={{
+              color: "var(--paradox)",
+              textShadow: "0 0 14px color-mix(in srgb, var(--paradox) 55%, transparent)",
+            }}
+          >
+            {severity}
           </span>
-        )}
+          <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
+            if {outlook.uncontained} run{outlook.uncontained === 1 ? "s" : ""} loose
+          </span>
+        </div>
+      ) : (
+        <span className="mv-data text-[12px]" style={{ color: "var(--rail-success)" }}>
+          all contained — reality lets it pass
+        </span>
+      )}
+      <div className="flex flex-wrap gap-[5px]">
+        {track.map((box, i) => {
+          const ordinal = emptyOrdinals[i] ?? null
+          const ghosted = ordinal !== null && ordinal < contained
+          const reachable = ordinal !== null && ordinal < cap
+          const title =
+            ordinal === null
+              ? `${box.severity} damage${box.resistant ? " · Resistant" : ""}`
+              : ghosted
+                ? "Contained — this box takes Resistant bashing when you Cast; click to release it"
+                : reachable
+                  ? interactive
+                    ? "Contain one more Paradox here — Resistant bashing, one fewer loose"
+                    : "A box the caster could offer"
+                  : paradoxSuccesses <= cap
+                    ? `Only ${paradoxSuccesses} Paradox rolled — nothing more to contain`
+                    : "Beyond the bet — containment can fill the track, never pass it"
+          const boxMark = (
+            <span
+              className="mv-data grid size-6 place-items-center rounded-[2px] border text-[12px] font-bold"
+              style={{
+                borderColor: ghosted
+                  ? "var(--ember)"
+                  : box.severity === "empty"
+                    ? "var(--line)"
+                    : "var(--accent)",
+                borderStyle: ghosted ? "dashed" : "solid",
+                background:
+                  box.severity === "empty" || box.severity === "bashing"
+                    ? "transparent"
+                    : "var(--glow)",
+                color: ghosted ? "var(--ember)" : "var(--accent)",
+              }}
+            >
+              {ghosted ? "╱" : healthBoxGlyph(box.severity)}
+            </span>
+          )
+          return (
+            <span key={i} className="relative pb-[7px]">
+              {interactive && ordinal !== null && (reachable || ghosted) ? (
+                <button
+                  onClick={() => onChange(ghosted ? ordinal : ordinal + 1)}
+                  disabled={disabled}
+                  title={title}
+                  className="cursor-pointer disabled:opacity-40"
+                >
+                  {boxMark}
+                </button>
+              ) : (
+                <span title={title}>{boxMark}</span>
+              )}
+              <span className="absolute left-1/2 top-6 mt-[1px] flex -translate-x-1/2">
+                {ghosted ? (
+                  <span
+                    className="size-[5px] rounded-full"
+                    title="Resistant — heals only naturally"
+                    style={{ background: "var(--ember)", opacity: 0.7 }}
+                  />
+                ) : (
+                  <ResistantDot resistant={box.resistant} />
+                )}
+              </span>
+            </span>
+          )
+        })}
       </div>
+      {interactive && (
+        <div
+          className="mv-data grid grid-cols-2 gap-x-3 gap-y-0.5 text-[12px] sm:grid-cols-3"
+          style={{ color: "var(--dim)" }}
+        >
+          <span>
+            takes{" "}
+            <b style={{ color: outlook.damage > 0 ? "var(--bad)" : "var(--ink)" }}>
+              {outlook.damage} Resistant bashing
+            </b>
+          </span>
+          <span>
+            wound penalty{" "}
+            <b style={{ color: outlook.newPenalty < 0 ? "var(--bad)" : "var(--ink)" }}>
+              {outlook.penaltyAfter}
+            </b>
+            {outlook.newPenalty < 0 ? ` (${outlook.newPenalty} new)` : ""}
+          </span>
+          <span>
+            casts on <b style={{ color: "var(--ink)" }}>{diceLabel(outlook.castPool)}</b>
+          </span>
+        </div>
+      )}
       {outlook.martyr && (
         <p className="text-[12px] italic" style={{ color: "var(--bad)" }}>
           This fills your last health box with bashing — the book calls that
@@ -864,42 +1157,96 @@ function ContainmentBet({
 }
 
 /**
- * The discretionary modifier's ± die count (issue #44): steps over zero (a
- * zero-die modifier means nothing) and stays within the ±10 a single ruling
- * plausibly reaches; a wilder swing is several named rulings, each readable.
+ * The resolution, in the card (the resolution merge, 2026-07-19): the
+ * stamped faces, the success count in the roll-card grammar, and the
+ * severity lore term — Cast rows resolved before the merge carry no faces
+ * and render just their counts.
  */
-function DiceStepper({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: number
-  onChange: (value: number) => void
-  disabled: boolean
-}) {
-  const step = (dir: 1 | -1) => {
-    const next = value + dir
-    onChange(next === 0 ? next + dir : next)
-  }
+function Resolution({ cast }: { cast: CastEntry }) {
+  const successes = cast.castSuccesses ?? 0
+  const chance = cast.castIsChanceDie ?? (cast.castPool !== undefined && cast.castPool <= 0)
   return (
-    <div className="flex items-center gap-1">
-      <button
-        onClick={() => step(-1)}
-        disabled={disabled || value <= -10}
-        className="mv-btn grid size-6 place-items-center rounded-[3px] text-[13px] leading-none disabled:opacity-40"
-      >
-        −
-      </button>
-      <span className="mv-data w-7 text-center text-[13px] font-bold">
-        {value > 0 ? `+${value}` : value}
-      </span>
-      <button
-        onClick={() => step(1)}
-        disabled={disabled || value >= 10}
-        className="mv-btn grid size-6 place-items-center rounded-[3px] text-[13px] leading-none disabled:opacity-40"
-      >
-        +
-      </button>
+    <div className="mt-2 grid gap-1.5">
+      <div className="flex items-baseline gap-2">
+        <span
+          className="mv-data text-[24px] font-bold leading-none"
+          style={{ color: successes > 0 ? "var(--rail-success)" : "var(--dim)" }}
+        >
+          {successes}
+        </span>
+        {successes > 0 && (
+          <span
+            className="text-[12px] tracking-[0.15em]"
+            style={{ color: "var(--rail-success)" }}
+            aria-hidden
+          >
+            {"✦".repeat(Math.min(successes, 6))}
+          </span>
+        )}
+        <span className="text-[12px]" style={{ color: "var(--dim)" }}>
+          {successes === 1 ? "success" : "successes"} ·{" "}
+          {chance ? "chance die" : `${cast.castPool ?? 0} dice`}
+        </span>
+        <span className="flex-1" />
+        {cast.castIsDramaticFailure && <ResolutionTag kind="bad">Dramatic Failure</ResolutionTag>}
+        {cast.castIsExceptionalSuccess && <ResolutionTag kind="good">Exceptional</ResolutionTag>}
+      </div>
+      {/* The release roll always throws 10-again today (rollPool's default;
+          the flow passes no options) — stamp an again field beside the faces
+          before any variant threshold reaches the vulgar ladder. */}
+      {cast.castRolls !== undefined && (
+        <div className="flex flex-wrap gap-1">
+          {cast.castRolls.map((v, i) => (
+            <Die key={`b${i}`} v={v} again={10} chance={chance} size="md" />
+          ))}
+          {(cast.castRoteRerolls ?? []).map((v, i) => (
+            <Die key={`r${i}`} v={v} again={10} ring="rote" size="md" />
+          ))}
+          {(cast.castExplosions ?? []).map((v, i) => (
+            <Die key={`e${i}`} v={v} again={10} ring="exp" size="md" />
+          ))}
+        </div>
+      )}
+      {cast.severity !== undefined && cast.severity !== "none" ? (
+        <div className="flex items-center gap-2">
+          <ParadoxGlyph size={14} />
+          <span
+            className="mv-h text-[18px] uppercase leading-none tracking-[0.1em]"
+            style={{
+              color: "var(--paradox)",
+              textShadow: "0 0 12px color-mix(in srgb, var(--paradox) 50%, transparent)",
+            }}
+          >
+            {cast.severity}
+          </span>
+          <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
+            manifests
+          </span>
+        </div>
+      ) : (
+        <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
+          reality lets it pass
+        </span>
+      )}
     </div>
+  )
+}
+
+/** The resolved card's outcome badge — the roll-card Tag grammar, in place. */
+function ResolutionTag({
+  kind,
+  children,
+}: {
+  kind: "good" | "bad"
+  children: string
+}) {
+  const c = kind === "good" ? "var(--rail-success)" : "var(--bad)"
+  return (
+    <span
+      className="mv-data rounded-[2px] px-1 py-0.5 text-[12px] uppercase tracking-wide"
+      style={{ border: `1px solid ${c}`, color: c }}
+    >
+      {children}
+    </span>
   )
 }

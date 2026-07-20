@@ -11,7 +11,7 @@ import {
   finalCastPool,
   isCommitted,
   isOnStage,
-  isPriceFrozen,
+  isPriceFixed,
   isRoteCast,
   isUnresolved,
   sceneTides,
@@ -46,7 +46,6 @@ import {
   factorPenaltyComponents,
   InvalidCastDeclaration,
   modifierComponents,
-  outcomeOf,
 } from "./casting"
 import { requireRollFreedom } from "./pending-lock"
 import { requireKnownRote } from "./rote-cast"
@@ -61,14 +60,14 @@ import { requireKnownRote } from "./rote-cast"
  * ADR-0022's broadcast draft — per-click mutations made the cockpit sluggish).
  *
  *   draftCast → engageCast (ST; the stage) → [adjustPrice*] → lockPrice (ST;
- *   THE FREEZE — Tides stamped, irrevocably hands-off) → commitCast (caster;
+ *   THE FIX — Tides stamped, irrevocably hands-off) → commitCast (caster;
  *   Mana + precommitted Willpower spent; POINT OF NO RETURN) → rollParadox
  *   (ST's own button; chance die at zero dice) →
  *   releaseCast (caster's one Cast click: containment lands and the dice fly
  *   in one commitment) → resolved
  *
  * Exits: killDraft (owner) / declineDraft (ST) → cancelled; cancelCast
- * (either party, anywhere on the Tides rung — the caster may bail on a frozen
+ * (either party, anywhere on the Tides rung — the caster may bail on a fixed
  * price) → cancelled; voidCast (ST repair, any live stage, Override-stamped,
  * restores Mana and Willpower, leaves no accumulator trace) → voided.
  * No timeouts anywhere — pending Casts persist until a human moves them.
@@ -176,20 +175,20 @@ const requireStatus = Effect.fn("Flows.vulgarCast.requireStatus")(function* (
 
 /**
  * The two-colored phase enforcement (ADR-0022): the Tides rung before the
- * freeze (the ST's fluid assembly) or after it (the caster's settled
+ * fix (the ST's fluid assembly) or after it (the caster's settled
  * decision). The wire status stays "price"; the table says Tides (#114).
  */
 const requirePricePhase = Effect.fn("Flows.vulgarCast.requirePricePhase")(
-  function* (cast: Cast, phase: "fluid" | "frozen") {
+  function* (cast: Cast, phase: "fluid" | "fixed") {
     yield* requireStatus(cast, "price")
-    if (isPriceFrozen(cast) !== (phase === "frozen")) {
+    if (isPriceFixed(cast) !== (phase === "fixed")) {
       return yield* new CastStatusConflict({
         castId: cast.id,
         status: cast.status,
         needed:
           phase === "fluid"
-            ? "the Tides, before the freeze"
-            : "the Tides, after the freeze",
+            ? "the Tides, before the fix"
+            : "the Tides, after the fix",
       })
     }
   },
@@ -244,9 +243,9 @@ const requireContainable = Effect.fn("Flows.vulgarCast.requireContainable")(
 )
 
 /**
- * The Paradox pool's inputs as the freeze stamped them (ADR-0022): the frozen
+ * The Paradox pool's inputs as the fix stamped them (ADR-0022): the fixed
  * Tides seed plus the ST's personal adjustments — stamped, never re-derived.
- * The freeze itself passes the seed it is about to stamp; every later beat
+ * The fix itself passes the seed it is about to stamp; every later beat
  * reads it off the document.
  */
 const paradoxInputs = Effect.fn("Flows.vulgarCast.paradoxInputs")(function* (
@@ -662,7 +661,7 @@ export const declineDraft = Effect.fn("Flows.vulgarCast.declineDraft")(function*
 /**
  * The Storyteller engages a draft onto the exclusive stage — the Tides rung
  * opens fluid (ADR-0022): the card shows the live Tides off the Scene while
- * the ST assembles personal adjustments; nothing is settled until the freeze
+ * the ST assembles personal adjustments; nothing is settled until the fix
  * stamps the seed. Gnosis stamps here — the sheet as it stands when the Cast
  * takes the stage. No Scene open is legal: downtime casting seeds nothing.
  */
@@ -717,10 +716,10 @@ export type AdjustPriceArgs = typeof AdjustPriceArgs.Type
 /**
  * The Storyteller's personal adjustments (ADR-0022): facts about this
  * caster's situation — a broken hand, hanging from a ledge, a ghost's boon —
- * added to the card before the freeze, visibly distinct from the inherited
+ * added to the card before the fix, visibly distinct from the inherited
  * scene seed. The ST reacts to the world by editing the Scene, to the caster
  * by adjusting here; only the Tides rung's fluid phase is reachable. No Activity
- * entry: assembly is table talk, not a reveal (ADR-0016); the freeze narrates
+ * entry: assembly is table talk, not a reveal (ADR-0016); the fix narrates
  * the final pool.
  */
 export const adjustPrice = Effect.fn("Flows.vulgarCast.adjustPrice")(function* (
@@ -747,12 +746,13 @@ export const adjustPrice = Effect.fn("Flows.vulgarCast.adjustPrice")(function* (
 })
 
 /**
- * THE FREEZE (ADR-0022): the Storyteller locks the price when satisfied —
- * the Tides seed stamps onto the card (scene witnesses, circumstances, this
- * caster's derived pips) beside the personal adjustments, and from this click
- * the ST is irrevocably hands-off. No unfreeze exists; repairs are void plus
- * redeclare, or out-of-band restitution. Post-freeze Scene edits never touch
- * the frozen card — the *next* cast pays the new price.
+ * THE FIX (ADR-0022; verb renamed from "freeze", 2026-07-19): the Storyteller
+ * fixes the Tides when satisfied — the seed stamps onto the card (scene
+ * witnesses, circumstances, this caster's derived pips) beside the personal
+ * adjustments, and from this click the ST is irrevocably hands-off. No unfix
+ * exists; repairs are void plus redeclare, or out-of-band restitution.
+ * Post-fix Scene edits never touch the fixed card — the *next* cast pays the
+ * new price.
  */
 export const lockPrice = Effect.fn("Flows.vulgarCast.lockPrice")(function* (
   args: CastStepArgs,
@@ -766,7 +766,7 @@ export const lockPrice = Effect.fn("Flows.vulgarCast.lockPrice")(function* (
   yield* requirePricePhase(cast, "fluid")
 
   // The seed stamps off the Scene as it stands at this click — the one
-  // stamping moment, so pre-freeze Scene edits flow through and post-freeze
+  // stamping moment, so pre-fix Scene edits flow through and post-fix
   // ones visibly diverge (the strip shows the new world, the card keeps its
   // snapshot). Downtime seeds nothing.
   const casts = yield* store.listCasts(sessionId)
@@ -783,7 +783,7 @@ export const lockPrice = Effect.fn("Flows.vulgarCast.lockPrice")(function* (
   yield* store.insertMessage({
     sessionId,
     sender: { userId: storyteller.userId, displayName: storyteller.displayName },
-    text: `${storyteller.displayName} freezes the price: ${cast.casterName} faces a ${pool.totalDice}-die Paradox pool. Settled — it cannot shift now.`,
+    text: `${storyteller.displayName} fixes the Tides: ${cast.casterName} faces a ${pool.totalDice}-die Paradox pool. Settled — it cannot shift now.`,
     visibility: "system",
   })
 
@@ -812,7 +812,7 @@ export const commitCast = Effect.fn("Flows.vulgarCast.commitCast")(function* (
 
   const cast = yield* requireCast(sessionId, castId)
   const sheet = yield* requireSessionCharacter(sessionId, cast.characterId)
-  yield* requirePricePhase(cast, "frozen")
+  yield* requirePricePhase(cast, "fixed")
 
   const mitigation = args.manaMitigation
   if (!Schema.is(WholeCount)(mitigation)) {
@@ -863,7 +863,7 @@ export const commitCast = Effect.fn("Flows.vulgarCast.commitCast")(function* (
 
 /**
  * Free cancel, either party, anywhere on the Tides rung — before the caster's
- * commit (a caster may bail on a frozen price; that is the rung's design):
+ * commit (a caster may bail on a fixed price; that is the rung's design):
  * an in-fiction reconsideration, not a repair — plain provenance, the stage
  * frees.
  */
@@ -965,9 +965,12 @@ export type ReleaseCastArgs = typeof ReleaseCastArgs.Type
  * pool shrinks twice (issue #45): declared − uncontained successes (p. 124)
  * and the wound penalty of the track as the sacrifice leaves it (chance die
  * at zero or below) — the precommitted Willpower dice erode like any others.
- * Resolution records both rolls' outcomes and the Paradox severity, frees
- * the stage, and — when containment filled the last box — surfaces the
- * full-bashing-track unconsciousness rule for the Storyteller to adjudicate.
+ * Resolution stamps the release roll's faces and the Paradox severity onto
+ * the Cast document itself (the resolution-merge ruling, 2026-07-19: the
+ * resolved card IS the record, so no separate roll entry lands beside it —
+ * one card in the feed, not two), frees the stage, and — when containment
+ * filled the last box — surfaces the full-bashing-track unconsciousness rule
+ * for the Storyteller to adjudicate.
  */
 export const releaseCast = Effect.fn("Flows.vulgarCast.releaseCast")(function* (
   args: ReleaseCastArgs,
@@ -1023,28 +1026,16 @@ export const releaseCast = Effect.fn("Flows.vulgarCast.releaseCast")(function* (
     containedSuccesses: contained,
     castPool,
     castSuccesses: result.successes,
+    castRolls: result.rolls,
+    castExplosions: result.explosions,
+    castRoteRerolls: result.roteRerolls,
+    castIsChanceDie: result.isChanceDie,
+    castIsDramaticFailure: result.isDramaticFailure,
+    castIsExceptionalSuccess: result.isExceptionalSuccess,
     severity,
   })
 
   const member = yield* casterMembership(cast)
-  const dice = result.isChanceDie ? "a chance die" : `${result.poolSize} dice`
-  const sacrifice =
-    contained > 0
-      ? `contains ${contained} of ${paradoxSuccesses} Paradox as Resistant bashing and `
-      : paradoxSuccesses > 0
-        ? `lets all ${paradoxSuccesses} Paradox run and `
-        : ""
-  yield* store.insertRoll({
-    sessionId,
-    member,
-    components,
-    result,
-    summary:
-      `${cast.casterName} ${sacrifice}releases the vulgar ${capitalize(cast.arcanum)} ${cast.level} spell (${dice}), getting ${outcomeOf(result)}.` +
-      (severity === "none"
-        ? " Reality lets it pass."
-        : ` The uncontained Paradox manifests as ${capitalize(severity)}.`),
-  })
 
   // The martyr's aftermath (PRD #39 story 28): the spell is away; now the
   // full bashing track's unconsciousness rule is the Storyteller's to call.

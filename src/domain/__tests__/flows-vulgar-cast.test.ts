@@ -98,7 +98,7 @@ const activeScene = (overrides?: Partial<StoredScene>): StoredScene => ({
   ...overrides,
 })
 
-/** A quiet frozen seed — downtime's Tides, and the frozen default in tests. */
+/** A quiet fixed seed — downtime's Tides, and the fixed default in tests. */
 const NO_TIDES = { witnessCount: 0, circumstances: [], priorParadoxRolls: 0 }
 
 /** A stored Cast mid-ladder: Aldous's improvised Death 2 (pool 1+3, cost 0). */
@@ -126,7 +126,7 @@ const storedCast = (overrides?: Partial<StoredCast>): StoredCast => ({
 
 /**
  * `storedCast` advanced to a rung, with the fields its prior beats stamp.
- * `price` seeds the fluid phase — pass `{ tides: NO_TIDES }` for the frozen
+ * `price` seeds the fluid phase — pass `{ tides: NO_TIDES }` for the fixed
  * one; `paradox` seeds the pre-roll phase — pass `paradoxSuccesses` for the
  * cockpit.
  */
@@ -151,7 +151,7 @@ const castAt = (
 }
 
 describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
-  it.effect("draft → engage → freeze → commit → Paradox → the one Cast click → resolved", () =>
+  it.effect("draft → engage → fix → commit → Paradox → the one Cast click → resolved", () =>
     Effect.gen(function* () {
       const store = seed({
         scenes: [activeScene({ witnessCount: 1 })],
@@ -184,19 +184,21 @@ describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
       expect(engaged.gnosis).toBe(1)
       expect(engaged.tides).toBeUndefined() // nothing settled yet
 
-      // Beat 3 — THE FREEZE: the Tides seed stamps off the Scene.
+      // Beat 3 — THE FIX: the Tides seed stamps off the Scene.
       yield* lockPrice({ sessionId: SESSION, castId }).pipe(
         as(ST_USER),
         Effect.provide(store.layer),
       )
-      const frozen = store.casts[0]!
-      expect(frozen.status).toBe("price") // same rung, caster phase
-      expect(frozen.tides).toEqual({
+      const fixed = store.casts[0]!
+      expect(fixed.status).toBe("price") // same rung, caster phase
+      expect(fixed.tides).toEqual({
         witnessCount: 1,
         circumstances: [],
         priorParadoxRolls: 0,
       })
-      // Gnosis 1 → base 1, +2 witnesses = 3 dice, narrated to the table.
+      // Gnosis 1 → base 1, +2 witnesses = 3 dice, narrated to the table —
+      // and the verb is fix, never freeze (2026-07-19 polish, note 1).
+      expect(store.messages[2]!.text).toContain("fixes the Tides")
       expect(store.messages[2]!.text).toContain("3-die Paradox pool")
 
       // Beat 4 — the caster commits: Mana commits atomically.
@@ -241,21 +243,22 @@ describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
       const track = store.sheets.get(CHARACTER)!.healthTrack
       expect(track.filter((b) => b.severity === "bashing" && b.resistant)).toHaveLength(1)
       expect(resolved.castPool).toBe(4 - uncontained)
-      expect(store.rolls).toHaveLength(2)
-      const castEntry = store.rolls[1]!
-      expect(castEntry.userId).toBe(PLAYER) // attribution follows the owner
-      expect(castEntry.result.poolSize).toBe(Math.max(4 - uncontained, 0))
-      expect(castEntry.summary).toContain("contains 1 of")
-      expect(resolved.castSuccesses).toBe(castEntry.result.successes)
+      // The resolution merge (2026-07-19): no second roll entry — the
+      // release's faces stamp onto the Cast document, and the resolved card
+      // is the record every seat reads.
+      expect(store.rolls).toHaveLength(1)
+      expect(resolved.castRolls).toHaveLength(Math.max(4 - uncontained, 1))
+      expect(resolved.castIsChanceDie).toBe(false)
+      expect(resolved.castSuccesses).toBeDefined()
       // Resolution records the severity of what got loose.
       expect(resolved.severity).toBe(uncontained === 0 ? "none" : "havoc")
 
       // Every commitment landed its own atomic Activity entry (ADR-0009):
-      // four system messages + the two rolls.
-      expect(store.messages.length + store.rolls.length).toBe(6)
+      // four system messages + the Paradox roll — resolution rides the card.
+      expect(store.messages.length + store.rolls.length).toBe(5)
 
       // The resolved Cast now prices the next one: the accumulator derives
-      // from Cast history at the freeze, never a tally (ADR-0012).
+      // from Cast history at the fix, never a tally (ADR-0012).
       const nextId = yield* draftCast({
         sessionId: SESSION,
         characterId: CHARACTER,
@@ -330,7 +333,7 @@ describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
       expect(track.every((b) => b.severity !== "empty")).toBe(true)
       expect(store.casts[0]!.status).toBe("resolved")
       expect(store.casts[0]!.castPool).toBe(-1)
-      expect(store.rolls[0]!.result.isChanceDie).toBe(true)
+      expect(store.casts[0]!.castIsChanceDie).toBe(true) // stamped on the card
       expect(store.casts[0]!.severity).toBe("bedlam") // 2 uncontained
 
       // Resolution surfaces the full-bashing-track rule for the ST (PRD #39
@@ -359,10 +362,9 @@ describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
       }).pipe(as(PLAYER), Effect.provide(store.layer))
 
       expect(store.casts[0]!.castPool).toBe(2)
-      expect(store.rolls[0]!.result.poolSize).toBe(2)
-      const penalty = store.rolls[0]!.components.find((c) => c.name === "Wound penalty")
-      expect(penalty?.dots).toBe(-1)
-      // Short of a full track, no unconsciousness message accompanies the roll.
+      // The faces stamp onto the card (the resolution merge): two thrown.
+      expect(store.casts[0]!.castRolls).toHaveLength(2)
+      // Short of a full track, no unconsciousness message accompanies it.
       expect(store.messages).toHaveLength(0)
     }),
   )
@@ -383,14 +385,15 @@ describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
       expect(store.casts[0]!.containedSuccesses).toBe(0)
       // No wounds written: the only sheet write would be containment's.
       expect(store.sheetPatches).toHaveLength(0)
-      // Paradox is never "successes" (#114) — the table counts Paradox.
-      expect(store.rolls[0]!.summary).toContain("lets all 2 Paradox run")
-      expect(store.rolls[0]!.summary).not.toContain("Paradox successes")
+      // The resolution merge (2026-07-19): no roll entry — the card carries
+      // the faces and the severity as the one record.
+      expect(store.rolls).toHaveLength(0)
+      expect(store.casts[0]!.castRolls).toBeDefined()
       expect(store.casts[0]!.severity).toBe("bedlam")
     }),
   )
 
-  it.effect("downtime: no Scene seeds no Tides — engagement and freeze both quiet", () =>
+  it.effect("downtime: no Scene seeds no Tides — engagement and fix both quiet", () =>
     Effect.gen(function* () {
       const store = seed({ casts: [storedCast()] })
       const castId = CastId.make("cast-prior")
@@ -412,7 +415,7 @@ describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
     }),
   )
 
-  it.effect("the dramatic-failure grace prices the frozen seed (ADR-0012)", () =>
+  it.effect("the dramatic-failure grace prices the fixed seed (ADR-0012)", () =>
     Effect.gen(function* () {
       // Two resolved rolls this Scene, the latest a dramatic failure: Paradox
       // leaves the caster alone, so the seed forgives that Cast's +1.
@@ -694,7 +697,7 @@ describe("Flows.vulgarCast — The Price (ADR-0022)", () => {
       ])
       expect(store.messages).toHaveLength(0) // assembly is table talk
 
-      // The freeze stamps seed + narrates the assembled pool: base 1 + 2
+      // The fix stamps seed + narrates the assembled pool: base 1 + 2
       // witnesses + 2 successive + 1 ley line + 1 broken hand = 7 dice.
       yield* lockPrice({ sessionId: SESSION, castId: CAST }).pipe(
         as(ST_USER),
@@ -726,7 +729,7 @@ describe("Flows.vulgarCast — The Price (ADR-0022)", () => {
     }).pipe(Random.withSeed("negotiation")),
   )
 
-  it.effect("a post-freeze Scene edit never touches the frozen card — the next cast pays it", () =>
+  it.effect("a post-fix Scene edit never touches the fixed card — the next cast pays it", () =>
     Effect.gen(function* () {
       const store = seed({
         scenes: [activeScene({ witnessCount: 1 })],
@@ -739,7 +742,7 @@ describe("Flows.vulgarCast — The Price (ADR-0022)", () => {
       )
       expect(store.casts[0]!.tides?.witnessCount).toBe(1)
 
-      // The world changes after the freeze (the strip's editTides door is
+      // The world changes after the fix (the strip's editTides door is
       // scene-flow tested; here the store mutates directly): the card keeps
       // its snapshot — "settled" never lies.
       store.scenes[0] &&
@@ -751,7 +754,7 @@ describe("Flows.vulgarCast — The Price (ADR-0022)", () => {
     }),
   )
 
-  it.effect("the tool is the sheet's standing fact — the draft stamps it, the freeze prices it (issue #107)", () =>
+  it.effect("the tool is the sheet's standing fact — the draft stamps it, the fix prices it (issue #107)", () =>
     Effect.gen(function* () {
       const store = seed({ sheet: makeSheet({ hasMagicalTool: true }) })
 
@@ -765,7 +768,7 @@ describe("Flows.vulgarCast — The Price (ADR-0022)", () => {
       // Stamped off the sheet at declaration — no per-cast toggle exists.
       expect(store.casts[0]!.usesMagicalTool).toBe(true)
 
-      // The freeze's narrated pool wears the tool: base 1, −1 tool = chance
+      // The fix's narrated pool wears the tool: base 1, −1 tool = chance
       // die territory — but the pool floors at 0 dice.
       yield* engageCast({ sessionId: SESSION, castId }).pipe(
         as(ST_USER),
@@ -779,7 +782,7 @@ describe("Flows.vulgarCast — The Price (ADR-0022)", () => {
     }),
   )
 
-  it.effect("adjustments are refused before engagement and after the freeze — irrevocably hands-off", () =>
+  it.effect("adjustments are refused before engagement and after the fix — irrevocably hands-off", () =>
     Effect.gen(function* () {
       const early = seed({ casts: [storedCast()] })
       const earlyExit = yield* adjustPrice({
@@ -794,10 +797,10 @@ describe("Flows.vulgarCast — The Price (ADR-0022)", () => {
       expect(failureTag(lateExit)).toBe("CastStatusConflict")
       expect(late.casts[0]!.adjustments).toBeUndefined()
 
-      // And the freeze itself cannot land twice — no re-stamp, ever.
-      const refreeze = yield* lockPrice({ sessionId: SESSION, castId: CAST }).pipe(
+      // And the fix itself cannot land twice — no re-stamp, ever.
+      const refix = yield* lockPrice({ sessionId: SESSION, castId: CAST }).pipe(
         as(ST_USER), Effect.provide(late.layer), Effect.exit)
-      expect(failureTag(refreeze)).toBe("CastStatusConflict")
+      expect(failureTag(refix)).toBe("CastStatusConflict")
     }),
   )
 
@@ -866,7 +869,7 @@ describe("Flows.vulgarCast — the wings and free exits", () => {
     }),
   )
 
-  it.effect("either party cancels freely anywhere on The Price — a frozen price can be bailed on", () =>
+  it.effect("either party cancels freely anywhere on The Price — a fixed price can be bailed on", () =>
     Effect.gen(function* () {
       const asCaster = seed({ casts: [castAt("price")] })
       yield* cancelCast({ sessionId: SESSION, castId: CastId.make("cast-prior") }).pipe(
@@ -1094,7 +1097,7 @@ describe("Flows.vulgarCast — the refusal matrix", () => {
       const store = seed({ casts: [storedCast()] })
 
       // The ST reaching past engagement…
-      const freezeEarly = yield* lockPrice({ sessionId: SESSION, castId: CAST }).pipe(
+      const fixEarly = yield* lockPrice({ sessionId: SESSION, castId: CAST }).pipe(
         as(ST_USER), Effect.provide(store.layer), Effect.exit)
       const rollEarly = yield* rollParadox({ sessionId: SESSION, castId: CAST }).pipe(
         as(ST_USER), Effect.provide(store.layer), Effect.exit)
@@ -1104,7 +1107,7 @@ describe("Flows.vulgarCast — the refusal matrix", () => {
       const releaseEarly = yield* releaseCast({ sessionId: SESSION, castId: CAST, containedSuccesses: 0 }).pipe(
         as(PLAYER), Effect.provide(store.layer), Effect.exit)
 
-      for (const exit of [freezeEarly, rollEarly, commitEarly, releaseEarly]) {
+      for (const exit of [fixEarly, rollEarly, commitEarly, releaseEarly]) {
         expect(failureTag(exit)).toBe("CastStatusConflict")
       }
       expect(store.casts[0]!.status).toBe("draft")
@@ -1560,7 +1563,7 @@ describe("Flows.vulgarCast — the rote lane (issue #47)", () => {
       })
       const castId = CastId.make("cast-prior")
 
-      // Base 1 (Gnosis 1) + 2 witnesses − 1 rote = 2 dice, narrated at the freeze.
+      // Base 1 (Gnosis 1) + 2 witnesses − 1 rote = 2 dice, narrated at the fix.
       yield* lockPrice({ sessionId: SESSION, castId }).pipe(
         as(ST_USER),
         Effect.provide(store.layer),

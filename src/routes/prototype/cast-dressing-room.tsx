@@ -50,7 +50,7 @@ import type { Id } from "../../../convex/_generated/dataModel"
 const RUNG_ORDER = [
   "draft",
   "priceFluid",
-  "priceFrozen",
+  "priceFixed",
   "paradoxUnrolled",
   "paradoxRolled",
   "resolved",
@@ -148,9 +148,9 @@ const priceFluid: CastEntry = {
   adjustments: [{ source: "Hallowed ground", dice: -1 }],
 }
 
-// THE FREEZE (ADR-0022): the stamped Tides seed — inherited-from-scene —
+// THE FIX (ADR-0022): the stamped Tides seed — inherited-from-scene —
 // beside the ST's personal adjustment above.
-const priceFrozen: CastEntry = {
+const priceFixed: CastEntry = {
   ...priceFluid,
   tides: {
     witnessCount: 2,
@@ -160,7 +160,7 @@ const priceFrozen: CastEntry = {
 }
 
 const paradoxUnrolled: CastEntry = {
-  ...priceFrozen,
+  ...priceFixed,
   status: "paradox",
   manaMitigation: 1,
 }
@@ -177,10 +177,18 @@ const resolved: CastEntry = {
   containedSuccesses: 1,
   castPool: 9,
   castSuccesses: 3,
+  // The resolution merge (2026-07-19): the release roll's faces ride the
+  // document — 9 dice, one 10 exploding into a miss, three successes.
+  castRolls: [8, 9, 2, 10, 5, 3, 4, 1, 6],
+  castExplosions: [4],
+  castRoteRerolls: [],
+  castIsChanceDie: false,
+  castIsDramaticFailure: false,
+  castIsExceptionalSuccess: false,
   severity: "havoc",
 }
 
-const cancelled: CastEntry = { ...priceFrozen, status: "cancelled" }
+const cancelled: CastEntry = { ...priceFixed, status: "cancelled" }
 
 const voided: CastEntry = {
   ...paradoxRolled,
@@ -195,7 +203,7 @@ const voided: CastEntry = {
 const CASTS: Record<RigRung, CastEntry> = {
   draft,
   priceFluid,
-  priceFrozen,
+  priceFixed,
   paradoxUnrolled,
   paradoxRolled,
   resolved,
@@ -310,8 +318,8 @@ function DressingRoom() {
           <MessageItem message={systemMsg} dropCap />
           <MessageItem message={chatMsg} />
           <RollItem roll={priorRoll} />
-          {/* Remount per knob flip: the card's local drafts (mitigation,
-              containment slider, refusal line) must not bleed across states. */}
+          {/* Remount per knob flip: the card's local drafts (mitigation row,
+              containment boxes, refusal line) must not bleed across states. */}
           <CastCard
             key={`${rung}:${seat}`}
             cast={cast}
@@ -319,6 +327,9 @@ function DressingRoom() {
             isStoryteller={view.isStoryteller}
             viewerUserId={view.viewerUserId}
             mySheet={mySheet}
+            // Every seat watches the caster's cockpit (note 14) — the rig
+            // hands all three the same Arctus track.
+            casterSheet={arctusSheet}
           />
         </div>
       </ScrollArea>

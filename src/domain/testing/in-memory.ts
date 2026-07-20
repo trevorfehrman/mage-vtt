@@ -121,6 +121,12 @@ export interface StoredCast {
   readonly containedSuccesses?: number
   readonly castPool?: number
   readonly castSuccesses?: number
+  readonly castRolls?: ReadonlyArray<number>
+  readonly castExplosions?: ReadonlyArray<number>
+  readonly castRoteRerolls?: ReadonlyArray<number>
+  readonly castIsChanceDie?: boolean
+  readonly castIsDramaticFailure?: boolean
+  readonly castIsExceptionalSuccess?: boolean
   readonly severity?: Cast["severity"]
   readonly override: OverrideMarker | null
   readonly createdAt: number

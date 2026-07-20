@@ -126,7 +126,7 @@ export type CastDraft = typeof CastDraft.Type
  * The writes the beat flows can express against a Cast: each beat stamps its
  * own fields plus the status rung it lands on. The declaration is immutable
  * after draft — except `usesMagicalTool`, the caster's side of the price
- * (issue #44), editable until the freeze. The adapter stamps `updatedAt` and
+ * (issue #44), editable until the fix. The adapter stamps `updatedAt` and
  * any recorded `Override` marker (void's repair provenance) structurally.
  */
 export const CastPatch = Schema.Struct({
@@ -141,6 +141,14 @@ export const CastPatch = Schema.Struct({
   containedSuccesses: Schema.optionalKey(Schema.Number),
   castPool: Schema.optionalKey(Schema.Number),
   castSuccesses: Schema.optionalKey(Schema.Number),
+  /** The release roll's faces (the resolution-merge ruling, 2026-07-19):
+   * the resolved card is the record, so the roll stamps onto the document. */
+  castRolls: Schema.optionalKey(Schema.Array(Schema.Number)),
+  castExplosions: Schema.optionalKey(Schema.Array(Schema.Number)),
+  castRoteRerolls: Schema.optionalKey(Schema.Array(Schema.Number)),
+  castIsChanceDie: Schema.optionalKey(Schema.Boolean),
+  castIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
+  castIsExceptionalSuccess: Schema.optionalKey(Schema.Boolean),
   severity: Schema.optionalKey(ParadoxSeverity),
 })
 export type CastPatch = typeof CastPatch.Type

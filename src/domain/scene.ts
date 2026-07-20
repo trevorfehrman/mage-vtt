@@ -15,7 +15,7 @@ import { ParadoxPoolModifier } from "./paradox"
  * the Sleeper witness head count and the ambient circumstance modifiers
  * ({source, dice}, signs in both directions; advantage circumstances are
  * first-class). Table-visible at all times, ST-editable on the strip; a Cast
- * takes the seed frozen at The Price and never mutates the Scene. The
+ * takes the seed fixed at the Tides rung and never mutates the Scene. The
  * `witnessCount` stepper supersedes the old `sleeperWitnesses` boolean
  * ("liabilities" retires with it); legacy rows fall back "true is one".
  *

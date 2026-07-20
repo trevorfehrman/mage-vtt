@@ -1,7 +1,7 @@
 import { Match } from "effect"
 import { assign, setup, type StateValue } from "xstate"
 import type { CastEntry } from "#/domain/activity"
-import { CastStatus, isOnStage, isPriceFrozen, type CastPhases } from "#/domain/cast"
+import { CastStatus, isOnStage, isPriceFixed, type CastPhases } from "#/domain/cast"
 
 /**
  * The Cast-ladder machine (issue #43, ADR-0016): a *projection* of the
@@ -82,10 +82,10 @@ export type LadderControl =
   | "kill" // caster: withdraw own draft
   | "decline" // ST: refuse a draft
   | "engage" // ST: put a draft on stage
-  | "adjust" // ST: personal adjustments (ADR-0022), the Tides rung before the freeze
-  | "lockPrice" // ST: THE FREEZE — stamp the Tides, go hands-off
+  | "adjust" // ST: personal adjustments (ADR-0022), the Tides rung before the fix
+  | "lockPrice" // ST: THE FIX — stamp the Tides, go hands-off
   | "commit" // caster: the point of no return (with mitigation)
-  | "cancel" // the Tides rung: either party while fluid, caster-only once frozen
+  | "cancel" // the Tides rung: either party while fluid, caster-only once fixed
   | "rollParadox" // ST's own button
   | "contain" // caster: the cockpit's containment selection (local, #113)
   | "release" // caster: the one Cast click — containment lands, dice fly
@@ -103,9 +103,9 @@ export const ladderControls = (
       ...(viewer.isStoryteller ? (["engage", "decline"] as const) : []),
     ]),
     Match.when("price", () =>
-      isPriceFrozen(cast)
+      isPriceFixed(cast)
         ? // Locked means locked (#114): only the caster may still bail — the
-          // ST froze the price and holds no cancel, just the repair door.
+          // ST fixed the price and holds no cancel, just the repair door.
           [...(viewer.isCaster ? (["commit", "cancel"] as const) : [])]
         : [
             ...(viewer.isStoryteller ? (["adjust", "lockPrice"] as const) : []),

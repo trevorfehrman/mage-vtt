@@ -193,7 +193,7 @@ const WholeCount = Schema.Number.check(
  * of vulgar magic, edited inline on the strip. A quiet write the strip shows
  * live — the log narrates dramatic beats, not knob positions. Scene state is
  * never mutated by a cast; the ST reacts to the world here, and the *next*
- * freeze pays the new price — a frozen card keeps its snapshot.
+ * fix pays the new price — a fixed card keeps its snapshot.
  */
 export const editTides = Effect.fn("Flows.scene.editTides")(function* (
   args: EditTidesArgs,

@@ -71,7 +71,7 @@ export const adjustPrice = enforcedMutation({
   flow: adjustPriceFlow,
 })
 
-// THE FREEZE (ADR-0022): the Tides seed stamps; the ST goes hands-off.
+// THE FIX (ADR-0022): the Tides seed stamps; the ST goes hands-off.
 export const lockPrice = enforcedMutation({ args: step, flow: lockPriceFlow })
 
 export const commit = enforcedMutation({
@@ -95,7 +95,7 @@ export const voidCast = enforcedMutation({ args: step, flow: voidCastFlow })
 
 // The strip's per-caster Paradox pips (issue #44): who is pushing their luck
 // this Scene, derived live from resolved Cast history through the same leaf
-// the freeze seeds the Tides with (ADR-0012 — never a stored tally).
+// the fix seeds the Tides with (ADR-0012 — never a stored tally).
 // Member-gated like the Scene read; empty in downtime.
 // Whether a character already has an unresolved Cast (issue #68) — the same
 // domain leaf the draft flow refuses `CastAlreadyPending` with, read plainly

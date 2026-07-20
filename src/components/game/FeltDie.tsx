@@ -1,16 +1,20 @@
 import { motion } from "motion/react";
 import { entranceSpring } from "#/components/ui/entrance";
+import { ParadoxGlyph } from "./ParadoxGlyph";
 
 /**
  * The felt's die (extracted from the DicePoolBuilder for issue #107): one
  * physical mark, shared by the plain tray and the declaration felt so both
  * postures speak the same provenance grammar — sheet dice verdigris, loose
- * dice neutral, Willpower ember. `ghosted` is the #102 pending recipe over
- * the die's own identity color (dashed outline + opacity): the price being
- * weighed, visible before it's paid.
+ * dice neutral, Willpower ember. `paradox` (the 2026-07-19 polish pass) is
+ * the die reality rolls back: --paradox red with the torn-circle glyph
+ * inside the diamond — it stands on the felt beneath the declared pool as
+ * a physical threat, not a sentence. `ghosted` is the #102 pending recipe
+ * over the die's own identity color (dashed outline + opacity): the price
+ * being weighed, visible before it's paid.
  */
 
-export type DieKind = "sheet" | "loose" | "willpower";
+export type DieKind = "sheet" | "loose" | "willpower" | "paradox";
 
 const DIE_LOOK: Record<DieKind, { border: string; background: string }> = {
   sheet: {
@@ -24,6 +28,10 @@ const DIE_LOOK: Record<DieKind, { border: string; background: string }> = {
   willpower: {
     border: "var(--ember)",
     background: "var(--ember-glow)",
+  },
+  paradox: {
+    border: "var(--paradox)",
+    background: "color-mix(in srgb, var(--paradox) 16%, transparent)",
   },
 };
 
@@ -65,13 +73,27 @@ export function FeltDie({
     exit: { scale: 0.4, opacity: 0 },
     transition: reduced ? { duration: 0 } : entranceSpring,
   };
+  // The die rotates into its diamond stance; the glyph counter-rotates so
+  // the tear stays upright inside it.
+  const glyph =
+    kind === "paradox" ? (
+      <span
+        className="grid place-items-center"
+        style={{ transform: "rotate(-45deg)" }}
+        aria-hidden
+      >
+        <ParadoxGlyph size={12} title="" />
+      </span>
+    ) : null;
   return onSkim === undefined ? (
     <motion.span
       {...anim}
       title={title}
-      className="size-[20px] rounded-[4px]"
+      className="grid size-[20px] place-items-center rounded-[4px]"
       style={look}
-    />
+    >
+      {glyph}
+    </motion.span>
   ) : (
     <motion.button
       {...anim}
@@ -81,8 +103,10 @@ export function FeltDie({
       }}
       disabled={disabled}
       title={title}
-      className="size-[20px] cursor-pointer rounded-[4px]"
+      className="grid size-[20px] cursor-pointer place-items-center rounded-[4px]"
       style={look}
-    />
+    >
+      {glyph}
+    </motion.button>
   );
 }

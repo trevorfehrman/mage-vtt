@@ -38,7 +38,7 @@ const snapshot = (
   ...overrides,
 })
 
-/** The frozen seed that flips The Price to the caster's phase. */
+/** The fixed seed that flips The Price to the caster's phase. */
 const TIDES = { witnessCount: 0, circumstances: [], priorParadoxRolls: 0 }
 
 describe("castLadderMachine — a projection of the document", () => {
@@ -109,7 +109,7 @@ describe("ladderControls — buttons only for the viewer's role and phase", () =
     expect(ladderControls(snapshot("draft"), spectator)).toEqual([])
   })
 
-  test("The Price, fluid: ST assembles and freezes, either bails", () => {
+  test("The Price, fluid: ST assembles and fixes, either bails", () => {
     expect(ladderControls(snapshot("price"), storyteller)).toEqual([
       "adjust",
       "lockPrice",
@@ -120,13 +120,13 @@ describe("ladderControls — buttons only for the viewer's role and phase", () =
     expect(ladderControls(snapshot("price"), spectator)).toEqual([])
   })
 
-  test("The Price, frozen: the caster commits or bails; the ST is hands-off but for the repair", () => {
-    const frozen = snapshot("price", { tides: TIDES })
-    expect(ladderControls(frozen, caster)).toEqual(["commit", "cancel"])
-    // Locked means locked (#114): the freeze took the ST's cancel with it —
-    // the repair door is their one way out of a frozen price.
-    expect(ladderControls(frozen, storyteller)).toEqual(["void"])
-    expect(ladderControls(frozen, spectator)).toEqual([])
+  test("The Price, fixed: the caster commits or bails; the ST is hands-off but for the repair", () => {
+    const fixed = snapshot("price", { tides: TIDES })
+    expect(ladderControls(fixed, caster)).toEqual(["commit", "cancel"])
+    // Locked means locked (#114): the fix took the ST's cancel with it —
+    // the repair door is their one way out of a fixed price.
+    expect(ladderControls(fixed, storyteller)).toEqual(["void"])
+    expect(ladderControls(fixed, spectator)).toEqual([])
   })
 
   test("Paradox: the ST's roll, then the caster's cockpit — no cancel past the commit", () => {

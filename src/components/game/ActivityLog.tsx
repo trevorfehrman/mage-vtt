@@ -1,14 +1,17 @@
 import { useRef, useEffect, type ReactNode } from "react"
 import { Match } from "effect"
+import { useQuery } from "convex/react"
 import { ScrollArea } from "#/components/ui/scroll-area"
 import { useActivity } from "#/hooks/use-activity"
 import type { MessageEntry, OverrideMark, RollEntry } from "#/domain/activity"
 import { isUnresolved } from "#/domain/cast"
 import type { CharacterSheet } from "#/domain/character"
-import { isDieDramaticFailure, isDieExplosive, isDieSuccess } from "#/domain/dice"
+import { decodeSheetDoc } from "#/lib/sheet-doc"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import { CastCard } from "./CastCard"
+import { Die } from "./Die"
 import { isLooseDice } from "./DicePoolBuilder"
+import { api } from "../../../convex/_generated/api"
 import type { Id } from "../../../convex/_generated/dataModel"
 
 /** Within this distance of the log's foot still counts as "at the foot". */
@@ -43,6 +46,15 @@ export function ActivityLog({
   mySheet,
 }: ActivityLogProps) {
   const activity = useActivity(sessionId, seat)
+  // The cockpit is watchable by every seat (2026-07-19 polish, note 14): a
+  // spectator's live card needs the CASTER's health track, read off the same
+  // roster query the route already holds (Convex dedupes the subscription).
+  // Decoded per live cast entry — the feed carries at most a handful.
+  const roster = useQuery(api.characters.listForSession, { sessionId })
+  const casterSheetOf = (characterId: string): CharacterSheet | null => {
+    const doc = (roster ?? []).find((c) => c._id === characterId)
+    return doc ? decodeSheetDoc(doc) : null
+  }
   const contentRef = useRef<HTMLDivElement>(null)
   // Pinned = reading the live end of the log. Leaving the foot (e.g. scrolling
   // up to a Cast card's controls, issue #65) releases the pin so new beats and
@@ -147,6 +159,13 @@ export function ActivityLog({
                     isStoryteller={isStoryteller}
                     viewerUserId={viewerUserId}
                     mySheet={mySheet}
+                    // The caster's track for the watched cockpit (note 14) —
+                    // only a live Paradox rung needs it.
+                    casterSheet={
+                      cast.status === "paradox"
+                        ? casterSheetOf(cast.characterId)
+                        : null
+                    }
                   />
                 ),
               ),
@@ -308,40 +327,6 @@ export function RollItem({ roll }: { roll: RollEntry }) {
           .join(" + ")}
       </div>
     </div>
-  )
-}
-
-function Die({
-  v,
-  again,
-  ring,
-  chance,
-}: {
-  v: number
-  again: number
-  ring?: "rote" | "exp"
-  chance?: boolean
-}) {
-  const success = isDieSuccess(v, chance ?? false)
-  const dramatic = isDieDramaticFailure(v, chance ?? false)
-  return (
-    <span
-      className="mv-data grid size-5 place-items-center rounded-[2px] text-[10px] font-bold"
-      style={{
-        background: dramatic ? "var(--bad)" : success ? "var(--rail-success)" : "var(--raise)",
-        color: dramatic || success ? "#0a0a0c" : "var(--dim)",
-        boxShadow:
-          ring === "rote"
-            ? "0 0 0 1px var(--dim2)"
-            : ring === "exp"
-              ? "0 0 0 1px var(--accent)"
-              : isDieExplosive(v, again, chance ?? false)
-                ? "0 0 0 1px var(--accent)"
-                : undefined,
-      }}
-    >
-      {v}
-    </span>
   )
 }
 
