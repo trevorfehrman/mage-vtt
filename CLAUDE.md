@@ -105,11 +105,11 @@ docs/              — Technical documentation
 
 ### Issue tracker
 
-Issues and PRDs are tracked as GitHub issues in `trevorfehrman/mage-vtt` via the `gh` CLI. External PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
+Issues and PRDs are tracked in **Linear** — workspace `trevorfehrman`, team `mage-vtt` (issue key `MAG`) — via the `mcp__linear-mage__*` MCP tools (migrated 2026-07-28). The pre-migration GitHub issues are a frozen read-only archive (`gh issue view <n>` still reads them; migrated issues carry a `gh#NN` backlink). External PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
-Five canonical roles using their default names (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+Five canonical roles, split across Linear's two axes: routing is a **label** (`ready-for-agent`, `ready-for-human`, `needs-triage`, `needs-info`) and lifecycle is a **workflow state** (Backlog/Todo/In Progress/Done; `wontfix` → Cancelled). See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 

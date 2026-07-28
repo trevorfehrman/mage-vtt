@@ -1,45 +1,63 @@
-# Issue tracker: GitHub
+# Issue tracker: Linear
 
-Issues and PRDs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
+Issues and PRDs for this repo live in **Linear** — workspace `trevorfehrman`, team
+`mage-vtt` (issue key `MAG`). Use the `mcp__linear-mage__*` MCP tools. (Migrated
+from GitHub on 2026-07-28; the pre-migration GitHub issues are a frozen read-only
+archive — `gh issue view <n>` still reads them, and every migrated issue carries a
+`gh#NN` backlink.)
+
+> **Access note:** the default `claude.ai Linear` connector is often OAuth'd to a
+> *different* workspace (it will list teams that are not `mage-vtt`). Use the
+> `linear-mage` server, authenticated to `trevorfehrman`. If its tools are absent:
+> `claude mcp add --transport http linear-mage https://mcp.linear.app/mcp`, then
+> `/mcp` → authenticate → pick the `trevorfehrman` workspace. Verify with
+> `list_teams` — you should see `mage-vtt`.
 
 ## Conventions
 
-- **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
-- **Read an issue**: `gh issue view <number> --comments`, filtering comments by `jq` and also fetching labels.
-- **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
-- **Comment on an issue**: `gh issue comment <number> --body "..."`
-- **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
-- **Close**: `gh issue close <number> --comment "..."`
+- **Create an issue**: `save_issue` with `team: "mage-vtt"`, `title`, `description`
+  (Markdown — literal characters, never HTML-escape), plus `labels`, `state`, and
+  `project`/`milestone` (pass these as **UUIDs**, not names).
+- **Read an issue**: `get_issue <MAG-nn>`; add `list_comments` for the thread.
+- **List issues**: `list_issues` with `team: "mage-vtt"` and filters `state` /
+  `label` / `project` / `milestone` / `assignee` (`"me"` for yours, `null` for
+  unassigned).
+- **Comment**: `save_comment`.
+- **Labels / state**: `save_issue` with `labels` (replaces the whole set) and
+  `state` (a state name, e.g. `Todo`, `Done`, `Canceled`).
+- **Close**: set `state` to `Done` (or `Canceled` for `wontfix`) via `save_issue`.
+- **Blocking**: native relations — `save_issue` with `blockedBy` / `blocks`
+  (append-only; `removeBlockedBy` to clear). A ticket is unblocked when every
+  blocker is Done.
 
-Infer the repo from `git remote -v` — `gh` does this automatically when run inside a clone.
+Projects group multi-ticket campaigns; project **milestones** mark the parts; large
+PRDs/Specs live as project **Documents** (`save_document` with a `project` parent).
 
 ## Pull requests as a triage surface
 
-**PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
-
-When set to `yes`, PRs run through the same labels and states as issues, using the `gh pr` equivalents:
-
-- **Read a PR**: `gh pr view <number> --comments` and `gh pr diff <number>` for the diff.
-- **List external PRs for triage**: `gh pr list --state open --json number,title,body,labels,author,authorAssociation,comments` then keep only `authorAssociation` of `CONTRIBUTOR`, `FIRST_TIME_CONTRIBUTOR`, or `NONE` (drop `OWNER`/`MEMBER`/`COLLABORATOR`).
-- **Comment / label / close**: `gh pr comment`, `gh pr edit --add-label`/`--remove-label`, `gh pr close`.
-
-GitHub shares one number space across issues and PRs, so a bare `#42` may be either — resolve with `gh pr view 42` and fall back to `gh issue view 42`.
+**PRs as a request surface: no.** Code PRs live on GitHub and are not a Linear
+triage surface.
 
 ## Wayfinding operations
 
-Wayfinder efforts keep their artifacts as GitHub issues:
+Wayfinder efforts run in Linear:
 
-- **The map** is an issue labeled `wayfinder:map` — one per effort, the index of its decisions.
-- **Tickets** are child issues labeled `wayfinder:ticket` **plus** one type label (`wayfinder:grilling` / `wayfinder:prototype` / `wayfinder:research` / `wayfinder:task`), carrying a `## Map` section (`Part of #<map>`) in the body.
-- **Blocking** uses this repo's existing body convention — a `## Blocked by` section listing issue numbers. GitHub-native issue dependencies are not used. A ticket is unblocked when every listed issue is closed.
-- **Claiming**: assign yourself (`gh issue edit <n> --add-assignee @me`) before any work. Open + unassigned = unclaimed.
-- **The frontier**: `gh issue list --label "wayfinder:ticket" --state open --json number,title,body,assignees,labels`, then keep issues with no assignee whose `## Blocked by` entries are all closed.
-- **Resolving**: post the answer as a comment, close the issue, append one line to the map's `## Decisions so far`.
+- **The map** is a Linear **project** (or a parent issue) — the index of the
+  effort's decisions.
+- **Tickets** are issues carrying a `wayfinder:*` label (create the label group on
+  first use via `create_issue_label`, team `mage-vtt`) and native `blockedBy`
+  relations instead of a `## Blocked by` body section.
+- **Claiming**: assign yourself — `save_issue` with `assignee: "me"`. Open +
+  unassigned = unclaimed.
+- **The frontier**: `list_issues` filtered to the wayfinder label + open state, kept
+  to issues with no assignee whose blockers are all Done.
+- **Resolving**: `save_comment` the answer, set the issue `state` to `Done`, and
+  note the decision on the map project.
 
 ## When a skill says "publish to the issue tracker"
 
-Create a GitHub issue.
+Create a Linear issue: `save_issue` with `team: "mage-vtt"`.
 
 ## When a skill says "fetch the relevant ticket"
 
-Run `gh issue view <number> --comments`.
+`get_issue <MAG-nn>` (add `list_comments` for the discussion).
