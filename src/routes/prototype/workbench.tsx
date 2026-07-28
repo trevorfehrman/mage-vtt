@@ -104,7 +104,8 @@ const priorRoll: RollEntry = {
   ],
   poolSize: 5,
   rolls: [8, 3, 9, 1, 10],
-  explosions: [7],
+  // The 10 at combined-index 4 spawned this 7 (parented explosions, issue #122).
+  explosions: [{ value: 7, parentIndex: 4 }],
   roteRerolls: [],
   successes: 3,
   isChanceDie: false,

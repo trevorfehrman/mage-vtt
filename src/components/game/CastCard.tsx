@@ -504,8 +504,8 @@ export function CastCard({
             {(cast.castRoteRerolls ?? []).map((v, i) => (
               <Die key={`fr${i}`} v={v} again={10} ring="rote" size="md" diamond />
             ))}
-            {(cast.castExplosions ?? []).map((v, i) => (
-              <Die key={`fe${i}`} v={v} again={10} size="md" diamond />
+            {(cast.castExplosions ?? []).map((e, i) => (
+              <Die key={`fe${i}`} v={e.value} again={10} size="md" diamond />
             ))}
           </div>
         ) : (
@@ -531,10 +531,10 @@ export function CastCard({
                 diamond
               />
             ))}
-            {(cast.paradoxExplosions ?? []).map((v, i) => (
+            {(cast.paradoxExplosions ?? []).map((e, i) => (
               <Die
                 key={`fpe${i}`}
-                v={v}
+                v={e.value}
                 again={10}
                 tone="paradox"
                 size="md"

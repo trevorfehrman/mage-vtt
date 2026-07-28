@@ -49,10 +49,137 @@ export class DicePool extends Schema.Class<DicePool>("DicePool")({
 export const RollVisibility = Schema.Literals(["public", "hidden"])
 export type RollVisibility = typeof RollVisibility.Type
 
+/**
+ * One exploded die and its lineage (issue #122): `value` is the face rolled;
+ * `parentIndex` points at the die that spawned it — an index into the roll's
+ * combined sequence ([...rolls, ...roteRerolls, ...explosions]), always a die
+ * that was itself at or above the again threshold in a prior generation.
+ * `null` means parentless: a record stored before lineage existed.
+ */
+export const Explosion = Schema.Struct({
+  value: Schema.Number,
+  parentIndex: Schema.NullOr(Schema.Number),
+})
+export type Explosion = typeof Explosion.Type
+
+/**
+ * A stored explosion as the decode boundary receives it: documents written
+ * before issue #122 hold the bare face. The heal lives in
+ * `normalizeExplosions`; the persisted column stays a union superset of both
+ * generations (the `HealthBoxDoc` precedent) while new writes are always
+ * parented structs.
+ */
+export const StoredExplosion = Schema.Union([Schema.Number, Explosion])
+export type StoredExplosion = typeof StoredExplosion.Type
+
+/** Heal one stored explosion: a legacy bare face becomes a parentless struct. */
+export const normalizeExplosion = (stored: StoredExplosion): Explosion =>
+  typeof stored === "number" ? { value: stored, parentIndex: null } : stored
+
+/** Heal a stored explosion list at the decode boundary — never a crash. */
+export const normalizeExplosions = (
+  stored: ReadonlyArray<StoredExplosion>,
+): Array<Explosion> => stored.map(normalizeExplosion)
+
+/** The faces alone, either generation — what a flat projection renders. */
+export const explosionValues = (
+  stored: ReadonlyArray<StoredExplosion>,
+): Array<number> => stored.map((e) => normalizeExplosion(e).value)
+
+/**
+ * Heal a Cast document's two explosion columns at a decode boundary (#122):
+ * each column that is present collapses its stored faces to parented structs,
+ * an absent column stays absent (so `optionalKey` decode and feed projection
+ * both preserve "never written"). The seam decode (`convexLive.decodeCast`)
+ * and the feed projection (`activity.castEntry`) share this one door, so the
+ * heal can never drift between the two boundaries.
+ */
+export const healCastExplosions = (columns: {
+  readonly paradoxExplosions?: ReadonlyArray<StoredExplosion> | undefined
+  readonly castExplosions?: ReadonlyArray<StoredExplosion> | undefined
+}): {
+  paradoxExplosions?: Array<Explosion>
+  castExplosions?: Array<Explosion>
+} => ({
+  ...(columns.paradoxExplosions !== undefined
+    ? { paradoxExplosions: normalizeExplosions(columns.paradoxExplosions) }
+    : {}),
+  ...(columns.castExplosions !== undefined
+    ? { castExplosions: normalizeExplosions(columns.castExplosions) }
+    : {}),
+})
+
+/**
+ * One die in the burst order (issue #126): what a felt renders when it draws
+ * lineage. `index` is the die's position in the roll's combined sequence
+ * ([...rolls, ...roteRerolls, ...explosions]) — the same indexing
+ * `parentIndex` speaks — so it doubles as a row-unique render key.
+ */
+export const BurstDie = Schema.Struct({
+  value: Schema.Number,
+  index: Schema.Number,
+  kind: Schema.Literals(["roll", "rote", "explosion"]),
+})
+export type BurstDie = typeof BurstDie.Type
+
+/**
+ * The burst order (issue #126): the roll's dice regrouped so every explosion
+ * stands beside its cause — each base die followed by the chain it spawned,
+ * generation after generation. `cascadeExplosions` draws exactly one child
+ * per trigger, so lineage is a set of chains, never a tree: within a cluster,
+ * each die after the first burst from the die immediately before it.
+ *
+ * Chains follow only the FIRST claimant of a parent, and only forward (a
+ * child is always drawn after its parent), so malformed parentage — cycles,
+ * self-references, duplicate claimants, out-of-range indices — can never
+ * loop or crash. Whatever no chain reaches (parentless legacy explosions,
+ * unhonorable parentage) renders inline at the row's end in stored order,
+ * one single-die cluster each — exactly the render before lineage existed.
+ */
+export const burstClusters = (
+  rolls: ReadonlyArray<number>,
+  roteRerolls: ReadonlyArray<number>,
+  explosions: ReadonlyArray<Explosion>,
+): Array<Array<BurstDie>> => {
+  const baseCount = rolls.length + roteRerolls.length
+  const indexed = explosions.map((e, i) => ({
+    value: e.value,
+    parentIndex: e.parentIndex,
+    index: baseCount + i,
+  }))
+  const chainFrom = (parentIdx: number): Array<BurstDie> => {
+    const child = indexed.find(
+      (e) => e.parentIndex === parentIdx && e.index > parentIdx,
+    )
+    return child === undefined
+      ? []
+      : [
+          { value: child.value, index: child.index, kind: "explosion" as const },
+          ...chainFrom(child.index),
+        ]
+  }
+  const base: Array<BurstDie> = [
+    ...rolls.map((value, i) => ({ value, index: i, kind: "roll" as const })),
+    ...roteRerolls.map((value, i) => ({
+      value,
+      index: rolls.length + i,
+      kind: "rote" as const,
+    })),
+  ]
+  const clusters = base.map((d) => [d, ...chainFrom(d.index)])
+  const placed = clusters.flat().map((d) => d.index)
+  const orphans = indexed
+    .filter((e) => !placed.includes(e.index))
+    .map((e): Array<BurstDie> => [
+      { value: e.value, index: e.index, kind: "explosion" },
+    ])
+  return [...clusters, ...orphans]
+}
+
 export class DiceRollResult extends Schema.Class<DiceRollResult>("DiceRollResult")({
   poolSize: PoolSize,
   rolls: Schema.Array(Schema.Number),
-  explosions: Schema.Array(Schema.Number),
+  explosions: Schema.Array(Explosion),
   successes: Successes,
   isChanceDie: Schema.Boolean,
   isDramaticFailure: Schema.Boolean,
@@ -102,24 +229,48 @@ const rollD10 = Random.nextIntBetween(1, 10)
 /** n sequential d10 draws; zero draws for n = 0. Draw order is the seeded-test contract. */
 const rollNDice = (n: number) => Effect.replicateEffect(rollD10, n)
 
+/** The combined-sequence indices of the dice at or above the threshold. */
+const triggerIndices = (
+  dice: ReadonlyArray<number>,
+  threshold: number,
+  offset: number,
+): ReadonlyArray<number> =>
+  dice.flatMap((r, i) => (r >= threshold ? [offset + i] : []))
+
 /**
  * Cascading N-again rerolls: every die in a batch at or above the threshold
  * earns another draw, until a batch yields none. Effect v4 dropped
  * Effect.iterate/Effect.loop, so the cascade recurses through flatMap —
  * batches are drawn in order, so seeded draw sequences match the old while loop.
+ *
+ * The lineage thread (issue #122): `parents` carries the trigger dice's
+ * indices in the roll's combined sequence, one child drawn per trigger in
+ * order, so each child's `parentIndex` is the die that spawned it;
+ * `nextIndex` is the combined-sequence index the batch's first child takes,
+ * so chain explosions (a 10 whose child is also a 10) link generation to
+ * generation.
  */
 const cascadeExplosions = (
-  count: number,
+  parents: ReadonlyArray<number>,
   threshold: number,
-): Effect.Effect<ReadonlyArray<number>> =>
-  count <= 0
+  nextIndex: number,
+): Effect.Effect<ReadonlyArray<Explosion>> =>
+  parents.length === 0
     ? Effect.succeed([])
-    : Effect.flatMap(rollNDice(count), (batch) =>
-        Effect.map(
-          cascadeExplosions(batch.filter((r) => r >= threshold).length, threshold),
-          (rest) => [...batch, ...rest],
-        ),
-      )
+    : Effect.flatMap(rollNDice(parents.length), (batch) => {
+        const children = batch.map((value, i) => ({
+          value,
+          parentIndex: parents[i]!,
+        }))
+        return Effect.map(
+          cascadeExplosions(
+            triggerIndices(batch, threshold, nextIndex),
+            threshold,
+            nextIndex + children.length,
+          ),
+          (rest) => [...children, ...rest],
+        )
+      })
 
 const countSuccesses = (rolls: ReadonlyArray<number>, chanceDie: boolean): Successes =>
   Successes.make(rolls.filter((r) => isDieSuccess(r, chanceDie)).length)
@@ -163,15 +314,19 @@ export const rollPool = Effect.fn("DicePool.roll")(function* (
       ? yield* rollNDice(rolls.filter((r) => !isDieSuccess(r, false)).length)
       : []
 
-  // Again explosions (10-again, 9-again, or 8-again)
+  // Again explosions (10-again, 9-again, or 8-again): triggers in the
+  // initial dice spawn the first generation, indexed off the combined
+  // sequence so every child records the die that spawned it (issue #122).
+  const initial = [...rolls, ...roteRerolls]
   const explosions = isChanceDie
     ? []
     : yield* cascadeExplosions(
-        [...rolls, ...roteRerolls].filter((r) => r >= againThreshold).length,
+        triggerIndices(initial, againThreshold, 0),
         againThreshold,
+        initial.length,
       )
 
-  const allRolls = [...rolls, ...roteRerolls, ...explosions]
+  const allRolls = [...initial, ...explosions.map((e) => e.value)]
   const successes = countSuccesses(allRolls, isChanceDie)
 
   return new DiceRollResult({
@@ -196,12 +351,17 @@ export const resolveExplosions = Effect.fn("DicePool.resolveExplosions")(functio
   const explosions = [
     ...result.explosions,
     ...(yield* cascadeExplosions(
-      result.rolls.filter((r) => r >= threshold).length,
+      triggerIndices(result.rolls, threshold, 0),
       threshold,
+      result.rolls.length + result.roteRerolls.length + result.explosions.length,
     )),
   ]
 
-  const allRolls = [...result.rolls, ...result.roteRerolls, ...explosions]
+  const allRolls = [
+    ...result.rolls,
+    ...result.roteRerolls,
+    ...explosions.map((e) => e.value),
+  ]
   const successes = countSuccesses(allRolls, result.isChanceDie)
 
   return new DiceRollResult({

@@ -1,4 +1,5 @@
 import { Match, Result, Schema } from "effect"
+import { Explosion } from "./dice"
 import { SessionRole } from "./roles"
 import { ConvexId } from "./schema-bridge"
 import { CastDoc, DiceRollDoc, MessageDoc, OverrideMarkerDoc } from "./tables"
@@ -27,9 +28,20 @@ export const MessageEntry = Schema.TaggedStruct("message", {
 })
 export type MessageEntry = typeof MessageEntry.Type
 
+/**
+ * The feed speaks lineage (issue #126, widening #122's flat projection):
+ * entries carry the parented explosion structs so the Chronicle can draw
+ * each burst from its trigger. The query heals either stored generation
+ * through `normalizeExplosions`, so `parentIndex` is always present on the
+ * wire — `null` when the record predates lineage, and the card falls back
+ * to the inline render.
+ */
+const ParentedExplosions = Schema.Array(Explosion)
+
 export const RollEntry = Schema.TaggedStruct("roll", {
   _id: ConvexId("diceRolls"),
   ...rollFields,
+  explosions: ParentedExplosions,
 })
 export type RollEntry = typeof RollEntry.Type
 
@@ -43,6 +55,9 @@ export const CastEntry = Schema.TaggedStruct("cast", {
   _id: ConvexId("casts"),
   timestamp: Schema.Number,
   ...castFields,
+  // Parented like RollEntry's `explosions` (issue #126): lineage rides along.
+  paradoxExplosions: Schema.optionalKey(ParentedExplosions),
+  castExplosions: Schema.optionalKey(ParentedExplosions),
 })
 export type CastEntry = typeof CastEntry.Type
 

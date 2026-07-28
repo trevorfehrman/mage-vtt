@@ -2,6 +2,7 @@ import { v } from "convex/values"
 import { query } from "./_generated/server"
 import { seatedMember } from "./lib/auth"
 import { ActivityFeed, mergeFeed, visibleEntries } from "../src/domain/activity"
+import { healCastExplosions, normalizeExplosions } from "../src/domain/dice"
 import { schemaToConvexValidator } from "../src/domain/schema-bridge"
 import type { Doc } from "./_generated/dataModel"
 
@@ -37,7 +38,10 @@ const rollEntry = (r: Doc<"diceRolls">) => ({
   components: r.components,
   poolSize: r.poolSize,
   rolls: r.rolls,
-  explosions: r.explosions,
+  // The feed speaks lineage (issue #126): either stored generation heals to
+  // parented structs — legacy bare faces become parentless, and the card
+  // falls back to the inline render for them.
+  explosions: normalizeExplosions(r.explosions),
   roteRerolls: r.roteRerolls,
   successes: r.successes,
   isChanceDie: r.isChanceDie,
@@ -54,8 +58,23 @@ const rollEntry = (r: Doc<"diceRolls">) => ({
 // the card is a live feed item climbing its ladder in place, timestamped by
 // `updatedAt` so it rides at the action's edge. All Casts are public.
 const castEntry = (c: Doc<"casts">) => {
-  const { _id, _creationTime, sessionId: _sessionId, ...fields } = c
-  return { _tag: "cast" as const, _id, timestamp: c.updatedAt, ...fields }
+  const {
+    _id,
+    _creationTime,
+    sessionId: _sessionId,
+    paradoxExplosions,
+    castExplosions,
+    ...fields
+  } = c
+  return {
+    _tag: "cast" as const,
+    _id,
+    timestamp: c.updatedAt,
+    ...fields,
+    // Healed to parented structs like the roll entry's `explosions` (#126),
+    // through the one shared door so the two decode boundaries can't drift.
+    ...healCastExplosions({ paradoxExplosions, castExplosions }),
+  }
 }
 
 export const list = query({

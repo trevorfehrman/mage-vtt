@@ -91,13 +91,12 @@ describe("Flows.rolls.create (enforcement seam tracer bullet)", () => {
       }).pipe(Effect.provide(store.layer), Random.withSeed("oracle-seed"))
 
       // Old implementation's dice math, same seed, run in isolation.
-      const expected = yield* buildPool(components)
-        .pipe(
-          Effect.flatMap((pool) =>
-            rollPool(pool, { visibility: "public", againThreshold: 9, roteAction: true }),
-          ),
-        )
-        .pipe(Random.withSeed("oracle-seed"))
+      const expected = yield* buildPool(components).pipe(
+        Effect.flatMap((pool) =>
+          rollPool(pool, { visibility: "public", againThreshold: 9, roteAction: true }),
+        ),
+        Random.withSeed("oracle-seed"),
+      )
 
       const actual = store.rolls[0]!.result
       // The migration is behavior-preserving for the *dice result*. The narrative

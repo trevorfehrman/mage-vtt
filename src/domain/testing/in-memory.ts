@@ -2,7 +2,7 @@ import { Clock, Effect, Layer, Option } from "effect"
 import { Cast, type TidesSnapshot } from "../cast"
 import { CharacterSheet } from "../character"
 import { Combat, type CombatParticipant, type CombatStatus } from "../combat-tracker"
-import type { DiceRollResult, RawPoolComponent, RollVisibility } from "../dice"
+import type { DiceRollResult, Explosion, RawPoolComponent, RollVisibility } from "../dice"
 import {
   CastId,
   CombatId,
@@ -118,14 +118,14 @@ export interface StoredCast {
   readonly manaMitigation?: number
   readonly paradoxSuccesses?: number
   readonly paradoxRolls?: ReadonlyArray<number>
-  readonly paradoxExplosions?: ReadonlyArray<number>
+  readonly paradoxExplosions?: ReadonlyArray<Explosion>
   readonly paradoxIsChanceDie?: boolean
   readonly paradoxIsDramaticFailure?: boolean
   readonly containedSuccesses?: number
   readonly castPool?: number
   readonly castSuccesses?: number
   readonly castRolls?: ReadonlyArray<number>
-  readonly castExplosions?: ReadonlyArray<number>
+  readonly castExplosions?: ReadonlyArray<Explosion>
   readonly castRoteRerolls?: ReadonlyArray<number>
   readonly castIsChanceDie?: boolean
   readonly castIsDramaticFailure?: boolean

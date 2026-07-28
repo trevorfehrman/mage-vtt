@@ -310,8 +310,8 @@ export function RollItem({ roll }: { roll: RollEntry }) {
         {roll.roteRerolls.map((v, i) => (
           <Die key={`r${i}`} v={v} again={roll.againThreshold} ring="rote" />
         ))}
-        {roll.explosions.map((v, i) => (
-          <Die key={`e${i}`} v={v} again={roll.againThreshold} ring="exp" />
+        {roll.explosions.map((e, i) => (
+          <Die key={`e${i}`} v={e.value} again={roll.againThreshold} ring="exp" />
         ))}
       </div>
 

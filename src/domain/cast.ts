@@ -1,5 +1,6 @@
 import { Array as Arr, Match, Order, Schema } from "effect"
 import type { HealthTrack } from "./damage"
+import { Explosion } from "./dice"
 import { applyDamage, isIncapacitated, woundPenalty } from "./health"
 import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "./ids"
 import type { GnosisRank } from "./mana-economy"
@@ -165,7 +166,9 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   // rolled before the merge carry only successes.
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
   paradoxRolls: Schema.optionalKey(Schema.Array(Schema.Number)),
-  paradoxExplosions: Schema.optionalKey(Schema.Array(Schema.Number)),
+  // Parented explosions (issue #122): the decode boundary heals legacy bare
+  // faces to parentless structs before this schema sees them.
+  paradoxExplosions: Schema.optionalKey(Schema.Array(Explosion)),
   paradoxIsChanceDie: Schema.optionalKey(Schema.Boolean),
   paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
   // The one Cast click (contain + release) and resolution. The release roll's
@@ -175,7 +178,7 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   castPool: Schema.optionalKey(Schema.Number),
   castSuccesses: Schema.optionalKey(Schema.Number),
   castRolls: Schema.optionalKey(Schema.Array(Schema.Number)),
-  castExplosions: Schema.optionalKey(Schema.Array(Schema.Number)),
+  castExplosions: Schema.optionalKey(Schema.Array(Explosion)),
   castRoteRerolls: Schema.optionalKey(Schema.Array(Schema.Number)),
   castIsChanceDie: Schema.optionalKey(Schema.Boolean),
   castIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
@@ -361,6 +364,16 @@ export const finalCastPool = (input: {
   input.woundPenalty
 
 /**
+ * Dice eaten off the declared pool before the throw, read from any
+ * (declaredPool, castPool) pair and clamped to the pool — never more ghosts
+ * than dice exist. The containment preview's felt and the resolved record's
+ * ghost row (#123) both derive from this one clamp, so the felt always shows
+ * the whole declared pool.
+ */
+export const eatenDice = (declaredPool: number, castPool: number): number =>
+  Math.min(declaredPool, Math.max(0, declaredPool - castPool))
+
+/**
  * One stop on the containment slider, fully priced (issue #45): what the bet
  * costs and what pool survives it. Containment shrinks the cast pool twice —
  * each uncontained success is −1 die (p. 124), and the self-inflicted
@@ -414,10 +427,7 @@ export const containmentOutlook = (input: {
     penaltyAfter,
     newPenalty: penaltyAfter - penaltyBefore,
     castPool,
-    eaten: Math.min(
-      input.declaredPool,
-      Math.max(0, input.declaredPool - castPool),
-    ),
+    eaten: eatenDice(input.declaredPool, castPool),
     martyr: input.contained > 0 && isIncapacitated(after),
   }
 }

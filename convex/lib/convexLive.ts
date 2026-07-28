@@ -32,6 +32,7 @@ import {
 } from "../../src/domain/override"
 import { CurrentActor, type Actor } from "../../src/domain/ports/current-actor"
 import { DocumentNotFound } from "../../src/domain/ports/errors"
+import { healCastExplosions } from "../../src/domain/dice"
 import { SpellRef } from "../../src/domain/rote-cast"
 import {
   GameStore,
@@ -78,13 +79,26 @@ const decodeSheet = Effect.fn("ConvexLive.decodeSheet")(function* (
 /**
  * Doc → Cast, once, at the adapter (issue #43): provenance columns stay in the
  * row; a stored Cast that fails the vocabulary decode is corrupt data — a bug,
- * not a client-actionable failure (ADR-0010's Fail/Die split).
+ * not a client-actionable failure (ADR-0010's Fail/Die split). The explosion
+ * columns heal here (issue #122): rows written before parentage hold bare
+ * faces, collapsed to parentless structs so the domain only ever sees the
+ * parented shape.
  */
 const decodeCast = Effect.fn("ConvexLive.decodeCast")(function* (doc: Doc<"casts">) {
-  const { _id, _creationTime, override: _override, createdAt: _createdAt, ...fields } = doc
-  return yield* Schema.decodeUnknownEffect(Cast)({ id: _id, ...fields }).pipe(
-    Effect.orDie,
-  )
+  const {
+    _id,
+    _creationTime,
+    override: _override,
+    createdAt: _createdAt,
+    paradoxExplosions,
+    castExplosions,
+    ...fields
+  } = doc
+  return yield* Schema.decodeUnknownEffect(Cast)({
+    id: _id,
+    ...fields,
+    ...healCastExplosions({ paradoxExplosions, castExplosions }),
+  }).pipe(Effect.orDie)
 })
 
 /**
@@ -237,7 +251,7 @@ export const convexLive = (
             components: draft.components.map((c) => ({ ...c })),
             poolSize: r.poolSize,
             rolls: [...r.rolls],
-            explosions: [...r.explosions],
+            explosions: r.explosions.map((e) => ({ ...e })),
             roteRerolls: [...r.roteRerolls],
             successes: r.successes,
             isChanceDie: r.isChanceDie,
@@ -421,7 +435,7 @@ export const convexLive = (
               ? { paradoxRolls: [...patch.paradoxRolls] }
               : {}),
             ...(patch.paradoxExplosions !== undefined
-              ? { paradoxExplosions: [...patch.paradoxExplosions] }
+              ? { paradoxExplosions: patch.paradoxExplosions.map((e) => ({ ...e })) }
               : {}),
             ...(patch.paradoxIsChanceDie !== undefined
               ? { paradoxIsChanceDie: patch.paradoxIsChanceDie }
@@ -440,7 +454,7 @@ export const convexLive = (
               ? { castRolls: [...patch.castRolls] }
               : {}),
             ...(patch.castExplosions !== undefined
-              ? { castExplosions: [...patch.castExplosions] }
+              ? { castExplosions: patch.castExplosions.map((e) => ({ ...e })) }
               : {}),
             ...(patch.castRoteRerolls !== undefined
               ? { castRoteRerolls: [...patch.castRoteRerolls] }

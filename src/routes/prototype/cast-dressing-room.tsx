@@ -185,7 +185,8 @@ const resolved: CastEntry = {
   // The resolution merge (2026-07-19): the release roll's faces ride the
   // document — 9 dice, one 10 exploding into a miss, three successes.
   castRolls: [8, 9, 2, 10, 5, 3, 4, 1, 6],
-  castExplosions: [4],
+  // The 10 at combined-index 3 exploded into this miss (parented, issue #122).
+  castExplosions: [{ value: 4, parentIndex: 3 }],
   castRoteRerolls: [],
   castIsChanceDie: false,
   castIsDramaticFailure: false,

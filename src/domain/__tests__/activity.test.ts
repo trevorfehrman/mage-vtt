@@ -11,6 +11,7 @@ import {
   type Reader,
   type RollEntry,
 } from "../activity"
+import { normalizeExplosions } from "../dice"
 import { resolveSeat } from "../seat"
 import { matchesConvexValidator, validatorJson } from "../testing/convex-validator"
 
@@ -50,7 +51,7 @@ const roll = (
     components: [{ type: "attribute", name: "Wits", dots: 3 }],
     poolSize: 3,
     rolls: [8, 3, 10],
-    explosions: [7],
+    explosions: [{ value: 7, parentIndex: 2 }],
     roteRerolls: [],
     successes: 2,
     isChanceDie: false,
@@ -96,6 +97,37 @@ describe("ActivityEntry: the wire contract", () => {
       expect(decodeFeed([wire])).toEqual([entry])
     },
   )
+})
+
+// --- The feed speaks lineage (issue #126) ---
+
+describe("the feed carries explosion parentage (issue #126)", () => {
+  it("a parented roll entry survives the wire: the burst reaches the card intact", () => {
+    const entry = roll({
+      rolls: [10, 3],
+      explosions: [
+        { value: 10, parentIndex: 0 },
+        { value: 8, parentIndex: 2 },
+      ],
+    })
+    expect(decodeFeed([entry])).toEqual([entry])
+  })
+
+  it("the projection heals legacy stored columns to parentless structs", () => {
+    // The query projects every stored explosion column through
+    // `normalizeExplosions` — a pre-#122 document's bare faces reach the
+    // client parentless (the inline-fallback signal), mixed generations heal
+    // element by element, and nothing drops.
+    const wire = roll({
+      explosions: normalizeExplosions([7, { value: 9, parentIndex: 2 }]),
+    })
+    const decoded = decodeFeed([wire])
+    expect(decoded).toHaveLength(1)
+    expect((decoded[0] as RollEntry).explosions).toEqual([
+      { value: 7, parentIndex: null },
+      { value: 9, parentIndex: 2 },
+    ])
+  })
 })
 
 // --- decodeFeed: atom-level failure isolation (ADR-0009) ---

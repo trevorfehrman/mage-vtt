@@ -20,6 +20,7 @@ import { Schema } from "effect"
 import { CastStatus, TidesSnapshot } from "./cast"
 import { CombatParticipant } from "./combat-tracker"
 import { ConvexId } from "./schema-bridge"
+import { StoredExplosion } from "./dice"
 import { OverrideKind } from "./override"
 import { ParadoxPoolModifier } from "./paradox"
 import { SessionRole } from "./roles"
@@ -47,6 +48,11 @@ const DiceRollComponentDoc = Schema.Struct({
   dots: Schema.Number,
 })
 
+// One stored exploded die is `StoredExplosion` (dice.ts): a union superset of
+// both generations (bare face for pre-parentage documents, the parented struct
+// for new writes — the `HealthBoxDoc` precedent), healed at the decode boundary
+// by `dice.ts`'s `normalizeExplosions`.
+
 /**
  * Stored shape of the `Override` provenance marker (ADR-0006). A plain struct
  * (not the domain `OverrideMarker` class) so the derived column type stays a
@@ -65,7 +71,7 @@ export const DiceRollDoc = Schema.Struct({
   components: Schema.Array(DiceRollComponentDoc),
   poolSize: Schema.Number,
   rolls: Schema.Array(Schema.Number),
-  explosions: Schema.Array(Schema.Number),
+  explosions: Schema.Array(StoredExplosion),
   roteRerolls: Schema.Array(Schema.Number),
   successes: Schema.Number,
   isChanceDie: Schema.Boolean,
@@ -322,7 +328,7 @@ export const CastDoc = Schema.Struct({
   // before the merge carry only successes; the card renders what's there.
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
   paradoxRolls: Schema.optionalKey(Schema.Array(Schema.Number)),
-  paradoxExplosions: Schema.optionalKey(Schema.Array(Schema.Number)),
+  paradoxExplosions: Schema.optionalKey(Schema.Array(StoredExplosion)),
   paradoxIsChanceDie: Schema.optionalKey(Schema.Boolean),
   paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
   // The one Cast click and resolution. The release roll's faces live here
@@ -333,7 +339,7 @@ export const CastDoc = Schema.Struct({
   castPool: Schema.optionalKey(Schema.Number),
   castSuccesses: Schema.optionalKey(Schema.Number),
   castRolls: Schema.optionalKey(Schema.Array(Schema.Number)),
-  castExplosions: Schema.optionalKey(Schema.Array(Schema.Number)),
+  castExplosions: Schema.optionalKey(Schema.Array(StoredExplosion)),
   castRoteRerolls: Schema.optionalKey(Schema.Array(Schema.Number)),
   castIsChanceDie: Schema.optionalKey(Schema.Boolean),
   castIsDramaticFailure: Schema.optionalKey(Schema.Boolean),

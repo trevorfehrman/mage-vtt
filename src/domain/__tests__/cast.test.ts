@@ -5,6 +5,7 @@ import {
   castPoolAfterParadox,
   containmentCap,
   containmentOutlook,
+  eatenDice,
   mitigationCap,
   deriveAccumulator,
   isCommitted,
@@ -297,6 +298,19 @@ describe("castPoolAfterParadox", () => {
 
   it("may fall to zero or below — the chance die is rollPool's contract", () => {
     expect(castPoolAfterParadox(2, 4, 0)).toBe(-2)
+  })
+})
+
+describe("eatenDice (the one ghost clamp — the bet's preview and the resolved record, #123)", () => {
+  it("counts declared minus surviving, never below zero", () => {
+    expect(eatenDice(5, 2)).toBe(3)
+    expect(eatenDice(5, 5)).toBe(0)
+    expect(eatenDice(3, 3)).toBe(0)
+  })
+
+  it("a pool eaten past zero ghosts everything — never more dice than exist", () => {
+    expect(eatenDice(2, -3)).toBe(2)
+    expect(eatenDice(0, 0)).toBe(0)
   })
 })
 

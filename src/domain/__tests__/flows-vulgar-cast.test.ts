@@ -1768,3 +1768,50 @@ describe("Flows — the pending-cast lock (issue #109)", () => {
     }).pipe(Random.withSeed("lock-resolved")),
   )
 })
+
+describe("Flows.vulgarCast — explosion parentage persists (issue #122)", () => {
+  it.effect("the Paradox roll stamps parented explosions onto the document", () =>
+    Effect.gen(function* () {
+      // Seed "paradox-19" rolls a 10 on the single Gnosis-1 Paradox die: the
+      // child records the die that spawned it, and the success count is the
+      // faces' own (the 10), untouched by the shape.
+      const store = seed({ casts: [castAt("paradox")] })
+
+      yield* rollParadox({
+        sessionId: SESSION,
+        castId: CastId.make("cast-prior"),
+      }).pipe(as(ST_USER), Effect.provide(store.layer))
+
+      const row = store.casts[0]!
+      expect(row.paradoxRolls).toEqual([10])
+      expect(row.paradoxExplosions).toEqual([{ value: 5, parentIndex: 0 }])
+      expect(row.paradoxSuccesses).toBe(1)
+    }).pipe(Random.withSeed("paradox-19")),
+  )
+
+  it.effect("the release roll stamps parented explosions; a chain links child to child", () =>
+    Effect.gen(function* () {
+      // Seed "release-18" on the 4-die release: rolls [4,10,3,7], the 10 at
+      // index 1 spawns a child 10 at combined index 4, whose own child hangs
+      // off it — the chain is on the stored document, not just the result.
+      const store = seed({
+        casts: [castAt("paradox", { paradoxSuccesses: 0 })],
+      })
+
+      yield* releaseCast({
+        sessionId: SESSION,
+        castId: CastId.make("cast-prior"),
+        containedSuccesses: 0,
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      const row = store.casts[0]!
+      expect(row.castRolls).toEqual([4, 10, 3, 7])
+      expect(row.castExplosions).toEqual([
+        { value: 10, parentIndex: 1 },
+        { value: 7, parentIndex: 4 },
+      ])
+      // Success count stays the flat faces' count: the two 10s.
+      expect(row.castSuccesses).toBe(2)
+    }).pipe(Random.withSeed("release-18")),
+  )
+})

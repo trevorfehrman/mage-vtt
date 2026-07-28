@@ -2,11 +2,16 @@ import { Effect, Random } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import {
   buildPool,
+  burstClusters,
+  explosionValues,
   isDieDramaticFailure,
   isDieExplosive,
   isDieSuccess,
+  normalizeExplosion,
+  normalizeExplosions,
   rollPool,
   resolveExplosions,
+  type Explosion,
 } from "../dice"
 
 describe("die-outcome rules (issue #25: one source of truth for the renderer)", () => {
@@ -36,6 +41,156 @@ describe("die-outcome rules (issue #25: one source of truth for the renderer)", 
     expect(isDieExplosive(8, 8, false)).toBe(true)
     expect(isDieExplosive(10, 10, true)).toBe(false)
   })
+})
+
+describe("stored-explosion healing (issue #122: legacy flat records decode parentless)", () => {
+  it("a legacy bare face heals to a parentless struct; a struct passes through", () => {
+    expect(normalizeExplosion(7)).toEqual({ value: 7, parentIndex: null })
+    const parented: Explosion = { value: 10, parentIndex: 3 }
+    expect(normalizeExplosion(parented)).toBe(parented)
+  })
+
+  it("a mixed stored list heals element by element", () => {
+    expect(normalizeExplosions([9, { value: 10, parentIndex: 0 }, 4])).toEqual([
+      { value: 9, parentIndex: null },
+      { value: 10, parentIndex: 0 },
+      { value: 4, parentIndex: null },
+    ])
+  })
+
+  it("explosionValues reads the faces off either generation", () => {
+    expect(explosionValues([9, { value: 10, parentIndex: 0 }])).toEqual([9, 10])
+  })
+})
+
+describe("burstClusters (issue #126: the burst order a felt renders)", () => {
+  it("groups each explosion behind its trigger, chains linking generation to generation", () => {
+    // rolls [10, 3]: the 10 at index 0 bursts into a 10 (combined index 2),
+    // which itself bursts into an 8 (combined index 3) — one chain.
+    const clusters = burstClusters(
+      [10, 3],
+      [],
+      [
+        { value: 10, parentIndex: 0 },
+        { value: 8, parentIndex: 2 },
+      ],
+    )
+    expect(clusters).toEqual([
+      [
+        { value: 10, index: 0, kind: "roll" },
+        { value: 10, index: 2, kind: "explosion" },
+        { value: 8, index: 3, kind: "explosion" },
+      ],
+      [{ value: 3, index: 1, kind: "roll" }],
+    ])
+  })
+
+  it("rote rerolls hold base positions, and their own bursts tether to them", () => {
+    // Combined sequence: rolls [10, 2] at 0–1, the rote 10 at 2, explosions
+    // at 3–4 — one child off the initial 10, one off the rote 10.
+    const clusters = burstClusters(
+      [10, 2],
+      [10],
+      [
+        { value: 5, parentIndex: 0 },
+        { value: 7, parentIndex: 2 },
+      ],
+    )
+    expect(clusters).toEqual([
+      [
+        { value: 10, index: 0, kind: "roll" },
+        { value: 5, index: 3, kind: "explosion" },
+      ],
+      [{ value: 2, index: 1, kind: "roll" }],
+      [
+        { value: 10, index: 2, kind: "rote" },
+        { value: 7, index: 4, kind: "explosion" },
+      ],
+    ])
+  })
+
+  it("all-parentless (legacy) explosions fall back to the inline order", () => {
+    const clusters = burstClusters(
+      [10, 8],
+      [],
+      [
+        { value: 7, parentIndex: null },
+        { value: 9, parentIndex: null },
+      ],
+    )
+    expect(clusters).toEqual([
+      [{ value: 10, index: 0, kind: "roll" }],
+      [{ value: 8, index: 1, kind: "roll" }],
+      [{ value: 7, index: 2, kind: "explosion" }],
+      [{ value: 9, index: 3, kind: "explosion" }],
+    ])
+  })
+
+  it("mixed parentage tethers what it can and trails the rest inline", () => {
+    const clusters = burstClusters(
+      [10, 3],
+      [],
+      [
+        { value: 6, parentIndex: null },
+        { value: 4, parentIndex: 0 },
+      ],
+    )
+    expect(clusters).toEqual([
+      [
+        { value: 10, index: 0, kind: "roll" },
+        { value: 4, index: 3, kind: "explosion" },
+      ],
+      [{ value: 3, index: 1, kind: "roll" }],
+      [{ value: 6, index: 2, kind: "explosion" }],
+    ])
+  })
+
+  it("malformed parentage never loops or drops a die", () => {
+    // A self-reference, an out-of-range parent, and a duplicate claimant:
+    // the first claimant chains; everything unhonorable trails inline once.
+    const clusters = burstClusters(
+      [10],
+      [],
+      [
+        { value: 9, parentIndex: 1 }, // self-reference (own combined index)
+        { value: 8, parentIndex: 99 }, // out of range
+        { value: 7, parentIndex: 0 }, // first claimant of the 10
+        { value: 6, parentIndex: 0 }, // duplicate claimant
+      ],
+    )
+    expect(clusters).toEqual([
+      [
+        { value: 10, index: 0, kind: "roll" },
+        { value: 7, index: 3, kind: "explosion" },
+      ],
+      [{ value: 9, index: 1, kind: "explosion" }],
+      [{ value: 8, index: 2, kind: "explosion" }],
+      [{ value: 6, index: 4, kind: "explosion" }],
+    ])
+    expect(clusters.flat()).toHaveLength(5)
+  })
+
+  it.effect("a seeded chain roll clusters every die exactly once, children behind triggers", () =>
+    Effect.gen(function* () {
+      // The "ten-3" chain from the parentage test above: rolls
+      // [6,2,10,6,10,3,10], four children, one of them a chain link.
+      const pool = yield* buildPool([{ type: "attribute", name: "Str", dots: 7 }])
+      const result = yield* rollPool(pool).pipe(Random.withSeed("ten-3"))
+
+      const clusters = burstClusters(result.rolls, result.roteRerolls, result.explosions)
+      const flat = clusters.flat()
+      expect(flat).toHaveLength(result.rolls.length + result.explosions.length)
+      const indices = flat.map((d) => d.index)
+      expect(indices.every((idx, i) => indices.indexOf(idx) === i)).toBe(true)
+      // The chain: the 10 at index 4 carries its child 10 (index 8), which
+      // carries its own child — three dice in one cluster.
+      expect(clusters.find((c) => c[0]!.index === 4)).toEqual([
+        { value: 10, index: 4, kind: "roll" },
+        { value: 10, index: 8, kind: "explosion" },
+        { value: 8, index: 10, kind: "explosion" },
+      ])
+    }),
+  )
 })
 
 describe("Dice Roller", () => {
@@ -79,7 +234,7 @@ describe("Dice Roller", () => {
       if (tensInInitial > 0) {
         expect(resolved.explosions.length).toBeGreaterThan(0)
         // Total successes includes explosion successes
-        const allRolls = [...resolved.rolls, ...resolved.explosions]
+        const allRolls = [...resolved.rolls, ...resolved.explosions.map((e) => e.value)]
         const expectedSuccesses = allRolls.filter((r) => r >= 8).length
         expect(resolved.successes).toBe(expectedSuccesses)
       }
@@ -207,6 +362,86 @@ describe("Dice Roller", () => {
       expect(result.isRoteAction).toBe(true)
       // Rote action should have rerolls for failures
       expect(result.roteRerolls.length).toBeGreaterThanOrEqual(0)
+    }),
+  )
+
+  it.effect("explosions record parentage: each child points at a trigger die (issue #122)", () =>
+    Effect.gen(function* () {
+      // Seed "ten-3" on 7 dice at 10-again: rolls [6,2,10,6,10,3,10], then
+      // one child per 10 — and the second child is itself a 10, whose own
+      // child links back to it (a chain across generations).
+      const pool = yield* buildPool([{ type: "attribute", name: "Str", dots: 7 }])
+      const result = yield* rollPool(pool).pipe(Random.withSeed("ten-3"))
+
+      expect(result.rolls).toEqual([6, 2, 10, 6, 10, 3, 10])
+      expect(result.explosions).toEqual([
+        { value: 8, parentIndex: 2 },
+        { value: 10, parentIndex: 4 },
+        { value: 5, parentIndex: 6 },
+        { value: 8, parentIndex: 8 },
+      ])
+
+      // Every parent is a die in the combined sequence that was itself a
+      // trigger — at or above the threshold, in a strictly earlier position.
+      const combined = [...result.rolls, ...explosionValues(result.explosions)]
+      result.explosions.forEach((e, i) => {
+        expect(e.parentIndex).not.toBeNull()
+        expect(e.parentIndex!).toBeLessThan(result.rolls.length + i)
+        expect(combined[e.parentIndex!]!).toBeGreaterThanOrEqual(result.againThreshold)
+      })
+
+      // The chain: the last child's parent (index 8) is the exploded 10 at
+      // explosions[1], not an initial die.
+      expect(result.explosions[3]!.parentIndex).toBe(8)
+      expect(combined[8]).toBe(10)
+
+      // The shape change never moves the success count: counting faces flat
+      // agrees with the result.
+      expect(result.successes).toBe(combined.filter((r) => r >= 8).length)
+    }),
+  )
+
+  it.effect("a rote reroll that explodes is the recorded parent of its child", () =>
+    Effect.gen(function* () {
+      // Seed "rote-11" on 5 dice: rolls [7,4,9,5,9], rote rerolls [10,4,2] —
+      // the child's parent index 5 lands in the rote-reroll region of the
+      // combined sequence ([...rolls, ...roteRerolls, ...explosions]).
+      const pool = yield* buildPool([{ type: "attribute", name: "Str", dots: 5 }])
+      const result = yield* rollPool(pool, { roteAction: true }).pipe(
+        Random.withSeed("rote-11"),
+      )
+
+      expect(result.rolls).toEqual([7, 4, 9, 5, 9])
+      expect(result.roteRerolls).toEqual([10, 4, 2])
+      expect(result.explosions).toEqual([{ value: 2, parentIndex: 5 }])
+    }),
+  )
+
+  it.effect("8-again chains link generation to generation", () =>
+    Effect.gen(function* () {
+      // Seed "parentage-9" on 6 dice at 8-again: initial dice 0–5, children
+      // at combined indices 6–13. The child at 11 ({8, parent 6}) hangs off
+      // the first-generation 10 at index 6; the child at 13 hangs off THAT
+      // one — a three-generation chain 0 → 6 → 11 → 13.
+      const pool = yield* buildPool([{ type: "attribute", name: "Str", dots: 6 }])
+      const result = yield* rollPool(pool, { againThreshold: 8 }).pipe(
+        Random.withSeed("parentage-9"),
+      )
+
+      expect(result.rolls).toEqual([10, 9, 10, 10, 9, 3])
+      expect(result.explosions).toEqual([
+        { value: 10, parentIndex: 0 },
+        { value: 10, parentIndex: 1 },
+        { value: 2, parentIndex: 2 },
+        { value: 6, parentIndex: 3 },
+        { value: 4, parentIndex: 4 },
+        { value: 8, parentIndex: 6 },
+        { value: 3, parentIndex: 7 },
+        { value: 3, parentIndex: 11 },
+      ])
+
+      const combined = [...result.rolls, ...explosionValues(result.explosions)]
+      expect(result.successes).toBe(combined.filter((r) => r >= 8).length)
     }),
   )
 

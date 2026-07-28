@@ -2,6 +2,7 @@ import { Effect, Exit, Random } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import type { MutationCtx } from "../../../convex/_generated/server"
 import { convexLive } from "../../../convex/lib/convexLive"
+import type { Explosion } from "../dice"
 import { createRoll } from "../flows/rolls"
 import { PlayerId, SessionId } from "../ids"
 import { Membership } from "../membership"
@@ -36,7 +37,7 @@ interface DiceRollRow {
   summary: string
   visibility: string
   rolls: ReadonlyArray<number>
-  explosions: ReadonlyArray<number>
+  explosions: ReadonlyArray<Explosion>
   override?: unknown
 }
 
@@ -94,7 +95,8 @@ interface Observed {
   summary: string
   visibility: string
   rolls: ReadonlyArray<number>
-  explosions: ReadonlyArray<number>
+  // Parented structs (issue #122): both adapters must persist the same lineage.
+  explosions: ReadonlyArray<Explosion>
   hasOverride: boolean
   activityCount: number
 }

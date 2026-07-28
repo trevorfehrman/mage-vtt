@@ -2,7 +2,7 @@ import { Effect, Layer, Random } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import type { MutationCtx } from "../../../convex/_generated/server"
 import type { OverrideStamp } from "../override"
-import type { GameStore } from "../ports/game-store"
+import { GameStore } from "../ports/game-store"
 import { convexLive } from "../../../convex/lib/convexLive"
 import {
   adjustPrice,
@@ -14,7 +14,7 @@ import {
   rollParadox,
   voidCast,
 } from "../flows/vulgar-cast"
-import { PlayerId, SessionId } from "../ids"
+import { CastId, PlayerId, SessionId } from "../ids"
 import { Membership } from "../membership"
 import { CurrentActor } from "../ports/current-actor"
 import { makeAldousSheet } from "../testing/fixtures"
@@ -73,13 +73,15 @@ const aldousDoc = () => ({
 
 // --- Minimal fake Convex ctx with characters + casts + scenes + entries ---
 
-const makeFakeCtx = () => {
+const makeFakeCtx = (
+  seedCasts?: ReadonlyArray<readonly [string, Record<string, unknown>]>,
+) => {
   const diceRolls: Array<Record<string, unknown>> = []
   const messages: Array<Record<string, unknown>> = []
   const characters = new Map<string, Record<string, unknown>>([
     [CHARACTER, aldousDoc()],
   ])
-  const casts = new Map<string, Record<string, unknown>>()
+  const casts = new Map<string, Record<string, unknown>>(seedCasts ?? [])
   const scenes = new Map<string, Record<string, unknown>>()
   let counter = 0
 
@@ -231,6 +233,13 @@ const observedCast = (row: Record<string, unknown>) => ({
   manaMitigation: row.manaMitigation,
   paradoxSuccesses: row.paradoxSuccesses,
   paradoxIsDramaticFailure: row.paradoxIsDramaticFailure,
+  // The stamped faces and their parented explosions (issue #122): both
+  // adapters must persist the identical lineage structs.
+  paradoxRolls: row.paradoxRolls,
+  paradoxExplosions: row.paradoxExplosions,
+  castRolls: row.castRolls,
+  castExplosions: row.castExplosions,
+  castRoteRerolls: row.castRoteRerolls,
   containedSuccesses: row.containedSuccesses,
   castPool: row.castPool,
   castSuccesses: row.castSuccesses,
@@ -321,6 +330,100 @@ describe("Flows.vulgarCast conformance (ConvexLive vs InMemory)", () => {
       expect((fake.messages[1]!.override as { kind: string }).kind).toBe("repair")
       expect(inMem.messages[1]!.override?.kind).toBe("repair")
       expect(fake.messages[1]!.text).toBe(inMem.messages[1]!.text)
+    }),
+  )
+
+  it.effect("a legacy flat-explosion row heals to parentless structs at the live decode", () =>
+    Effect.gen(function* () {
+      // A playtest row written before issue #122: bare faces in both
+      // explosion columns. Only the live adapter can meet one — the
+      // in-memory store's seeds are typed to the parented shape — so the
+      // heal is pinned where legacy documents actually live.
+      const fake = makeFakeCtx([
+        [
+          "cast_legacy",
+          {
+            _id: "cast_legacy",
+            _creationTime: 1,
+            sessionId: SESSION,
+            characterId: CHARACTER,
+            casterUserId: PLAYER,
+            casterName: "Aldous",
+            status: "resolved",
+            arcanum: "death",
+            level: 2,
+            usesMagicalTool: false,
+            declaredComponents: [{ type: "gnosis", name: "Gnosis", dots: 1 }],
+            declaredPool: 4,
+            spellManaCost: 0,
+            paradoxSuccesses: 1,
+            paradoxRolls: [9],
+            paradoxExplosions: [9],
+            castSuccesses: 2,
+            castRolls: [8, 10, 3],
+            castExplosions: [10, 8],
+            createdAt: 1,
+            updatedAt: 2,
+          },
+        ],
+      ])
+
+      const cast = yield* Effect.gen(function* () {
+        const store = yield* GameStore
+        return yield* store.getCast(CastId.make("cast_legacy"))
+      }).pipe(Effect.provide(convexLive(fake.ctx, { _id: PLAYER })))
+
+      expect(cast.paradoxExplosions).toEqual([{ value: 9, parentIndex: null }])
+      expect(cast.castExplosions).toEqual([
+        { value: 10, parentIndex: null },
+        { value: 8, parentIndex: null },
+      ])
+      // The healed decode never disturbs the stamped counts or faces.
+      expect(cast.castSuccesses).toBe(2)
+      expect(cast.castRolls).toEqual([8, 10, 3])
+    }),
+  )
+
+  it.effect("parented structs round-trip patch → get identically through both adapters", () =>
+    Effect.gen(function* () {
+      const parentedPatch = {
+        paradoxRolls: [10],
+        paradoxExplosions: [{ value: 5, parentIndex: 0 }],
+        castRolls: [4, 10, 3, 7],
+        castExplosions: [
+          { value: 10, parentIndex: 1 },
+          { value: 7, parentIndex: 4 },
+        ],
+      }
+
+      // Live: draft a row through the flow, stamp the structs, read back.
+      const fake = makeFakeCtx()
+      const liveId = yield* draftCast({
+        sessionId: SESSION, characterId: CHARACTER, arcanum: "death", level: 2,
+      }).pipe(Effect.provide(convexLive(fake.ctx, { _id: PLAYER })))
+      const live = yield* Effect.gen(function* () {
+        const store = yield* GameStore
+        yield* store.patchCast(liveId, parentedPatch)
+        return yield* store.getCast(liveId)
+      }).pipe(Effect.provide(convexLive(fake.ctx, { _id: PLAYER })))
+
+      // InMemory: the same script against the second adapter.
+      const inMem = makeInMemoryStore()
+      const memId = yield* draftCast({
+        sessionId: SESSION, characterId: CHARACTER, arcanum: "death", level: 2,
+      }).pipe(as(PLAYER), Effect.provide(inMem.layer))
+      const mem = yield* Effect.gen(function* () {
+        const store = yield* GameStore
+        yield* store.patchCast(memId, parentedPatch)
+        return yield* store.getCast(memId)
+      }).pipe(as(PLAYER), Effect.provide(inMem.layer))
+
+      expect(live.paradoxExplosions).toEqual(parentedPatch.paradoxExplosions)
+      expect(live.castExplosions).toEqual(parentedPatch.castExplosions)
+      expect(mem.paradoxExplosions).toEqual(live.paradoxExplosions)
+      expect(mem.castExplosions).toEqual(live.castExplosions)
+      expect(mem.paradoxRolls).toEqual(live.paradoxRolls)
+      expect(mem.castRolls).toEqual(live.castRolls)
     }),
   )
 })

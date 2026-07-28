@@ -3,7 +3,7 @@ import { CastStatus, TidesSnapshot, type Cast } from "../cast"
 import type { CharacterSheet } from "../character"
 import { CombatParticipant, type Combat } from "../combat-tracker"
 import { HealthBox } from "../damage"
-import { DiceRollResult, RawPoolComponent } from "../dice"
+import { DiceRollResult, Explosion, RawPoolComponent } from "../dice"
 import {
   CharacterId,
   PlayerId,
@@ -140,7 +140,8 @@ export const CastPatch = Schema.Struct({
    * stamps onto the document like the release's — one card, no roll entry. */
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
   paradoxRolls: Schema.optionalKey(Schema.Array(Schema.Number)),
-  paradoxExplosions: Schema.optionalKey(Schema.Array(Schema.Number)),
+  /** Parented (issue #122): a beat flow only ever stamps the new structs. */
+  paradoxExplosions: Schema.optionalKey(Schema.Array(Explosion)),
   paradoxIsChanceDie: Schema.optionalKey(Schema.Boolean),
   paradoxIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
   containedSuccesses: Schema.optionalKey(Schema.Number),
@@ -149,7 +150,7 @@ export const CastPatch = Schema.Struct({
   /** The release roll's faces (the resolution-merge ruling, 2026-07-19):
    * the resolved card is the record, so the roll stamps onto the document. */
   castRolls: Schema.optionalKey(Schema.Array(Schema.Number)),
-  castExplosions: Schema.optionalKey(Schema.Array(Schema.Number)),
+  castExplosions: Schema.optionalKey(Schema.Array(Explosion)),
   castRoteRerolls: Schema.optionalKey(Schema.Array(Schema.Number)),
   castIsChanceDie: Schema.optionalKey(Schema.Boolean),
   castIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
