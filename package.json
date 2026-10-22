@@ -17,7 +17,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.85",
     "@ai-sdk/react": "^4.0.152",
-    "@convex-dev/better-auth": "^0.11.5",
+    "@convex-dev/better-auth": "^0.12.5",
     "@convex-dev/presence": "^0.3.2",
     "@convex-dev/react-query": "0.1.0",
     "@paper-design/shaders-react": "^0.0.77",
@@ -31,7 +31,7 @@
     "@tanstack/router-plugin": "^1.168.47",
     "@xstate/react": "^6.1.0",
     "ai": "^7.0.148",
-    "better-auth": "1.5.3",
+    "better-auth": "^1.7.12",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.47.0",
