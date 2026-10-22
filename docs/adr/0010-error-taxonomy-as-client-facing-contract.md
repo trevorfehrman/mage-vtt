@@ -1,6 +1,6 @@
 # Typed errors are a client-facing contract, organized in four categories
 
-Enforced flows surface a closed, co-located set of `Schema.TaggedErrorClass`
+Enforced flows surface a closed, co-located set of `Schema.TaggedError`
 failures. `runConvexEffect` maps a typed **Fail** to a `ConvexError` whose `.data`
 is `{ _tag, ...fields }`; a **Die** (defect) is rethrown as a generic error. The
 client switches on `_tag`, grouped into four actionable categories plus a generic

@@ -37,7 +37,7 @@ Convex Cloud
 ### Effect — Domain Logic Layer
 - **`src/domain/`**: 24 modules, 155 tests. All game mechanics: dice, character, spellcasting, paradox, combat, initiative, health, merits, mana, wisdom, spirits, legacies, environment.
 - **NOT yet in Convex functions**: Planned Convex-Effect wrapper will bring this logic server-side.
-- All domain types use Effect Schema (branded IDs, TaggedErrorClass, Schema.Class).
+- All domain types use Effect Schema (branded IDs, TaggedError, Schema.Class).
 
 ### XState — UI State (Planned)
 - Dice pool builder, initiative tracker, canvas tools, session flow, character creation wizard.

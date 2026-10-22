@@ -11,7 +11,7 @@
  * name. Anything outside that projection throws loudly rather than mis-compiling.
  */
 
-import { Match, Schema } from "effect"
+import { Match, Schema, SchemaTransformation } from "effect"
 import { v, type GenericId, type GenericValidator, type Validator } from "convex/values"
 
 /**
@@ -42,23 +42,33 @@ export const ConvexId = <const Table extends string>(table: Table) =>
   ) as unknown as Schema.Codec<GenericId<Table>, GenericId<Table>>
 
 /**
- * Mirror that compiles to `v.int64()` (Convex's bigint column). Decoded `Type` is
- * `bigint`; the annotation rides the ENCODED side, because Effect 4 GA's
- * `toJsonSchemaDocument` describes a codec's JSON form and lowers declarations
- * (`Schema.BigInt`, `Schema.Uint8Array`) through `toCodecJson` first, dropping
- * their annotations. So the mirrors are the string codecs with `annotateEncoded`.
- * Consequence: the Encoded side is a string. No live column uses these yet; the
- * first one that does should give the declaration a `toCodecJson` Link instead so
- * the stored value stays a native bigint/bytes.
+ * Mirror that compiles to `v.int64()` (Convex's bigint column). `Type` and
+ * `Encoded` are both the native `bigint` Convex stores, so a stored `123n` decodes
+ * directly. The Convex annotation rides the JSON lowering instead: Effect 4 GA's
+ * `toJsonSchemaDocument` lowers a declaration through its `toCodecJson` link
+ * before compiling, so the link's string side carries `x-convex`. (`Schema.BigInt`
+ * itself is a keyword with a hardcoded lowering, hence the explicit declaration.)
  */
-export const ConvexInt64 = Schema.BigIntFromString.pipe(
-  Schema.annotateEncoded(nativeAnnotation({ type: "int64" })),
+export const ConvexInt64 = Schema.declare(
+  (u: unknown): u is bigint => typeof u === "bigint",
+  {
+    identifier: "ConvexInt64",
+    toCodecJson: () =>
+      Schema.link<bigint>()(
+        Schema.String.annotate(nativeAnnotation({ type: "int64" })),
+        SchemaTransformation.bigintFromString,
+      ),
+  },
 )
 
-/** Mirror that compiles to `v.bytes()` (Convex's ArrayBuffer column). */
-export const ConvexBytes = Schema.Uint8ArrayFromBase64.pipe(
-  Schema.annotateEncoded(nativeAnnotation({ type: "bytes" })),
-)
+/** Mirror that compiles to `v.bytes()` (Convex's ArrayBuffer column); same shape as `ConvexInt64`. */
+export const ConvexBytes = Schema.Uint8Array.annotate({
+  toCodecJson: () =>
+    Schema.link<Uint8Array>()(
+      Schema.String.annotate(nativeAnnotation({ type: "bytes" })),
+      SchemaTransformation.uint8ArrayFromBase64String,
+    ),
+})
 
 // -----------------------------------------------------------------------------
 // Compiler

@@ -10,7 +10,7 @@ import { Option, Schema, type SchemaIssue } from "effect"
 
 /** Table language for the structural failures whose defaults read as
  * developer debug output ("Expected string & minLength(1), got null"). Check
- * failures keep the built-in fallback — "Expected an integer, got 2.5" is
+ * failures keep the built-in fallback — "Expected an integer" is
  * already something a Storyteller can act on. */
 const LEAF_LANGUAGE: Record<SchemaIssue.Leaf["_tag"], string> = {
   InvalidType: "That's the wrong kind of value.",

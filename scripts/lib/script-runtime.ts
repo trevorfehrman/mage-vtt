@@ -15,26 +15,26 @@ import { Cause, Config, Effect, Exit, Schedule, Schema } from "effect"
 
 /** The embedding scripts' environment: the Convex deployment and the OpenAI key, redacted. */
 export const embeddingEnv = Config.all({
-  convexUrl: Config.string("VITE_CONVEX_URL"),
-  openaiKey: Config.redacted("OPENAI_API_KEY"),
+  convexUrl: Config.String("VITE_CONVEX_URL"),
+  openaiKey: Config.Redacted("OPENAI_API_KEY"),
 })
 
 // --- Errors ---
 
 /** A network call that kept failing through the retry policy. */
-export class ApiCallFailed extends Schema.TaggedErrorClass<ApiCallFailed>()(
+export class ApiCallFailed extends Schema.TaggedError<ApiCallFailed>()(
   "ApiCallFailed",
   { call: Schema.String, message: Schema.String },
 ) {}
 
 /** A spawned CLI command that exited nonzero. */
-export class CommandFailed extends Schema.TaggedErrorClass<CommandFailed>()(
+export class CommandFailed extends Schema.TaggedError<CommandFailed>()(
   "CommandFailed",
   { command: Schema.String, exitCode: Schema.Number },
 ) {}
 
 /** The script was invoked wrong; the message is the usage line. */
-export class UsageError extends Schema.TaggedErrorClass<UsageError>()(
+export class UsageError extends Schema.TaggedError<UsageError>()(
   "UsageError",
   { message: Schema.String },
 ) {}
@@ -42,9 +42,8 @@ export class UsageError extends Schema.TaggedErrorClass<UsageError>()(
 // --- Retries ---
 
 /** Transient API failures retry (exponential, capped) instead of asking a human to re-run. */
-const transientRetry = Schedule.both(
-  Schedule.exponential("500 millis"),
-  Schedule.recurs(4),
+const transientRetry = Schedule.exponential("500 millis").pipe(
+  Schedule.upTo({ times: 4 }),
 )
 
 /** A network call under the retry policy, failing typed once retries are spent. */

@@ -282,19 +282,19 @@ const SpellRecord = Schema.Struct({
 // --- Errors (rendered by runScript as the exit cause) ---
 
 /** Spells whose Aspect is still not a clean Covert/Vulgar after corrections. */
-class DirtyAspectsRemain extends Schema.TaggedErrorClass<DirtyAspectsRemain>()(
+class DirtyAspectsRemain extends Schema.TaggedError<DirtyAspectsRemain>()(
   "DirtyAspectsRemain",
   { count: Schema.Number },
 ) {}
 
 /** Rote pools that parse to no structure even after ROTE_POOL_CORRECTIONS. */
-class UnparseableRotePoolsRemain extends Schema.TaggedErrorClass<UnparseableRotePoolsRemain>()(
+class UnparseableRotePoolsRemain extends Schema.TaggedError<UnparseableRotePoolsRemain>()(
   "UnparseableRotePoolsRemain",
   { count: Schema.Number },
 ) {}
 
 /** The corrected output could not be written back to disk. */
-class WriteFailed extends Schema.TaggedErrorClass<WriteFailed>()(
+class WriteFailed extends Schema.TaggedError<WriteFailed>()(
   "WriteFailed",
   { path: Schema.String, message: Schema.String },
 ) {}

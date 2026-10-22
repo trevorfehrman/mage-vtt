@@ -8,7 +8,7 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { TanStackDevtools } from "@tanstack/react-devtools"
 import { createServerFn } from "@tanstack/react-start"
-import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react"
+import { ConvexBetterAuthProvider, type AuthClient } from "@convex-dev/better-auth/react"
 import type { ConvexQueryClient } from "@convex-dev/react-query"
 import type { QueryClient } from "@tanstack/react-query"
 
@@ -58,8 +58,13 @@ function RootComponent() {
   return (
     <ConvexBetterAuthProvider
       client={context.convexQueryClient.convexClient}
-      authClient={authClient}
-      initialToken={context.token}
+      // The client is the component's own documented TanStack Start setup
+      // (`createAuthClient({ plugins: [convexClient()] })`), but better-auth 1.6's
+      // `createAuthClient` inference no longer unifies with the component's
+      // `AuthClient` union (`useSession().data` lands on `never`; not a tsconfig
+      // strictness effect — it persists with exactOptionalPropertyTypes off). Same shape, same runtime; narrowed at the one seam.
+      authClient={authClient as unknown as AuthClient}
+      initialToken={context.token ?? null}
     >
       <RootDocument>
         <Outlet />

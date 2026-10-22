@@ -43,7 +43,7 @@ and the pinned `effect@4.0.0-beta.x`, a ~5-field form where:
    decode boundary.
 3. **Validation** — a Schema `.check()` failure surfaces as a per-field
    error message.
-4. **Seam refusals** — a `Schema.TaggedErrorClass` refusal mapped through
+4. **Seam refusals** — a `Schema.TaggedError` refusal mapped through
    `seamErrorMessage` lands as a form-level error after submit.
 
 A small owned adapter (a Schema→Standard-Schema shim, a beta-pin bump) is a
@@ -121,7 +121,7 @@ after this recording) against `@tanstack/react-form@1.33.0` +
    anywhere in component code.
 3. **Validation — PASS.** `validators: { onChange: toStandardSchemaV1(S) }`
    surfaces `.check()` failures per-field via `field.state.meta.errors`
-   ("Expected an integer, got 2.5"), clearing reactively when fixed.
+   ("Expected an integer"), clearing reactively when fixed.
 4. **Seam refusals — PASS.** `validators.onSubmitAsync` catching a
    `ConvexError` and returning `{ form: seamErrorMessage(err) }` renders the
    seam's table language as a form-level error ("Not enough Mana: need 6,

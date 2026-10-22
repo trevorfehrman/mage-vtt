@@ -124,6 +124,19 @@ describe("schemaToConvexValidator", () => {
       expect(json(schemaToConvexValidator(ConvexBytes))).toEqual(json(v.bytes()))
     })
 
+    it("ConvexInt64 decodes and encodes the native bigint Convex stores", () => {
+      expect(Schema.decodeUnknownSync(ConvexInt64)(123n)).toBe(123n)
+      expect(Schema.encodeUnknownSync(ConvexInt64)(123n)).toBe(123n)
+      expect(() => Schema.decodeUnknownSync(ConvexInt64)("123")).toThrow()
+    })
+
+    it("ConvexBytes decodes and encodes the native Uint8Array Convex stores", () => {
+      const bytes = new Uint8Array([1, 2, 3])
+      expect(Schema.decodeUnknownSync(ConvexBytes)(bytes)).toBe(bytes)
+      expect(Schema.encodeUnknownSync(ConvexBytes)(bytes)).toBe(bytes)
+      expect(() => Schema.decodeUnknownSync(ConvexBytes)("AQID")).toThrow()
+    })
+
     it("ConvexId inside a struct field -> v.id(table)", () => {
       const schema = Schema.Struct({
         sessionId: ConvexId("sessions"),

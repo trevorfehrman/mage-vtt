@@ -64,7 +64,7 @@ domain library (one-liners at the end).
 
 ## Error Handling
 
-- **Domain errors → `Schema.TaggedErrorClass` (v4)** (v3 `Schema.TaggedError`); not
+- **Domain errors → `Schema.TaggedError<Self>()("Tag", fields)`** (v4 GA kept the v3 name; the beta's `TaggedErrorClass` is gone); not
   `class extends Error` / `Data.TaggedError`.
 - **Yield tagged errors directly — no `Effect.fail` wrapper** (`yield* new E({…})`).
 - **Combine related errors into a `Schema.Union([...])` alias.**
