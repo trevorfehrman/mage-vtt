@@ -33,17 +33,16 @@ describe("pool mode (the FeltDie job)", () => {
       border: "1px solid var(--ember)",
       background: "var(--ember-glow)",
     })
-    expect(poolLook("paradox", false)).toEqual({
-      border: "1px solid var(--paradox)",
-      background: "color-mix(in srgb, var(--paradox) 16%, transparent)",
-    })
+    // The Tides die is circumstance's: the loose neutral, the glyph says reality
+    // (provenance grammar, owner 2026-10-22).
+    expect(poolLook("paradox", false)).toEqual(poolLook("loose", false))
     // Reality's base die wears the sheet's green; only the glyph says Paradox.
     expect(poolLook("paradoxBase", false)).toEqual(poolLook("sheet", false))
   })
 
   it("ghosts in the die's own ink: dashed, transparent, faded", () => {
     expect(poolLook("paradox", true)).toEqual({
-      border: "1px dashed var(--paradox)",
+      border: "1px dashed var(--dim)",
       background: "transparent",
       opacity: 0.45,
     })
@@ -104,6 +103,12 @@ describe("face mode (the Die job)", () => {
 
   it("ghosts with the ONE ghost recipe — a face ghost equals a pool ghost of the same ink", () => {
     expect(face(0, { ghost: true })).toEqual(poolLook("sheet", true))
-    expect(face(0, { ghost: true, tone: "paradox" })).toEqual(poolLook("paradox", true))
+    // A rolled Paradox face ghost keeps the outcome tone's red: a different axis
+    // from the pool die's provenance neutral.
+    expect(face(0, { ghost: true, tone: "paradox" })).toEqual({
+      border: "1px dashed var(--paradox)",
+      background: "transparent",
+      opacity: 0.45,
+    })
   })
 })

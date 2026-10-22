@@ -86,9 +86,11 @@ const POOL_INK: Record<PoolKind, typeof Ink.Type> = {
     border: "var(--ember)",
     background: "var(--ember-glow)",
   },
+  // The Tides die comes from circumstance, so it wears the loose die's neutral;
+  // the red glyph alone says reality rolls it (provenance grammar, 2026-10-22).
   paradox: {
-    border: "var(--paradox)",
-    background: "color-mix(in srgb, var(--paradox) 16%, transparent)",
+    border: "var(--dim)",
+    background: "color-mix(in srgb, var(--ink) 6%, transparent)",
   },
   paradoxBase: {
     border: "var(--accent)",
