@@ -9,9 +9,14 @@
 //   Roll → a result card lands in the ActivityLog.
 // This settles the shared component language (density, active-states, glyph
 // usage, roll readout). ActivityLog depth + whiteboard tools are spawned as
-// follow-up tickets. Mock data; no Convex/domain import. DELETE once specced.
+// follow-up tickets. Mock data; no Convex import (the MAG-13 die audition at the
+// top imports the real die components). DELETE once specced.
 import { useState, type ReactNode } from "react"
 import { createFileRoute } from "@tanstack/react-router"
+import { AnimatePresence, useReducedMotion } from "motion/react"
+import { Die as GameDie } from "#/components/game/Die"
+import { FeltDie, type DieKind } from "#/components/game/FeltDie"
+import { UnifiedDie } from "#/components/game/UnifiedDie"
 
 // ── Arcana glyph set (hybrid grammar, copied from the visual-identity spec) ──
 type Arc =
@@ -122,6 +127,7 @@ function ComponentPolish() {
         <div className="flex min-h-0 flex-1">
           {/* CENTER — the character sheet (traits toggle into the pool) */}
           <div className="min-w-0 flex-1 overflow-y-auto p-4">
+            <DieAudition />
             <Sheet active={active} toggle={toggle} disabled={rolling} />
           </div>
 
@@ -532,3 +538,98 @@ const CSS = `
   background:var(--accent);color:#0a0a0c;border:1px solid var(--accent);cursor:pointer;font-weight:600}
 .cp-roll:hover:not(:disabled){box-shadow:0 0 16px var(--glow)}
 `
+
+// ────────────────────────────── Die audition (MAG-13) ──────────────────────────────
+// The unified die's proof surface: every pool kind and every face state the
+// app renders today, OLD (FeltDie / Die) beside NEW (UnifiedDie), same props.
+// Pixel-identical is the bar, judged by eye; the four tour decisions
+// (4px radius, inside border, one ghost, 20/24 ladder) are what differs.
+const POOL_KINDS: DieKind[] = ["sheet", "loose", "willpower", "paradox", "paradoxBase"]
+type FaceCase = { label: string; v: number; again?: number; chance?: boolean; tone?: "paradox"; ring?: "rote" | "exp"; ghost?: boolean }
+const FACE_CASES: FaceCase[] = [
+  { label: "success 8", v: 8 },
+  { label: "explosive 10", v: 10 },
+  { label: "9-again 9", v: 9, again: 9 },
+  { label: "miss 3", v: 3 },
+  { label: "rote ring", v: 3, ring: "rote" },
+  { label: "exp ring", v: 4, ring: "exp" },
+  { label: "chance 1", v: 1, chance: true },
+  { label: "chance 10", v: 10, chance: true },
+  { label: "chance 8", v: 8, chance: true },
+  { label: "eaten ghost", v: 0, ghost: true },
+  { label: "paradox 8", v: 8, tone: "paradox" },
+  { label: "paradox 10", v: 10, tone: "paradox" },
+  { label: "paradox miss", v: 3, tone: "paradox" },
+  { label: "paradox ghost", v: 0, tone: "paradox", ghost: true },
+]
+function DieAudition() {
+  const reduced = useReducedMotion()
+  const [take, setTake] = useState(0)
+  const [skims, setSkims] = useState(0)
+  const cell = "flex h-9 w-9 items-center justify-center"
+  const head = "cp-eyebrow w-24 shrink-0"
+  return (
+    <section className="cp-panel mb-4 p-3" data-audition="unified-die">
+      <div className="mb-2 flex items-baseline gap-3">
+        <span className="cp-eyebrow">Die audition · MAG-13</span>
+        <span className="cp-data text-[11px]" style={{ color: "var(--dim)" }}>each pair: OLD · NEW — same props</span>
+        <button type="button" className="cp-data cursor-pointer text-[11px] underline" style={{ color: "var(--accent)" }} onClick={() => setTake((t) => t + 1)}>replay entrance</button>
+        <span className="cp-data text-[11px]" style={{ color: "var(--dim)" }}>skims: {skims}</span>
+      </div>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2"><span className={head}>pool · md</span>
+          {POOL_KINDS.map((kind) => (
+            <div key={kind} className="flex items-center gap-1 pr-3" title={`${kind} md`}>
+              <span className={cell}><FeltDie kind={kind} title={kind} reduced={reduced} /></span>
+              <span className={cell}><UnifiedDie mode="pool" kind={kind} title={kind} reduced={reduced} size="md" /></span>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-2"><span className={head}>pool · skim</span>
+          <AnimatePresence initial={false}>
+            {POOL_KINDS.map((kind) => (
+              <div key={`${kind}:${take}`} className="flex items-center gap-1 pr-3" title={`${kind} skim`}>
+                <span className={cell}><FeltDie kind={kind} title={kind} reduced={reduced} onSkim={() => setSkims((n) => n + 1)} /></span>
+                <span className={cell}><UnifiedDie mode="pool" kind={kind} title={kind} reduced={reduced} onSkim={() => setSkims((n) => n + 1)} /></span>
+              </div>
+            ))}
+          </AnimatePresence>
+        </div>
+        <div className="flex items-center gap-2"><span className={head}>pool</span>
+          {POOL_KINDS.map((kind) => (
+            <div key={kind} className="flex items-center gap-1 pr-3" title={kind}>
+              <span className={cell}><FeltDie kind={kind} title={kind} reduced={reduced} /></span>
+              <span className={cell}><UnifiedDie mode="pool" kind={kind} title={kind} reduced={reduced} /></span>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-2"><span className={head}>pool · ghost</span>
+          {POOL_KINDS.map((kind) => (
+            <div key={kind} className="flex items-center gap-1 pr-3" title={`${kind} ghost`}>
+              <span className={cell}><FeltDie kind={kind} title={kind} reduced={reduced} ghosted /></span>
+              <span className={cell}><UnifiedDie mode="pool" kind={kind} title={kind} reduced={reduced} ghost /></span>
+            </div>
+          ))}
+        </div>
+        {(["md", "sm"] as const).map((size) => (
+          <div key={size} className="flex flex-wrap items-center gap-2"><span className={head}>face · {size}</span>
+            {FACE_CASES.map((c) => (
+              <div key={c.label} className="flex items-center gap-1 pr-3" title={c.label}>
+                <span className={cell}>
+                  <GameDie v={c.v} again={c.again ?? 10} size={size} diamond
+                    {...(c.chance ? { chance: true } : {})} {...(c.tone ? { tone: c.tone } : {})}
+                    {...(c.ring ? { ring: c.ring } : {})} {...(c.ghost ? { ghost: true } : {})} />
+                </span>
+                <span className={cell}>
+                  <UnifiedDie mode="face" v={c.v} again={c.again ?? 10} size={size}
+                    {...(c.chance ? { chance: true } : {})} {...(c.tone ? { tone: c.tone } : {})}
+                    {...(c.ring ? { ring: c.ring } : {})} {...(c.ghost ? { ghost: true } : {})} />
+                </span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
