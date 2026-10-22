@@ -564,37 +564,25 @@ const FACE_CASES: FaceCase[] = [
 ]
 function DieAudition() {
   const reduced = useReducedMotion()
-  const [take, setTake] = useState(0)
-  const [skims, setSkims] = useState(0)
+  // Two felts per kind — OLD and NEW — holding the SAME dice (by id), so a
+  // feed lands one old die and one new die side by side, and a skim pulls
+  // the same die off both: entrance, exit and the neighbours' glide compare.
+  const [felts, setFelts] = useState<Record<DieKind, number[]>>(() =>
+    Object.fromEntries(POOL_KINDS.map((k) => [k, [0, 1, 2]])) as Record<DieKind, number[]>,
+  )
+  const [nextId, setNextId] = useState(3)
+  const feed = (kind: DieKind) => { setFelts((f) => ({ ...f, [kind]: [...f[kind], nextId] })); setNextId((n) => n + 1) }
+  const skim = (kind: DieKind, id: number) => setFelts((f) => ({ ...f, [kind]: f[kind].filter((d) => d !== id) }))
   const cell = "flex h-9 w-9 items-center justify-center"
   const head = "cp-eyebrow w-24 shrink-0"
+  const felt = "flex h-10 min-w-[132px] items-center gap-2 rounded-md border px-2"
   return (
     <section className="cp-panel mb-4 p-3" data-audition="unified-die">
       <div className="mb-2 flex items-baseline gap-3">
         <span className="cp-eyebrow">Die audition · MAG-13</span>
-        <span className="cp-data text-[11px]" style={{ color: "var(--dim)" }}>each pair: OLD · NEW — same props</span>
-        <button type="button" className="cp-data cursor-pointer text-[11px] underline" style={{ color: "var(--accent)" }} onClick={() => setTake((t) => t + 1)}>replay entrance</button>
-        <span className="cp-data text-[11px]" style={{ color: "var(--dim)" }}>skims: {skims}</span>
+        <span className="cp-data text-[11px]" style={{ color: "var(--dim)" }}>each pair: OLD · NEW — same props. Felts: + feeds a die onto both, click a die to skim it off both.</span>
       </div>
       <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2"><span className={head}>pool · md</span>
-          {POOL_KINDS.map((kind) => (
-            <div key={kind} className="flex items-center gap-1 pr-3" title={`${kind} md`}>
-              <span className={cell}><FeltDie kind={kind} title={kind} reduced={reduced} /></span>
-              <span className={cell}><UnifiedDie mode="pool" kind={kind} title={kind} reduced={reduced} size="md" /></span>
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center gap-2"><span className={head}>pool · skim</span>
-          <AnimatePresence initial={false}>
-            {POOL_KINDS.map((kind) => (
-              <div key={`${kind}:${take}`} className="flex items-center gap-1 pr-3" title={`${kind} skim`}>
-                <span className={cell}><FeltDie kind={kind} title={kind} reduced={reduced} onSkim={() => setSkims((n) => n + 1)} /></span>
-                <span className={cell}><UnifiedDie mode="pool" kind={kind} title={kind} reduced={reduced} onSkim={() => setSkims((n) => n + 1)} /></span>
-              </div>
-            ))}
-          </AnimatePresence>
-        </div>
         <div className="flex items-center gap-2"><span className={head}>pool</span>
           {POOL_KINDS.map((kind) => (
             <div key={kind} className="flex items-center gap-1 pr-3" title={kind}>
@@ -608,6 +596,35 @@ function DieAudition() {
             <div key={kind} className="flex items-center gap-1 pr-3" title={`${kind} ghost`}>
               <span className={cell}><FeltDie kind={kind} title={kind} reduced={reduced} ghosted /></span>
               <span className={cell}><UnifiedDie mode="pool" kind={kind} title={kind} reduced={reduced} ghost /></span>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-2"><span className={head} title="The old FeltDie has no md size; the left die is its only (20px) size">pool · md ⓘ</span>
+          {POOL_KINDS.map((kind) => (
+            <div key={kind} className="flex items-center gap-1 pr-3" title={`${kind}: old 20px (its only size) · new md 24px`}>
+              <span className={cell}><FeltDie kind={kind} title={kind} reduced={reduced} /></span>
+              <span className={cell}><UnifiedDie mode="pool" kind={kind} title={kind} reduced={reduced} size="md" /></span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-1 flex flex-wrap items-start gap-3"><span className={`${head} pt-3`}>felts</span>
+          {POOL_KINDS.map((kind) => (
+            <div key={kind} className="flex items-center gap-1" title={`${kind} felt — OLD · NEW`}>
+              <div className={felt} style={{ borderColor: "var(--line)" }}>
+                <AnimatePresence initial={false}>
+                  {felts[kind].map((id) => (
+                    <FeltDie key={id} kind={kind} title={`${kind} · skim`} reduced={reduced} onSkim={() => skim(kind, id)} />
+                  ))}
+                </AnimatePresence>
+              </div>
+              <div className={felt} style={{ borderColor: "var(--accent)" }}>
+                <AnimatePresence initial={false}>
+                  {felts[kind].map((id) => (
+                    <UnifiedDie key={id} mode="pool" kind={kind} title={`${kind} · skim`} reduced={reduced} onSkim={() => skim(kind, id)} />
+                  ))}
+                </AnimatePresence>
+              </div>
+              <button type="button" className="cp-data h-8 w-8 cursor-pointer rounded-md border text-[13px]" style={{ borderColor: "var(--line)", color: "var(--accent)" }} onClick={() => feed(kind)} title={`feed a ${kind} die onto both felts`}>+</button>
             </div>
           ))}
         </div>
