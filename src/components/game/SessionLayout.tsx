@@ -18,7 +18,6 @@ import {
 } from "#/components/ui/tooltip"
 import { Button } from "#/components/ui/button"
 import { useSessionShortcuts } from "#/hooks/use-session-shortcuts"
-import { layoutStorage } from "#/lib/layout-storage"
 
 /**
  * The settled 4-section grid (docs/ui-direction.md), rendered in reduced form
@@ -93,7 +92,7 @@ export function SessionLayout({
 
   const mainLayout = useDefaultLayout({
     id: "session-layout-v4",
-    storage: layoutStorage(),
+    storage: localStorage,
   })
 
   const animClass = isAnimating
