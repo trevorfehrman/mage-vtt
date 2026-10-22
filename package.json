@@ -20,7 +20,7 @@
     "@convex-dev/better-auth": "^0.12.5",
     "@convex-dev/presence": "^0.3.2",
     "@convex-dev/react-query": "0.1.0",
-    "@paper-design/shaders-react": "^0.0.77",
+    "@paper-design/shaders-react": "0.0.82",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-devtools": "latest",
     "@tanstack/react-form": "^1.33.5",
