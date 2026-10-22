@@ -8,7 +8,7 @@ import { Schema } from "effect"
  * Convex-Effect bridge for error mapping. We deliberately do NOT proliferate
  * per-entity `CharacterNotFound` / `SessionNotFound` variants.
  */
-export class DocumentNotFound extends Schema.TaggedErrorClass<DocumentNotFound>()(
+export class DocumentNotFound extends Schema.TaggedError<DocumentNotFound>()(
   "DocumentNotFound",
   {
     table: Schema.String,

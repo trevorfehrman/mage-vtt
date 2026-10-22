@@ -28,7 +28,7 @@ describe("standardSchemaFor", () => {
     const issues = issuesOf({ mana: 2.5 })
     expect(issues).toHaveLength(1)
     expect(issues[0]?.path).toEqual(["mana"])
-    expect(issues[0]?.message).toBe("Expected an integer, got 2.5")
+    expect(issues[0]?.message).toBe("Expected an integer")
   })
 
   it("replaces the wrong-type default with table language", () => {

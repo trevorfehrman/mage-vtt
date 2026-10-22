@@ -90,7 +90,7 @@ describe("ActivityEntry: the wire contract", () => {
 
   it.prop(
     "arbitrary entries pass the derived returns validator and round-trip through decodeFeed",
-    [Schema.toArbitrary(ActivityEntry)],
+    [ActivityEntry],
     ([entry]) => {
       const wire = encode(entry)
       expect(matchesConvexValidator([wire], node)).toBe(true)

@@ -7,12 +7,12 @@ import {
 } from "../convex-effect"
 
 // Test error classes
-class TestNotFound extends Schema.TaggedErrorClass<TestNotFound>()(
+class TestNotFound extends Schema.TaggedError<TestNotFound>()(
   "TestNotFound",
   { id: Schema.String },
 ) {}
 
-class TestValidation extends Schema.TaggedErrorClass<TestValidation>()(
+class TestValidation extends Schema.TaggedError<TestValidation>()(
   "TestValidation",
   { message: Schema.String },
 ) {}

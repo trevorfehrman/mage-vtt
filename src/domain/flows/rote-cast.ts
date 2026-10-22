@@ -59,7 +59,7 @@ export type CastRoteArgs = typeof CastRoteArgs.Type
 // --- Errors (ADR-0010) ---
 
 /** Rules/precondition: the character never trained this Rote. */
-export class RoteNotKnown extends Schema.TaggedErrorClass<RoteNotKnown>()(
+export class RoteNotKnown extends Schema.TaggedError<RoteNotKnown>()(
   "RoteNotKnown",
   {
     characterId: CharacterId,

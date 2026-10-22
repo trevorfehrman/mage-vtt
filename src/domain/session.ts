@@ -70,12 +70,12 @@ export const decodeSessionSnapshot = (input: unknown): SessionSnapshot | null =>
 
 // --- Errors ---
 
-export class SessionNotFound extends Schema.TaggedErrorClass<SessionNotFound>()(
+export class SessionNotFound extends Schema.TaggedError<SessionNotFound>()(
   "SessionNotFound",
   { message: Schema.String },
 ) {}
 
-export class AlreadyJoined extends Schema.TaggedErrorClass<AlreadyJoined>()(
+export class AlreadyJoined extends Schema.TaggedError<AlreadyJoined>()(
   "AlreadyJoined",
   { message: Schema.String },
 ) {}

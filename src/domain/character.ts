@@ -414,12 +414,12 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
 
 // --- Errors ---
 
-export class CharacterValidationError extends Schema.TaggedErrorClass<CharacterValidationError>()(
+export class CharacterValidationError extends Schema.TaggedError<CharacterValidationError>()(
   "CharacterValidationError",
   { message: Schema.String },
 ) {}
 
-export class CreationRuleViolation extends Schema.TaggedErrorClass<CreationRuleViolation>()(
+export class CreationRuleViolation extends Schema.TaggedError<CreationRuleViolation>()(
   "CreationRuleViolation",
   { message: Schema.String },
 ) {}

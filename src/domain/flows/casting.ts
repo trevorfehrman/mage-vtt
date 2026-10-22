@@ -59,7 +59,7 @@ export type CastSpellArgs = typeof CastSpellArgs.Type
 // --- Errors (ADR-0010) ---
 
 /** Rules/precondition: the declared effect level exceeds the caster's dots. */
-export class ArcanumTooWeak extends Schema.TaggedErrorClass<ArcanumTooWeak>()(
+export class ArcanumTooWeak extends Schema.TaggedError<ArcanumTooWeak>()(
   "ArcanumTooWeak",
   {
     arcanum: ArcanumName,
@@ -69,7 +69,7 @@ export class ArcanumTooWeak extends Schema.TaggedErrorClass<ArcanumTooWeak>()(
 ) {}
 
 /** Validation: the declaration itself is malformed (unknown Arcanum, level outside 1–5). */
-export class InvalidCastDeclaration extends Schema.TaggedErrorClass<InvalidCastDeclaration>()(
+export class InvalidCastDeclaration extends Schema.TaggedError<InvalidCastDeclaration>()(
   "InvalidCastDeclaration",
   { message: Schema.String },
 ) {}

@@ -57,13 +57,13 @@ function isValue(v: unknown): v is Value {
 
 /**
  * Extract structured error data for serialization to the client.
- * Handles both Schema.TaggedErrorClass instances and plain objects with _tag.
+ * Handles both Schema.TaggedError instances and plain objects with _tag.
  * Every copied field passes the `isValue` check, so the return type is a
  * `ConvexError` payload by construction — no assertion at the throw sites.
  */
 export function mapEffectError(error: unknown): Record<string, Value> {
   if (error && typeof error === "object") {
-    // For Schema.TaggedErrorClass, properties may be on the prototype
+    // For Schema.TaggedError, properties may be on the prototype
     // or defined via Object.defineProperty. Use a manual approach.
     const obj = error as Record<string, unknown>
     const data: Record<string, Value> = {}

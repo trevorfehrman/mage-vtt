@@ -121,7 +121,7 @@ const skillSlotDots = (
  * effect of the spell. The tag's name outlived its "not yet" (it predates
  * the ladder); it stays because renaming a wire vocabulary is its own issue.
  */
-export class VulgarCastingNotYetSupported extends Schema.TaggedErrorClass<VulgarCastingNotYetSupported>()(
+export class VulgarCastingNotYetSupported extends Schema.TaggedError<VulgarCastingNotYetSupported>()(
   "VulgarCastingNotYetSupported",
   {
     spellName: Schema.String,
@@ -134,7 +134,7 @@ export class VulgarCastingNotYetSupported extends Schema.TaggedErrorClass<Vulgar
  * declared no pick (or picked something the book never offered). The caster
  * chooses one alternative at cast time.
  */
-export class RoteSkillChoiceRequired extends Schema.TaggedErrorClass<RoteSkillChoiceRequired>()(
+export class RoteSkillChoiceRequired extends Schema.TaggedError<RoteSkillChoiceRequired>()(
   "RoteSkillChoiceRequired",
   {
     roteName: Schema.String,
@@ -161,7 +161,7 @@ export const requireCovertSpell = Effect.fn("RoteCast.requireCovertSpell")(funct
  * `VulgarCastingNotYetSupported`: together the two gates keep the lanes
  * disjoint (issue #47).
  */
-export class SpellNotVulgar extends Schema.TaggedErrorClass<SpellNotVulgar>()(
+export class SpellNotVulgar extends Schema.TaggedError<SpellNotVulgar>()(
   "SpellNotVulgar",
   {
     spellName: Schema.String,

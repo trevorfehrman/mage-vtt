@@ -1879,7 +1879,6 @@ export declare const components: {
       >;
     };
     adapterTest: {
-      runCustomTests: FunctionReference<"action", "internal", any, any>;
       runTests: FunctionReference<"action", "internal", any, any>;
     };
     testProfiles: {
@@ -21262,7 +21261,7 @@ export declare const components: {
       disconnect: FunctionReference<
         "mutation",
         "internal",
-        { sessionToken: string },
+        { scheduled?: boolean; sessionToken: string },
         null
       >;
       heartbeat: FunctionReference<

@@ -17,7 +17,7 @@ export class RelinquishResult extends Schema.Class<RelinquishResult>("Relinquish
 
 // --- Errors ---
 
-export class SpellControlError extends Schema.TaggedErrorClass<SpellControlError>()(
+export class SpellControlError extends Schema.TaggedError<SpellControlError>()(
   "SpellControlError",
   { message: Schema.String },
 ) {}

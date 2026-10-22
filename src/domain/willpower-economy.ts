@@ -21,7 +21,7 @@ export const WILLPOWER_COMPONENT_NAME = "Willpower"
  * empty pool. Raised by `spendWillpower` before any write, so a blocked spend
  * leaves the sheet untouched.
  */
-export class InsufficientWillpower extends Schema.TaggedErrorClass<InsufficientWillpower>()(
+export class InsufficientWillpower extends Schema.TaggedError<InsufficientWillpower>()(
   "InsufficientWillpower",
   {
     current: Schema.Number,

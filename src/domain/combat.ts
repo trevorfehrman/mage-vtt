@@ -81,7 +81,7 @@ export class HealingRate extends Schema.Class<HealingRate>("HealingRate")({
 
 // --- Errors ---
 
-export class CombatError extends Schema.TaggedErrorClass<CombatError>()(
+export class CombatError extends Schema.TaggedError<CombatError>()(
   "CombatError",
   { message: Schema.String },
 ) {}

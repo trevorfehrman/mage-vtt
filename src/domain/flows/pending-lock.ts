@@ -20,7 +20,7 @@ import { GameStore } from "../ports/game-store"
  * member, not the sheet: the lock follows whoever the act would be
  * attributed to.
  */
-export class CasterHasPendingCast extends Schema.TaggedErrorClass<CasterHasPendingCast>()(
+export class CasterHasPendingCast extends Schema.TaggedError<CasterHasPendingCast>()(
   "CasterHasPendingCast",
   { pendingCastId: CastId },
 ) {}
@@ -31,7 +31,7 @@ export class CasterHasPendingCast extends Schema.TaggedErrorClass<CasterHasPendi
  * lock: an engaged Cast is answered, and running the world against it may
  * need the ST's own rolls.
  */
-export class OfferAwaitsAnswer extends Schema.TaggedErrorClass<OfferAwaitsAnswer>()(
+export class OfferAwaitsAnswer extends Schema.TaggedError<OfferAwaitsAnswer>()(
   "OfferAwaitsAnswer",
   {
     draftCastId: CastId,

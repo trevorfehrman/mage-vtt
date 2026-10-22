@@ -15,12 +15,12 @@ import { GameStore } from "./ports/game-store"
  * distinct tags, not a stringly `Unauthorized { reason }`.
  */
 
-export class NotAMember extends Schema.TaggedErrorClass<NotAMember>()("NotAMember", {
+export class NotAMember extends Schema.TaggedError<NotAMember>()("NotAMember", {
   sessionId: SessionId,
   userId: PlayerId,
 }) {}
 
-export class NotYourCharacter extends Schema.TaggedErrorClass<NotYourCharacter>()(
+export class NotYourCharacter extends Schema.TaggedError<NotYourCharacter>()(
   "NotYourCharacter",
   {
     characterId: CharacterId,
@@ -111,7 +111,7 @@ export const requireStoryteller = Effect.fn("Authz.requireStoryteller")(function
 })
 
 /** Authorization: this door is the Storyteller's (or a Dev's). */
-export class NotStoryteller extends Schema.TaggedErrorClass<NotStoryteller>()(
+export class NotStoryteller extends Schema.TaggedError<NotStoryteller>()(
   "NotStoryteller",
   {
     sessionId: SessionId,

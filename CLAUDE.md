@@ -10,7 +10,7 @@ Default to using Bun instead of Node.js.
 - **Framework**: TanStack Start (built on Vite + Nitro for SSR deployment)
 - **Backend**: Convex (real-time database, serverless functions)
 - **Auth**: Better Auth + `@convex-dev/better-auth` (no webhooks, session cookies)
-- **Type system**: Effect v4 beta — typed errors, services/layers, Schema, streams
+- **Type system**: Effect v4 (GA) — typed errors, services/layers, Schema, streams
 - **State machines**: XState v5 — live in `src/machines/` (dice-pool, cast, cast-ladder); still planned for initiative tracker and canvas tools
 - **UI**: shadcn/ui v4 + Tailwind CSS v4
 - **AI**: Vercel AI SDK (`@ai-sdk/anthropic`, `@ai-sdk/react`)
@@ -18,7 +18,7 @@ Default to using Bun instead of Node.js.
 
 ## Effect Coding Rules
 
-This project uses Effect v4 beta. Core concepts are the same as v3 but some APIs are renamed.
+This project uses Effect v4 (GA, 4.0.x). Core concepts are the same as v3 but some APIs are renamed.
 
 - Use `Effect.fn("Name.method")` for all named effectful functions.
 - Use `Effect.gen` only for anonymous/inline effects.
@@ -31,7 +31,7 @@ This project uses Effect v4 beta. Core concepts are the same as v3 but some APIs
 - Before writing Effect code involving any `@effect/*` package, use Context7 to fetch current documentation.
 - Use `bunx effect-solutions show <topic>` for idiomatic patterns (note: targets v3, translate mentally for v4).
 - Domain types go in `src/domain/` using Effect Schema.
-- Errors use `Schema.TaggedErrorClass` (v4 name, was `Schema.TaggedError` in v3) — yieldable, no `Effect.fail()` wrapper needed.
+- Errors use `Schema.TaggedError<Self>()("Tag", fields)` — yieldable, no `Effect.fail()` wrapper needed. (The v4 beta briefly called this `TaggedErrorClass`; GA reverted to `TaggedError`.)
 - Brand nearly all primitive types (IDs, stats, etc.).
 - Data shapes are Schema, always — a manual `interface` is legal only for capability contracts: `Context.Tag` service methods and React props carrying functions/JSX (ADR-0017).
 - Never write `switch` — dispatch through `Match` (`Match.exhaustive` for closed sets, `Match.orElse` for open spaces). Zero exceptions (ADR-0018).
@@ -40,12 +40,14 @@ This project uses Effect v4 beta. Core concepts are the same as v3 but some APIs
 
 ### Effect v4 API Differences from v3
 
-- `Schema.TaggedError` → `Schema.TaggedErrorClass`
+- `Schema.TaggedError` keeps its v3 name (the beta's `TaggedErrorClass` is gone)
 - `Schema.Union(A, B, C)` → `Schema.Union([A, B, C])` (takes array)
 - `Schema.Literal("a", "b")` → `Schema.Literals(["a", "b"])` (takes array, plural)
 - `.pipe(Schema.isInt())` → `.check(Schema.isInt())` for applying filters
 - `Schema.decode` → `Schema.decodeUnknownEffect` for parsing unknown input
 - `Random.nextIntBetween(1, 10)` — inclusive on both bounds (was exclusive upper in v3)
+- `Schema.toArbitrary` is gone: `it.prop` from `@effect/vitest` takes a Schema directly; `Arbitrary.schema(s)` for a native arbitrary
+- `Schema.toJsonSchemaDocument` describes a codec's ENCODED side and lowers declarations first — see `schema-bridge.ts` for the `annotateEncoded` + `allOf` consequences
 
 ## Convex Patterns
 

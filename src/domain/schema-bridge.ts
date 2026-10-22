@@ -37,15 +37,28 @@ const nativeAnnotation = (annotation: ConvexNativeAnnotation) => ({
  * carries the same branded id type a hand-written `v.id(table)` would.
  */
 export const ConvexId = <const Table extends string>(table: Table) =>
-  Schema.String.pipe(Schema.brand(`ConvexId(${table})`)).annotate(
+  Schema.String.pipe(Schema.brand("ConvexId")).annotate(
     nativeAnnotation({ type: "id", table }),
   ) as unknown as Schema.Codec<GenericId<Table>, GenericId<Table>>
 
-/** Mirror that compiles to `v.int64()` (Convex's bigint column). */
-export const ConvexInt64 = Schema.BigInt.annotate(nativeAnnotation({ type: "int64" }))
+/**
+ * Mirror that compiles to `v.int64()` (Convex's bigint column). Decoded `Type` is
+ * `bigint`; the annotation rides the ENCODED side, because Effect 4 GA's
+ * `toJsonSchemaDocument` describes a codec's JSON form and lowers declarations
+ * (`Schema.BigInt`, `Schema.Uint8Array`) through `toCodecJson` first, dropping
+ * their annotations. So the mirrors are the string codecs with `annotateEncoded`.
+ * Consequence: the Encoded side is a string. No live column uses these yet; the
+ * first one that does should give the declaration a `toCodecJson` Link instead so
+ * the stored value stays a native bigint/bytes.
+ */
+export const ConvexInt64 = Schema.BigIntFromString.pipe(
+  Schema.annotateEncoded(nativeAnnotation({ type: "int64" })),
+)
 
 /** Mirror that compiles to `v.bytes()` (Convex's ArrayBuffer column). */
-export const ConvexBytes = Schema.Uint8Array.annotate(nativeAnnotation({ type: "bytes" }))
+export const ConvexBytes = Schema.Uint8ArrayFromBase64.pipe(
+  Schema.annotateEncoded(nativeAnnotation({ type: "bytes" })),
+)
 
 // -----------------------------------------------------------------------------
 // Compiler
@@ -107,7 +120,7 @@ export function schemaToConvexValidator<S extends Schema.Top>(
 function compileNode(node: JsonNode, definitions: Definitions): GenericValidator {
   // A Convex-native annotation wins over the structural JSON Schema: the JSON form
   // of a bigint/bytes/id is a lossy approximation we deliberately ignore.
-  const native = node[CONVEX_ANNOTATION_KEY] as ConvexNativeAnnotation | undefined
+  const native = nativeAnnotationOf(node)
   if (native) return compileNative(native)
 
   const ref = node.$ref
@@ -165,6 +178,22 @@ function compileObject(node: JsonNode, definitions: Definitions): GenericValidat
   return v.object(fields)
 }
 
+/**
+ * The native annotation on a node, wherever Effect 4 GA put it: at the top level
+ * for a bare node, or inside `allOf` when the annotation rides beside a check
+ * (GA emits `{ type, allOf: [{ pattern, "x-convex": … }] }` for an annotated
+ * string-with-pattern such as `BigIntFromString`'s encoded side).
+ */
+function nativeAnnotationOf(node: JsonNode): ConvexNativeAnnotation | undefined {
+  const direct = node[CONVEX_ANNOTATION_KEY] as ConvexNativeAnnotation | undefined
+  if (direct) return direct
+  const allOf = node.allOf
+  if (!Array.isArray(allOf)) return undefined
+  return (allOf as Array<JsonNode>)
+    .map((entry) => entry[CONVEX_ANNOTATION_KEY] as ConvexNativeAnnotation | undefined)
+    .find((annotation) => annotation !== undefined)
+}
+
 function compileNative(annotation: ConvexNativeAnnotation): GenericValidator {
   return Match.value(annotation).pipe(
     Match.when({ type: "id" }, ({ table }) => v.id(table)),
@@ -216,8 +245,8 @@ function isNumberSentinelUnion(branches: ReadonlyArray<JsonNode>): boolean {
     const isSentinel =
       branch.type === "string" &&
       Array.isArray(enumValues) &&
-      enumValues.length === 1 &&
-      NUMBER_SENTINELS.has(enumValues[0] as string)
+      enumValues.length >= 1 &&
+      enumValues.every((value) => NUMBER_SENTINELS.has(value as string))
     if (isSentinel) continue
     return false
   }

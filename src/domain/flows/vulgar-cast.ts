@@ -81,7 +81,7 @@ import { requireKnownRote } from "./rote-cast"
 // --- Errors (ADR-0010, co-located with the flows that raise them) ---
 
 /** Rules/precondition: one unresolved Cast per character — the queue means something. */
-export class CastAlreadyPending extends Schema.TaggedErrorClass<CastAlreadyPending>()(
+export class CastAlreadyPending extends Schema.TaggedError<CastAlreadyPending>()(
   "CastAlreadyPending",
   {
     characterId: CharacterId,
@@ -90,7 +90,7 @@ export class CastAlreadyPending extends Schema.TaggedErrorClass<CastAlreadyPendi
 ) {}
 
 /** Rules/precondition: the stage is exclusive — one engaged Cast at a time. */
-export class StageOccupied extends Schema.TaggedErrorClass<StageOccupied>()(
+export class StageOccupied extends Schema.TaggedError<StageOccupied>()(
   "StageOccupied",
   {
     sessionId: SessionId,
@@ -106,7 +106,7 @@ export class StageOccupied extends Schema.TaggedErrorClass<StageOccupied>()(
  * answers the Storyteller as readily as the caster (ADR-0015). `needed` is
  * display prose, not vocabulary — a phase is prose on its rung.
  */
-export class CastStatusConflict extends Schema.TaggedErrorClass<CastStatusConflict>()(
+export class CastStatusConflict extends Schema.TaggedError<CastStatusConflict>()(
   "CastStatusConflict",
   {
     castId: CastId,
@@ -116,19 +116,19 @@ export class CastStatusConflict extends Schema.TaggedErrorClass<CastStatusConfli
 ) {}
 
 /** Validation: a personal adjustment that no ruling could mean (ADR-0022). */
-export class InvalidAdjustment extends Schema.TaggedErrorClass<InvalidAdjustment>()(
+export class InvalidAdjustment extends Schema.TaggedError<InvalidAdjustment>()(
   "InvalidAdjustment",
   { message: Schema.String },
 ) {}
 
 /** Validation: the mitigation declaration itself is malformed or pointless. */
-export class InvalidMitigation extends Schema.TaggedErrorClass<InvalidMitigation>()(
+export class InvalidMitigation extends Schema.TaggedError<InvalidMitigation>()(
   "InvalidMitigation",
   { message: Schema.String },
 ) {}
 
 /** Rules/precondition: containment outside 0..min(successes, empty boxes). */
-export class InvalidContainment extends Schema.TaggedErrorClass<InvalidContainment>()(
+export class InvalidContainment extends Schema.TaggedError<InvalidContainment>()(
   "InvalidContainment",
   {
     message: Schema.String,

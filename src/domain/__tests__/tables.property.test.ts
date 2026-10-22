@@ -33,7 +33,7 @@ describe("schema bridge: derived validators accept their mirror's rows", () => {
 
     it.prop(
       `${name}: arbitrary rows pass the derived validator and round-trip`,
-      [Schema.toArbitrary(schema)],
+      [schema],
       ([sample]) => {
         expect(matchesConvexValidator(sample, node)).toBe(true)
         // decode ∘ encode is identity for these persistence mirrors.

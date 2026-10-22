@@ -10,7 +10,7 @@ export class ResourceTracker extends Schema.Class<ResourceTracker>("ResourceTrac
 
 // --- Errors ---
 
-export class InsufficientResource extends Schema.TaggedErrorClass<InsufficientResource>()(
+export class InsufficientResource extends Schema.TaggedError<InsufficientResource>()(
   "InsufficientResource",
   { message: Schema.String },
 ) {}

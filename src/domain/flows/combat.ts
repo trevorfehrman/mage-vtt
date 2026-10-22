@@ -43,49 +43,49 @@ import { requireActiveScene } from "./scene"
 // --- Errors (ADR-0010, co-located with the flows that raise them) ---
 
 /** Rules/precondition: one Combat at a time — end it before the next. */
-export class CombatAlreadyActive extends Schema.TaggedErrorClass<CombatAlreadyActive>()(
+export class CombatAlreadyActive extends Schema.TaggedError<CombatAlreadyActive>()(
   "CombatAlreadyActive",
   { sessionId: SessionId },
 ) {}
 
 /** Rules/precondition: this door needs a running Combat, and none is. */
-export class NoActiveCombat extends Schema.TaggedErrorClass<NoActiveCombat>()(
+export class NoActiveCombat extends Schema.TaggedError<NoActiveCombat>()(
   "NoActiveCombat",
   { sessionId: SessionId },
 ) {}
 
 /** Rules/precondition: the named combatant isn't on the tracker. */
-export class ParticipantNotInCombat extends Schema.TaggedErrorClass<ParticipantNotInCombat>()(
+export class ParticipantNotInCombat extends Schema.TaggedError<ParticipantNotInCombat>()(
   "ParticipantNotInCombat",
   { participantId: Schema.String },
 ) {}
 
 /** Rules/precondition: a character joins a Combat once. */
-export class DuplicateCombatant extends Schema.TaggedErrorClass<DuplicateCombatant>()(
+export class DuplicateCombatant extends Schema.TaggedError<DuplicateCombatant>()(
   "DuplicateCombatant",
   { characterId: CharacterId },
 ) {}
 
 /** Validation: a roster entry that no reading could mean. */
-export class InvalidCombatant extends Schema.TaggedErrorClass<InvalidCombatant>()(
+export class InvalidCombatant extends Schema.TaggedError<InvalidCombatant>()(
   "InvalidCombatant",
   { message: Schema.String },
 ) {}
 
 /** Rules/precondition: that face already rolled — one d10 per Combat. */
-export class InitiativeAlreadyRolled extends Schema.TaggedErrorClass<InitiativeAlreadyRolled>()(
+export class InitiativeAlreadyRolled extends Schema.TaggedError<InitiativeAlreadyRolled>()(
   "InitiativeAlreadyRolled",
   { participantId: Schema.String },
 ) {}
 
 /** Rules/precondition: no Ticks to bill before the d10 lands. */
-export class InitiativeNotRolled extends Schema.TaggedErrorClass<InitiativeNotRolled>()(
+export class InitiativeNotRolled extends Schema.TaggedError<InitiativeNotRolled>()(
   "InitiativeNotRolled",
   { participantId: Schema.String },
 ) {}
 
 /** Validation: a cost declaration that no ruling could mean. */
-export class InvalidTickSpend extends Schema.TaggedErrorClass<InvalidTickSpend>()(
+export class InvalidTickSpend extends Schema.TaggedError<InvalidTickSpend>()(
   "InvalidTickSpend",
   { message: Schema.String },
 ) {}

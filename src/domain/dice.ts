@@ -192,7 +192,7 @@ export class DiceRollResult extends Schema.Class<DiceRollResult>("DiceRollResult
 
 // --- Errors ---
 
-export class InvalidPoolComponent extends Schema.TaggedErrorClass<InvalidPoolComponent>()(
+export class InvalidPoolComponent extends Schema.TaggedError<InvalidPoolComponent>()(
   "InvalidPoolComponent",
   { message: Schema.String },
 ) {}

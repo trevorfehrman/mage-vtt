@@ -81,7 +81,7 @@ export class OblationInfo extends Schema.Class<OblationInfo>("OblationInfo")({
  * costs more Mana than the sheet holds. Raised by `spendMana` before any write,
  * so a blocked cast leaves the sheet untouched.
  */
-export class InsufficientMana extends Schema.TaggedErrorClass<InsufficientMana>()(
+export class InsufficientMana extends Schema.TaggedError<InsufficientMana>()(
   "InsufficientMana",
   {
     current: Schema.Number,

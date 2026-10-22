@@ -67,7 +67,7 @@ export class RotePool extends Schema.Class<RotePool>("RotePool")({
 
 /** Validation: the prose does not scan as `Attribute + Skill[ or Skill] +
  * Arcanum[ vs Trait[ + Trait]]`. Raised at the data layer, never at play. */
-export class UnparseableRotePool extends Schema.TaggedErrorClass<UnparseableRotePool>()(
+export class UnparseableRotePool extends Schema.TaggedError<UnparseableRotePool>()(
   "UnparseableRotePool",
   {
     pool: Schema.String,

@@ -8,7 +8,7 @@ import { healthBox, type BoxSeverity, type DamageType, type HealthBox, type Heal
 
 // --- Errors ---
 
-export class HealthTrackError extends Schema.TaggedErrorClass<HealthTrackError>()(
+export class HealthTrackError extends Schema.TaggedError<HealthTrackError>()(
   "HealthTrackError",
   { message: Schema.String },
 ) {}

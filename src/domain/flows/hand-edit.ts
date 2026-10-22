@@ -55,7 +55,7 @@ export type HandEditArgs = typeof HandEditArgs.Type
 // --- Errors (ADR-0010) ---
 
 /** Validation: the edit is empty or a value doesn't fit the sheet's boxes. */
-export class InvalidHandEdit extends Schema.TaggedErrorClass<InvalidHandEdit>()(
+export class InvalidHandEdit extends Schema.TaggedError<InvalidHandEdit>()(
   "InvalidHandEdit",
   { message: Schema.String },
 ) {}

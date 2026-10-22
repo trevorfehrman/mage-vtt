@@ -27,7 +27,7 @@ type MeritSelection = typeof MeritSelection.Type
 
 // --- Errors ---
 
-export class MeritValidationError extends Schema.TaggedErrorClass<MeritValidationError>()(
+export class MeritValidationError extends Schema.TaggedError<MeritValidationError>()(
   "MeritValidationError",
   { message: Schema.String },
 ) {}

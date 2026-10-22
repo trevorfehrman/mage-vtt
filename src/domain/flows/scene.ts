@@ -25,13 +25,13 @@ import { GameStore } from "../ports/game-store"
 // --- Errors (ADR-0010, co-located with the flows that raise them) ---
 
 /** Validation: a Scene needs a name to be a place in the fiction. */
-export class InvalidSceneName extends Schema.TaggedErrorClass<InvalidSceneName>()(
+export class InvalidSceneName extends Schema.TaggedError<InvalidSceneName>()(
   "InvalidSceneName",
   { message: Schema.String },
 ) {}
 
 /** Rules/precondition: the stage holds one Scene — close it before the next. */
-export class SceneAlreadyOpen extends Schema.TaggedErrorClass<SceneAlreadyOpen>()(
+export class SceneAlreadyOpen extends Schema.TaggedError<SceneAlreadyOpen>()(
   "SceneAlreadyOpen",
   {
     sessionId: SessionId,
@@ -40,7 +40,7 @@ export class SceneAlreadyOpen extends Schema.TaggedErrorClass<SceneAlreadyOpen>(
 ) {}
 
 /** Rules/precondition: this door needs an open Scene, and none is. */
-export class NoActiveScene extends Schema.TaggedErrorClass<NoActiveScene>()(
+export class NoActiveScene extends Schema.TaggedError<NoActiveScene>()(
   "NoActiveScene",
   { sessionId: SessionId },
 ) {}
@@ -50,7 +50,7 @@ export class NoActiveScene extends Schema.TaggedErrorClass<NoActiveScene>()(
  * stage — a dangling negotiation would corrupt the accumulator record. Play
  * it out, cancel it, or void it first.
  */
-export class CastOnStage extends Schema.TaggedErrorClass<CastOnStage>()(
+export class CastOnStage extends Schema.TaggedError<CastOnStage>()(
   "CastOnStage",
   {
     sessionId: SessionId,
@@ -177,7 +177,7 @@ export const EditTidesArgs = Schema.Struct({
 export type EditTidesArgs = typeof EditTidesArgs.Type
 
 /** Validation: a Tides edit that no ruling could mean (ADR-0022). */
-export class InvalidTides extends Schema.TaggedErrorClass<InvalidTides>()(
+export class InvalidTides extends Schema.TaggedError<InvalidTides>()(
   "InvalidTides",
   { message: Schema.String },
 ) {}
