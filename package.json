@@ -15,8 +15,8 @@
     "prepare": "effect-language-service patch && husky"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.135",
-    "@ai-sdk/react": "^3.0.315",
+    "@ai-sdk/anthropic": "^4.0.85",
+    "@ai-sdk/react": "^4.0.152",
     "@convex-dev/better-auth": "^0.11.5",
     "@convex-dev/presence": "^0.3.2",
     "@convex-dev/react-query": "0.1.0",
@@ -30,7 +30,7 @@
     "@tanstack/react-start": "latest",
     "@tanstack/router-plugin": "^1.168.47",
     "@xstate/react": "^6.1.0",
-    "ai": "^6.0.312",
+    "ai": "^7.0.148",
     "better-auth": "1.5.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
