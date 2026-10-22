@@ -61,7 +61,7 @@ This project uses Effect v4 beta. Core concepts are the same as v3 but some APIs
 - `it.effect()` for effectful code; plain `it()` for pure rules leaves (ADR-0014); `it.scoped()` for resource tests.
 - `Random.withSeed("seed")` for deterministic dice tests.
 - TDD skill installed (Matt Pocock's red-green-refactor workflow).
-- 658 tests across the domain, flows, machines, and seam, all green.
+- The whole suite (domain, flows, machines, seam) must stay green. The count moves with every ticket, so it is not recorded here — run `bunx vitest run`.
 
 ## Project Structure
 
