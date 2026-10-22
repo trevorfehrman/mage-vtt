@@ -30,27 +30,39 @@ describe("pool mode (the FeltDie job)", () => {
   it("keeps every provenance ink the felt already speaks", () => {
     expect(poolLook("loose", false).border).toBe("1px solid var(--dim)")
     expect(poolLook("willpower", false)).toEqual({
-      border: "1px solid var(--ember)",
-      background: "var(--ember-glow)",
+      border: "1px solid var(--will)",
+      background: "color-mix(in srgb, var(--will) 45%, transparent)",
     })
-    // The Tides die is circumstance's: the loose neutral, the glyph says reality
-    // (provenance grammar, owner 2026-10-22).
-    expect(poolLook("paradox", false)).toEqual(poolLook("loose", false))
-    // Reality's base die wears the sheet's green; only the glyph says Paradox.
+    expect(poolLook("arcanum", false)).toEqual(poolLook("loose", false))
+    // Named, an Arcanum's dice wear its Supernal realm's metal (Death → Stygia).
+    expect(poolLook("arcanum", false, "Death")).toEqual({
+      border: "1px solid var(--realm-stygia)",
+      background: "color-mix(in srgb, var(--realm-stygia) 22%, transparent)",
+    })
+    // The Tides' dice are red: the scene's special circumstances; reality's
+    // section of the felt says whose they are (felt audition, owner 2026-10-22).
+    expect(poolLook("paradox", false)).toEqual({
+      border: "1px solid var(--paradox)",
+      background: "color-mix(in srgb, var(--paradox) 30%, transparent)",
+    })
+    // High Speech is white: the one ink that is no identity's.
+    expect(poolLook("highSpeech", false).border).toBe("1px solid var(--ink)")
+    // Reality's base die wears the sheet's green; its section of the felt says whose it is.
     expect(poolLook("paradoxBase", false)).toEqual(poolLook("sheet", false))
   })
 
   it("ghosts in the die's own ink: dashed, transparent, faded", () => {
     expect(poolLook("paradox", true)).toEqual({
-      border: "1px dashed var(--dim)",
+      border: "1px dashed var(--paradox)",
       background: "transparent",
       opacity: 0.45,
     })
   })
 
-  it("only the Paradox kinds carry the torn-circle glyph", () => {
-    expect(poolHasGlyph("paradox")).toBe(true)
-    expect(poolHasGlyph("paradoxBase")).toBe(true)
+  it("only an Arcanum's dice carry a glyph; reality's section says whose the red ones are", () => {
+    expect(poolHasGlyph("arcanum")).toBe(true)
+    expect(poolHasGlyph("paradox")).toBe(false)
+    expect(poolHasGlyph("paradoxBase")).toBe(false)
     expect(poolHasGlyph("sheet")).toBe(false)
     expect(poolHasGlyph("loose")).toBe(false)
     expect(poolHasGlyph("willpower")).toBe(false)

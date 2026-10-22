@@ -13,7 +13,7 @@ import {
   FaceTone,
   type PoolKind,
 } from "./die-look"
-import { ParadoxGlyph } from "./ParadoxGlyph"
+import { ArcanaGlyph } from "./ArcanaGlyph"
 
 /**
  * The unified die primitive (MAG-13): one physical diamond that does both of
@@ -48,6 +48,8 @@ interface PoolModeProps {
   glide?: boolean
   onSkim?: (() => void) | undefined
   disabled?: boolean
+  /** For `kind: "arcanum"`: which Arcanum's glyph stands inside the die. */
+  arcanum?: string | undefined
 }
 
 /** Face props are all data, so a Schema (ADR-0017). */
@@ -82,8 +84,9 @@ function PoolDie({
   glide = true,
   onSkim,
   disabled = false,
+  arcanum,
 }: PoolModeProps) {
-  const look = poolLook(kind, ghost)
+  const look = poolLook(kind, ghost, arcanum)
   const anim = {
     layout: !reduced && glide,
     initial: { scale: 0.4, opacity: 0 },
@@ -92,17 +95,22 @@ function PoolDie({
     transition: reduced ? { duration: 0 } : entranceSpring,
   }
   // The die rotates into its diamond stance; the glyph counter-rotates so
-  // the tear stays upright inside it.
-  const glyph = poolHasGlyph(kind) ? (
-    <span className="grid place-items-center" style={COUNTER_ROTATE} aria-hidden>
-      <ParadoxGlyph size={SIZE_LADDER[size].glyph} title="" />
-    </span>
-  ) : null
+  // it stays upright inside it.
   const { opacity: _presence, ...style } = look
+  const mark =
+    poolHasGlyph(kind) && arcanum !== undefined ? (
+      <span
+        className="grid place-items-center"
+        style={{ ...COUNTER_ROTATE, color: look.border.replace(/^1px (solid|dashed) /, ""), opacity: 0.95 }}
+        aria-hidden
+      >
+        <ArcanaGlyph arcanum={arcanum} size={SIZE_LADDER[size].glyph} />
+      </span>
+    ) : null
   const shape = shapeClass(size)
   return onSkim === undefined ? (
     <motion.span {...anim} title={title} className={shape} style={style}>
-      {glyph}
+      {mark}
     </motion.span>
   ) : (
     <motion.button
@@ -116,7 +124,7 @@ function PoolDie({
       className={`${shape} cursor-pointer`}
       style={style}
     >
-      {glyph}
+      {mark}
     </motion.button>
   )
 }

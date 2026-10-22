@@ -42,9 +42,9 @@ describe("UnifiedDie", () => {
     expect(face.classList.contains("text-[12px]")).toBe(true)
   })
 
-  it("gives reality's dice the torn circle, counter-rotated, and nothing else a glyph", () => {
+  it("gives an Arcanum's dice its glyph, counter-rotated, and nothing else a glyph", () => {
     const paradox = render(
-      createElement(UnifiedDie, { mode: "pool", kind: "paradoxBase", title: "t", reduced: true }),
+      createElement(UnifiedDie, { mode: "pool", kind: "arcanum", arcanum: "death", title: "t", reduced: true }),
     ).container
     const sheet = render(
       createElement(UnifiedDie, { mode: "pool", kind: "sheet", title: "t", reduced: true }),

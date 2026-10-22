@@ -1,5 +1,6 @@
 import { Match, Schema } from "effect"
 import { isDieDramaticFailure, isDieExplosive, isDieSuccess } from "#/domain/dice"
+import { arcanumRealm } from "./ArcanaGlyph"
 
 /**
  * The unified die's look rules (MAG-13), the pure half: everything about how
@@ -65,7 +66,7 @@ const ghostLook = (ink: string): DieLook => ({
 
 // --- Pool mode (the FeltDie job) ---
 
-export const PoolKind = Schema.Literals(["sheet", "loose", "willpower", "paradox", "paradoxBase"])
+export const PoolKind = Schema.Literals(["sheet", "loose", "arcanum", "highSpeech", "willpower", "paradox", "paradoxBase"])
 export type PoolKind = typeof PoolKind.Type
 
 const Ink = Schema.Struct({ border: Schema.String, background: Schema.String })
@@ -82,15 +83,27 @@ const POOL_INK: Record<PoolKind, typeof Ink.Type> = {
     border: "var(--dim)",
     background: "color-mix(in srgb, var(--ink) 6%, transparent)",
   },
-  willpower: {
-    border: "var(--ember)",
-    background: "var(--ember-glow)",
-  },
-  // The Tides die comes from circumstance, so it wears the loose die's neutral;
-  // the red glyph alone says reality rolls it (provenance grammar, 2026-10-22).
-  paradox: {
+  // The Arcanum's dice: neutral for now (no Arcanum has a canonical hue), the
+  // Arcanum's glyph inside says which (felt audition, 2026-10-22).
+  arcanum: {
     border: "var(--dim)",
     background: "color-mix(in srgb, var(--ink) 6%, transparent)",
+  },
+  // High Speech: the Supernal tongue, spoken — white, the one ink that is
+  // no identity's (felt audition, 2026-10-22).
+  highSpeech: {
+    border: "var(--ink)",
+    background: "color-mix(in srgb, var(--ink) 22%, transparent)",
+  },
+  willpower: {
+    border: "var(--will)",
+    background: "color-mix(in srgb, var(--will) 45%, transparent)",
+  },
+  // The Tides' dice: red, the scene's special circumstances (felt audition,
+  // 2026-10-22). Reality's section of the felt says whose they are; no glyph.
+  paradox: {
+    border: "var(--paradox)",
+    background: "color-mix(in srgb, var(--paradox) 30%, transparent)",
   },
   paradoxBase: {
     border: "var(--accent)",
@@ -98,16 +111,26 @@ const POOL_INK: Record<PoolKind, typeof Ink.Type> = {
   },
 }
 
-export const poolLook = (kind: PoolKind, ghost: boolean): DieLook =>
-  ghost
-    ? ghostLook(POOL_INK[kind].border)
-    : { border: `1px solid ${POOL_INK[kind].border}`, background: POOL_INK[kind].background }
+/** An Arcanum's dice wear its Supernal realm's metal (Death → Stygia's lead). */
+const realmInk = (arcanum: string): typeof Ink.Type => {
+  const realm = arcanumRealm(arcanum.toLowerCase())
+  return {
+    border: `var(--realm-${realm})`,
+    background: `color-mix(in srgb, var(--realm-${realm}) 22%, transparent)`,
+  }
+}
 
-/** Only reality's dice carry the torn-circle glyph inside the diamond. */
+export const poolLook = (kind: PoolKind, ghost: boolean, arcanum?: string): DieLook => {
+  const ink = kind === "arcanum" && arcanum !== undefined ? realmInk(arcanum) : POOL_INK[kind]
+  return ghost
+    ? ghostLook(ink.border)
+    : { border: `1px solid ${ink.border}`, background: ink.background }
+}
+
+/** Only an Arcanum's dice carry a glyph inside the diamond (the Arcanum's own). */
 export const poolHasGlyph = (kind: PoolKind): boolean =>
   Match.value(kind).pipe(
-    Match.when("paradox", () => true),
-    Match.when("paradoxBase", () => true),
+    Match.when("arcanum", () => true),
     Match.orElse(() => false),
   )
 

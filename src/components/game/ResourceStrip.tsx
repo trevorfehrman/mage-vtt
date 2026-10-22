@@ -54,7 +54,7 @@ export function ResourceStrip({
       <div className="grid justify-items-end gap-1.5">
         <PipMeter
           label="Willpower"
-          color="var(--accent)"
+          color="var(--will)"
           current={character.willpowerCurrent}
           max={character.willpower}
           pending={pendingWillpower ? 1 : 0}

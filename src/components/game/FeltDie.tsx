@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { entranceSpring } from "#/components/ui/entrance";
-import { ParadoxGlyph } from "./ParadoxGlyph";
+import { ArcanaGlyph, arcanumRealm } from "./ArcanaGlyph";
 
 /**
  * The felt's die (extracted from the DicePoolBuilder for issue #107): one
@@ -17,7 +17,7 @@ import { ParadoxGlyph } from "./ParadoxGlyph";
  * opacity): the price being weighed, visible before it's paid.
  */
 
-export type DieKind = "sheet" | "loose" | "willpower" | "paradox" | "paradoxBase";
+export type DieKind = "sheet" | "loose" | "arcanum" | "highSpeech" | "willpower" | "paradox" | "paradoxBase";
 
 const DIE_LOOK: Record<DieKind, { border: string; background: string }> = {
   sheet: {
@@ -28,15 +28,27 @@ const DIE_LOOK: Record<DieKind, { border: string; background: string }> = {
     border: "var(--dim)",
     background: "color-mix(in srgb, var(--ink) 6%, transparent)",
   },
-  willpower: {
-    border: "var(--ember)",
-    background: "var(--ember-glow)",
-  },
-  // The Tides die comes from circumstance, so it wears the loose die's neutral;
-  // the red glyph alone says reality rolls it (provenance grammar, 2026-10-22).
-  paradox: {
+  // The Arcanum's dice: neutral for now (no Arcanum has a canonical hue), the
+  // Arcanum's glyph inside says which (felt audition, 2026-10-22).
+  arcanum: {
     border: "var(--dim)",
     background: "color-mix(in srgb, var(--ink) 6%, transparent)",
+  },
+  // High Speech: the Supernal tongue, spoken — white, the one ink that is
+  // no identity's (felt audition, 2026-10-22).
+  highSpeech: {
+    border: "var(--ink)",
+    background: "color-mix(in srgb, var(--ink) 22%, transparent)",
+  },
+  willpower: {
+    border: "var(--will)",
+    background: "color-mix(in srgb, var(--will) 45%, transparent)",
+  },
+  // The Tides' dice: red, the scene's special circumstances (felt audition,
+  // 2026-10-22). Reality's section of the felt says whose they are; no glyph.
+  paradox: {
+    border: "var(--paradox)",
+    background: "color-mix(in srgb, var(--paradox) 30%, transparent)",
   },
   paradoxBase: {
     border: "var(--accent)",
@@ -58,9 +70,12 @@ export function FeltDie({
   glide = true,
   onSkim,
   disabled = false,
+  arcanum,
 }: {
   kind: DieKind;
   title: string;
+  /** For `kind: "arcanum"`: which Arcanum's glyph stands inside the die. */
+  arcanum?: string | undefined;
   /** The owner's `useReducedMotion()` — one read per tray, not per die. */
   reduced: boolean | null;
   ghosted?: boolean;
@@ -74,15 +89,18 @@ export function FeltDie({
   onSkim?: (() => void) | undefined;
   disabled?: boolean;
 }) {
+  // An Arcanum's dice wear its Supernal realm's metal (Death → Stygia's lead,
+  // Forces → Aether's gold): the realm tokens the chips already spoke.
+  const ink =
+    kind === "arcanum" && arcanum !== undefined
+      ? {
+          border: `var(--realm-${arcanumRealm(arcanum.toLowerCase())})`,
+          background: `color-mix(in srgb, var(--realm-${arcanumRealm(arcanum.toLowerCase())}) 22%, transparent)`,
+        }
+      : DIE_LOOK[kind];
   const look = ghosted
-    ? {
-        border: `1px dashed ${DIE_LOOK[kind].border}`,
-        background: "transparent",
-      }
-    : {
-        border: `1px solid ${DIE_LOOK[kind].border}`,
-        background: DIE_LOOK[kind].background,
-      };
+    ? { border: `1px dashed ${ink.border}`, background: "transparent" }
+    : { border: `1px solid ${ink.border}`, background: ink.background };
   const anim = {
     layout: !reduced && glide,
     initial: { scale: 0.4, opacity: 0 },
@@ -91,15 +109,15 @@ export function FeltDie({
     transition: reduced ? { duration: 0 } : entranceSpring,
   };
   // The die rotates into its diamond stance; the glyph counter-rotates so
-  // the tear stays upright inside it.
-  const glyph =
-    kind === "paradox" || kind === "paradoxBase" ? (
+  // it stays upright inside it.
+  const mark =
+    kind === "arcanum" && arcanum !== undefined ? (
       <span
         className="grid place-items-center"
-        style={{ transform: "rotate(-45deg)" }}
+        style={{ transform: "rotate(-45deg)", color: ink.border, opacity: 0.95 }}
         aria-hidden
       >
-        <ParadoxGlyph size={12} title="" />
+        <ArcanaGlyph arcanum={arcanum} size={12} />
       </span>
     ) : null;
   return onSkim === undefined ? (
@@ -109,7 +127,7 @@ export function FeltDie({
       className="grid size-[20px] place-items-center rounded-[4px]"
       style={look}
     >
-      {glyph}
+      {mark}
     </motion.span>
   ) : (
     <motion.button
@@ -123,7 +141,7 @@ export function FeltDie({
       className="grid size-[20px] cursor-pointer place-items-center rounded-[4px]"
       style={look}
     >
-      {glyph}
+      {mark}
     </motion.button>
   );
 }

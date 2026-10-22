@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { useMutation } from "convex/react"
 import { useMachine } from "@xstate/react"
 import { AnimatePresence, useReducedMotion } from "motion/react"
@@ -24,10 +24,10 @@ import { rollOdds } from "#/domain/probability"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
-import { ArcanaGlyph, arcanumRealm } from "./ArcanaGlyph"
+import { ArcanaGlyph } from "./ArcanaGlyph"
 import { healthBoxGlyph, ResistantDot } from "./CharacterSheet"
 import { Die } from "./Die"
-import { FeltDie } from "./FeltDie"
+import { FeltDie, type DieKind } from "./FeltDie"
 import { ParadoxGlyph } from "./ParadoxGlyph"
 import { api } from "../../../convex/_generated/api"
 import type { Id } from "../../../convex/_generated/dataModel"
@@ -260,17 +260,44 @@ export function CastCard({
   // the price being weighed before the one Cast click. The end is where the
   // embers sit, and that's doctrine, not an accident — the Willpower dice
   // are pool members "as losable to Paradox as any other die" (ADR-0022).
+  // Felt audition (2026-10-22): every die wears where it came from — Gnosis
+  // and the boosts the sheet's verdigris (intrinsic), the Arcanum's dice
+  // neutral with the Arcanum's glyph inside, Willpower its own amethyst —
+  // grouped green · arcanum · will, Willpower still last because the bet
+  // ghosts from the row's end.
   const willpowerDice =
     cast.declaredComponents.find((c) => c.name === WILLPOWER_COMPONENT_NAME)
       ?.dots ?? 0
+  const HIGH_SPEECH_COMPONENT_NAME = "High Speech"
+  const FELT_ORDER: ReadonlyArray<DieKind> = ["sheet", "arcanum", "highSpeech", "willpower"]
+  const feltSpecs: ReadonlyArray<{ kind: DieKind; arcanum?: string }> = [
+    ...cast.declaredComponents
+      .filter((c) => c.name !== WILLPOWER_COMPONENT_NAME)
+      .flatMap((c) =>
+        Array.from({ length: Math.max(0, c.dots) }, () =>
+          c.type === "arcanum"
+            ? { kind: "arcanum" as const, arcanum: cast.arcanum }
+            : c.name === HIGH_SPEECH_COMPONENT_NAME
+              ? { kind: "highSpeech" as const }
+              : { kind: "sheet" as const },
+        ),
+      )
+      // intrinsic verdigris, then the Arcanum's metal, then High Speech's white
+      .sort((x, y) => FELT_ORDER.indexOf(x.kind) - FELT_ORDER.indexOf(y.kind)),
+    ...Array.from({ length: willpowerDice }, () => ({ kind: "willpower" as const })),
+  ]
+  const feltKinds: ReadonlyArray<DieKind> = [
+    ...feltSpecs.map((s) => s.kind),
+    ...Array.from({ length: Math.max(0, cast.declaredPool - feltSpecs.length) }, () => "sheet" as const),
+  ].slice(0, cast.declaredPool)
   const eaten = controls.includes("contain") && outlook !== null ? outlook.eaten : 0
-  const feltDice = Array.from({ length: cast.declaredPool }, (_, i) => {
-    const kind = i >= cast.declaredPool - willpowerDice ? "willpower" : "sheet"
-    const ghosted = i >= cast.declaredPool - eaten
+  const feltDice = feltKinds.map((kind, i) => {
+    const ghosted = i >= feltKinds.length - eaten
     return (
       <FeltDie
-        key={`${kind}:${i}`}
+        key={`:`}
         kind={kind}
+        arcanum={feltSpecs[i]?.arcanum}
         reduced={reduced}
         glide={false}
         ghosted={ghosted}
@@ -279,7 +306,9 @@ export function CastCard({
             ? "Eaten by the bet — uncontained Paradox and its wound penalty"
             : kind === "willpower"
               ? "Willpower — precommitted and blind; Paradox can eat these like any others"
-              : "The declared pool, from the sheet"
+              : kind === "arcanum"
+                ? `The Arcanum's dice — `
+                : "Intrinsic — Gnosis and the boosts, from the sheet"
         }
       />
     )
@@ -300,6 +329,11 @@ export function CastCard({
     paradoxDiceCount !== null && feltPool !== null
       ? Math.min(feltPool.baseDice, paradoxDiceCount)
       : 0
+  // Reality's printed area exists only while it holds dice: the provisional
+  // pool before the ST's roll, or the rolled faces on the record.
+  const paradoxArea =
+    paradoxDiceCount !== null ||
+    (status === "resolved" && (cast.paradoxRolls ?? []).length > 0)
   // The Tides on the felt (notes 3/4/17): the pool's named ±s as ebb/flood
   // badges in the gutter, live on every seat's card — fluid and fixed alike
   // now that the provisional pool computes (note 1) — except on the ST's own
@@ -446,29 +480,9 @@ export function CastCard({
         className="mv-data mt-2 flex flex-wrap items-baseline justify-between gap-x-2 text-[12px] leading-none"
         style={{ color: "var(--dim)" }}
       >
-        {/* Each pool component as an outlined tag (2026-07-20), the flood-tag
-            grammar: Gnosis in theme-green (it still ADDS dice — the pool is
-            Gnosis + Arcanum), the Arcanum in its Supernal realm color (Matter →
-            Stygia lead). */}
-        <span className="flex flex-wrap items-center gap-1.5">
-          {cast.declaredComponents
-            .filter((c) => c.dots > 0 && c.name !== WILLPOWER_COMPONENT_NAME)
-            .map((c) => {
-              const tint =
-                c.type === "arcanum"
-                  ? `var(--realm-${arcanumRealm(c.name.toLowerCase())})`
-                  : "var(--accent)"
-              return (
-                <span
-                  key={c.name}
-                  className="whitespace-nowrap rounded-[2px] px-1 py-px"
-                  style={{ border: `1px solid ${tint}`, color: tint }}
-                >
-                  {c.name} + {c.dots}
-                </span>
-              )
-            })}
-        </span>
+        {/* Felt audition (2026-10-22): the component tags are gone — each die
+            carries its provenance (Gnosis star, Arcanum glyph, High Speech
+            rune, Willpower amethyst) and its title names it on hover. */}
         <span className="whitespace-nowrap">{declaredTerms.join(" · ")}</span>
       </div>
       <div
@@ -478,48 +492,10 @@ export function CastCard({
           background: "color-mix(in srgb, var(--accent) 6%, transparent)",
         }}
       >
-        {status === "resolved" && cast.castRolls !== undefined ? (
-          // The cast roll on ONE row (2026-07-20): rolled faces, then the dice
-          // the containment bet ATE as empty ghosts (declared − rolled), so the
-          // felt shows the whole Gnosis + Arcanum pool. Explosions sit inline.
-          <div className="flex flex-wrap content-start gap-4 p-2.5">
-            {cast.castRolls.map((v, i) => (
-              <Die
-                key={`fb${i}`}
-                v={v}
-                again={10}
-                chance={
-                  cast.castIsChanceDie ??
-                  (cast.castPool !== undefined && cast.castPool <= 0)
-                }
-                size="md"
-                diamond
-              />
-            ))}
-            {Array.from({
-              length: Math.max(0, cast.declaredPool - cast.castRolls.length),
-            }).map((_, i) => (
-              <Die key={`fg${i}`} v={0} again={10} size="md" diamond ghost />
-            ))}
-            {(cast.castRoteRerolls ?? []).map((v, i) => (
-              <Die key={`fr${i}`} v={v} again={10} ring="rote" size="md" diamond />
-            ))}
-            {(cast.castExplosions ?? []).map((e, i) => (
-              <Die key={`fe${i}`} v={e.value} again={10} size="md" diamond />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-wrap content-start gap-4 p-2.5">
-            <AnimatePresence initial={false}>{feltDice}</AnimatePresence>
-            {cast.declaredPool === 0 && (
-              <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
-                no pool — a chance die waits
-              </span>
-            )}
-          </div>
-        )}
+        {paradoxArea && (
+        <FeltSection label="paradox" labelAt="top">
         {status === "resolved" && (cast.paradoxRolls ?? []).length > 0 && (
-          <div className="flex flex-wrap content-start gap-4 px-2.5 pb-2.5 pt-1">
+          <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-2.5 pb-4">
             {(cast.paradoxRolls ?? []).map((v, i) => (
               <Die
                 key={`fp${i}`}
@@ -544,7 +520,7 @@ export function CastCard({
           </div>
         )}
         {paradoxDiceCount !== null && (
-          <div className="flex flex-wrap content-start gap-3 px-2.5 pb-2.5 pt-1">
+          <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-2.5 pb-4">
             <AnimatePresence initial={false}>
               {Array.from({ length: paradoxDiceCount }, (_, i) => (
                 <FeltDie
@@ -572,6 +548,50 @@ export function CastCard({
             </AnimatePresence>
           </div>
         )}
+        </FeltSection>
+        )}
+        <FeltSection label="cast" labelAt="bottom" divided={paradoxArea}>
+        {status === "resolved" && cast.castRolls !== undefined ? (
+          // The cast roll on ONE row (2026-07-20): rolled faces, then the dice
+          // the containment bet ATE as empty ghosts (declared − rolled), so the
+          // felt shows the whole Gnosis + Arcanum pool. Explosions sit inline.
+          <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-4 pb-2.5">
+            {cast.castRolls.map((v, i) => (
+              <Die
+                key={`fb${i}`}
+                v={v}
+                again={10}
+                chance={
+                  cast.castIsChanceDie ??
+                  (cast.castPool !== undefined && cast.castPool <= 0)
+                }
+                size="md"
+                diamond
+              />
+            ))}
+            {Array.from({
+              length: Math.max(0, cast.declaredPool - cast.castRolls.length),
+            }).map((_, i) => (
+              <Die key={`fg${i}`} v={0} again={10} size="md" diamond ghost />
+            ))}
+            {(cast.castRoteRerolls ?? []).map((v, i) => (
+              <Die key={`fr${i}`} v={v} again={10} ring="rote" size="md" diamond />
+            ))}
+            {(cast.castExplosions ?? []).map((e, i) => (
+              <Die key={`fe${i}`} v={e.value} again={10} size="md" diamond />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-4 pb-2.5">
+            <AnimatePresence initial={false}>{feltDice}</AnimatePresence>
+            {cast.declaredPool === 0 && (
+              <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
+                no pool — a chance die waits
+              </span>
+            )}
+          </div>
+        )}
+        </FeltSection>
       </div>
       {/* The Tides tags directly BENEATH the felt (2026-07-20). */}
       {tideBadges.length > 0 && (
@@ -1423,5 +1443,46 @@ function ResolutionTag({
     >
       {children}
     </span>
+  )
+}
+
+/**
+ * A printed area of the felt (audition 2026-10-22): the chalk line and the
+ * small printed name a casino felt gives each betting area, so the caster's
+ * dice and reality's read as two areas with two jobs — the hand he throws
+ * and the roll that is made against it first — not one overflowing row.
+ */
+function FeltSection({
+  label,
+  labelAt,
+  divided = false,
+  children,
+}: {
+  label: string
+  labelAt: "top" | "bottom"
+  divided?: boolean
+  children: ReactNode
+}) {
+  const name = (
+    <div
+      className={`mv-data px-3.5 text-[9px] uppercase tracking-[0.18em] ${labelAt === "top" ? "pt-3" : "pb-3"}`}
+      style={{ color: "var(--dim)" }}
+    >
+      {label}
+    </div>
+  )
+  return (
+    <div
+      className={divided ? "border-t" : undefined}
+      style={
+        divided
+          ? { borderColor: "color-mix(in srgb, var(--ink) 62%, var(--panel))" }
+          : undefined
+      }
+    >
+      {labelAt === "top" && name}
+      {children}
+      {labelAt === "bottom" && name}
+    </div>
   )
 }

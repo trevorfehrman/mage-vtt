@@ -55,6 +55,7 @@
    * 4.9:1 on --panel — clears the 4.5 floor for its 12px odds text. */
   --paradox: #e34b4b;
   --mana: #6f93ae; /* Mana's identity blue — verdigris's own recipe, hue-turned to water */
+  --will: #ab8ee6; /* Willpower's identity — amethyst; brighter than the other inks because a violet tint sinks into the void faster than verdigris does */
   /* Filled tide-chip text (pass 3, note 6): the owner's explicit call is
    * white on the tide's own ground. That runs ~2.5:1 against accent/ember —
    * a standing exception to ADR-0021's 4.5 floor, flagged for the owner's
