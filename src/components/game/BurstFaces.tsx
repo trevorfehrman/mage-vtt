@@ -32,6 +32,8 @@ const BurstFacesProps = Schema.Struct({
   ghostTitle: Schema.optional(Schema.String),
   /** Declared dice the containment bet ate: empty ghosts trailing the row. */
   eaten: Schema.optional(Schema.Number),
+  /** What ate them, when it wasn't the containment bet (the Paradox row's Mana). */
+  eatenTitle: Schema.optional(Schema.String),
   /** The row's gap in px — the felt's spacing, which the plate keeps and a child springs across. */
   gap: Schema.optional(Schema.Number),
   /** The row's margin and padding — the caller's felt sets them. */
@@ -73,6 +75,7 @@ export function BurstFaces({
   contained = 0,
   ghostTitle,
   eaten = 0,
+  eatenTitle,
   gap = 12,
   className,
   plated = true,
@@ -119,6 +122,7 @@ export function BurstFaces({
                     {...(tone !== undefined ? { tone } : {})}
                     {...(die.ring !== undefined ? { ring: die.ring } : {})}
                     {...(die.ghost && die.kind !== "eaten" && ghostTitle !== undefined ? { title: ghostTitle } : {})}
+                    {...(die.kind === "eaten" && eatenTitle !== undefined ? { title: eatenTitle } : {})}
                   />
                 </motion.span>
               )

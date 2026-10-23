@@ -96,6 +96,23 @@ describe("BurstFaces", () => {
     expect(faces[3]!.style.border).toContain("dashed")
   })
 
+  it("titles the eaten dice by what ate them", () => {
+    const { container } = render(
+      createElement(BurstFaces, {
+        rolls: [4],
+        roteRerolls: [],
+        explosions: [],
+        again: 10,
+        reduced: true,
+        eaten: 1,
+        eatenTitle: "Mitigated",
+        tone: "paradox",
+      }),
+    )
+    const faces = [...container.querySelectorAll("[data-face]")] as HTMLElement[]
+    expect(faces[1]!.title).toBe("Mitigated")
+  })
+
   it("a child enters hidden when motion is on, and stands at once when reduced", () => {
     const props = {
       rolls: [10],
