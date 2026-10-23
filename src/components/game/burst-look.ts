@@ -31,6 +31,16 @@ export const Plate = Schema.Struct({
 })
 export type Plate = typeof Plate.Type
 
+/**
+ * How far the plate reaches past its dice (owner, 2026-10-23: the dice must
+ * stay on the row's grid). A diamond's point overhangs its box by
+ * px·(√2−1)/2, so the plate clears the points by 2px — and the plate is
+ * pulled out by the same amount (negative margin), so its dice sit exactly
+ * where they would bare and the row's height never changes.
+ */
+export const platePad = (size: DieSize): number =>
+  Math.round((SIZE_LADDER[size].px * (Math.SQRT2 - 1)) / 2) + 2
+
 /** The owner's pick (2026-10-23): nearly square — 3px, an echo of the die's own 4px — with the drifting fog. */
 export const PLATE: Plate = { radius: 3, fog: "drift" }
 

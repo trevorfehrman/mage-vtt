@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest"
-import { BURST_BEAT, burstEntrance, burstPlan } from "#/components/game/burst-look"
+import { BURST_BEAT, burstEntrance, burstPlan, platePad } from "#/components/game/burst-look"
 import { ringInk } from "#/components/game/die-look"
 import { entranceSpring } from "#/components/ui/entrance"
 
@@ -100,5 +100,13 @@ describe("ringInk", () => {
   it("is the face's ring ink — and the plate's", () => {
     expect(ringInk(undefined)).toBe("var(--accent)")
     expect(ringInk("paradox")).toBe("var(--paradox)")
+  })
+})
+
+describe("platePad", () => {
+  it("clears a diamond's points by 2px: 6 at sm, 7 at md", () => {
+    // Overhang: 20·(√2−1)/2 ≈ 4.1 → 4; 24·(√2−1)/2 ≈ 5.0 → 5.
+    expect(platePad("sm")).toBe(6)
+    expect(platePad("md")).toBe(7)
   })
 })

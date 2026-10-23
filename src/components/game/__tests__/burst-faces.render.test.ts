@@ -49,6 +49,9 @@ describe("BurstFaces", () => {
     const plated = render(createElement(BurstFaces, props)).container
     const chain = plated.querySelector('[data-burst="chain"]') as HTMLElement
     expect(chain.style.borderRadius).toBe("3px")
+    // Flush: padded past the points and pulled out by the same, so the dice keep the grid.
+    expect(chain.style.padding).toBe("6px")
+    expect(chain.style.margin).toBe("-6px")
     expect(chain.querySelector('[data-fog="drift"]')).not.toBeNull()
     expect((plated.querySelector('[data-burst="one"]') as HTMLElement).className).toBe("contents")
   })
