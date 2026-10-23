@@ -5,6 +5,8 @@ import {
   poolHasGlyph,
   poolLook,
   shapeClass,
+  type PoolInput,
+  type PoolKind,
 } from "#/components/game/die-look"
 
 /**
@@ -20,11 +22,10 @@ describe("the one diamond geometry", () => {
   })
 })
 
-describe("pool mode (the FeltDie job)", () => {
-  const pool = (kind: Parameters<typeof poolLook>[0]["kind"], over: Partial<Parameters<typeof poolLook>[0]> = {}) =>
-    poolLook({ kind, ghost: false, lit: false, ...over })
-  const ghostOf = (kind: Parameters<typeof poolLook>[0]["kind"]) => pool(kind, { ghost: true })
-  const cls = (kind: Parameters<typeof poolClass>[0]["kind"], reduced: boolean | null, over: Partial<Parameters<typeof poolClass>[0]> = {}) =>
+describe("pool mode (an unrolled die on the felt)", () => {
+  const pool = (kind: PoolKind, over: Partial<PoolInput> = {}) => poolLook({ kind, ghost: false, lit: false, ...over })
+  const ghostOf = (kind: PoolKind) => pool(kind, { ghost: true })
+  const cls = (kind: PoolKind, reduced: boolean | null, over: Partial<PoolInput> = {}) =>
     poolClass({ kind, ghost: false, lit: false, ...over }, reduced)
 
   it("colors a sheet die verdigris with a solid inside border", () => {
