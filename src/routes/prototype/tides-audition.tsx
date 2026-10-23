@@ -12,7 +12,7 @@
 // long prose and the worst legibility case (a green pill on a red ground)
 // included on purpose.
 
-import { useId, useState, type ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 
 export const Route = createFileRoute("/prototype/tides-audition")({ component: TidesAudition })
@@ -75,67 +75,26 @@ type Ground = {
   paint?: (mods: ReadonlyArray<Mod>) => ReactNode
 }
 
-/**
- * G · one flowing into the other. Green LEFT, red RIGHT, the seam running
- * top to bottom. The net slides the seam left or right — never past the
- * edges, each side always owns its own — and each side's REACH spills past
- * the seam where it is strong: green reaches over along the TOP into the
- * right (encroaching from above), red reaches under along the FLOOR into
- * the left (rising from below). Strong green = owns the left, leans over
- * the top, red is a corner. Strong red = the mirror. Each side's alpha is
- * its own weight. The seam is blurred so it is sensed, not drawn; the paths
- * run past the box so only the seam softens and the owned edges stay crisp.
- */
-function FlowGround({ mods }: { mods: ReadonlyArray<Mod> }) {
-  const id = useId()
-  const { ebb, flood, net } = sums(mods)
-  if (ebb === 0 && flood === 0) return null
-  // where the seam sits at mid-height: green strong pushes it right
-  const X = clamp(50 - net * 7, 18, 82)
-  // each side's reach past the seam — green along the top, red along the floor
-  const Ag = ebb === 0 ? 0 : clamp(10 + ebb * 5, 10, 30)
-  const Ar = flood === 0 ? 0 : clamp(10 + flood * 5, 10, 30)
-  const top = clamp(X + Ag, 6, 94)
-  const bottom = clamp(X - Ar, 6, 94)
-  const seam = `L ${top} 0 C ${top} 28 ${X} 30 ${X} 50 C ${X} 70 ${bottom} 72 ${bottom} 100`
-  const green = `M -20 -20 L ${top} -20 ${seam} L ${bottom} 120 L -20 120 Z`
-  const red = `M 120 -20 L ${top} -20 ${seam} L ${bottom} 120 L 120 120 Z`
-  const aE = ebb === 0 ? 0 : Math.min(clamp(12 + ebb * 3, 12, 26) * EBB_BOOST, 40) / 100
-  const aF = flood === 0 ? 0 : clamp(12 + flood * 3, 12, 26) / 100
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden
-    >
-      <defs>
-        <linearGradient id={`${id}e`} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#6fae97" stopOpacity={aE} />
-          <stop offset="1" stopColor="#6fae97" stopOpacity={aE * 0.5} />
-        </linearGradient>
-        <linearGradient id={`${id}r`} x1="1" y1="0" x2="0" y2="0">
-          <stop offset="0" stopColor="#e34b4b" stopOpacity={aF} />
-          <stop offset="1" stopColor="#e34b4b" stopOpacity={aF * 0.5} />
-        </linearGradient>
-        {/* viewBox units stretch ~3.7px wide and ~1.2px tall in a card-width box */}
-        <filter id={`${id}f`} x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="1.6 5" />
-        </filter>
-      </defs>
-      {ebb > 0 && <path d={green} fill={`url(#${id}e)`} filter={`url(#${id}f)`} />}
-      {flood > 0 && <path d={red} fill={`url(#${id}r)`} filter={`url(#${id}f)`} />}
-    </svg>
-  )
-}
-
 const GROUNDS: ReadonlyArray<Ground> = [
   {
-    key: "flow",
-    name: "G · one flowing into the other",
-    note: "green left, red right, the seam top to bottom. The net slides it; each side's reach spills past it where it is strong — green over the top, red under the floor. Edges always owned.",
-    css: () => undefined,
-    paint: (mods) => <FlowGround mods={mods} />,
+    key: "tilt",
+    name: "H · C, tilted",
+    note: "C exactly — one gradient, crossover from the net, each side's alpha its own weight, each color owning its whole edge — plus a gentle tilt: green a touch heavier at the top, red a touch heavier at the floor.",
+    css: (mods) => {
+      const { ebb, flood, net } = sums(mods)
+      if (ebb === 0 && flood === 0) return undefined
+      const x = clamp(50 - net * 9, 4, 96)
+      const aE = ebb === 0 ? 0 : clamp(8 + ebb * 3.5, 8, 22)
+      const aF = flood === 0 ? 0 : clamp(8 + flood * 3.5, 8, 22)
+      return [
+        // the tilt: a soft wash from the top-left corner for green, from the
+        // bottom-right for red — about half the base weight, short reach
+        ...(ebb > 0 ? [`linear-gradient(155deg, ${mixSide(EBB, aE * 0.55)} 0%, transparent 48%)`] : []),
+        ...(flood > 0 ? [`linear-gradient(335deg, ${mixSide(FLOOD, aF * 0.55)} 0%, transparent 48%)`] : []),
+        // the base: C
+        `linear-gradient(90deg, ${mixSide(EBB, aE)} 0%, transparent ${x}%, ${mixSide(FLOOD, aF)} 100%)`,
+      ].join(", ")
+    },
   },
   {
     key: "advance",
