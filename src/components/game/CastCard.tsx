@@ -19,6 +19,7 @@ import {
   resolveParadox,
   type ParadoxPoolModifier,
 } from "#/domain/paradox"
+import { isDieSuccess } from "#/domain/dice"
 import { castOddsUnderParadox, rollOdds } from "#/domain/probability"
 import { signedDice, tidesGround, tidesNetInk, tidesPillEdge, tidesWeight } from "./tides-ground"
 import { seamErrorMessage } from "#/lib/seam-errors"
@@ -377,11 +378,35 @@ export function CastCard({
     paradoxDiceCount !== null && feltPool !== null
       ? Math.min(feltPool.baseDice, paradoxDiceCount)
       : 0
+  // Once the ST has rolled, the faces live in the Paradox area (MAG-45,
+  // owner 2026-10-23 — they used to drop below the felt as glyphs over the
+  // lore term): the record from the rolled rung onward, the same area, so
+  // the eye never has to look for reality's dice anywhere else. During the
+  // caster's containment bet the successes the bet absorbs ghost from the
+  // row's end — the felt's one grammar for a price being weighed — and on
+  // the record the stamped containment ghosts them for good. A ghosted
+  // face is a success that never manifested, not a die that never rolled.
+  const rolledFaces: ReadonlyArray<{ v: number; chance: boolean }> =
+    status === "paradox" || status === "resolved"
+      ? [
+          ...(cast.paradoxRolls ?? []).map((v) => ({ v, chance: cast.paradoxIsChanceDie ?? false })),
+          ...(cast.paradoxExplosions ?? []).map((e) => ({ v: e.value, chance: false })),
+        ]
+      : []
+  const containedNow =
+    status === "paradox" ? cockpitContained : (cast.containedSuccesses ?? 0)
+  // The last `containedNow` successes, counted from the row's end.
+  const ghostedFaces = rolledFaces
+    .reduceRight<{ left: number; ghosts: ReadonlyArray<boolean> }>(
+      ({ left, ghosts }, face) => {
+        const ghost = left > 0 && isDieSuccess(face.v, face.chance)
+        return { left: ghost ? left - 1 : left, ghosts: [ghost, ...ghosts] }
+      },
+      { left: containedNow, ghosts: [] },
+    ).ghosts
   // Reality's printed area exists only while it holds dice: the provisional
-  // pool before the ST's roll, or the rolled faces on the record.
-  const paradoxArea =
-    paradoxDiceCount !== null ||
-    (status === "resolved" && (cast.paradoxRolls ?? []).length > 0)
+  // pool before the ST's roll, or the rolled faces from the roll onward.
+  const paradoxArea = paradoxDiceCount !== null || rolledFaces.length > 0
   // The Tides on the felt (notes 3/4/17): the pool's named ±s as ebb/flood
   // badges in the gutter, live on every seat's card — fluid and fixed alike
   // now that the provisional pool computes (note 1) — except on the ST's own
@@ -733,27 +758,23 @@ export function CastCard({
             </TooltipProvider>
           }
         >
-        {status === "resolved" && (cast.paradoxRolls ?? []).length > 0 && (
+        {rolledFaces.length > 0 && (
           <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-2.5 pb-4">
-            {(cast.paradoxRolls ?? []).map((v, i) => (
+            {rolledFaces.map((face, i) => (
               <UnifiedDie
                 key={`fp${i}`}
                 mode="face"
-                v={v}
+                v={face.v}
                 again={10}
-                chance={cast.paradoxIsChanceDie ?? false}
+                chance={face.chance}
                 tone="paradox"
                 size="md"
-              />
-            ))}
-            {(cast.paradoxExplosions ?? []).map((e, i) => (
-              <UnifiedDie
-                key={`fpe${i}`}
-                mode="face"
-                v={e.value}
-                again={10}
-                tone="paradox"
-                size="md"
+                ghost={ghostedFaces[i] ?? false}
+                title={
+                  ghostedFaces[i]
+                    ? "Contained — this Paradox success lands as Resistant bashing instead of manifesting"
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -1364,10 +1385,11 @@ function MitigationPreview({
 }
 
 /**
- * The Paradox cockpit (notes 13–15; rebuilt symbolic by pass 2, notes 6/8/9):
- * a centered column that IS the phase's headline — one Paradox glyph per
- * success still to deal with (shrinking as boxes are clicked), the English
- * lore term beneath, the caster's health track beneath that. Box clicks ARE
+ * The Paradox cockpit (notes 13–15; rebuilt symbolic by pass 2, notes 6/8/9;
+ * its glyph row retired by MAG-45 — the rolled faces in the Paradox area
+ * carry the count, ghosting as the bet absorbs them): a centered column
+ * that IS the phase's headline — the English lore term, the caster's
+ * health track beneath it. Box clicks ARE
  * the containment bet: each selected box one Paradox success absorbed as
  * Resistant bashing, worn in the printed sheet's own grammar — the damage
  * glyph in the box, the Resistant dot beneath it (Mage p. 124's "place a dot
@@ -1415,17 +1437,9 @@ function ParadoxCockpit({
     interactive && cap >= track.filter((b) => b.severity === "empty").length
   return (
     <div className="mt-2 grid justify-items-center gap-1.5 py-1">
-      {/* One glyph per Paradox still loose — the count nobody reads as a
-          number (note 8). The row keeps its height at zero glyphs. */}
-      <div className="flex min-h-[18px] flex-wrap items-center justify-center gap-1.5">
-        {Array.from({ length: outlook.uncontained }, (_, i) => (
-          <ParadoxGlyph
-            key={i}
-            size={16}
-            title="A Paradox success still loose — contain it on the track below, or it manifests"
-          />
-        ))}
-      </div>
+      {/* No glyph row (MAG-45): the rolled faces stand in the Paradox area
+          above, and the ones the bet absorbs ghost there — the count of what
+          is still loose is the solid red faces. */}
       {/* The lore slot: a fixed-height line the severity term burns in, or
           the quiet word when nothing runs loose — same height either way. */}
       <div className="flex h-[24px] items-center justify-center">
