@@ -341,6 +341,16 @@ describe("live casts have their own read (MAG-46)", () => {
     expect(liveCastsFor(null, [fluid])).toEqual([])
   })
 
+  it("chronicleFor: a cast that ends — resolved, cancelled or voided — joins the feed at the moment it ended", () => {
+    const earlier = message({ _id: "m_before", timestamp: 1000 })
+    const ended = (id: string, status: string) => cast(id, 10, { status, timestamp: 2000 })
+    for (const status of ["resolved", "cancelled", "voided"]) {
+      const record = ended(`c_${status}`, status)
+      expect(chronicleFor(player, [earlier, record])[0]).toEqual(record)
+      expect(liveCastsFor(player, [record])).toEqual([])
+    }
+  })
+
   it("chronicleFor: records only — a live cast is never a Chronicle entry, so its cap can't touch one", () => {
     const chatter = Array.from({ length: FEED_CAP + 5 }, (_, i) => message({ _id: `m_${i}`, timestamp: i + 1 }))
     const feed = chronicleFor(player, [fluid, done, ...chatter])
