@@ -1,5 +1,13 @@
 # Component polish runs shared-first, on Motion, against an amended identity
 
+> **Amended** (2026-10-23, MAG-18, the owner's call): a fourth ambient
+> exception — the burst plate's **fog** (`.mv-plate-fog`, an 11s drift of
+> the plate's ink behind its dice) moves while the roll is fresh (the
+> feed's newest roll card, a live cast's Paradox row) and holds still on
+> history; reduced motion stills it. The owner's reading of this ADR:
+> ambient motion is **rare and earned, not banned** — a fresh event may
+> move; standing chrome may not. See ADR-0024's MAG-18 note.
+
 > **Amended** (2026-10-22, MAG-44, owner's calls on the cast card): two
 > exceptions to the standards below are now sanctioned. **Ambient motion:**
 > the felt's Paradox dice are scorch holes whose rim-burn *breathes* at rest

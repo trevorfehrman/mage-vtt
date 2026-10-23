@@ -18,7 +18,6 @@ import { AnimatePresence, useReducedMotion } from "motion/react"
 import { BurstFaces } from "#/components/game/BurstFaces"
 import { UnifiedDie } from "#/components/game/UnifiedDie"
 import type { PoolKind } from "#/components/game/die-look"
-import type { Plate, PlateFog } from "#/components/game/burst-look"
 
 // ── Arcana glyph set (hybrid grammar, copied from the visual-identity spec) ──
 type Arc =
@@ -548,13 +547,6 @@ const BURST_CASES: BurstCase[] = [
   { label: "paradox 10 → 9", rolls: [10], explosions: [{ value: 9, parentIndex: 0 }], again: 10, tone: "paradox" },
   { label: "legacy orphan 7", rolls: [], explosions: [{ value: 7, parentIndex: null }], again: 10 },
 ]
-const PLATE_RADII: ReadonlyArray<readonly [string, Plate["radius"]]> = [
-  ["pill", "pill"],
-  ["r 16", 16],
-  ["r 10", 10],
-  ["r 6", 6],
-  ["r 3", 3],
-]
 type FaceCase = { label: string; v: number; again?: number; chance?: boolean; tone?: "paradox"; ring?: "rote" | "exp"; ghost?: boolean }
 const FACE_CASES: FaceCase[] = [
   { label: "success 8", v: 8 },
@@ -582,7 +574,6 @@ function DieAudition() {
   )
   const [nextId, setNextId] = useState(3)
   const [burning, setBurning] = useState(true)
-  const [fog, setFog] = useState<PlateFog>("drift")
   const [replay, setReplay] = useState(0)
   const feed = (kind: PoolKind) => { setFelts((f) => ({ ...f, [kind]: [...f[kind], nextId] })); setNextId((n) => n + 1) }
   const skim = (kind: PoolKind, id: number) => setFelts((f) => ({ ...f, [kind]: f[kind].filter((d) => d !== id) }))
@@ -638,19 +629,14 @@ function DieAudition() {
             </div>
           ))}
         </div>
-        {/* The burst grid (MAG-18, owner 2026-10-23: "I need to see each
-            case"): one isolated cell per case a burst look must handle,
-            one row per look. */}
+        {/* The burst grid (MAG-18): one isolated cell per case a burst must
+            handle — bare beside the shipped plate (3px, flush, the drifting
+            fog). */}
         <div className="mt-4 flex items-center gap-3">
           <span className="cp-eyebrow">Burst plate · MAG-18</span>
           <button type="button" className={`cp-mini ${burning ? "cp-mini-on" : ""}`} onClick={() => setBurning((b) => !b)}>
             {burning ? "drifting" : "still"}
           </button>
-          {(["drift", "flow", "none"] as const).map((f) => (
-            <button key={f} type="button" className={`cp-mini ${fog === f ? "cp-mini-on" : ""}`} onClick={() => setFog(f)}>
-              fog · {f}
-            </button>
-          ))}
           <button type="button" className="cp-mini" onClick={() => setReplay((n) => n + 1)}>replay arrival</button>
         </div>
         <div key={replay} className="mt-2 overflow-x-auto" data-audition="burst-grid">
@@ -664,7 +650,7 @@ function DieAudition() {
               </tr>
             </thead>
             <tbody>
-              {PLATE_RADII.map(([label, radius]) => (
+              {([["bare", false], ["plate", true]] as const).map(([label, plated]) => (
                 <tr key={label}>
                   <td className="cp-eyebrow pr-2">{label}</td>
                   {BURST_CASES.map((c) => (
@@ -677,7 +663,7 @@ function DieAudition() {
                         again={c.again}
                         size="md"
                         reduced={reduced}
-                        plate={{ radius, fog }}
+                        plated={plated}
                         burning={burning}
                         {...(c.tone ? { tone: c.tone } : {})}
                       />

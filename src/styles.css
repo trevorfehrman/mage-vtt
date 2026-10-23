@@ -1111,8 +1111,6 @@ a {
   z-index: -1;
   pointer-events: none;
   opacity: 0.9;
-}
-.mv-plate-fog-drift {
   background:
     radial-gradient(45% 80% at 25% 40%, color-mix(in srgb, var(--plate-ink) 30%, transparent), transparent 70%),
     radial-gradient(55% 90% at 75% 65%, color-mix(in srgb, var(--plate-ink) 22%, transparent), transparent 70%),
@@ -1124,15 +1122,6 @@ a {
   0% { background-position: 0% 0%, 100% 100%, 40% 0%; }
   50% { background-position: 60% 40%, 30% 60%, 100% 70%; }
   100% { background-position: 100% 80%, 0% 20%, 0% 100%; }
-}
-.mv-plate-fog-flow {
-  background: linear-gradient(105deg, transparent 20%, color-mix(in srgb, var(--plate-ink) 26%, transparent) 45%, color-mix(in srgb, var(--plate-ink) 10%, transparent) 60%, transparent 80%);
-  background-size: 260% 100%;
-  animation: mv-plate-flow 7s ease-in-out infinite alternate;
-}
-@keyframes mv-plate-flow {
-  from { background-position: 100% 0; }
-  to { background-position: 0% 0; }
 }
 .mv-burst-still { animation: none; }
 @media (prefers-reduced-motion: reduce) {

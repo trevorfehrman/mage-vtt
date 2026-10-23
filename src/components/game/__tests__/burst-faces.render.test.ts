@@ -36,7 +36,7 @@ describe("BurstFaces", () => {
     ).toEqual(["0", "1", "2"])
   })
 
-  it("puts a chain on the owner's plate by default, bare with plate null, and a lone die never on one", () => {
+  it("puts a chain on its plate by default, bare when unplated, and a lone die never on one", () => {
     const props = {
       rolls: [10, 3],
       roteRerolls: [],
@@ -44,7 +44,7 @@ describe("BurstFaces", () => {
       again: 10,
       reduced: true,
     }
-    const plain = render(createElement(BurstFaces, { ...props, plate: null })).container
+    const plain = render(createElement(BurstFaces, { ...props, plated: false })).container
     expect((plain.querySelector('[data-burst="chain"]') as HTMLElement).className).toBe("contents")
     const plated = render(createElement(BurstFaces, props)).container
     const chain = plated.querySelector('[data-burst="chain"]') as HTMLElement
@@ -52,7 +52,7 @@ describe("BurstFaces", () => {
     // Flush: padded past the points and pulled out by the same, so the dice keep the grid.
     expect(chain.style.padding).toBe("6px")
     expect(chain.style.margin).toBe("-6px")
-    expect(chain.querySelector('[data-fog="drift"]')).not.toBeNull()
+    expect(chain.querySelector("[data-fog]")).not.toBeNull()
     expect((plated.querySelector('[data-burst="one"]') as HTMLElement).className).toBe("contents")
   })
 

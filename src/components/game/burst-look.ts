@@ -17,19 +17,15 @@ import { DieSize, FaceRing, SIZE_LADDER, UNSEEN } from "./die-look"
 
 /**
  * The plate (owner's pick, 2026-10-23): a trigger and its children sit on
- * one filled plate that never wraps apart, with a slow fog of the plate's
- * ink drifting behind the dice. The radius and the fog are still being
- * auditioned. The fog burns while fresh and holds still otherwise;
- * ADR-0021 allows ambient motion when it is rare and earned.
+ * one filled plate that never wraps apart, nearly square — 3px, an echo of
+ * the die's own 4px — with a slow fog of the plate's ink drifting behind the
+ * dice while fresh and holding still otherwise (ADR-0021: ambient motion is
+ * rare and earned). Auditioned and set aside: a pill and 16/10/6px radii, a
+ * sliding "flow" fog, and louder effects (an edge beam, sparkles, a heat
+ * shimmer, burst rays) — and before the plate, faint per-die dressings and
+ * corners brought together until they touched, which read as a CSS bug.
  */
-export const PlateFog = Schema.Literals(["none", "drift", "flow"])
-export type PlateFog = typeof PlateFog.Type
-export const Plate = Schema.Struct({
-  /** Corner radius in px; "pill" is fully round. */
-  radius: Schema.Union([Schema.Number, Schema.Literal("pill")]),
-  fog: PlateFog,
-})
-export type Plate = typeof Plate.Type
+export const PLATE_RADIUS = 3
 
 /**
  * How far the plate reaches past its dice (owner, 2026-10-23: the dice must
@@ -41,8 +37,6 @@ export type Plate = typeof Plate.Type
 export const platePad = (size: DieSize): number =>
   Math.round((SIZE_LADDER[size].px * (Math.SQRT2 - 1)) / 2) + 2
 
-/** The owner's pick (2026-10-23): nearly square — 3px, an echo of the die's own 4px — with the drifting fog. */
-export const PLATE: Plate = { radius: 3, fog: "drift" }
 
 /** The row's gap a child springs across — one box and a gap to its left is where its trigger stands. */
 const FELT_GAP = 12
