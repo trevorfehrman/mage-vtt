@@ -665,9 +665,11 @@ export function CastCard({
         }
         return (
           <TooltipProvider>
+            {/* No border (owner, 2026-10-22): the tides themselves establish
+                the area — the ground's two inks are its edges. */}
             <div
-              className="mt-2.5 rounded-[6px] border px-3.5 pt-3 pb-3.5"
-              style={{ borderColor: "var(--line)", background: tidesGround(mods) }}
+              className="mt-2.5 rounded-[6px] px-3.5 pt-3 pb-3.5"
+              style={{ background: tidesGround(mods) }}
             >
               <div
                 className="mv-data flex items-baseline justify-between text-[9px] uppercase tracking-[0.18em]"
