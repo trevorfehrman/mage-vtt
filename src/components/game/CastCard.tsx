@@ -211,7 +211,7 @@ export function CastCard({
   // a ghost outline of the dice I'm erasing"), so the count is the
   // unmitigated pool and `mitigated` below says how many of its dice are
   // bought off. After the commit the stamped mitigation is real and the pool
-  // is simply smaller.
+  // is smaller — but its bought-off dice still ghost (`boughtOff` below).
   const pool = poolInputs
     ? calculateParadoxPool({
         ...poolInputs,
@@ -251,6 +251,15 @@ export function CastCard({
   // doctrine for eaten cast dice), which is where the scene's red dice sit,
   // so Mana erases the weather first and only then reaches into Gnosis.
   const mitigated = controls.includes("commit") ? Math.min(mitigation, mitigateCap) : 0
+  // After the commit the stamped mitigation keeps its ghosts (owner,
+  // 2026-10-23, the MAG-17 tour's second call): the dice the Mana bought off
+  // stay on the Paradox row, dashed, so the price still reads on the felt —
+  // before the roll at the row's end, and on the record trailing the faces.
+  const boughtOff =
+    pool !== null && cast.manaMitigation !== undefined
+      ? Math.max(0, poolBeforeMitigation - pool.totalDice)
+      : 0
+  const paradoxGhosts = mitigated + boughtOff
 
   // The cockpit's sheet: the CASTER's track, whichever seat is watching —
   // the caster's own when they hold the card, the passed-in caster sheet on
@@ -315,7 +324,10 @@ export function CastCard({
     ...feltSpecs.map((s) => s.kind),
     ...Array.from({ length: Math.max(0, cast.declaredPool - feltSpecs.length) }, () => "sheet" as const),
   ].slice(0, cast.declaredPool)
-  const eaten = controls.includes("contain") && outlook !== null ? outlook.eaten : 0
+  // Every seat sees the dice Paradox would eat (owner, 2026-10-23, the MAG-17
+  // tour's first call): the caster's ghosts follow their live bet, everyone
+  // else's the default outlook (nothing contained) — public once rolled.
+  const eaten = outlook !== null ? outlook.eaten : 0
   // Hover a cast die and its whole GROUP comes forward (the badges work,
   // 2026-10-22 evening): every die of that kind glows in its own ink, the
   // other kinds settle back a step, and one tooltip speaks for the group.
@@ -382,7 +394,7 @@ export function CastCard({
   // reality's own base, never worded as the rank — the rest are the Tides'.
   const paradoxDiceCount =
     feltPool !== null && cast.paradoxSuccesses === undefined && !terminal
-      ? feltPool.totalDice
+      ? feltPool.totalDice + boughtOff
       : null
   // The mage's own reductions — the tool in hand, a rote — come off the
   // mage's own green dice, never the red (owner, 2026-10-23: three floods
@@ -958,6 +970,8 @@ export function CastCard({
             reduced={reduced}
             rolledAt={cast.timestamp}
             contained={containedNow}
+            eaten={boughtOff}
+            eatenTitle={`Mitigated: −${boughtOff} (Mana spent at the commit)`}
             ghostTitle="Contained — this Paradox success lands as Resistant bashing instead of manifesting"
           />
         )}
@@ -967,7 +981,7 @@ export function CastCard({
             <AnimatePresence initial={false}>
               {Array.from({ length: paradoxDiceCount }, (_, i) => {
                 const kind: PoolKind = i < paradoxBaseCount ? "paradoxBase" : "paradox"
-                const ghosted = i >= paradoxDiceCount - mitigated
+                const ghosted = i >= paradoxDiceCount - paradoxGhosts
                 return (
                   <Tooltip key={`paradox:${i}`}>
                     <TooltipTrigger asChild>
@@ -989,7 +1003,7 @@ export function CastCard({
                     </TooltipTrigger>
                     <TooltipContent side="top" sideOffset={4}>
                       {ghosted
-                        ? `Mitigated: −${mitigated}`
+                        ? `Mitigated: −${paradoxGhosts}`
                         : kind === "paradoxBase"
                           ? baseSays
                           : `Tides: +${paradoxDiceCount - paradoxBaseCount}`}
@@ -997,13 +1011,13 @@ export function CastCard({
                   </Tooltip>
                 )
               })}
-              {paradoxDiceCount === 0 && (
+              {paradoxDiceCount === boughtOff && (
                 // The chance-die ghost holds the FIRST slot's key: when a
                 // flood lands it becomes the base die in place (one motion
                 // element, ghost → solid) instead of exiting beside an
                 // entering sibling, which made the base land one slot over
                 // and jump back (owner, 2026-10-23).
-                <Tooltip key="paradox:0">
+                <Tooltip key={boughtOff > 0 ? "paradox:chance" : "paradox:0"}>
                   <TooltipTrigger asChild>
                     <span className="grid size-[20px] place-items-center">
                       <UnifiedDie mode="pool" kind="paradox" ghost reduced={reduced} glide={false} />
