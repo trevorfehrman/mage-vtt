@@ -18,7 +18,7 @@ import { AnimatePresence, useReducedMotion } from "motion/react"
 import { BurstFaces } from "#/components/game/BurstFaces"
 import { UnifiedDie } from "#/components/game/UnifiedDie"
 import type { PoolKind } from "#/components/game/die-look"
-import type { BurstLook } from "#/components/game/burst-look"
+import type { Plate, PlateFog } from "#/components/game/burst-look"
 
 // ── Arcana glyph set (hybrid grammar, copied from the visual-identity spec) ──
 type Arc =
@@ -548,13 +548,12 @@ const BURST_CASES: BurstCase[] = [
   { label: "paradox 10 → 9", rolls: [10], explosions: [{ value: 9, parentIndex: 0 }], again: 10, tone: "paradox" },
   { label: "legacy orphan 7", rolls: [], explosions: [{ value: 7, parentIndex: null }], again: 10 },
 ]
-const BURST_LOOKS: ReadonlyArray<readonly [BurstLook, string]> = [
-  ["plain", "No plate, no effect — what ships until the pick"],
-  ["plate", "Trigger and children on one filled plate, nothing else"],
-  ["beam", "The plate, with a light running its edge like a fuse"],
-  ["sparkles", "The plate, with glints twinkling round the trigger"],
-  ["shimmer", "The plate, with a flickering heat halo behind the trigger"],
-  ["rays", "The plate, with a starburst behind the trigger, turning slowly"],
+const PLATE_RADII: ReadonlyArray<readonly [string, Plate["radius"]]> = [
+  ["pill", "pill"],
+  ["r 16", 16],
+  ["r 10", 10],
+  ["r 6", 6],
+  ["r 3", 3],
 ]
 type FaceCase = { label: string; v: number; again?: number; chance?: boolean; tone?: "paradox"; ring?: "rote" | "exp"; ghost?: boolean }
 const FACE_CASES: FaceCase[] = [
@@ -583,6 +582,7 @@ function DieAudition() {
   )
   const [nextId, setNextId] = useState(3)
   const [burning, setBurning] = useState(true)
+  const [fog, setFog] = useState<PlateFog>("drift")
   const [replay, setReplay] = useState(0)
   const feed = (kind: PoolKind) => { setFelts((f) => ({ ...f, [kind]: [...f[kind], nextId] })); setNextId((n) => n + 1) }
   const skim = (kind: PoolKind, id: number) => setFelts((f) => ({ ...f, [kind]: f[kind].filter((d) => d !== id) }))
@@ -642,10 +642,15 @@ function DieAudition() {
             case"): one isolated cell per case a burst look must handle,
             one row per look. */}
         <div className="mt-4 flex items-center gap-3">
-          <span className="cp-eyebrow">Burst grid · MAG-18</span>
+          <span className="cp-eyebrow">Burst plate · MAG-18</span>
           <button type="button" className={`cp-mini ${burning ? "cp-mini-on" : ""}`} onClick={() => setBurning((b) => !b)}>
-            {burning ? "burning" : "settled"}
+            {burning ? "drifting" : "still"}
           </button>
+          {(["drift", "flow", "none"] as const).map((f) => (
+            <button key={f} type="button" className={`cp-mini ${fog === f ? "cp-mini-on" : ""}`} onClick={() => setFog(f)}>
+              fog · {f}
+            </button>
+          ))}
           <button type="button" className="cp-mini" onClick={() => setReplay((n) => n + 1)}>replay arrival</button>
         </div>
         <div key={replay} className="mt-2 overflow-x-auto" data-audition="burst-grid">
@@ -659,9 +664,9 @@ function DieAudition() {
               </tr>
             </thead>
             <tbody>
-              {BURST_LOOKS.map(([look, says]) => (
-                <tr key={look}>
-                  <td className="cp-eyebrow pr-2" title={says}>{look}</td>
+              {PLATE_RADII.map(([label, radius]) => (
+                <tr key={label}>
+                  <td className="cp-eyebrow pr-2">{label}</td>
                   {BURST_CASES.map((c) => (
                     <td key={c.label} className="rounded-md border px-5 py-4" style={{ borderColor: "var(--line)" }}>
                       <BurstFaces
@@ -672,7 +677,7 @@ function DieAudition() {
                         again={c.again}
                         size="md"
                         reduced={reduced}
-                        look={look}
+                        plate={{ radius, fog }}
                         burning={burning}
                         {...(c.tone ? { tone: c.tone } : {})}
                       />
