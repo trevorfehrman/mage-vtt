@@ -536,11 +536,46 @@ pre code {
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
+/* The tray's grip (MAG-47): a drawer handle riding the dice tray's top edge,
+ * in the same place in both forms — press it to open or shrink the tray. A
+ * dim bar at rest; it widens and burns accent under the pointer or the
+ * keyboard. The button is a wider, taller hit area than the bar it shows. */
+.mv-grip {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 12px;
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+.mv-grip-bar {
+  width: 28px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--dim);
+  opacity: 0.6;
+  transition:
+    width 0.15s,
+    background 0.15s,
+    opacity 0.15s;
+}
+.mv-grip:hover .mv-grip-bar,
+.mv-grip:focus-visible .mv-grip-bar {
+  width: 40px;
+  background: var(--accent);
+  opacity: 1;
+}
+
 /* The a11y floor's focus ring (ADR-0021): keyboard focus is always visible —
  * one accent ring, offset so the control's own border stays legible. One rule
  * owns the plank: mv-* controls and the restyled shadcn primitives
  * (data-slot) all take the same ring. */
 .mv-btn:focus-visible,
+.mv-grip:focus-visible,
 .mv-mini:focus-visible,
 .mv-chip:focus-visible,
 .mv-roll:focus-visible,

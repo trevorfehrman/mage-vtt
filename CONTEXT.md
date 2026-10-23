@@ -308,6 +308,13 @@ card's row of faces. One grammar on every felt (ADR-0024): a die is a diamond,
 unrolled dice colored by where they came from, rolled dice by what they showed.
 _Avoid_: Tray (that is one felt, the composing one), dice line.
 
+**Shrunk tray** / **Tall tray**:
+The dice tray's two forms, the viewer's choice (MAG-47, ADR-0021). The shrunk
+tray is one line — the count, the options a throw carries, Roll — and still
+composes and rolls; the tall tray is every control. The grip on the tray's top
+edge flips between them, and the choice is remembered.
+_Avoid_: Collapsed tray, minimized tray (the shrunk tray is not hidden; it rolls).
+
 **Ghost** (of a die):
 A die that is not (yet) real — dashed in its own ink over nothing, at 45%: a
 price being weighed before the commit, a declared die Paradox ate before the

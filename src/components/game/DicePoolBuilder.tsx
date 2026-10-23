@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy";
 import type { CharacterSheet } from "#/domain/character";
@@ -7,6 +8,8 @@ import { Felt } from "./Felt";
 import type { PoolKind } from "./die-look";
 import { pooledDice } from "#/machines/dice-pool";
 import type { useDicePool } from "#/hooks/use-dice-pool";
+import { useTrayForm } from "#/hooks/use-tray-form";
+import { OPTION_WORDS, flipTrayForm, trayOptionWords } from "./tray-form";
 
 type DicePoolAPI = ReturnType<typeof useDicePool>;
 
@@ -18,12 +21,19 @@ const diceLabel = (n: number): string => (n === 1 ? "1 die" : `${n} dice`);
  * arrives as ember dice — one unified pool, one Roll. Chevron rails feed and
  * skim; the fittings are tray hardware on the lip, never a disclosure.
  *
- * The tray is ALWAYS OPEN (owner call 2026-07-19, reversing 2026-07-18's
- * caret): the roll zone is one instrument — the raw felt at rest, replaced
- * in place when a dice system takes the stage — so it never folds and
- * nothing else shares the slot. The felt holds a fixed two-row height with
- * its lineage in the tray's own gutter: no layout shift as dice or
- * provenance arrive.
+ * Two forms, the viewer's choice (MAG-47, owner call 2026-10-23: "much of
+ * the time i do not need all these controls"). This reverses 2026-07-19's
+ * ALWAYS OPEN, which had itself reversed 2026-07-18's caret: the caret hid
+ * the tray behind a disclosure, while the **shrunk** form still composes
+ * and rolls. It is one line on the tall tray's own columns — ‹ · the felt
+ * (count, the options a throw carries, Roll) · › — so the rails stand
+ * still when the tray opens. The **tall** form is every control: the felt
+ * holds a fixed two-row height with its lineage in the tray's own gutter,
+ * no layout shift as dice or provenance arrive. The grip on the top edge
+ * flips between them, in the same place in both; the choice is remembered
+ * per viewer (`use-tray-form`) and nothing flips it on its own. The roll
+ * zone is still one instrument: replaced in place when a dice system takes
+ * the stage, nothing else shares the slot.
  */
 
 /** The loose-dice component — the "Modifier" lie is dead; plain dice say so.
@@ -42,6 +52,7 @@ export function DicePoolBuilder({
   character?: CharacterSheet | undefined;
 }) {
   const reduced = useReducedMotion();
+  const [form, setForm] = useTrayForm();
   const building = pool.state === "building";
   const rolling = pool.state === "rolling";
   const canInteract = pool.state === "idle" || building;
@@ -113,177 +124,248 @@ export function DicePoolBuilder({
       ? sheetComponents.map((c) => c.name).join(" + ")
       : null;
 
+  // One rail pair, one felt tap, one Roll trigger: the strip and the tall
+  // tray wear the same controls, sized for their form.
+  const rail = (dir: "skim" | "feed", size: string) =>
+    dir === "skim" ? (
+      <button
+        onClick={() => setLoose(loose - 1)}
+        disabled={loose === 0 || !canInteract}
+        className={`mv-btn ${size} rounded-[6px] text-[20px] leading-none disabled:opacity-30`}
+        title="Skim a die off the felt"
+      >
+        ‹
+      </button>
+    ) : (
+      <button
+        onClick={() => setLoose(loose + 1)}
+        disabled={!canInteract}
+        className={`mv-btn ${size} rounded-[6px] text-[20px] leading-none disabled:opacity-30`}
+        title="Feed a die onto the felt"
+      >
+        ›
+      </button>
+    );
+  const feltTap = {
+    role: "button",
+    tabIndex: 0,
+    title: "Tap the felt to add a die",
+    onClick: () => setLoose(loose + 1),
+    onKeyDown: (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setLoose(loose + 1);
+      }
+    },
+  } as const;
+  const rollTrigger = {
+    onClick: pool.roll,
+    disabled: rolling || !canInteract,
+    title:
+      total === 0
+        ? "Roll the empty felt — a chance die"
+        : `Roll ${diceLabel(total)}`,
+  };
+  const tall = form === "tall";
+  const grip = tall ? "Shrink the tray" : "Show every option";
+
   return (
-    <div className="border-t" style={{ borderColor: "var(--line)" }}>
-      {/* the felt, flanked by its rails: ‹/−5 skim off the left,
-              ›/+5 feed on from the right; fittings keep to the felt's
-              own column and wrap when the rail thins (#98) */}
+    <div className="relative border-t" style={{ borderColor: "var(--line)" }}>
+      {/* the grip: a drawer handle on the tray's top edge, the same place in
+          both forms */}
+      <button
+        onClick={() => setForm(flipTrayForm(form))}
+        className="mv-grip"
+        title={grip}
+        aria-label={grip}
+        aria-expanded={tall}
+      >
+        <span className="mv-grip-bar" />
+      </button>
+      {!tall ? (
+        // the strip: the tall tray's columns, Roll inside the felt's, so ‹
+        // and › keep their x when it opens
         <div
-          className="mx-3 mt-2 grid gap-1.5"
+          className="mx-3 grid items-center gap-1.5 py-2"
           style={{ gridTemplateColumns: "2rem minmax(0,1fr) 2rem" }}
         >
-          <button
-            onClick={() => setLoose(loose - 1)}
-            disabled={loose === 0 || !canInteract}
-            className="mv-btn w-8 rounded-[6px] text-[20px] leading-none disabled:opacity-30"
-            title="Skim a die off the felt"
-          >
-            ‹
-          </button>
-          <Felt
-            role="button"
-            tabIndex={0}
-            onClick={() => setLoose(loose + 1)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setLoose(loose + 1);
-              }
-            }}
-            className="relative block min-w-0 cursor-copy px-2 pt-2 pb-1 text-left"
-            title="Tap the felt to add a die"
-          >
-            {/* fixed two-row height — no shift as dice arrive; a third row
-                  scrolls */}
-            <span className="flex h-[58px] flex-wrap content-start gap-2.5 overflow-y-auto p-1">
-              <AnimatePresence initial={false}>
-                {sheetDice}
-                {willpowerDice}
-                {looseDice}
-              </AnimatePresence>
-            </span>
-            {/* the gutter — the lineage in the tray's own frame, no shift
-                  when it arrives */}
-            <p
-              className="mv-data h-[13px] truncate px-1 text-[10px] leading-none"
-              style={{ color: "var(--dim)" }}
+          {rail("skim", "h-8")}
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Felt
+              {...feltTap}
+              className="flex h-8 min-w-0 flex-1 cursor-copy items-center justify-between"
             >
-              {lineage ?? ""}
-            </p>
-            {/* the empty hint floats centered over the felt, out of the
-                  layout entirely — swept dice exit under it, nothing shifts */}
-            <AnimatePresence initial={false}>
-              {total === 0 && (
-                <motion.span
-                  key="empty-hint"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={
-                    reduced ? { duration: 0 } : { duration: 0.15, delay: 0.12 }
-                  }
-                  className="mv-empty pointer-events-none absolute inset-0"
-                >
-                  an empty felt rolls a chance die
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </Felt>
-          <button
-            onClick={() => setLoose(loose + 1)}
-            disabled={!canInteract}
-            className="mv-btn w-8 rounded-[6px] text-[20px] leading-none disabled:opacity-30"
-            title="Feed a die onto the felt"
-          >
-            ›
-          </button>
-
-          {/* fittings: the fives under their chevrons; the hardware fills
-                the felt's width when the rail affords it (owner call) */}
-          <button
-            onClick={() => setLoose(loose - 5)}
-            disabled={loose === 0 || !canInteract}
-            className="mv-mini w-8 self-start px-0 text-center disabled:opacity-40"
-            style={{ gridColumn: "1" }}
-            title="Skim five dice off"
-          >
-            −5
-          </button>
-          <div className="min-w-0" style={{ gridColumn: "2" }}>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                onClick={() => setLoose(0)}
-                disabled={loose === 0 || !canInteract}
-                className="mv-mini grow whitespace-nowrap disabled:opacity-40"
-                title="Sweep the loose dice off the felt"
-              >
-                Sweep
-              </button>
               <span
-                className="h-4 w-px"
-                style={{ background: "var(--line)" }}
-              />
-              {[10, 9, 8].map((n) => (
-                <button
-                  key={n}
-                  onClick={() => pool.setAgainThreshold(n)}
-                  disabled={!canInteract}
-                  className={`mv-mini grow whitespace-nowrap disabled:opacity-40 ${pool.context.againThreshold === n ? "mv-mini-on" : ""}`}
-                >
-                  {n}-ag
-                </button>
-              ))}
-              <button
-                onClick={() => pool.setRoteAction(!pool.context.isRoteAction)}
-                disabled={!canInteract}
-                className={`mv-mini grow whitespace-nowrap disabled:opacity-40 ${pool.context.isRoteAction ? "mv-mini-on" : ""}`}
+                className="mv-data whitespace-nowrap px-2.5 text-[13px]"
+                style={{ color: total === 0 ? "var(--dim)" : "var(--ink)" }}
               >
-                Rote
-              </button>
-              <button
-                onClick={() =>
-                  pool.setVisibility(
-                    pool.context.visibility === "hidden" ? "public" : "hidden",
-                  )
-                }
-                disabled={!canInteract}
-                className={`mv-mini grow whitespace-nowrap disabled:opacity-40 ${pool.context.visibility === "hidden" ? "mv-mini-on" : ""}`}
+                {total === 0 ? "chance die" : diceLabel(total)}
+              </span>
+              <span
+                className="mv-data min-w-0 truncate px-2.5 text-[10px] uppercase"
+                style={{ letterSpacing: "0.06em", color: "var(--dim)" }}
               >
-                Hidden
-              </button>
-              <GateButton
-                gate={willpowerGate}
-                onClick={() =>
-                  pool.setSpendWillpower(!pool.context.spendWillpower)
-                }
-                disabled={!canInteract}
-                className={`mv-mini grow whitespace-nowrap disabled:opacity-40 ${pool.context.spendWillpower ? "mv-mini-on" : ""}`}
-              >
-                WP +{WILLPOWER_BONUS_DICE}
-              </GateButton>
-            </div>
+                {trayOptionWords(pool.context).join(" · ")}
+              </span>
+            </Felt>
+            <button
+              {...rollTrigger}
+              className="mv-roll h-8 shrink-0 rounded-[3px] text-[12px] disabled:opacity-40"
+              style={{ minWidth: 76, padding: "0 10px" }}
+            >
+              {rolling ? "Rolling…" : total === 0 ? "◈ Roll" : "Roll"}
+            </button>
           </div>
-          <button
-            onClick={() => setLoose(loose + 5)}
-            disabled={!canInteract}
-            className="mv-mini w-8 self-start px-0 text-center disabled:opacity-40"
-            style={{ gridColumn: "3" }}
-            title="Feed five dice on"
-          >
-            +5
-          </button>
+          {rail("feed", "h-8")}
         </div>
+      ) : (
+        <>
+          {/* the felt, flanked by its rails: ‹/−5 skim off the left,
+              ›/+5 feed on from the right; fittings keep to the felt's
+              own column and wrap when the rail thins (#98) */}
+          <div
+            className="mx-3 mt-2 grid gap-1.5"
+            style={{ gridTemplateColumns: "2rem minmax(0,1fr) 2rem" }}
+          >
+            {rail("skim", "w-8")}
+            <Felt
+              {...feltTap}
+              className="relative block min-w-0 cursor-copy px-2 pt-2 pb-1 text-left"
+            >
+              {/* fixed two-row height — no shift as dice arrive; a third row
+                  scrolls */}
+              <span className="flex h-[58px] flex-wrap content-start gap-2.5 overflow-y-auto p-1">
+                <AnimatePresence initial={false}>
+                  {sheetDice}
+                  {willpowerDice}
+                  {looseDice}
+                </AnimatePresence>
+              </span>
+              {/* the gutter — the lineage in the tray's own frame, no shift
+                  when it arrives */}
+              <p
+                className="mv-data h-[13px] truncate px-1 text-[10px] leading-none"
+                style={{ color: "var(--dim)" }}
+              >
+                {lineage ?? ""}
+              </p>
+              {/* the empty hint floats centered over the felt, out of the
+                  layout entirely — swept dice exit under it, nothing shifts */}
+              <AnimatePresence initial={false}>
+                {total === 0 && (
+                  <motion.span
+                    key="empty-hint"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={
+                      reduced
+                        ? { duration: 0 }
+                        : { duration: 0.15, delay: 0.12 }
+                    }
+                    className="mv-empty pointer-events-none absolute inset-0"
+                  >
+                    an empty felt rolls a chance die
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Felt>
+            {rail("feed", "w-8")}
 
-        {/* action — one trigger, full width; the felt itself is the pool's
+            {/* fittings: the fives under their chevrons; the hardware fills
+                the felt's width when the rail affords it (owner call) */}
+            <button
+              onClick={() => setLoose(loose - 5)}
+              disabled={loose === 0 || !canInteract}
+              className="mv-mini w-8 self-start px-0 text-center disabled:opacity-40"
+              style={{ gridColumn: "1" }}
+              title="Skim five dice off"
+            >
+              −5
+            </button>
+            <div className="min-w-0" style={{ gridColumn: "2" }}>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  onClick={() => setLoose(0)}
+                  disabled={loose === 0 || !canInteract}
+                  className="mv-mini grow whitespace-nowrap disabled:opacity-40"
+                  title="Sweep the loose dice off the felt"
+                >
+                  Sweep
+                </button>
+                <span
+                  className="h-4 w-px"
+                  style={{ background: "var(--line)" }}
+                />
+                {[10, 9, 8].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => pool.setAgainThreshold(n)}
+                    disabled={!canInteract}
+                    className={`mv-mini grow whitespace-nowrap disabled:opacity-40 ${pool.context.againThreshold === n ? "mv-mini-on" : ""}`}
+                  >
+                    {OPTION_WORDS.again(n)}
+                  </button>
+                ))}
+                <button
+                  onClick={() => pool.setRoteAction(!pool.context.isRoteAction)}
+                  disabled={!canInteract}
+                  className={`mv-mini grow whitespace-nowrap disabled:opacity-40 ${pool.context.isRoteAction ? "mv-mini-on" : ""}`}
+                >
+                  {OPTION_WORDS.rote}
+                </button>
+                <button
+                  onClick={() =>
+                    pool.setVisibility(
+                      pool.context.visibility === "hidden"
+                        ? "public"
+                        : "hidden",
+                    )
+                  }
+                  disabled={!canInteract}
+                  className={`mv-mini grow whitespace-nowrap disabled:opacity-40 ${pool.context.visibility === "hidden" ? "mv-mini-on" : ""}`}
+                >
+                  {OPTION_WORDS.hidden}
+                </button>
+                <GateButton
+                  gate={willpowerGate}
+                  onClick={() =>
+                    pool.setSpendWillpower(!pool.context.spendWillpower)
+                  }
+                  disabled={!canInteract}
+                  className={`mv-mini grow whitespace-nowrap disabled:opacity-40 ${pool.context.spendWillpower ? "mv-mini-on" : ""}`}
+                >
+                  {OPTION_WORDS.willpower}
+                </GateButton>
+              </div>
+            </div>
+            <button
+              onClick={() => setLoose(loose + 5)}
+              disabled={!canInteract}
+              className="mv-mini w-8 self-start px-0 text-center disabled:opacity-40"
+              style={{ gridColumn: "3" }}
+              title="Feed five dice on"
+            >
+              +5
+            </button>
+          </div>
+
+          {/* action — one trigger, full width; the felt itself is the pool's
               editor, so Roll needs no rival */}
-        <div className="p-3">
-          <button
-            onClick={pool.roll}
-            disabled={rolling || !canInteract}
-            className="mv-roll w-full rounded-[3px] py-2 text-[13px] disabled:opacity-40"
-            title={
-              total === 0
-                ? "Roll the empty felt — a chance die"
-                : `Roll ${diceLabel(total)}`
-            }
-          >
-            {rolling
-              ? "Rolling…"
-              : total === 0
-                ? "◈ Roll"
-                : `Roll ${diceLabel(total)}`}
-          </button>
-        </div>
+          <div className="p-3">
+            <button
+              {...rollTrigger}
+              className="mv-roll w-full rounded-[3px] py-2 text-[13px] disabled:opacity-40"
+            >
+              {rolling
+                ? "Rolling…"
+                : total === 0
+                  ? "◈ Roll"
+                  : `Roll ${diceLabel(total)}`}
+            </button>
+          </div>
+        </>
+      )}
 
       {/* error — the seam's refusal, spoken under the tray */}
       {pool.context.error && (
