@@ -393,7 +393,12 @@ export function CastCard({
     paradoxDiceCount !== null && feltPool !== null
       ? Math.min(Math.max(0, feltPool.baseDice - ownReductions), paradoxDiceCount)
       : 0
-  const baseSays = `Gnosis ${cast.gnosis ?? "?"}${cast.usesMagicalTool ? " − tool" : ""}${isRoteCast(cast) ? " − rote" : ""}: ${paradoxBaseCount}`
+  // Each term carries its own signed count, like the Tides' pills (owner,
+  // 2026-10-23: "Gnosis 3: +2 − Tool: −1").
+  const baseSays =
+    `Gnosis ${cast.gnosis ?? "?"}: +${feltPool?.baseDice ?? 0}` +
+    (cast.usesMagicalTool ? " − Tool: −1" : "") +
+    (isRoteCast(cast) ? " − Rote: −1" : "")
   // Once the ST has rolled, the faces live in the Paradox area (MAG-45,
   // owner 2026-10-23 — they used to drop below the felt as glyphs over the
   // lore term): the record from the rolled rung onward, the same area, so
@@ -1012,7 +1017,12 @@ export function CastCard({
                 )
               })}
               {paradoxDiceCount === 0 && (
-                <Tooltip key="paradox:chance">
+                // The chance-die ghost holds the FIRST slot's key: when a
+                // flood lands it becomes the base die in place (one motion
+                // element, ghost → solid) instead of exiting beside an
+                // entering sibling, which made the base land one slot over
+                // and jump back (owner, 2026-10-23).
+                <Tooltip key="paradox:0">
                   <TooltipTrigger asChild>
                     <span className="grid size-[20px] place-items-center">
                       <UnifiedDie mode="pool" kind="paradox" ghost reduced={reduced} glide={false} />
