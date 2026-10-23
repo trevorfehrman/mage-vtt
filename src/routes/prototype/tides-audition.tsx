@@ -76,27 +76,30 @@ type Ground = {
 }
 
 /**
- * F · the vertical yin-yang, no dots. The box is split top and bottom:
- * verdigris owns the top edge (Gnosis, the mage's own), red owns the floor
- * (reality's tide). The seam between them is a sideways S — green bulging
- * down on the left, red bulging up on the right — and the NET moves the
- * whole seam up or down, never past the edges: at +5 the red has risen to
- * near the top but the green still holds a band, because the player always
- * has a chance. Each side's alpha is its own weight. The seam is blurred so
- * it is an edge you sense, not a line; the paths run past the box so only
- * the seam softens, never the owned edges.
+ * G · one flowing into the other. Green LEFT, red RIGHT, the seam running
+ * top to bottom. The net slides the seam left or right — never past the
+ * edges, each side always owns its own — and each side's REACH spills past
+ * the seam where it is strong: green reaches over along the TOP into the
+ * right (encroaching from above), red reaches under along the FLOOR into
+ * the left (rising from below). Strong green = owns the left, leans over
+ * the top, red is a corner. Strong red = the mirror. Each side's alpha is
+ * its own weight. The seam is blurred so it is sensed, not drawn; the paths
+ * run past the box so only the seam softens and the owned edges stay crisp.
  */
-function YinYangGround({ mods }: { mods: ReadonlyArray<Mod> }) {
+function FlowGround({ mods }: { mods: ReadonlyArray<Mod> }) {
   const id = useId()
   const { ebb, flood, net } = sums(mods)
   if (ebb === 0 && flood === 0) return null
-  const Y = clamp(50 - net * 7.5, 18, 82)
-  const A = 15
-  const lo = clamp(Y + A, 8, 94)
-  const hi = clamp(Y - A, 6, 92)
-  const seam = `C 12 ${Y} 12 ${lo} 25 ${lo} C 38 ${lo} 38 ${Y} 50 ${Y} C 62 ${Y} 62 ${hi} 75 ${hi} C 88 ${hi} 88 ${Y} 100 ${Y}`
-  const top = `M -20 -20 L -20 ${Y} L 0 ${Y} ${seam} L 120 ${Y} L 120 -20 Z`
-  const bottom = `M -20 120 L -20 ${Y} L 0 ${Y} ${seam} L 120 ${Y} L 120 120 Z`
+  // where the seam sits at mid-height: green strong pushes it right
+  const X = clamp(50 - net * 7, 18, 82)
+  // each side's reach past the seam — green along the top, red along the floor
+  const Ag = ebb === 0 ? 0 : clamp(10 + ebb * 5, 10, 30)
+  const Ar = flood === 0 ? 0 : clamp(10 + flood * 5, 10, 30)
+  const top = clamp(X + Ag, 6, 94)
+  const bottom = clamp(X - Ar, 6, 94)
+  const seam = `L ${top} 0 C ${top} 28 ${X} 30 ${X} 50 C ${X} 70 ${bottom} 72 ${bottom} 100`
+  const green = `M -20 -20 L ${top} -20 ${seam} L ${bottom} 120 L -20 120 Z`
+  const red = `M 120 -20 L ${top} -20 ${seam} L ${bottom} 120 L 120 120 Z`
   const aE = ebb === 0 ? 0 : Math.min(clamp(12 + ebb * 3, 12, 26) * EBB_BOOST, 40) / 100
   const aF = flood === 0 ? 0 : clamp(12 + flood * 3, 12, 26) / 100
   return (
@@ -107,59 +110,32 @@ function YinYangGround({ mods }: { mods: ReadonlyArray<Mod> }) {
       aria-hidden
     >
       <defs>
-        <linearGradient id={`${id}e`} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${id}e`} x1="0" y1="0" x2="1" y2="0">
           <stop offset="0" stopColor="#6fae97" stopOpacity={aE} />
-          <stop offset="1" stopColor="#6fae97" stopOpacity={aE * 0.55} />
+          <stop offset="1" stopColor="#6fae97" stopOpacity={aE * 0.5} />
         </linearGradient>
-        <linearGradient id={`${id}r`} x1="0" y1="1" x2="0" y2="0">
+        <linearGradient id={`${id}r`} x1="1" y1="0" x2="0" y2="0">
           <stop offset="0" stopColor="#e34b4b" stopOpacity={aF} />
-          <stop offset="1" stopColor="#e34b4b" stopOpacity={aF * 0.55} />
+          <stop offset="1" stopColor="#e34b4b" stopOpacity={aF * 0.5} />
         </linearGradient>
         {/* viewBox units stretch ~3.7px wide and ~1.2px tall in a card-width box */}
         <filter id={`${id}f`} x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="1.4 4.5" />
+          <feGaussianBlur stdDeviation="1.6 5" />
         </filter>
       </defs>
-      {ebb > 0 && <path d={top} fill={`url(#${id}e)`} filter={`url(#${id}f)`} />}
-      {flood > 0 && <path d={bottom} fill={`url(#${id}r)`} filter={`url(#${id}f)`} />}
+      {ebb > 0 && <path d={green} fill={`url(#${id}e)`} filter={`url(#${id}f)`} />}
+      {flood > 0 && <path d={red} fill={`url(#${id}r)`} filter={`url(#${id}f)`} />}
     </svg>
   )
 }
 
 const GROUNDS: ReadonlyArray<Ground> = [
   {
-    key: "seam",
-    name: "F · vertical yin-yang, no dots",
-    note: "top is Gnosis's, floor is reality's, always. The seam is a sideways S the net moves up or down — never past the edges. Drawn, not gradient-faked.",
+    key: "flow",
+    name: "G · one flowing into the other",
+    note: "green left, red right, the seam top to bottom. The net slides it; each side's reach spills past it where it is strong — green over the top, red under the floor. Edges always owned.",
     css: () => undefined,
-    paint: (mods) => <YinYangGround mods={mods} />,
-  },
-  {
-    key: "yinyang",
-    name: "E · yin and yang",
-    note: "competing soft gradients, shaped: Gnosis comes DOWN from the top and curls into the right as the ebb deepens; reality rushes UP from the floor and curls into the left as the flood rises. Each by its own weight.",
-    css: (mods) => {
-      const { ebb, flood } = sums(mods)
-      if (ebb === 0 && flood === 0) return undefined
-      // a side is a dome from its own edge plus a lobe that reaches across —
-      // the lobe is the curl; both grow with the side's weight.
-      const side = (ink: string, w: number, dome: string, lobe: string) => {
-        const a = clamp(14 + w * 3.5, 14, 30)
-        const rx = 62 + w * 14
-        const ry = 48 + w * 12
-        const lx = 24 + w * 11
-        const ly = 30 + w * 12
-        // a firmer body and a feathered rim: an edge you sense, never a line
-        return [
-          `radial-gradient(ellipse ${rx}% ${ry}% at ${dome}, ${mixSide(ink, a)} 0%, ${mixSide(ink, a * 0.8)} 58%, transparent 100%)`,
-          `radial-gradient(ellipse ${lx}% ${ly}% at ${lobe}, ${mixSide(ink, a * 0.9)} 0%, ${mixSide(ink, a * 0.5)} 60%, transparent 100%)`,
-        ]
-      }
-      return [
-        ...(flood > 0 ? side(FLOOD, flood, "80% 115%", "34% 72%") : []),
-        ...(ebb > 0 ? side(EBB, ebb, "20% -15%", "66% 28%") : []),
-      ].join(", ")
-    },
+    paint: (mods) => <FlowGround mods={mods} />,
   },
   {
     key: "advance",
