@@ -77,6 +77,10 @@ export const BurstInput = Schema.Struct({
 })
 export type BurstInput = typeof BurstInput.Type
 
+/** The containment walk's running state: successes still to absorb, and the faces absorbed so far. */
+const Absorbing = Schema.Struct({ left: Schema.Number, indices: Schema.Array(Schema.Number) })
+type Absorbing = typeof Absorbing.Type
+
 /**
  * The burst order with generations: `burstClusters` puts each base die first
  * and its chain behind it, so a die's position in its cluster IS its
@@ -88,10 +92,6 @@ export type BurstInput = typeof BurstInput.Type
  * in this order ghost, misses passed over, a chance die's 10 its only
  * success.
  */
-/** The containment walk's running state: successes still to absorb, and the faces absorbed so far. */
-const Absorbing = Schema.Struct({ left: Schema.Number, indices: Schema.Array(Schema.Number) })
-type Absorbing = typeof Absorbing.Type
-
 export const burstPlan = ({ rolls, roteRerolls, explosions, eaten, contained, chance }: BurstInput): Array<Array<BurstFace>> => {
   const clusters = burstClusters(rolls, roteRerolls, explosions).map((cluster) =>
     cluster.map((die, generation) => ({ ...die, generation })),

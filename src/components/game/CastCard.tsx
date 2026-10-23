@@ -23,7 +23,7 @@ import {
 } from "#/domain/paradox"
 import { castOddsUnderParadox, rollOdds } from "#/domain/probability"
 import { Mana, PoolSize } from "#/domain/quantities"
-import { tideDraftDice, type TideDraft } from "./tides-ground"
+import { signedDice, tideDraftDice, tidesNetInk, tidesWeight, type TideDraft } from "./tides-ground"
 import { TidesBox, type Weather } from "./TidesBox"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
@@ -34,7 +34,7 @@ import { BurstFaces } from "./BurstFaces"
 import { UnifiedDie } from "./UnifiedDie"
 import { settleOpacity, type PoolKind } from "./die-look"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
-import { PriorRollsGlyph, SleeperGlyph, ToolGlyph } from "./TideGlyphs"
+import { PriorRollsGlyph, SleeperGlyph, TidesGlyph, ToolGlyph } from "./TideGlyphs"
 import { ParadoxGlyph } from "./ParadoxGlyph"
 import { Felt } from "./Felt"
 import { api } from "../../../convex/_generated/api"
@@ -430,31 +430,22 @@ export function CastCard({
   // Reality's printed area exists only while it holds dice: the provisional
   // pool before the ST's roll, or the rolled faces from the roll onward.
   const paradoxArea = paradoxDiceCount !== null || hasRolledFaces
-  // The Tides on the felt (notes 3/4/17): the pool's named ±s as ebb/flood
-  // badges in the gutter. While fluid only the ST's card carries the
-  // adjustments — the feed withholds them from every other seat until the
-  // fix (`withheldFrom`, owner 2026-10-23) — so this card needs no seat check. The mitigation modifier never badges (pass 3, note 5):
-  // the table and the shrinking dice count carry it.
   // The badges work (2026-10-22 evening): the Paradox area explains its own
   // red dice, in two registers. INSTRUMENTS are the rule's fixed slots —
   // Sleepers, prior rolls, the tool (rote when rote) — always printed on the
   // area's label row, dim at zero and in ink when live, so the eye learns
-  // their positions and reads "why so few / so many" at a glance. WEATHER
-  // is the ST's named circumstances — scene-wide and this caster's own —
-  // the only prose in the area and its only colored text, ember rising and
-  // verdigris pulling back, so the news of THIS cast pops unhidden. Before
-  // the fix the scene seed is unstamped, so the seeded instruments read "—".
-  // Mana mitigation never badges (pass 3, note 5): the shrinking count says it.
-  // The weather — the ST's named circumstances, scene-wide and this
-  // caster's own — is storytelling, so it stands in its OWN section above
-  // the felt, the first thing the player reads (owner, 2026-10-22 evening):
-  // pills, prose | number, red for a flood (more Paradox dice) and verdigris
-  // for an ebb, floods first. Long names run and wrap. The Paradox area's
-  // instrument row no longer prints the net at all (MAG-45, owner
-  // 2026-10-23: it printed twice — the TIDES eyebrow keeps it).
-  const bySign = (a: { modifier: ParadoxPoolModifier }, b: { modifier: ParadoxPoolModifier }) =>
-    Math.sign(b.modifier.dice) - Math.sign(a.modifier.dice)
-  const weather: ReadonlyArray<Weather> = Array.from([
+  // their positions and reads "why so few / so many" at a glance. Before the
+  // fix the scene seed is unstamped, so the seeded instruments read "—". The
+  // Tides' net leads the row under the waves glyph, as well as printing in
+  // the TIDES eyebrow (owner, 2026-10-23, reversing MAG-45's print-it-once:
+  // "i wanna show it both places"). Mana
+  // mitigation never badges (pass 3, note 5): the table and the ghosts say it.
+  // WEATHER is the ST's named circumstances — scene-wide and this caster's
+  // own — drawn as the TidesBox's two shores above the felt. While fluid
+  // only the ST's card carries the adjustments: the feed withholds them from
+  // every other seat until the fix (`withheldFrom`, owner 2026-10-23), so
+  // this card needs no seat check.
+  const weather: ReadonlyArray<Weather> = [
     ...(cast.tides?.circumstances ?? []).map((modifier) => ({ modifier })),
     ...(cast.adjustments ?? []).map((modifier, i) => ({
       modifier,
@@ -465,7 +456,7 @@ export function CastCard({
           }
         : {}),
     })),
-  ]).sort(bySign)
+  ]
   // Each instrument is a glyph and the raw FACT (owner, 2026-10-22 evening):
   // how many Sleepers, how many prior rolls, the Tides' net pull, tool in
   // hand or not — never the dice they add; the dice show that. Zero prints
@@ -473,7 +464,15 @@ export function CastCard({
   // it pulls: red for what adds Paradox dice, verdigris for what takes them.
   const seeded = cast.tides !== undefined
   const count = (n: number | undefined) => (n === undefined ? "—" : String(n))
+  const tidesNet = tidesWeight(weather.map((w) => w.modifier)).net
   const instruments: ReadonlyArray<{ key: string; glyph: ReactNode; value: string | null; ink: string; says: string }> = [
+    {
+      key: "tides",
+      glyph: <TidesGlyph size={13} />,
+      value: signedDice(tidesNet),
+      ink: tidesNetInk(tidesNet),
+      says: `Tides: ${signedDice(tidesNet)}`,
+    },
     {
       key: "sleepers",
       glyph: <SleeperGlyph size={13} />,
@@ -537,12 +536,12 @@ export function CastCard({
     Match.when("price", () =>
       tableInputs !== null || feltPool === null
         ? null
-        : pricedRow(0, feltPool.totalDice, cast.declaredPool),
+        : pricedRow(Mana.make(0), PoolSize.make(feltPool.totalDice), cast.declaredPool),
     ),
     Match.when("paradox", () => {
       if (pool === null) return null
       if (cast.paradoxSuccesses === undefined) {
-        return pricedRow(cast.manaMitigation ?? 0, pool.totalDice, cast.declaredPool)
+        return pricedRow(Mana.make(cast.manaMitigation ?? 0), PoolSize.make(pool.totalDice), cast.declaredPool)
       }
       // The surviving cast pool under the bet — the cockpit's own number
       // when the sheet decoded, the same leaf off the local count when it
@@ -1148,11 +1147,11 @@ const OddsRowProps = Schema.Struct({
 type OddsRowProps = typeof OddsRowProps.Type
 
 /** A row priced before the roll: this many red dice, rolling first. */
-const pricedRow = (spend: number, dice: number, declaredPool: number): OddsRowProps => {
+const pricedRow = (spend: Mana, dice: PoolSize, declaredPool: number): OddsRowProps => {
   const cast = castOddsUnderParadox(declaredPool, dice)
   return {
-    spend: Mana.make(spend),
-    dice: PoolSize.make(dice),
+    spend,
+    dice,
     paradox: { kind: "odds", p: rollOdds(dice).success },
     success: cast.success,
     dramaticFailure: cast.dramaticFailure,
@@ -1236,7 +1235,7 @@ function MitigationPreview({
 }) {
   const poolBefore = calculateParadoxPool(poolInputs).totalDice
   const rows = Array.from({ length: poolBefore + 1 }, (_, spend) =>
-    pricedRow(spend, calculateParadoxPool({ ...poolInputs, manaMitigation: spend }).totalDice, declaredPool),
+    pricedRow(Mana.make(spend), PoolSize.make(calculateParadoxPool({ ...poolInputs, manaMitigation: spend }).totalDice), declaredPool),
   )
   return (
     // No explainer eyebrow, no dotted frame (#114): the table is the phase's
