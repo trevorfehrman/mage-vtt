@@ -71,6 +71,13 @@ export type PoolKind = typeof PoolKind.Type
 
 const Ink = Schema.Struct({ border: Schema.String, background: Schema.String })
 
+/** An ink thinned to a percentage over the felt. */
+const dilute = (ink: string, pct: number): string => `color-mix(in srgb, ${ink} ${pct}%, transparent)`
+
+/** How deep the Willpower die fills at rest — and how deep any lit die of
+ * the mage's fills: the ember's depth is the "come forward" depth. */
+const WILL_DEPTH = 45
+
 /** Provenance inks, unchanged from the felt: sheet dice verdigris, loose
  * dice neutral, Willpower ember, Paradox red, reality's base dice the
  * sheet's green with the red torn circle inside (pass 3, note 6). */
@@ -97,7 +104,7 @@ const POOL_INK: Record<PoolKind, typeof Ink.Type> = {
   },
   willpower: {
     border: "var(--will)",
-    background: "color-mix(in srgb, var(--will) 45%, transparent)",
+    background: dilute("var(--will)", WILL_DEPTH),
   },
   // The Tides' dice: red, the scene's special circumstances (felt audition,
   // 2026-10-22). Reality's section of the felt says whose they are; no glyph.
@@ -130,15 +137,12 @@ const realmInk = (arcanum: string): typeof Ink.Type => {
  * verdigris for the Gnosis base). No symbol, same box, same stance; reads as
  * a die first and as a wound in the felt second. The static burn is this
  * inset shadow; `poolClass` adds the slow breathing over it. */
-const holeBurn = (ink: string): string => `inset 0 0 3px 1px color-mix(in srgb, ${ink} 70%, transparent)`
+const holeBurn = (ink: string): string => `inset 0 0 3px 1px ${dilute(ink, 70)}`
 
 /** The group-hover glow (the badges work, 2026-10-22 evening; MAG-16 moves
  * it off the old FeltDie): a lit die wears a 1px ring in its own ink and an
  * 8px bloom of it, both OUTSIDE the box so the geometry never moves. */
-const litHalo = (ink: string): string => `0 0 0 1px ${ink}, 0 0 8px 1px color-mix(in srgb, ${ink} 70%, transparent)`
-
-/** How deep a lit die of the mage's fills: the Willpower die's resting depth. */
-const LIT_FILL = 45
+const litHalo = (ink: string): string => `0 0 0 1px ${ink}, 0 0 8px 1px ${dilute(ink, 70)}`
 
 export const PoolInput = Schema.Struct({
   kind: PoolKind,
@@ -166,7 +170,7 @@ export const poolLook = ({ kind, ghost, lit, arcanum }: PoolInput): DieLook => {
       lit
         ? {
             ...solid,
-            background: `color-mix(in srgb, ${ink.border} ${LIT_FILL}%, transparent)`,
+            background: dilute(ink.border, WILL_DEPTH),
             boxShadow: litHalo(ink.border),
           }
         : solid,
