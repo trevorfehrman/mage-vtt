@@ -1,9 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react"
+import { Match, Schema } from "effect"
 import { useMutation } from "convex/react"
 import { useMachine } from "@xstate/react"
 import { AnimatePresence, useReducedMotion } from "motion/react"
 import type { CastEntry } from "#/domain/activity"
 import {
+  castPoolAfterParadox,
   containmentCap,
   containmentOutlook,
   mitigationCap,
@@ -133,12 +135,12 @@ export function CastCard({
   // Containment selection is local until the Cast click (#113): the server
   // first hears the sacrifice when the release commits it.
   const [contained, setContained] = useState(0)
-  // The ST's add-a-modifier form (issue #44): local until the Add press.
-  const [modSource, setModSource] = useState("")
+  // The ST's draft tide (issue #44; MAG-45): one shore's skeleton pill
+  // opened for typing — local until Enter lands it on the document.
+  const [draft, setDraft] = useState<TideDraft | null>(null)
   /** The cast-die group under the pointer (the badges work): its dice glow, the rest settle. */
   const [litKind, setLitKind] = useState<DieKind | null>(null)
   const settle = (kind: DieKind) => (litKind !== null && litKind !== kind ? 0.4 : 1)
-  const [modDice, setModDice] = useState(1)
 
   // A stale refusal clears whenever the document moves (the SceneStrip idiom).
   const liveKey = `${cast._id}:${cast.status}:${cast.updatedAt}`
@@ -162,21 +164,22 @@ export function CastCard({
 
   const step = { sessionId, castId: cast._id }
 
-  // One door for both gestures (pass 2, note 2): the Add press and Enter in
-  // the name input land the same tide.
+  // Enter in the open pill lands the tide on the document (MAG-45: the pill
+  // IS the form — the owner retired the block of chips beneath the card).
   const addTide = async () => {
-    const source = modSource.trim()
-    if (source.length === 0 || busy) return
+    if (draft === null || busy) return
+    const source = draft.source.trim()
+    if (source.length === 0) return
     const ok = await run(() =>
       adjustPrice({
         ...step,
         adjustments: [
           ...(cast.adjustments ?? []).map((d) => ({ ...d })),
-          { source, dice: modDice },
+          { source, dice: tideDraftDice(draft) },
         ],
       }),
     )
-    if (ok) setModSource("")
+    if (ok) setDraft(null)
   }
 
   // The Paradox pool as the fix stamped it (ADR-0022) — the same leaf the
@@ -218,15 +221,16 @@ export function CastCard({
   // that grows and shrinks as tags land and truly settles at the fix.
   // `gnosis` stamps at engage, so the base is computable from the first
   // on-stage moment, on every seat's card.
-  const provisionalPool =
+  const provisionalInputs =
     pool === null && status === "price" && cast.gnosis !== undefined
-      ? calculateParadoxPool({
+      ? {
           gnosis: toGnosisRank(cast.gnosis),
           isRote: isRoteCast(cast),
           usesMagicalTool: cast.usesMagicalTool,
           discretionaryModifiers: cast.adjustments ?? [],
-        })
+        }
       : null
+  const provisionalPool = provisionalInputs ? calculateParadoxPool(provisionalInputs) : null
   const feltPool = pool ?? provisionalPool
 
   // Input caps mirror the server's refusals; the server stays authoritative.
@@ -490,27 +494,56 @@ export function CastCard({
     ...(cast.targets !== undefined ? [`×${cast.targets} targets`] : []),
   ]
 
-  // The odds line beneath the felt (note 16; repointed by pass 3, note 3):
-  // through the whole Tides phase it prices the SPELL — the declared pool's
-  // success %, the same grammar every phase speaks — never the table's
-  // Paradox %. On the commit beat the line steps aside: the mitigation
-  // table owns the number there, one cast % per row with that row's red
-  // dice priced in (the owner's 2026-10-22 call — the last chance to change
-  // your mind is where the tradeoff must read at a glance; before and after,
-  // the only question is "did it work"). Between the commit and the ST's
-  // roll it prices the red dice; in the cockpit it prices the surviving
-  // cast pool, recomputing as boxes are clicked.
-  const paradoxOdds =
-    status !== "price" && paradoxDiceCount !== null
-      ? rollOdds(paradoxDiceCount)
+  // The mitigation table (issue #45; note 7) is the caster's on the commit
+  // beat — and the Storyteller's, read-only, while the Tides are still
+  // fluid (MAG-45, owner 2026-10-23): the ST sees what each ruling does to
+  // the player's choices before fixing them, off the same provisional pool
+  // the felt shows. Only the ST sees it then — the other seats do not watch
+  // the ST's thoughts in progress — and the affordable rows read from the
+  // CASTER's Mana, whichever seat holds the card.
+  const tableInputs = controls.includes("commit")
+    ? poolInputs
+    : controls.includes("adjust")
+      ? provisionalInputs
       : null
-  const successOdds =
-    outlook !== null
-      ? rollOdds(outlook.castPool)
-      : status === "price"
-        ? rollOdds(cast.declaredPool)
-        : null
-  const tableOwnsOdds = controls.includes("commit") && poolInputs !== null
+  const tableAffordable =
+    tableInputs !== null && cockpitSheet !== null
+      ? mitigationCap(calculateParadoxPool(tableInputs).totalDice, cockpitSheet.manaCurrent, cast.spellManaCost)
+      : 0
+
+  // The odds beneath the felt speak ONE register (MAG-45, owner 2026-10-23
+  // — they used to have three voices across the rungs): the table's own
+  // row, Mana · dice · Paradox · success, with the cast's success priced
+  // under reality rolling first (castOddsUnderParadox, p. 124). Before the
+  // commit it is the table's zero row — nothing spent yet; where the table
+  // itself stands the row stands down. After the commit it is the committed
+  // row; once reality has rolled, the Paradox cell carries the rolled count
+  // and the success % tracks the surviving pool as the containment bet
+  // moves (the cockpit's clicks). The resolved record speaks for itself.
+  const oddsRow: OddsRowProps | null = Match.value(status).pipe(
+    Match.withReturnType<OddsRowProps | null>(),
+    Match.when("price", () =>
+      tableInputs !== null || feltPool === null
+        ? null
+        : pricedRow(0, feltPool.totalDice, cast.declaredPool),
+    ),
+    Match.when("paradox", () => {
+      if (cast.paradoxSuccesses === undefined) {
+        return pool === null ? null : pricedRow(cast.manaMitigation ?? 0, pool.totalDice, cast.declaredPool)
+      }
+      const castPool =
+        outlook?.castPool ?? castPoolAfterParadox(cast.declaredPool, cast.paradoxSuccesses, 0)
+      const odds = rollOdds(castPool)
+      return {
+        spend: cast.manaMitigation ?? 0,
+        dice: rolledFaces.length,
+        paradox: { kind: "rolled", successes: cast.paradoxSuccesses },
+        success: odds.success,
+        dramaticFailure: odds.isChanceDie ? odds.dramaticFailure : 0,
+      }
+    }),
+    Match.orElse(() => null),
+  )
 
   // The masthead's Mana ghost (pass 2, note 1): the spell's cost ghosts from
   // the moment the cast is on stage ("phase 1" read as the first on-stage
@@ -624,7 +657,7 @@ export function CastCard({
           ink, the number outboard behind a rule in the pill's own edge —
           weakest at the top, strongest sinking to the corner. The felt below
           keeps its own ground and stays the star. */}
-      {weather.length > 0 && (() => {
+      {(weather.length > 0 || controls.includes("adjust")) && (() => {
         const mods = weather.map((w) => w.modifier)
         const { net } = tidesWeight(mods)
         const ebbs = Array.from(weather).filter((w) => w.modifier.dice < 0).sort((a, b) => b.modifier.dice - a.modifier.dice)
@@ -680,6 +713,73 @@ export function CastCard({
             </Tooltip>
           )
         }
+        // The ST's hand on each shore (MAG-45, owner 2026-10-23): a skeleton
+        // pill at the shore's end — dashed in the shore's ink, "+ ebb" /
+        // "+ flood" — opens into a live pill where the prose is typed in the
+        // pill's own text cell and the number cell steps (↑/↓, or click;
+        // shift-click steps down); Enter lands it, Esc closes it. Opening the
+        // other shore carries the typed prose across. The block of chips
+        // that used to sit beneath the card is gone with it.
+        const shoreEnd = (side: TideDraft["side"]) => {
+          if (!controls.includes("adjust")) return null
+          const edge = tidesPillEdge(side === "ebb" ? -1 : 1)
+          const shell = "mv-data inline-flex max-w-full items-stretch overflow-hidden border text-[12px] leading-none"
+          if (draft === null || draft.side !== side) {
+            return (
+              <button
+                key={`${side}-new`}
+                onClick={() => setDraft({ side, source: draft?.source ?? "", count: draft?.count ?? 1 })}
+                disabled={busy}
+                className={`${shell} px-2.5 py-1 opacity-60 hover:opacity-100 disabled:opacity-40`}
+                style={{ borderRadius: 11, borderStyle: "dashed", borderColor: edge, color: "var(--dim)", background: "transparent" }}
+                title={side === "ebb" ? "Name an ebb — the Tides pull back: fewer Paradox dice" : "Name a flood — the Tides rise: more Paradox dice"}
+              >
+                + {side}
+              </button>
+            )
+          }
+          const num = (
+            <button
+              onClick={(e) => setDraft({ ...draft, count: stepTideCount(draft.count, e.shiftKey ? -1 : 1) })}
+              disabled={busy}
+              className="flex cursor-pointer items-center whitespace-nowrap px-2 py-1 font-bold disabled:opacity-40"
+              style={{
+                color: "var(--ink)",
+                ...(side === "ebb" ? { borderRight: `1px solid ${edge}` } : { borderLeft: `1px solid ${edge}` }),
+              }}
+              title="↑ ↓ step the count (click: up, shift-click: down)"
+            >
+              {signedDice(tideDraftDice(draft))}
+            </button>
+          )
+          return (
+            <span
+              key={`${side}-draft`}
+              className={shell}
+              style={{ borderRadius: 11, borderColor: edge, color: "var(--ink)", background: "color-mix(in srgb, var(--panel) 88%, transparent)" }}
+            >
+              {side === "ebb" && num}
+              <input
+                autoFocus
+                value={draft.source}
+                onChange={(e) => setDraft({ ...draft, source: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void addTide()
+                  else if (e.key === "Escape") setDraft(null)
+                  else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                    e.preventDefault()
+                    setDraft({ ...draft, count: stepTideCount(draft.count, e.key === "ArrowUp" ? 1 : -1) })
+                  }
+                }}
+                disabled={busy}
+                placeholder="name it…"
+                className="mv-data min-w-0 bg-transparent px-2.5 py-1 text-[12px] outline-none placeholder:text-[var(--dim)]"
+                style={{ width: `${Math.max(10, draft.source.length + 2)}ch`, color: "var(--ink)" }}
+              />
+              {side === "flood" && num}
+            </span>
+          )
+        }
         return (
           <TooltipProvider>
             {/* No border (owner, 2026-10-22): the tides themselves establish
@@ -700,9 +800,11 @@ export function CastCard({
               <div className="mt-2 flex items-end justify-between gap-3">
                 <div className="flex flex-col items-start gap-1.5" style={{ maxWidth: "64%" }}>
                   {ebbs.map((w, i) => pill(w, "ebb", i))}
+                  {shoreEnd("ebb")}
                 </div>
                 <div className="ml-auto flex flex-col items-end gap-1.5" style={{ maxWidth: "64%" }}>
                   {floods.map((w, i) => pill(w, "flood", i))}
+                  {shoreEnd("flood")}
                 </div>
               </div>
             </div>
@@ -869,40 +971,9 @@ export function CastCard({
         )}
         </FeltSection>
       </div>
-      {/* the odds line — directly beneath the felt (note 16); ONE line, and
-          in the Tides phase it prices the spell, not the table's Paradox
-          (pass 3, note 3 as amended 2026-10-22: on the commit beat the
-          table's rows carry the cast % and this line stands down) */}
-      {!tableOwnsOdds && (paradoxOdds !== null || successOdds !== null) && (
-        <div
-          className="mv-data mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px]"
-          style={{ color: "var(--dim)" }}
-        >
-          {/* Slimmed (pass 2, note 7): the success % is the odds line — no
-              exceptional %, no ~expected counts. The dramatic-failure warning
-              stays; danger reads as danger. */}
-          {paradoxOdds !== null ? (
-            <span className="inline-flex items-center gap-1">
-              <ParadoxGlyph size={12} />
-              <b style={{ color: "var(--paradox)" }}>{pct(paradoxOdds.success)}</b>
-            </span>
-          ) : successOdds !== null ? (
-            <>
-              <span>
-                success{" "}
-                <b style={{ color: "var(--rail-success)" }}>
-                  {pct(successOdds.success)}
-                </b>
-              </span>
-              {successOdds.isChanceDie && (
-                <span style={{ color: "var(--bad)" }}>
-                  dramatic failure {pct(successOdds.dramaticFailure)}
-                </span>
-              )}
-            </>
-          ) : null}
-        </div>
-      )}
+      {/* the odds row — directly beneath the felt (note 16), in the table's
+          own grid (MAG-45): one register on every rung */}
+      {oddsRow !== null && <OddsRow {...oddsRow} />}
 
       {/* No "⟐ N rolled" numbers-line (pass 2, note 8): the cockpit's glyph
           column IS the count during the bet, and the Resolution carries the
@@ -913,77 +984,18 @@ export function CastCard({
           lore term — the record every seat reads, no roll card beside it. */}
       {status === "resolved" && <Resolution cast={cast} />}
 
-      {/* The ST's personal adjustments (ADR-0022): facts about this caster's
-          situation, patched onto the shared document while the Tides are
-          fluid — the scene's ambient Tides live on the strip, not here.
-          Relaid again by pass 2, note 2: a left-aligned block taking only the
-          space it needs — the name input (Enter adds), then equal-width ebb
-          and flood buttons stepping the count in the Tides' own colors, Add
-          beside them, the tags stacked beneath. */}
-      {controls.includes("adjust") && (
-        <div className="mt-2 grid justify-start gap-2 py-1">
-          <span className="mv-eyebrow">Tides</span>
-          <input
-            value={modSource}
-            onChange={(e) => setModSource(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void addTide()
-            }}
-            placeholder="Name an adjustment…"
-            className="mv-data w-64 rounded-[3px] border bg-transparent px-2 py-0.5 text-[12px] outline-none focus:border-[var(--accent)]"
-            style={{ borderColor: "var(--line)" }}
-          />
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setModDice(stepOverZero(modDice, -1))}
-              disabled={busy || modDice <= -10}
-              className="mv-btn w-16 rounded-[3px] py-1 text-[12px] leading-none disabled:opacity-40"
-              style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
-              title="Ebb — the Tides pull back: fewer Paradox dice"
-            >
-              ebb
-            </button>
-            <span
-              className="mv-data w-8 text-center text-[13px] font-bold"
-              style={{ color: modDice < 0 ? "var(--accent)" : "var(--ember)" }}
-              title={modDice < 0 ? "Ebb — fewer Paradox dice" : "Flood — more Paradox dice"}
-            >
-              {modDice > 0 ? `+${modDice}` : modDice}
-            </span>
-            <button
-              onClick={() => setModDice(stepOverZero(modDice, 1))}
-              disabled={busy || modDice >= 10}
-              className="mv-btn w-16 rounded-[3px] py-1 text-[12px] leading-none disabled:opacity-40"
-              style={{ borderColor: "var(--ember)", color: "var(--ember)" }}
-              title="Flood — the Tides rise: more Paradox dice"
-            >
-              flood
-            </button>
-            <button
-              onClick={() => void addTide()}
-              disabled={busy || modSource.trim().length === 0}
-              className="mv-mini disabled:opacity-40"
-            >
-              Add
-            </button>
-          </div>
-          {/* The adjustments themselves stand on the felt's PARADOX area
-              (the badges work, 2026-10-22 evening), each with its × here on
-              the ST's own card — this block only adds. */}
-        </div>
-      )}
-
       {/* The blind insurance, priced (issue #45; note 7): one row per Paradox
           die whatever the Mana — unaffordable rows stand visible and refuse,
           so the table always shows the full shape of the risk. */}
-      {controls.includes("commit") && poolInputs !== null && (
+      {tableInputs !== null && (
         <MitigationPreview
-          poolInputs={poolInputs}
-          poolBefore={poolBeforeMitigation}
+          poolInputs={tableInputs}
+          poolBefore={calculateParadoxPool(tableInputs).totalDice}
           declaredPool={cast.declaredPool}
-          affordable={mitigateCap}
+          affordable={tableAffordable}
           selected={mitigation}
-          onSelect={setMitigation}
+          // The ST's fluid-rung table is a reading, not a control (MAG-45).
+          onSelect={controls.includes("commit") ? setMitigation : undefined}
           disabled={busy}
         />
       )}
@@ -1202,14 +1214,21 @@ export function CastCard({
 }
 
 /**
- * The stepper's ± die count (issue #44): steps over zero (a zero-die
- * modifier means nothing) and stays within the ±10 a single ruling plausibly
- * reaches; a wilder swing is several named rulings, each readable.
+ * The ST's draft tide (MAG-45): which shore it opens on, its prose, and its
+ * count — 1..10, the swing a single ruling plausibly reaches (issue #44); a
+ * wilder swing is several named rulings, each readable. The sign is the
+ * shore's: an ebb takes dice, a flood adds them.
  */
-const stepOverZero = (value: number, dir: 1 | -1): number => {
-  const next = value + dir
-  return next === 0 ? next + dir : next
-}
+const TIDE_COUNT_MAX = 10
+const TideDraft = Schema.Struct({
+  side: Schema.Literals(["ebb", "flood"]),
+  source: Schema.String,
+  count: Schema.Number,
+})
+type TideDraft = typeof TideDraft.Type
+const tideDraftDice = (d: TideDraft): number => (d.side === "ebb" ? -d.count : d.count)
+const stepTideCount = (count: number, dir: 1 | -1): number =>
+  Math.min(TIDE_COUNT_MAX, Math.max(1, count + dir))
 
 /**
  * A plain number input. With a `cap` it clamps and shows the ceiling; without
@@ -1273,13 +1292,97 @@ const DRAMATIC_FAILURE_WARN_FLOOR = 0.001
 const diceLabel = (dice: number): string =>
   dice <= 0 ? "chance die" : dice === 1 ? "1 die" : `${dice} dice`
 
+/** The one grid every odds row stands in: Mana · dice · Paradox · success. */
+const ROW_GRID = "grid grid-cols-[3.5rem_5.5rem_4.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px]"
+
+/**
+ * One odds row's facts (MAG-45): the Mana spent, the red dice, reality's
+ * cell — its success odds before the roll, its rolled count after — and the
+ * cast's success % with those dice priced in (castOddsUnderParadox, p. 124).
+ */
+const OddsRowProps = Schema.Struct({
+  spend: Schema.Number,
+  dice: Schema.Number,
+  paradox: Schema.Union([
+    Schema.Struct({ kind: Schema.Literal("odds"), p: Schema.Number }),
+    Schema.Struct({ kind: Schema.Literal("rolled"), successes: Schema.Number }),
+  ]),
+  success: Schema.Number,
+  dramaticFailure: Schema.Number,
+})
+type OddsRowProps = typeof OddsRowProps.Type
+
+/** A row priced before the roll: this many red dice, rolling first. */
+const pricedRow = (spend: number, dice: number, declaredPool: number): OddsRowProps => {
+  const cast = castOddsUnderParadox(declaredPool, dice)
+  return {
+    spend,
+    dice,
+    paradox: { kind: "odds", p: rollOdds(dice).success },
+    success: cast.success,
+    dramaticFailure: cast.dramaticFailure,
+  }
+}
+
+const OddsCellsProps = Schema.Struct({ ...OddsRowProps.fields, here: Schema.Boolean })
+
+/**
+ * The four cells, the same in the table and alone beneath the felt. Danger
+ * reads as danger (#102): the Paradox glyph does the yelling (#114); dice
+ * counts stay neutral quantities; the Mana price wears Mana's own glyph
+ * alone. A chance-die reduction that is a real possibility warns in the
+ * row's own grammar.
+ */
+function OddsCells({ spend, dice, paradox, success, dramaticFailure, here }: typeof OddsCellsProps.Type) {
+  return (
+    <>
+      <span style={{ color: here ? "var(--mana)" : undefined }}>◈ {spend}</span>
+      <span style={{ color: here ? "var(--ink)" : undefined }}>{diceLabel(dice)}</span>
+      <span className="inline-flex items-center gap-1">
+        <ParadoxGlyph size={12} />
+        <b className="text-[12px]" style={{ color: "var(--paradox)" }}>
+          {Match.value(paradox).pipe(
+            Match.when({ kind: "odds" }, ({ p }) => pct(p)),
+            Match.when({ kind: "rolled" }, ({ successes }) => String(successes)),
+            Match.exhaustive,
+          )}
+        </b>
+      </span>
+      <span className="inline-flex flex-wrap items-center gap-x-2">
+        <span>
+          success{" "}
+          <b className="text-[12px]" style={{ color: "var(--rail-success)" }}>
+            {pct(success)}
+          </b>
+        </span>
+        {dramaticFailure >= DRAMATIC_FAILURE_WARN_FLOOR && (
+          <span style={{ color: "var(--bad)" }}>dramatic failure {pct(dramaticFailure)}</span>
+        )}
+      </span>
+    </>
+  )
+}
+
+/** The odds row alone beneath the felt — the table's grid, no table. */
+function OddsRow(props: OddsRowProps) {
+  return (
+    <div className={`mv-data mt-1.5 ${ROW_GRID}`} style={{ color: "var(--dim)" }}>
+      <OddsCells {...props} here={false} />
+    </div>
+  )
+}
+
 /**
  * Pricing the blind insurance (issue #45; note 7): one row per Paradox die
  * regardless of the caster's Mana — the shrunken pool and its exact odds,
- * live off the same leaves the server rolls with. Affordable rows select
- * (they ARE the mitigation control — the stepper died with note 9);
- * unaffordable rows stand visible and refuse, their titles explaining the
- * gate (ADR-0021).
+ * live off the same leaves the server rolls with. With `onSelect`,
+ * affordable rows select (they ARE the mitigation control — the stepper
+ * died with note 9); without it the table is the Storyteller's reading on
+ * the fluid rung (MAG-45) and no row is a control. Unaffordable rows stand
+ * visible and refuse, their titles explaining the gate (ADR-0021). Each
+ * row reads across: Mana out, Paradox in, spell landing (owner,
+ * 2026-10-22) — the cast's own odds with THIS row's red dice rolling first
+ * and eating dice (p. 124), no containment assumed: the floor.
  */
 function MitigationPreview({
   poolInputs,
@@ -1295,81 +1398,52 @@ function MitigationPreview({
   declaredPool: number
   affordable: number
   selected: number
-  onSelect: (spend: number) => void
+  onSelect?: ((spend: number) => void) | undefined
   disabled: boolean
 }) {
-  const rows = Array.from({ length: poolBefore + 1 }, (_, spend) => {
-    const dice = calculateParadoxPool({ ...poolInputs, manaMitigation: spend }).totalDice
-    return { spend, dice, odds: rollOdds(dice), cast: castOddsUnderParadox(declaredPool, dice) }
-  })
+  const rows = Array.from({ length: poolBefore + 1 }, (_, spend) =>
+    pricedRow(spend, calculateParadoxPool({ ...poolInputs, manaMitigation: spend }).totalDice, declaredPool),
+  )
   return (
     // No explainer eyebrow, no dotted frame (#114): the table is the phase's
     // whole job and its columns speak the rule — Mana in, Paradox dice out.
     <div className="mt-2 grid gap-1 py-1">
-      {/* Danger reads as danger (#102): the risk is the headline — the
-          Paradox glyph does the yelling (#114). Dice counts stay neutral
-          quantities — never accent-green good news. The selected row's box
-          is verdigris (owner, 2026-10-22; it burned ember before); the Mana
-          price wears Mana's own glyph alone (no symbol+word doubling). */}
-      {rows.map(({ spend, dice, odds, cast }) => {
-        const locked = spend > affordable
-        const here = !locked && spend === Math.min(selected, affordable)
-        const cells = (
-          <>
-            <span style={{ color: here ? "var(--mana)" : undefined }}>◈ {spend}</span>
-            <span style={{ color: here ? "var(--ink)" : undefined }}>
-              {diceLabel(dice)}
-            </span>
-            {/* No ~expected column (pass 2, note 7): the % is the odds. */}
-            <span className="inline-flex items-center gap-1">
-              <ParadoxGlyph size={12} />
-              <b className="text-[12px]" style={{ color: "var(--paradox)" }}>
-                {pct(odds.success)}
-              </b>
-            </span>
-            {/* The tradeoff's other half (owner, 2026-10-22): the cast's own
-                odds with THIS row's red dice rolling first and eating dice
-                (p. 124), no containment assumed — the floor. Read across:
-                Mana out, Paradox in, spell landing. A chance-die reduction
-                that is a real possibility warns in the line's own grammar. */}
-            <span className="inline-flex flex-wrap items-center gap-x-2">
-              <span>
-                success{" "}
-                <b className="text-[12px]" style={{ color: "var(--rail-success)" }}>
-                  {pct(cast.success)}
-                </b>
-              </span>
-              {cast.dramaticFailure >= DRAMATIC_FAILURE_WARN_FLOOR && (
-                <span style={{ color: "var(--bad)" }}>
-                  dramatic failure {pct(cast.dramaticFailure)}
-                </span>
-              )}
-            </span>
-          </>
-        )
+      {/* The selected row's box is verdigris (owner, 2026-10-22; it burned
+          ember before). */}
+      {rows.map((row) => {
+        const locked = row.spend > affordable
+        const here = onSelect !== undefined && !locked && row.spend === Math.min(selected, affordable)
         // A locked row is a mark, not a disabled control (the FeltDie idiom):
         // its title stays reachable and nothing pretends it could be clicked.
         return locked ? (
           <span
-            key={spend}
-            className="mv-data grid grid-cols-[3.5rem_5.5rem_4.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px]"
+            key={row.spend}
+            className={`mv-data ${ROW_GRID}`}
             style={{ border: "1px dashed var(--line)", color: "var(--dim)", opacity: 0.5 }}
-            title={`Needs ${spend} Mana free after the spell's cost — ${affordable} ${affordable === 1 ? "is" : "are"} free.`}
+            title={`Needs ${row.spend} Mana free after the spell's cost — ${affordable} ${affordable === 1 ? "is" : "are"} free.`}
           >
-            {cells}
+            <OddsCells {...row} here={false} />
+          </span>
+        ) : onSelect === undefined ? (
+          <span
+            key={row.spend}
+            className={`mv-data ${ROW_GRID}`}
+            style={{ border: "1px solid transparent", color: "var(--dim)" }}
+          >
+            <OddsCells {...row} here={false} />
           </span>
         ) : (
           <button
-            key={spend}
-            onClick={() => onSelect(spend)}
+            key={row.spend}
+            onClick={() => onSelect(row.spend)}
             disabled={disabled}
-            className="mv-data grid grid-cols-[3.5rem_5.5rem_4.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px] disabled:opacity-40"
+            className={`mv-data ${ROW_GRID} disabled:opacity-40`}
             style={{
               border: here ? "1px solid var(--accent)" : "1px solid transparent",
               color: here ? "var(--ink)" : "var(--dim)",
             }}
           >
-            {cells}
+            <OddsCells {...row} here={here} />
           </button>
         )
       })}
