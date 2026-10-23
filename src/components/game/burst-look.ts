@@ -31,6 +31,9 @@ export const Plate = Schema.Struct({
 })
 export type Plate = typeof Plate.Type
 
+/** The owner's pick (2026-10-23): nearly square — 3px, an echo of the die's own 4px — with the drifting fog. */
+export const PLATE: Plate = { radius: 3, fog: "drift" }
+
 /** The row's gap a child springs across — one box and a gap to its left is where its trigger stands. */
 const FELT_GAP = 12
 /** One beat of the chain: each generation springs out this much later (s). */

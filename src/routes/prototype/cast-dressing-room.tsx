@@ -248,14 +248,20 @@ const priorRoll: RollEntry = {
     { type: "attribute", name: "Wits", dots: 2 },
     { type: "skill", name: "Investigation", dots: 3 },
   ],
-  poolSize: 5,
-  rolls: [8, 3, 9, 1, 6],
-  explosions: [],
+  // MAG-18: a ten-again with a chain (the 10 → 10 → 4) and a lone burst
+  // (the second 10 → 7), so the feed shows the plate in situ.
+  poolSize: 6,
+  rolls: [8, 10, 9, 1, 10, 3],
+  explosions: [
+    { value: 10, parentIndex: 1 },
+    { value: 4, parentIndex: 6 },
+    { value: 7, parentIndex: 4 },
+  ],
   roteRerolls: [],
-  successes: 2,
+  successes: 5,
   isChanceDie: false,
   isDramaticFailure: false,
-  isExceptionalSuccess: false,
+  isExceptionalSuccess: true,
   visibility: "public",
   againThreshold: 10,
   isRoteAction: false,
@@ -335,7 +341,7 @@ function DressingRoom() {
         <div className="grid gap-2">
           <MessageItem message={systemMsg} dropCap />
           <MessageItem message={chatMsg} />
-          <RollItem roll={priorRoll} />
+          <RollItem roll={priorRoll} newest />
           {/* Remount per knob flip: the card's local drafts (mitigation row,
               containment boxes, refusal line) must not bleed across states. */}
           <CastCard
