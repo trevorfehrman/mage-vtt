@@ -2,7 +2,7 @@ import { Fragment } from "react"
 import { Schema } from "effect"
 import { motion } from "motion/react"
 import { Explosion } from "#/domain/dice"
-import { Plate, burstEntrance, burstPlan } from "./burst-look"
+import { PLATE, Plate, burstEntrance, burstPlan } from "./burst-look"
 import { DieSize, FaceTone, ringInk } from "./die-look"
 import { UnifiedDie } from "./UnifiedDie"
 
@@ -34,9 +34,9 @@ const BurstFacesProps = Schema.Struct({
   eaten: Schema.optional(Schema.Number),
   /** The row's gap and padding — the caller's felt sets them. */
   className: Schema.optional(Schema.String),
-  /** The plate a chain sits on; absent, the row is bare (what ships until the pick lands). */
-  plate: Schema.optional(Plate),
-  /** The fog drifts (fresh); otherwise it holds still. */
+  /** The plate a chain sits on — the owner's pick by default; null for a bare row. */
+  plate: Schema.optional(Schema.NullOr(Plate)),
+  /** The fog drifts (fresh: the newest roll, a live cast); otherwise it holds still. */
   burning: Schema.optional(Schema.Boolean),
 })
 type BurstFacesProps = typeof BurstFacesProps.Type
@@ -54,18 +54,18 @@ export function BurstFaces({
   ghostTitle,
   eaten = 0,
   className,
-  plate,
+  plate = PLATE,
   burning = false,
 }: BurstFacesProps) {
   const plan = burstPlan({ rolls, roteRerolls, explosions, eaten, contained, chance })
   const ink = ringInk(tone)
   const live = burning && reduced !== true
-  const radius = plate === undefined ? 0 : plate.radius === "pill" ? 9999 : plate.radius
+  const radius = plate === null ? 0 : plate.radius === "pill" ? 9999 : plate.radius
   return (
     <div className={`flex flex-wrap items-center content-start ${className ?? ""}`.trimEnd()}>
       {plan.map((cluster) => {
         const chain = cluster.length > 1
-        const onPlate = plate !== undefined && chain
+        const onPlate = plate !== null && chain
         return (
           <span
             key={cluster[0]!.index}

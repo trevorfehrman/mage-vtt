@@ -148,7 +148,7 @@ export function ActivityLog({
                   dropCap={i === 0 && message.visibilityType === "system"}
                 />
               )),
-              Match.tag("roll", (roll) => <RollItem key={roll._id} roll={roll} />),
+              Match.tag("roll", (roll) => <RollItem key={roll._id} roll={roll} newest={roll._id === newestId} />),
               // The live Cast card (issue #43; the card takeover,
               // 2026-07-19): while the cast is live it stands in the
               // caster's and the Storyteller's roll zones, so the feed
@@ -258,7 +258,7 @@ function OverrideTag({ override }: { override: OverrideMark }) {
   )
 }
 
-export function RollItem({ roll }: { roll: RollEntry }) {
+export function RollItem({ roll, newest = false }: { roll: RollEntry; newest?: boolean }) {
   const reduced = useReducedMotion()
   const arcana = roll.components.filter((c) => c.type === "arcanum")
   return (
@@ -322,6 +322,8 @@ export function RollItem({ roll }: { roll: RollEntry }) {
         again={roll.againThreshold}
         chance={roll.isChanceDie}
         reduced={reduced}
+        // The fog drifts on the newest roll only; history holds still.
+        burning={newest}
       />
 
       <div className="mv-data mt-1.5 text-[10px]" style={{ color: "var(--dim)" }}>

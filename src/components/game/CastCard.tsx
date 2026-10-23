@@ -960,6 +960,7 @@ export function CastCard({
             tone="paradox"
             size="md"
             reduced={reduced}
+            burning={status === "paradox"}
             contained={containedNow}
             ghostTitle="Contained — this Paradox success lands as Resistant bashing instead of manifesting"
           />
