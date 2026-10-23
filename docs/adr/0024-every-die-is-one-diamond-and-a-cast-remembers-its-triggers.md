@@ -5,15 +5,21 @@
 > Chronicle's roll cards and the Cast card's Paradox and CAST rows, on
 > every seat — now draws through one `BurstFaces` component in the burst
 > order. **How a burst looks:** each explosion stands beside the trigger
-> that spawned it at the row's own gap, and the relationship rides on the
-> *dice*, never the gap — a connector, glyph or spacing rhythm breaks the
-> moment a child wraps to the next row. A first cut that brought a chain's
-> corners together until they touched was rejected by the owner (it read
-> as a layout bug, not as consequence). The dressing — the trigger lit,
-> the child marked — is `BurstDress` in `die-look.ts`; *which* dressing is
-> pending the owner's pick from the lineup on the polish route, and the
-> felts ship the neutral `plain` look until then; this note is rewritten
-> when the pick lands. **How it moves:** a
+> that spawned it, and a trigger with its children sits on one filled
+> **plate** — a single object that never wraps apart, so the relationship
+> survives a row wrap (anything living in the gap does not). The plate is
+> nearly square (3px, an echo of the die's own 4px), filled with a tint of
+> the dice's ring ink (verdigris; red on the Paradox row), and **flush**:
+> it reaches 2px past the diamonds' points and is pulled out by the same,
+> so its dice keep the row's grid and spacing and the row keeps its height
+> (`platePad`). Behind the dice a slow **fog** of the same ink drifts while
+> the roll is fresh — the feed's newest roll card, a live cast's Paradox
+> row — and holds still on history. Auditioned on the owner's eye and set
+> aside: corners brought together until they touched (it read as a layout
+> bug, not as consequence), faint per-die dressings (halos, rippled rings,
+> a spark, an inherited ink), a pill and rounder radii, a sliding fog, and
+> louder effects (an edge beam, sparkles, a heat shimmer, burst rays).
+> **How it moves:** a
 > child springs out of the die before it — from one box-and-gap to the
 > left, scaled to 0.4 and unseen, on the felt's accrete spring — each
 > generation one beat (90ms) after the last, so cause reads before effect

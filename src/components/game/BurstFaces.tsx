@@ -2,7 +2,7 @@ import { Fragment } from "react"
 import { Schema } from "effect"
 import { motion } from "motion/react"
 import { Explosion } from "#/domain/dice"
-import { PLATE, Plate, burstEntrance, burstPlan, platePad } from "./burst-look"
+import { PLATE_RADIUS, burstEntrance, burstPlan, platePad } from "./burst-look"
 import { DieSize, FaceTone, ringInk } from "./die-look"
 import { UnifiedDie } from "./UnifiedDie"
 
@@ -34,8 +34,8 @@ const BurstFacesProps = Schema.Struct({
   eaten: Schema.optional(Schema.Number),
   /** The row's gap and padding — the caller's felt sets them. */
   className: Schema.optional(Schema.String),
-  /** The plate a chain sits on — the owner's pick by default; null for a bare row. */
-  plate: Schema.optional(Schema.NullOr(Plate)),
+  /** A chain sits on its plate (the default); false draws the row bare. */
+  plated: Schema.optional(Schema.Boolean),
   /** The fog drifts (fresh: the newest roll, a live cast); otherwise it holds still. */
   burning: Schema.optional(Schema.Boolean),
 })
@@ -54,19 +54,18 @@ export function BurstFaces({
   ghostTitle,
   eaten = 0,
   className,
-  plate = PLATE,
+  plated = true,
   burning = false,
 }: BurstFacesProps) {
   const plan = burstPlan({ rolls, roteRerolls, explosions, eaten, contained, chance })
   const ink = ringInk(tone)
   const live = burning && reduced !== true
-  const radius = plate === null ? 0 : plate.radius === "pill" ? 9999 : plate.radius
   const pad = platePad(size)
   return (
     <div className={`flex flex-wrap items-center content-start ${className ?? ""}`.trimEnd()}>
       {plan.map((cluster) => {
         const chain = cluster.length > 1
-        const onPlate = plate !== null && chain
+        const onPlate = plated && chain
         return (
           <span
             key={cluster[0]!.index}
@@ -81,7 +80,7 @@ export function BurstFaces({
                     gap: "inherit",
                     padding: pad,
                     margin: -pad,
-                    borderRadius: radius,
+                    borderRadius: PLATE_RADIUS,
                     background: `color-mix(in srgb, ${ink} 12%, var(--raise))`,
                     boxShadow: `inset 0 1px 0 color-mix(in srgb, white 6%, transparent), 0 1px 3px rgba(0,0,0,.45)`,
                     isolation: "isolate",
@@ -89,11 +88,11 @@ export function BurstFaces({
                 : undefined
             }
           >
-            {onPlate && plate.fog !== "none" && (
+            {onPlate && (
               <span
                 aria-hidden
-                data-fog={plate.fog}
-                className={`mv-plate-fog mv-plate-fog-${plate.fog}${live ? "" : " mv-burst-still"}`}
+                data-fog
+                className={`mv-plate-fog${live ? "" : " mv-burst-still"}`}
                 style={{ ["--plate-ink" as string]: ink }}
               />
             )}
