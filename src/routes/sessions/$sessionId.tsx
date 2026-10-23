@@ -6,6 +6,7 @@ import { api } from "../../../convex/_generated/api"
 import type { PoolComponentInput } from "#/domain/dice"
 import { pooledDice } from "#/machines/dice-pool"
 import { useActivity } from "#/hooks/use-activity"
+import { pinnedLiveCasts } from "#/domain/activity"
 import { useCast } from "#/hooks/use-cast"
 import { useDicePool } from "#/hooks/use-dice-pool"
 import { useSession } from "#/hooks/use-session"
@@ -275,6 +276,11 @@ function SessionPage() {
   // roller — else the oldest waiting offer.
   const stZoneCast = isStoryteller ? (stageCast ?? pendingOffer) : null
 
+  // Every other caster's live cast, pinned above this seat's tray (MAG-46):
+  // a fixed slot, oldest first, so an in-progress cast never moves around
+  // the Chronicle. The Storyteller's zone holds theirs, so none pin for them.
+  const pinned = pinnedLiveCasts({ viewerUserId, isStoryteller }, activity ?? [])
+
   // Build character sheet content
   let sheetContent: React.ReactNode = undefined
   if (viewed === undefined) {
@@ -404,6 +410,25 @@ function SessionPage() {
           mySheet={mySheet}
           {...seatArg}
         />
+      }
+      liveCasts={
+        pinned.length > 0 && (
+          <div className="max-h-[60%] shrink-0 overflow-y-auto">
+            {pinned.map((c) => (
+              <div key={`pinned-${c._id}`} className="border-t p-2" style={{ borderColor: "var(--line)" }}>
+                <CastCard
+                  cast={c}
+                  sessionId={sessionId}
+                  isStoryteller={isStoryteller}
+                  viewerUserId={viewerUserId}
+                  mySheet={mySheet}
+                  // the watched cockpit (note 14) reads the CASTER's track
+                  casterSheet={casterSheetOf(c.characterId)}
+                />
+              </div>
+            ))}
+          </div>
+        )
       }
       dicePoolBuilder={
         // The console (owner call 2026-07-19, superseding #104's reach-order):

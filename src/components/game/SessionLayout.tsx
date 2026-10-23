@@ -41,6 +41,8 @@ interface SessionLayoutProps {
   sheetSky?: ReactNode
   characterSheet?: ReactNode
   activityLog: ReactNode
+  /** Other casters' live casts, pinned between the Chronicle and the tray (MAG-46). */
+  liveCasts?: ReactNode
   dicePoolBuilder: ReactNode
   chatInput: ReactNode
   /** The FFX tick timeline (issue #60): the full-width bottom band. */
@@ -58,6 +60,7 @@ export function SessionLayout({
   sheetSky,
   characterSheet,
   activityLog,
+  liveCasts,
   dicePoolBuilder,
   chatInput,
   combatTracker,
@@ -203,7 +206,11 @@ export function SessionLayout({
         >
           <div className="flex h-full flex-col">
             {/* Activity log — fills available space */}
-            <div className="flex-1 overflow-hidden">{activityLog}</div>
+            <div className="min-h-0 flex-1 overflow-hidden">{activityLog}</div>
+            {/* A live cast holds still (MAG-46): pinned below the Chronicle's
+                chat and rolls, above the viewer's own tray — a fixed slot,
+                never a feed entry. Empty when no one else is casting. */}
+            {liveCasts}
             {/* Dice pool — foot of the rail, above chat. The memory/judgment
                 boundary (styles.css): the panel ends with the Chronicle and
                 the working zone stands on the void — postures wear the

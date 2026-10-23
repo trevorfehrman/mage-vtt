@@ -1,18 +1,14 @@
 import { useRef, useEffect, type ReactNode } from "react"
 import { Match } from "effect"
-import { useQuery } from "convex/react"
 import { AnimatePresence, useReducedMotion } from "motion/react"
 import { ScrollArea } from "#/components/ui/scroll-area"
 import { useActivity } from "#/hooks/use-activity"
-import type { MessageEntry, OverrideMark, RollEntry } from "#/domain/activity"
-import { isUnresolved } from "#/domain/cast"
+import { isLiveCast, type MessageEntry, type OverrideMark, type RollEntry } from "#/domain/activity"
 import type { CharacterSheet } from "#/domain/character"
-import { decodeSheetDoc } from "#/lib/sheet-doc"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import { BurstFaces } from "./BurstFaces"
 import { CastCard } from "./CastCard"
 import { isLooseDice } from "./DicePoolBuilder"
-import { api } from "../../../convex/_generated/api"
 import type { Id } from "../../../convex/_generated/dataModel"
 
 /** Within this distance of the log's foot still counts as "at the foot". */
@@ -47,15 +43,6 @@ export function ActivityLog({
   mySheet,
 }: ActivityLogProps) {
   const activity = useActivity(sessionId, seat)
-  // The cockpit is watchable by every seat (2026-07-19 polish, note 14): a
-  // spectator's live card needs the CASTER's health track, read off the same
-  // roster query the route already holds (Convex dedupes the subscription).
-  // Decoded per live cast entry — the feed carries at most a handful.
-  const roster = useQuery(api.characters.listForSession, { sessionId })
-  const casterSheetOf = (characterId: string): CharacterSheet | null => {
-    const doc = (roster ?? []).find((c) => c._id === characterId)
-    return doc ? decodeSheetDoc(doc) : null
-  }
   const contentRef = useRef<HTMLDivElement>(null)
   // Pinned = reading the live end of the log. Leaving the foot (e.g. scrolling
   // up to a Cast card's controls, issue #65) releases the pin so new beats and
@@ -149,15 +136,13 @@ export function ActivityLog({
                 />
               )),
               Match.tag("roll", (roll) => <RollItem key={roll._id} roll={roll} />),
-              // The live Cast card (issue #43; the card takeover,
-              // 2026-07-19): while the cast is live it stands in the
-              // caster's and the Storyteller's roll zones, so the feed
-              // carries it only for spectators — total absence for the two
-              // seats holding it, never a slimmed stub. On resolution the
-              // zones free and the record renders here for everyone.
+              // A live Cast never rides the feed (MAG-46, owner 2026-10-23:
+              // an in-progress cast never moves around anyone's Chronicle).
+              // It stands in the caster's and the Storyteller's roll zones,
+              // and pinned above every other seat's tray. On resolution the
+              // record lands here for everyone, at its timestamp.
               Match.tag("cast", (cast) =>
-                isUnresolved(cast.status) &&
-                (isStoryteller || cast.casterUserId === viewerUserId) ? null : (
+                isLiveCast(cast) ? null : (
                   <CastCard
                     key={cast._id}
                     cast={cast}
@@ -165,13 +150,8 @@ export function ActivityLog({
                     isStoryteller={isStoryteller}
                     viewerUserId={viewerUserId}
                     mySheet={mySheet}
-                    // The caster's track for the watched cockpit (note 14) —
-                    // only a live Paradox rung needs it.
-                    casterSheet={
-                      cast.status === "paradox"
-                        ? casterSheetOf(cast.characterId)
-                        : null
-                    }
+                    // the cockpit is a live rung's; the record needs no track
+                    casterSheet={null}
                   />
                 ),
               ),

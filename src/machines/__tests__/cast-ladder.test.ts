@@ -20,6 +20,7 @@ const snapshot = (
   _tag: "cast",
   _id: "cast-1" as Id<"casts">,
   timestamp: 0,
+  startedAt: 0,
   characterId: "char-aldous" as Id<"characters">,
   casterUserId: "user-aldous",
   casterName: "Aldous",

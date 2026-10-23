@@ -6,6 +6,7 @@ import {
   FEED_CAP,
   decodeFeed,
   mergeFeed,
+  pinnedLiveCasts,
   visibleEntries,
   type CastEntry,
   type MessageEntry,
@@ -271,6 +272,41 @@ describe("visibleEntries: the Tides wait for the fix (owner, 2026-10-23)", () =>
 
   it("the fix publishes them to every seat", () => {
     expect(visibleEntries(player, [fixed])).toEqual([fixed])
+  })
+})
+
+describe("pinnedLiveCasts: a live cast holds still (MAG-46)", () => {
+  const live = (id: string, casterUserId: string, startedAt: number, status = "price") =>
+    ({ _tag: "cast", _id: id, timestamp: 9000 - startedAt, startedAt, casterUserId, status }) as unknown as CastEntry
+  const resolved = { ...live("c_done", "user_b", 50), status: "resolved" } as CastEntry
+  const mine = live("c_mine", "user_a", 300)
+  const theirs = live("c_theirs", "user_b", 200)
+  const older = live("c_older", "user_c", 100, "draft")
+  const feed: ReadonlyArray<ActivityEntry> = [message(), theirs, mine, resolved, older]
+
+  it("pins every other caster's live cast for a spectator, oldest first, whatever the feed's order", () => {
+    expect(pinnedLiveCasts({ viewerUserId: "user_z", isStoryteller: false }, feed).map((c) => c._id)).toEqual([
+      "c_older",
+      "c_theirs",
+      "c_mine",
+    ])
+  })
+
+  it("leaves the caster's own live cast to their roll zone", () => {
+    expect(pinnedLiveCasts({ viewerUserId: "user_a", isStoryteller: false }, feed).map((c) => c._id)).toEqual([
+      "c_older",
+      "c_theirs",
+    ])
+  })
+
+  it("pins nothing for the Storyteller, whose roll zone holds the live casts", () => {
+    expect(pinnedLiveCasts({ viewerUserId: "user_st", isStoryteller: true }, feed)).toEqual([])
+  })
+
+  it("never pins a resolved record — that belongs to the Chronicle", () => {
+    expect(pinnedLiveCasts({ viewerUserId: "user_z", isStoryteller: false }, feed).map((c) => c._id)).not.toContain(
+      "c_done",
+    )
   })
 })
 

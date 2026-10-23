@@ -15,7 +15,10 @@
 // were auditioned here and rescinded — triggers stay verdigris mv-roll.
 // The REAL app shell (SessionLayout), the REAL feed neighbors (MessageItem /
 // RollItem), and the REAL CastCard — fed hand-built fake Cast documents via
-// URL knobs (?rung=…&seat=…), reload-stable and shareable.
+// URL knobs (?rung=…&seat=…), reload-stable and shareable. Each seat mounts
+// the card where the session does (MAG-46): the caster's and Storyteller's
+// roll zone while live, pinned above the bystander's tray, the feed once
+// it is a record.
 //
 // Unlike the census-era prototypes in this directory, this rig imports app
 // code ON PURPOSE — that is its whole job (map #95 reaffirmed ADR-0021's
@@ -37,6 +40,7 @@ import { ScrollArea } from "#/components/ui/scroll-area"
 import { SessionLayout } from "#/components/game/SessionLayout"
 import { MessageItem, RollItem } from "#/components/game/ActivityLog"
 import { CastCard } from "#/components/game/CastCard"
+import { isUnresolved } from "#/domain/cast"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { ChatInput } from "#/components/game/ChatInput"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
@@ -119,6 +123,7 @@ const draft: CastEntry = {
   _tag: "cast",
   _id: "proto-cast" as CastEntry["_id"],
   timestamp: T0,
+  startedAt: T0,
   characterId: "proto-character" as CastEntry["characterId"],
   casterUserId: CASTER,
   casterName: "The Little Bear",
@@ -333,6 +338,31 @@ function DressingRoom() {
     return () => window.removeEventListener("keydown", onKey)
   })
 
+  // Remount per knob flip: the card's local drafts (mitigation row,
+  // containment boxes, refusal line) must not bleed across states.
+  const card = (
+    <CastCard
+      key={`${rung}:${seat}`}
+      cast={cast}
+      sessionId={SESSION_ID}
+      isStoryteller={view.isStoryteller}
+      viewerUserId={view.viewerUserId}
+      mySheet={mySheet}
+      // Every seat watches the caster's cockpit (note 14) — the rig hands
+      // all three the same Arctus track.
+      casterSheet={arctusSheet}
+      onPendingMana={setCastPendingMana}
+      adjust={adjust}
+    />
+  )
+  // Each seat mounts the card where the session does (MAG-46): a live cast
+  // IS the caster's and the Storyteller's roll zone (no tray), and pins
+  // above a bystander's tray; never in the feed. The record (resolved,
+  // cancelled, voided) lands in the feed for everyone.
+  const live = isUnresolved(cast.status)
+  const inZone = live && seat !== "bystander"
+  const pinnedHere = live && seat === "bystander"
+
   const feed = (
     <div className="flex h-full flex-col">
       <div
@@ -346,21 +376,7 @@ function DressingRoom() {
           <MessageItem message={systemMsg} dropCap />
           <MessageItem message={chatMsg} />
           <RollItem roll={priorRoll} />
-          {/* Remount per knob flip: the card's local drafts (mitigation row,
-              containment boxes, refusal line) must not bleed across states. */}
-          <CastCard
-            key={`${rung}:${seat}`}
-            cast={cast}
-            sessionId={SESSION_ID}
-            isStoryteller={view.isStoryteller}
-            viewerUserId={view.viewerUserId}
-            mySheet={mySheet}
-            // Every seat watches the caster's cockpit (note 14) — the rig
-            // hands all three the same Arctus track.
-            casterSheet={arctusSheet}
-            onPendingMana={setCastPendingMana}
-            adjust={adjust}
-          />
+          {!live && card}
         </div>
       </ScrollArea>
     </div>
@@ -385,10 +401,27 @@ function DressingRoom() {
           )
         }
         activityLog={feed}
+        liveCasts={
+          pinnedHere && (
+            <div className="max-h-[60%] shrink-0 overflow-y-auto">
+              <div className="border-t p-2" style={{ borderColor: "var(--line)" }}>
+                {card}
+              </div>
+            </div>
+          )
+        }
         dicePoolBuilder={
           <>
             {mySheet && <ResourceStrip character={mySheet} pendingMana={castPendingMana} />}
-            <DicePoolBuilder pool={pool} />
+            {inZone ? (
+              <div className="mv-stage">
+                <div className="border-t p-2" style={{ borderColor: "var(--line)" }}>
+                  {card}
+                </div>
+              </div>
+            ) : (
+              <DicePoolBuilder pool={pool} />
+            )}
           </>
         }
         chatInput={
