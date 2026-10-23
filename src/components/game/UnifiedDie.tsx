@@ -5,6 +5,7 @@ import {
   DIAMOND_ROTATION,
   SIZE_LADDER,
   faceLook,
+  poolClass,
   poolHasGlyph,
   poolLook,
   shapeClass,
@@ -107,7 +108,7 @@ function PoolDie({
         <ArcanaGlyph arcanum={arcanum} size={SIZE_LADDER[size].glyph} />
       </span>
     ) : null
-  const shape = shapeClass(size)
+  const shape = `${shapeClass(size)} ${poolClass(kind, ghost, reduced)}`.trimEnd()
   return onSkim === undefined ? (
     <motion.span {...anim} title={title} className={shape} style={style}>
       {mark}

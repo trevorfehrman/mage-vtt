@@ -16,7 +16,6 @@ import type { CharacterSheet } from "#/domain/character"
 import type { HealthTrack } from "#/domain/damage"
 import {
   calculateParadoxPool,
-  MANA_MITIGATION_SOURCE,
   resolveParadox,
   type ParadoxPoolModifier,
 } from "#/domain/paradox"
@@ -24,10 +23,12 @@ import { rollOdds } from "#/domain/probability"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
-import { ArcanaGlyph } from "./ArcanaGlyph"
+import { ArcanaGlyph, arcanumTint, isGrossArcanum } from "./ArcanaGlyph"
 import { healthBoxGlyph, ResistantDot } from "./CharacterSheet"
 import { Die } from "./Die"
 import { FeltDie, type DieKind } from "./FeltDie"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
+import { PriorRollsGlyph, SleeperGlyph, TidesGlyph, ToolGlyph } from "./TideGlyphs"
 import { ParadoxGlyph } from "./ParadoxGlyph"
 import { api } from "../../../convex/_generated/api"
 import type { Id } from "../../../convex/_generated/dataModel"
@@ -132,6 +133,9 @@ export function CastCard({
   const [contained, setContained] = useState(0)
   // The ST's add-a-modifier form (issue #44): local until the Add press.
   const [modSource, setModSource] = useState("")
+  /** The cast-die group under the pointer (the badges work): its dice glow, the rest settle. */
+  const [litKind, setLitKind] = useState<DieKind | null>(null)
+  const settle = (kind: DieKind) => (litKind !== null && litKind !== kind ? 0.4 : 1)
   const [modDice, setModDice] = useState(1)
 
   // A stale refusal clears whenever the document moves (the SceneStrip idiom).
@@ -291,26 +295,58 @@ export function CastCard({
     ...Array.from({ length: Math.max(0, cast.declaredPool - feltSpecs.length) }, () => "sheet" as const),
   ].slice(0, cast.declaredPool)
   const eaten = controls.includes("contain") && outlook !== null ? outlook.eaten : 0
+  // Hover a cast die and its whole GROUP comes forward (the badges work,
+  // 2026-10-22 evening): every die of that kind glows in its own ink, the
+  // other kinds settle back a step, and one tooltip speaks for the group.
+  // No encompassing box — a group can split across a wrap, and per-die state
+  // wraps for free. The Tooltip is the keyed presence child (presence reaches
+  // the die's motion element through context, so exits still play); the
+  // trigger is a tight span around the die, since FeltDie takes no ref.
+  // Tooltip copy is max information, minimum characters (owner, 2026-10-22):
+  // the intrinsic group names its sheet components ("Gnosis 3", or a rote's
+  // "Resolve 2 · Occult 3"), the rest name themselves and their count.
+  const groupCount = (kind: DieKind) => feltKinds.filter((k) => k === kind).length
+  const titleCase = (w: string) => w.charAt(0).toUpperCase() + w.slice(1)
+  const sheetTerms = cast.declaredComponents
+    .filter((c) => c.type !== "arcanum" && c.name !== HIGH_SPEECH_COMPONENT_NAME && c.name !== WILLPOWER_COMPONENT_NAME)
+    .map((c) => `${c.name} ${c.dots}`)
+    .join(" · ")
+  const groupSays = (kind: DieKind, arcanum: string | undefined) =>
+    kind === "willpower"
+      ? `Willpower +${groupCount(kind)}`
+      : kind === "arcanum"
+        ? `${arcanum === undefined ? "Arcanum" : titleCase(arcanum)} ${groupCount(kind)}`
+        : kind === "highSpeech"
+          ? `High Speech +${groupCount(kind)}`
+          : sheetTerms.length > 0
+            ? sheetTerms
+            : `Sheet ${groupCount(kind)}`
   const feltDice = feltKinds.map((kind, i) => {
     const ghosted = i >= feltKinds.length - eaten
+    const arcanum = feltSpecs[i]?.arcanum
+    const says = ghosted ? "Eaten by Paradox" : groupSays(kind, arcanum)
     return (
-      <FeltDie
-        key={`:`}
-        kind={kind}
-        arcanum={feltSpecs[i]?.arcanum}
-        reduced={reduced}
-        glide={false}
-        ghosted={ghosted}
-        title={
-          ghosted
-            ? "Eaten by the bet — uncontained Paradox and its wound penalty"
-            : kind === "willpower"
-              ? "Willpower — precommitted and blind; Paradox can eat these like any others"
-              : kind === "arcanum"
-                ? `The Arcanum's dice — `
-                : "Intrinsic — Gnosis and the boosts, from the sheet"
-        }
-      />
+      <Tooltip key={`${kind}:${i}`}>
+        <TooltipTrigger asChild>
+          <span
+            className="grid size-[20px] place-items-center transition-opacity duration-150"
+            style={{ opacity: settle(kind) }}
+            onPointerEnter={() => setLitKind(kind)}
+            onPointerLeave={() => setLitKind(null)}
+          >
+            <FeltDie
+              kind={kind}
+              arcanum={arcanum}
+              reduced={reduced}
+              glide={false}
+              ghosted={ghosted}
+              lit={litKind === kind}
+              title=""
+            />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={4}>{says}</TooltipContent>
+      </Tooltip>
     )
   })
   // Paradox on the felt (2026-07-19 polish, note 11; walked forward to the
@@ -340,18 +376,89 @@ export function CastCard({
   // card while editable, where the Tides block below carries them instead of
   // doubling here. The mitigation modifier never badges (pass 3, note 5):
   // the table and the shrinking dice count carry it.
-  const tideBadges: ReadonlyArray<ParadoxPoolModifier> = controls.includes(
-    "adjust",
-  )
-    ? []
-    : feltPool !== null
-      ? feltPool.modifiers.filter((m) => m.source !== MANA_MITIGATION_SOURCE)
-      : (cast.adjustments ?? [])
+  // The badges work (2026-10-22 evening): the Paradox area explains its own
+  // red dice, in two registers. INSTRUMENTS are the rule's fixed slots —
+  // Sleepers, prior rolls, the tool (rote when rote) — always printed on the
+  // area's label row, dim at zero and in ink when live, so the eye learns
+  // their positions and reads "why so few / so many" at a glance. WEATHER
+  // is the ST's named circumstances — scene-wide and this caster's own —
+  // the only prose in the area and its only colored text, ember rising and
+  // verdigris pulling back, so the news of THIS cast pops unhidden. Before
+  // the fix the scene seed is unstamped, so the seeded instruments read "—".
+  // Mana mitigation never badges (pass 3, note 5): the shrinking count says it.
+  // The weather — the ST's named circumstances, scene-wide and this
+  // caster's own — is storytelling, so it stands in its OWN section above
+  // the felt, the first thing the player reads (owner, 2026-10-22 evening):
+  // pills, prose | number, red for a flood (more Paradox dice) and verdigris
+  // for an ebb, floods first. Long names run and wrap. The Paradox area's
+  // instrument row keeps only the net pull.
+  const bySign = (a: { modifier: ParadoxPoolModifier }, b: { modifier: ParadoxPoolModifier }) =>
+    Math.sign(b.modifier.dice) - Math.sign(a.modifier.dice)
+  const weather: ReadonlyArray<{ modifier: ParadoxPoolModifier; onRemove?: () => void }> = Array.from([
+    ...(cast.tides?.circumstances ?? []).map((modifier) => ({ modifier })),
+    ...(cast.adjustments ?? []).map((modifier, i) => ({
+      modifier,
+      ...(controls.includes("adjust")
+        ? {
+            onRemove: () =>
+              run(() =>
+                adjustPrice({
+                  ...step,
+                  adjustments: (cast.adjustments ?? [])
+                    .filter((_, j) => j !== i)
+                    .map((d) => ({ ...d })),
+                }),
+              ),
+          }
+        : {}),
+    })),
+  ]).sort(bySign)
+  // Each instrument is a glyph and the raw FACT (owner, 2026-10-22 evening):
+  // how many Sleepers, how many prior rolls, the Tides' net pull, tool in
+  // hand or not — never the dice they add; the dice show that. Zero prints
+  // as the glyph and "0" in dim, unseeded as "—". Live ink says which way
+  // it pulls: red for what adds Paradox dice, verdigris for what takes them.
+  const seeded = cast.tides !== undefined
+  const count = (n: number | undefined) => (n === undefined ? "—" : String(n))
+  const tidesNet = weather.reduce((sum, w) => sum + w.modifier.dice, 0)
+  const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "0")
+  const instruments: ReadonlyArray<{ key: string; glyph: ReactNode; value: string | null; ink: string; says: string }> = [
+    {
+      key: "tides",
+      glyph: <TidesGlyph size={13} />,
+      value: signed(tidesNet),
+      ink: tidesNet > 0 ? "var(--paradox)" : tidesNet < 0 ? "var(--accent)" : "var(--dim)",
+      says: `Tides: ${signed(tidesNet)}`,
+    },
+    {
+      key: "sleepers",
+      glyph: <SleeperGlyph size={13} />,
+      value: count(cast.tides?.witnessCount),
+      ink: seeded && cast.tides.witnessCount > 0 ? "var(--paradox)" : "var(--dim)",
+      says: !seeded
+        ? "Sleepers: set at the fix"
+        : `${cast.tides.witnessCount} sleeper${cast.tides.witnessCount === 1 ? "" : "s"} · +${cast.tides.witnessCount > 0 ? 2 : 0}`,
+    },
+    {
+      key: "prior",
+      glyph: <PriorRollsGlyph size={13} />,
+      value: count(cast.tides?.priorParadoxRolls),
+      ink: seeded && cast.tides.priorParadoxRolls > 0 ? "var(--paradox)" : "var(--dim)",
+      says: !seeded ? "Prior Paradox: set at the fix" : `${cast.tides.priorParadoxRolls} prior Paradox · +${cast.tides.priorParadoxRolls}`,
+    },
+    {
+      key: "tool",
+      glyph: <ToolGlyph size={13} />,
+      value: null,
+      ink: cast.usesMagicalTool ? "var(--accent)" : "var(--dim)",
+      says: cast.usesMagicalTool ? "Tool: −1" : "Tool: none",
+    },
+    ...(isRoteCast(cast) ? [{ key: "rote", glyph: null, value: "rote", ink: "var(--accent)", says: "Rote: −1" }] : []),
+  ]
   const declaredTerms = [
     // The bought floor (issue #107): what a dispel rolls against.
     ...(cast.potency !== undefined ? [`Potency ${cast.potency} bought`] : []),
     ...(cast.targets !== undefined ? [`×${cast.targets} targets`] : []),
-    ...(cast.usesMagicalTool ? ["tool in hand −1"] : []),
   ]
 
   // The odds line beneath the felt (note 16; repointed by pass 3, note 3):
@@ -393,19 +500,16 @@ export function CastCard({
       style={terminal && status !== "resolved" ? { opacity: 0.65 } : undefined}
     >
       {/* the loud header (card takeover, 2026-07-19): the cast names itself
-          in your face — VULGAR PRIME 1 — the caster and their intent beneath.
+          in your face — VULGAR PRIME 1 — the caster beneath.
           The old "Vulgar Cast" badge died with it: the headline IS the word. */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <ArcanaGlyph arcanum={cast.arcanum} size={18} className="mv-accent shrink-0" />
-          <span
-            className="mv-h truncate text-[18px] uppercase tracking-[0.06em]"
-            style={{ color: "var(--ink)" }}
-          >
-            Vulgar {cast.arcanum} {cast.level}
-          </span>
-        </div>
-        <div className="flex gap-1 pt-1">
+        <span
+          className="mv-h min-w-0 truncate text-[18px] uppercase tracking-[0.06em]"
+          style={{ color: "var(--ink)" }}
+        >
+          Vulgar {cast.arcanum} {cast.level}
+        </span>
+        <div className="flex items-center gap-1.5 pt-0.5">
           {status === "voided" && cast.override && (
             <span
               className="mv-data rounded-[2px] px-1 py-0.5 text-[12px] uppercase tracking-wide"
@@ -423,6 +527,16 @@ export function CastCard({
               Cancelled
             </span>
           )}
+          {/* The Arcanum's glyph in its own Realm metal, top-right, so the
+              headline's text sits flush left (owner, 2026-10-22 evening). */}
+          <span style={{ color: arcanumTint(cast.arcanum) }}>
+            <ArcanaGlyph
+              arcanum={cast.arcanum}
+              size={18}
+              className="shrink-0"
+              variant={isGrossArcanum(cast.arcanum) ? "seal" : "line"}
+            />
+          </span>
         </div>
       </div>
 
@@ -436,11 +550,6 @@ export function CastCard({
         )}
       </p>
 
-      {cast.intent && (
-        <p className="mt-0.5 text-[12px] italic" style={{ color: "var(--dim)" }}>
-          &ldquo;{cast.intent}&rdquo;
-        </p>
-      )}
 
       {/* the ladder — the same rungs on every screen */}
       {status !== "cancelled" && status !== "voided" && (
@@ -473,9 +582,54 @@ export function CastCard({
         </div>
       )}
 
+      {/* The weather ABOVE the felt (the badges work, 2026-10-22 evening):
+          the ST's named circumstances as two-part pills — the prose, a rule,
+          the number — red rising, verdigris pulling back. Storytelling first:
+          these are new every cast and the player reads them before the dice. */}
+      {weather.length > 0 && (
+        <TooltipProvider>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {weather.map(({ modifier, onRemove }, i) => {
+            const ebb = modifier.dice < 0
+            const tint = ebb ? "var(--accent)" : "var(--paradox)"
+            const n = Math.abs(modifier.dice)
+            return (
+              <Tooltip key={`${modifier.source}-${i}`}>
+              <TooltipTrigger asChild>
+              <span
+                className="mv-data inline-flex items-stretch overflow-hidden rounded-full border text-[12px] leading-none"
+                style={{ borderColor: tint, color: tint }}
+              >
+                <span className="px-2.5 py-1">{modifier.source}</span>
+                <span className="flex items-center border-l px-2 py-1 font-bold" style={{ borderColor: tint, background: `color-mix(in srgb, ${tint} 14%, transparent)` }}>
+                  {ebb ? `−${Math.abs(modifier.dice)}` : `+${modifier.dice}`}
+                  {onRemove && (
+                    <button
+                      onClick={onRemove}
+                      disabled={busy}
+                      className="ml-1.5 leading-none opacity-70 hover:opacity-100 disabled:opacity-40"
+                      style={{ color: tint }}
+                      title="Remove"
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={4}>
+                {ebb ? `Ebb · −${n}` : `Flood · +${n}`}
+              </TooltipContent>
+              </Tooltip>
+            )
+          })}
+        </div>
+        </TooltipProvider>
+      )}
+
       {/* Provenance ABOVE the felt (2026-07-20): the pool's lineage and the
           declared terms sit above the dice; the felt itself holds only the
-          physical dice, and the Tides tags stand directly beneath it. */}
+          physical dice. */}
       <div
         className="mv-data mt-2 flex flex-wrap items-baseline justify-between gap-x-2 text-[12px] leading-none"
         style={{ color: "var(--dim)" }}
@@ -493,7 +647,27 @@ export function CastCard({
         }}
       >
         {paradoxArea && (
-        <FeltSection label="paradox" labelAt="top">
+        <FeltSection
+          label="paradox"
+          labelAt="top"
+          aside={
+            <TooltipProvider>
+              <span className="flex items-center justify-end gap-x-3 normal-case tracking-normal">
+                {instruments.map((inst) => (
+                  <Tooltip key={inst.key}>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex items-center gap-1" style={{ color: inst.ink }}>
+                        {inst.glyph}
+                        {inst.value !== null && <span>{inst.value}</span>}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={4}>{inst.says}</TooltipContent>
+                  </Tooltip>
+                ))}
+              </span>
+            </TooltipProvider>
+          }
+        >
         {status === "resolved" && (cast.paradoxRolls ?? []).length > 0 && (
           <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-2.5 pb-4">
             {(cast.paradoxRolls ?? []).map((v, i) => (
@@ -521,31 +695,42 @@ export function CastCard({
         )}
         {paradoxDiceCount !== null && (
           <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-2.5 pb-4">
+            <TooltipProvider>
             <AnimatePresence initial={false}>
-              {Array.from({ length: paradoxDiceCount }, (_, i) => (
-                <FeltDie
-                  key={`paradox:${i}`}
-                  kind={i < paradoxBaseCount ? "paradoxBase" : "paradox"}
-                  reduced={reduced}
-                  glide={false}
-                  title={
-                    i < paradoxBaseCount
-                      ? "Reality's base Paradox dice — a dice count from Gnosis, never the rank; the Tides ebb and flood around these"
-                      : "Paradox — a die reality will roll against this cast; Mana mitigation buys these off"
-                  }
-                />
-              ))}
+              {Array.from({ length: paradoxDiceCount }, (_, i) => {
+                const kind: DieKind = i < paradoxBaseCount ? "paradoxBase" : "paradox"
+                return (
+                  <Tooltip key={`paradox:${i}`}>
+                    <TooltipTrigger asChild>
+                      <span
+                        className="grid size-[20px] place-items-center transition-opacity duration-150"
+                        style={{ opacity: settle(kind) }}
+                        onPointerEnter={() => setLitKind(kind)}
+                        onPointerLeave={() => setLitKind(null)}
+                      >
+                        <FeltDie kind={kind} reduced={reduced} glide={false} lit={litKind === kind} title="" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={4}>
+                      {kind === "paradoxBase"
+                        ? `Gnosis ${cast.gnosis ?? "?"}: ${paradoxBaseCount}`
+                        : `Net Circumstance: +${paradoxDiceCount - paradoxBaseCount}`}
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              })}
               {paradoxDiceCount === 0 && (
-                <FeltDie
-                  key="paradox:chance"
-                  kind="paradox"
-                  ghosted
-                  reduced={reduced}
-                  glide={false}
-                  title="Fully mitigated — reality still throws a single chance die"
-                />
+                <Tooltip key="paradox:chance">
+                  <TooltipTrigger asChild>
+                    <span className="grid size-[20px] place-items-center">
+                      <FeltDie kind="paradox" ghosted reduced={reduced} glide={false} title="" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={4}>Fully mitigated: chance die</TooltipContent>
+                </Tooltip>
               )}
             </AnimatePresence>
+            </TooltipProvider>
           </div>
         )}
         </FeltSection>
@@ -583,7 +768,9 @@ export function CastCard({
           </div>
         ) : (
           <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-4 pb-2.5">
-            <AnimatePresence initial={false}>{feltDice}</AnimatePresence>
+            <TooltipProvider>
+              <AnimatePresence initial={false}>{feltDice}</AnimatePresence>
+            </TooltipProvider>
             {cast.declaredPool === 0 && (
               <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
                 no pool — a chance die waits
@@ -593,15 +780,6 @@ export function CastCard({
         )}
         </FeltSection>
       </div>
-      {/* The Tides tags directly BENEATH the felt (2026-07-20). */}
-      {tideBadges.length > 0 && (
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {tideBadges.map((m, i) => (
-            <TideBadge key={`${m.source}-${i}`} modifier={m} />
-          ))}
-        </div>
-      )}
-
       {/* the odds line — directly beneath the felt (note 16); ONE line, and
           in the Tides phase it prices the spell, not the table's Paradox
           (pass 3, note 3) */}
@@ -699,27 +877,9 @@ export function CastCard({
               Add
             </button>
           </div>
-          {(cast.adjustments ?? []).length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              {(cast.adjustments ?? []).map((m, i) => (
-                <TideBadge
-                  key={`${m.source}-${i}`}
-                  modifier={m}
-                  disabled={busy}
-                  onRemove={() =>
-                    run(() =>
-                      adjustPrice({
-                        ...step,
-                        adjustments: (cast.adjustments ?? [])
-                          .filter((_, j) => j !== i)
-                          .map((d) => ({ ...d })),
-                      }),
-                    )
-                  }
-                />
-              ))}
-            </div>
-          )}
+          {/* The adjustments themselves stand on the felt's PARADOX area
+              (the badges work, 2026-10-22 evening), each with its × here on
+              the ST's own card — this block only adds. */}
         </div>
       )}
 
@@ -949,56 +1109,6 @@ export function CastCard({
         </p>
       )}
     </div>
-  )
-}
-
-/**
- * One named ± on the Paradox pool, worn as a tide (notes 2–4, 17; restyled
- * by pass 3, note 6 — the owner backtracking on the outlined tags): a
- * smaller FILLED chip — ebb (−dice, the Tides pulling back) on verdigris
- * ground, flood (+dice, the Tides rising) on ember ground — white text on
- * both, per the owner's explicit call. "Smaller" is padding, never type:
- * the 12px vulgar floor (#114) holds. Removable on the ST's editable list.
- */
-function TideBadge({
-  modifier,
-  onRemove,
-  disabled = false,
-}: {
-  modifier: ParadoxPoolModifier
-  onRemove?: () => void
-  disabled?: boolean
-}) {
-  const ebb = modifier.dice < 0
-  const tint = ebb ? "var(--accent)" : "var(--ember)"
-  return (
-    <span
-      className="mv-data inline-flex items-center gap-1 rounded-[2px] px-1 py-px text-[12px] leading-tight"
-      style={{
-        background: "transparent",
-        border: `1px solid ${tint}`,
-        color: tint,
-      }}
-      title={
-        ebb
-          ? "Ebb — the Tides pull back: fewer Paradox dice"
-          : "Flood — the Tides rise: more Paradox dice"
-      }
-    >
-      {modifier.source}{" "}
-      {modifier.dice > 0 ? `+ ${modifier.dice}` : `− ${Math.abs(modifier.dice)}`}
-      {onRemove && (
-        <button
-          onClick={onRemove}
-          disabled={disabled}
-          className="leading-none opacity-80 disabled:opacity-40"
-          style={{ color: tint }}
-          title="Remove this adjustment"
-        >
-          ×
-        </button>
-      )}
-    </span>
   )
 }
 
@@ -1456,19 +1566,23 @@ function FeltSection({
   label,
   labelAt,
   divided = false,
+  aside,
   children,
 }: {
   label: string
   labelAt: "top" | "bottom"
   divided?: boolean
+  /** Printed on the label's row, right-aligned: the area's instruments. */
+  aside?: ReactNode
   children: ReactNode
 }) {
   const name = (
     <div
-      className={`mv-data px-3.5 text-[9px] uppercase tracking-[0.18em] ${labelAt === "top" ? "pt-3" : "pb-3"}`}
+      className={`mv-data flex items-baseline justify-between gap-3 px-3.5 text-[9px] uppercase tracking-[0.18em] ${labelAt === "top" ? "pt-3" : "pb-3"}`}
       style={{ color: "var(--dim)" }}
     >
-      {label}
+      <span className="shrink-0 whitespace-nowrap">{label}</span>
+      {aside && <span className="min-w-0 text-[12px]">{aside}</span>}
     </div>
   )
   return (

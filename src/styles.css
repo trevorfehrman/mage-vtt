@@ -54,6 +54,7 @@
    * warm-adjacent to --bad/--rail-danger without collapsing into either).
    * 4.9:1 on --panel — clears the 4.5 floor for its 12px odds text. */
   --paradox: #e34b4b;
+  --scorch: #000; /* the Paradox die's center: burned through the felt, opaque, blacker than the void */
   --mana: #6f93ae; /* Mana's identity blue — verdigris's own recipe, hue-turned to water */
   --will: #ab8ee6; /* Willpower's identity — amethyst; brighter than the other inks because a violet tint sinks into the void faster than verdigris does */
   /* Filled tide-chip text (pass 3, note 6): the owner's explicit call is
@@ -1078,4 +1079,23 @@ a {
   body {
     color: var(--foreground);
   }
+}
+
+/* Reality's dice are holes (owner's call, 2026-10-22 evening): every other
+   pool die is a tint lighter than the felt; reality's are the only dice
+   darker than it — an opaque scorch with the die's own ink burning in from
+   the rim (red for the Tides' dice, verdigris for the Gnosis base). The
+   static burn is the inline box-shadow from die-look's hole look; the breathe
+   class swells it on a slow ease (something inside it inhaling). Animations
+   outrank inline styles, so the keyframes carry the whole shadow in the
+   die's --burn; under reduced motion the inline burn stands still. */
+.mv-hole-paradox { --burn: var(--paradox); }
+.mv-hole-base { --burn: var(--accent); }
+.mv-hole-breathe { animation: mv-hole-breathe 4s ease-in-out infinite; }
+@keyframes mv-hole-breathe {
+  0%, 100% { box-shadow: inset 0 0 2px 1px color-mix(in srgb, var(--burn) 55%, transparent); }
+  50% { box-shadow: inset 0 0 6px 2px color-mix(in srgb, var(--burn) 85%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mv-hole-breathe { animation: none; }
 }

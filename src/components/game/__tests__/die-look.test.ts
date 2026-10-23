@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect/vitest"
 import {
   faceLook,
+  poolClass,
   poolHasGlyph,
   poolLook,
   shapeClass,
@@ -39,16 +40,34 @@ describe("pool mode (the FeltDie job)", () => {
       border: "1px solid var(--realm-stygia)",
       background: "color-mix(in srgb, var(--realm-stygia) 22%, transparent)",
     })
-    // The Tides' dice are red: the scene's special circumstances; reality's
-    // section of the felt says whose they are (felt audition, owner 2026-10-22).
+    // The Tides' dice are a HOLE: red rim, opaque scorch center (the one die
+    // darker than the felt), the red burning in from the rim (owner 2026-10-22).
     expect(poolLook("paradox", false)).toEqual({
       border: "1px solid var(--paradox)",
-      background: "color-mix(in srgb, var(--paradox) 30%, transparent)",
+      background: "var(--scorch)",
+      boxShadow: "inset 0 0 3px 1px color-mix(in srgb, var(--paradox) 70%, transparent)",
     })
+    // No die of the mage's carries an inset burn.
+    expect(poolLook("sheet", false).boxShadow).toBeUndefined()
+    expect(poolLook("willpower", false).boxShadow).toBeUndefined()
     // High Speech is white: the one ink that is no identity's.
     expect(poolLook("highSpeech", false).border).toBe("1px solid var(--ink)")
-    // Reality's base die wears the sheet's green; its section of the felt says whose it is.
-    expect(poolLook("paradoxBase", false)).toEqual(poolLook("sheet", false))
+    // Reality's base die wears the sheet's green, and is a hole too (owner 2026-10-22 evening).
+    expect(poolLook("paradoxBase", false)).toEqual({
+      border: "1px solid var(--accent)",
+      background: "var(--scorch)",
+      boxShadow: "inset 0 0 3px 1px color-mix(in srgb, var(--accent) 70%, transparent)",
+    })
+  })
+
+  it("reality's holes name their burn ink and breathe; ghosts and reduced-motion owners get the still burn", () => {
+    expect(poolClass("paradox", false, false)).toBe("mv-hole-paradox mv-hole-breathe")
+    expect(poolClass("paradox", false, null)).toBe("mv-hole-paradox mv-hole-breathe")
+    expect(poolClass("paradoxBase", false, false)).toBe("mv-hole-base mv-hole-breathe")
+    expect(poolClass("paradox", true, false)).toBe("mv-hole-paradox")
+    expect(poolClass("paradox", false, true)).toBe("mv-hole-paradox")
+    expect(poolClass("sheet", false, false)).toBe("")
+    expect(poolClass("willpower", false, false)).toBe("")
   })
 
   it("ghosts in the die's own ink: dashed, transparent, faded", () => {

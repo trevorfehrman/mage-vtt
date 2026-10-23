@@ -101,13 +101,17 @@ const POOL_INK: Record<PoolKind, typeof Ink.Type> = {
   },
   // The Tides' dice: red, the scene's special circumstances (felt audition,
   // 2026-10-22). Reality's section of the felt says whose they are; no glyph.
+  // Solid, the die is a HOLE (see `HOLE` below); this ink is its rim and
+  // what its ghost is dashed in.
   paradox: {
     border: "var(--paradox)",
-    background: "color-mix(in srgb, var(--paradox) 30%, transparent)",
+    background: "var(--scorch)",
   },
+  // Reality's own base dice: Gnosis green, and a hole like the Tides' dice
+  // (owner, 2026-10-22 evening: "the green ones should have the hole too").
   paradoxBase: {
     border: "var(--accent)",
-    background: "color-mix(in srgb, var(--accent) 22%, transparent)",
+    background: "var(--scorch)",
   },
 }
 
@@ -120,11 +124,35 @@ const realmInk = (arcanum: string): typeof Ink.Type => {
   }
 }
 
+/** Reality's dice are holes (owner's call, 2026-10-22 evening): the only
+ * pool dice DARKER than the felt — an opaque scorch, blacker than the void,
+ * with the die's own ink burning in from the rim (red for the Tides' dice,
+ * verdigris for the Gnosis base). No symbol, same box, same stance; reads as
+ * a die first and as a wound in the felt second. The static burn is this
+ * inset shadow; `poolClass` adds the slow breathing over it. */
+const holeBurn = (ink: string): string => `inset 0 0 3px 1px color-mix(in srgb, ${ink} 70%, transparent)`
+
 export const poolLook = (kind: PoolKind, ghost: boolean, arcanum?: string): DieLook => {
   const ink = kind === "arcanum" && arcanum !== undefined ? realmInk(arcanum) : POOL_INK[kind]
-  return ghost
-    ? ghostLook(ink.border)
-    : { border: `1px solid ${ink.border}`, background: ink.background }
+  if (ghost) return ghostLook(ink.border)
+  const solid: DieLook = { border: `1px solid ${ink.border}`, background: ink.background }
+  return Match.value(kind).pipe(
+    Match.whenOr("paradox", "paradoxBase", () => ({ ...solid, boxShadow: holeBurn(ink.border) })),
+    Match.orElse(() => solid),
+  )
+}
+
+/** The classes a pool die wears beyond its look: a hole names its burn ink
+ * (`mv-hole-*` sets `--burn`) and breathes (`mv-hole-breathe`). Ghosts never
+ * breathe (a price being weighed is still), and a reduced-motion owner gets
+ * the still burn (the stylesheet also stops it). */
+export const poolClass = (kind: PoolKind, ghost: boolean, reduced: boolean | null): string => {
+  const breathe = ghost || reduced === true ? "" : " mv-hole-breathe"
+  return Match.value(kind).pipe(
+    Match.when("paradox", () => `mv-hole-paradox${breathe}`),
+    Match.when("paradoxBase", () => `mv-hole-base${breathe}`),
+    Match.orElse(() => ""),
+  )
 }
 
 /** Only an Arcanum's dice carry a glyph inside the diamond (the Arcanum's own). */

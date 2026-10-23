@@ -46,13 +46,16 @@ const DIE_LOOK: Record<DieKind, { border: string; background: string }> = {
   },
   // The Tides' dice: red, the scene's special circumstances (felt audition,
   // 2026-10-22). Reality's section of the felt says whose they are; no glyph.
+  // Solid, the die is a hole — opaque scorch, red burning in from the rim —
+  // see die-look.ts (the two tables move together until MAG-16).
   paradox: {
     border: "var(--paradox)",
-    background: "color-mix(in srgb, var(--paradox) 30%, transparent)",
+    background: "var(--scorch)",
   },
+  // Reality's base dice: Gnosis green, and a hole too (owner, 2026-10-22 evening).
   paradoxBase: {
     border: "var(--accent)",
-    background: "color-mix(in srgb, var(--accent) 22%, transparent)",
+    background: "var(--scorch)",
   },
 };
 
@@ -71,6 +74,7 @@ export function FeltDie({
   onSkim,
   disabled = false,
   arcanum,
+  lit = false,
 }: {
   kind: DieKind;
   title: string;
@@ -88,6 +92,8 @@ export function FeltDie({
   glide?: boolean;
   onSkim?: (() => void) | undefined;
   disabled?: boolean;
+  /** The die's group is under the pointer: it glows in its own ink. */
+  lit?: boolean;
 }) {
   // An Arcanum's dice wear its Supernal realm's metal (Death → Stygia's lead,
   // Forces → Aether's gold): the realm tokens the chips already spoke.
@@ -100,7 +106,25 @@ export function FeltDie({
       : DIE_LOOK[kind];
   const look = ghosted
     ? { border: `1px dashed ${ink.border}`, background: "transparent" }
-    : { border: `1px solid ${ink.border}`, background: ink.background };
+    : kind === "paradox" || kind === "paradoxBase"
+      ? {
+          border: `1px solid ${ink.border}`,
+          background: ink.background,
+          boxShadow: lit
+            ? `inset 0 0 3px 1px color-mix(in srgb, ${ink.border} 70%, transparent), 0 0 0 1px ${ink.border}, 0 0 8px 1px color-mix(in srgb, ${ink.border} 70%, transparent)`
+            : `inset 0 0 3px 1px color-mix(in srgb, ${ink.border} 70%, transparent)`,
+        }
+      : lit
+        ? {
+            border: `1px solid ${ink.border}`,
+            background: `color-mix(in srgb, ${ink.border} 45%, transparent)`,
+            boxShadow: `0 0 0 1px ${ink.border}, 0 0 8px 1px color-mix(in srgb, ${ink.border} 70%, transparent)`,
+          }
+        : { border: `1px solid ${ink.border}`, background: ink.background };
+  const breathe =
+    kind === "paradox" || kind === "paradoxBase"
+      ? ` ${kind === "paradox" ? "mv-hole-paradox" : "mv-hole-base"}${!ghosted && !lit && reduced !== true ? " mv-hole-breathe" : ""}`
+      : "";
   const anim = {
     layout: !reduced && glide,
     initial: { scale: 0.4, opacity: 0 },
@@ -124,8 +148,8 @@ export function FeltDie({
     <motion.span
       {...anim}
       title={title}
-      className="grid size-[20px] place-items-center rounded-[4px]"
-      style={look}
+      className={`grid size-[20px] place-items-center rounded-[4px]${breathe}`}
+      style={{ ...look, transition: "box-shadow 160ms, background 160ms" }}
     >
       {mark}
     </motion.span>
@@ -138,8 +162,8 @@ export function FeltDie({
       }}
       disabled={disabled}
       title={title}
-      className="grid size-[20px] cursor-pointer place-items-center rounded-[4px]"
-      style={look}
+      className={`grid size-[20px] cursor-pointer place-items-center rounded-[4px]${breathe}`}
+      style={{ ...look, transition: "box-shadow 160ms, background 160ms" }}
     >
       {mark}
     </motion.button>
