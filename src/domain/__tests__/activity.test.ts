@@ -7,6 +7,7 @@ import {
   decodeFeed,
   mergeFeed,
   visibleEntries,
+  type CastEntry,
   type MessageEntry,
   type Reader,
   type RollEntry,
@@ -234,6 +235,42 @@ describe("visibleEntries: the Reader × visibility matrix", () => {
     expect(seatedFeed).toEqual(visibleEntries(target, feed))
     expect(seatedFeed).not.toContainEqual(hiddenRoll)
     expect(seatedFeed).not.toContainEqual(whisper)
+  })
+})
+
+describe("visibleEntries: the Tides wait for the fix (owner, 2026-10-23)", () => {
+  // Only the fields the policy reads; the rest of a Cast rides through untouched.
+  const cast = (over?: Partial<CastEntry>): CastEntry =>
+    ({
+      _tag: "cast",
+      _id: "cast_1",
+      timestamp: 3000,
+      casterUserId: "user_a",
+      status: "price",
+      adjustments: [{ source: "Ley line nexus", dice: 1 }],
+      ...over,
+    }) as CastEntry
+  const fixedTides = { witnessCount: 2, priorParadoxRolls: 0, circumstances: [] }
+  const fluid = cast()
+  const fixed = cast({ tides: fixedTides } as Partial<CastEntry>)
+  const player: Reader = { userId: "user_z", role: "player" }
+
+  it("no player sees the Storyteller's adjustments while the Tides are fluid", () => {
+    const [seen] = visibleEntries(player, [fluid])
+    expect(seen).toEqual({ _tag: "cast", _id: "cast_1", timestamp: 3000, casterUserId: "user_a", status: "price" })
+  })
+
+  it("not even the caster", () => {
+    const [seen] = visibleEntries({ userId: "user_a", role: "player" }, [fluid])
+    expect(seen).not.toHaveProperty("adjustments")
+  })
+
+  it("the Storyteller sees their thoughts in progress", () => {
+    expect(visibleEntries({ userId: "user_st", role: "storyteller" }, [fluid])).toEqual([fluid])
+  })
+
+  it("the fix publishes them to every seat", () => {
+    expect(visibleEntries(player, [fixed])).toEqual([fixed])
   })
 })
 

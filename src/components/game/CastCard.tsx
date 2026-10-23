@@ -223,8 +223,9 @@ export function CastCard({
 
   // The felt's pool while the Tides are still fluid (pass 3, note 1): the
   // Scene seed (witnesses, accumulator) isn't stamped yet, so this is a
-  // PROVISIONAL pool — Gnosis base + rote/tool + the ST's live adjustments —
-  // that grows and shrinks as tags land and truly settles at the fix.
+  // PROVISIONAL pool — Gnosis base + rote/tool + the ST's live adjustments
+  // (the ST's seat only; the feed withholds them from the rest until the
+  // fix) — that grows and shrinks as tags land and truly settles at the fix.
   // `gnosis` stamps at engage, so the base is computable from the first
   // on-stage moment, on every seat's card.
   const provisionalInputs =
@@ -430,10 +431,9 @@ export function CastCard({
   // pool before the ST's roll, or the rolled faces from the roll onward.
   const paradoxArea = paradoxDiceCount !== null || hasRolledFaces
   // The Tides on the felt (notes 3/4/17): the pool's named ±s as ebb/flood
-  // badges in the gutter, live on every seat's card — fluid and fixed alike
-  // now that the provisional pool computes (note 1) — except on the ST's own
-  // card while editable, where the Tides block below carries them instead of
-  // doubling here. The mitigation modifier never badges (pass 3, note 5):
+  // badges in the gutter. While fluid only the ST's card carries the
+  // adjustments — the feed withholds them from every other seat until the
+  // fix (`withheldFrom`, owner 2026-10-23) — so this card needs no seat check. The mitigation modifier never badges (pass 3, note 5):
   // the table and the shrinking dice count carry it.
   // The badges work (2026-10-22 evening): the Paradox area explains its own
   // red dice, in two registers. INSTRUMENTS are the rule's fixed slots —

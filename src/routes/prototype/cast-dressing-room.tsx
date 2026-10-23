@@ -27,7 +27,7 @@
 // DELETE when map #95 clears.
 import { useEffect, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
-import type { CastEntry, MessageEntry, RollEntry } from "#/domain/activity"
+import { withheldFrom, type CastEntry, type MessageEntry, type RollEntry } from "#/domain/activity"
 import type { ParadoxPoolModifier } from "#/domain/paradox"
 import { decodeSheet } from "#/domain/character"
 import { initialCurrentState } from "#/domain/character"
@@ -294,11 +294,15 @@ function DressingRoom() {
   // the Tides box, the felt and the table all move as they would live.
   const [adjusted, setAdjusted] = useState<Partial<Record<RigRung, ReadonlyArray<ParadoxPoolModifier>>>>({})
   const adjustments = adjusted[rung]
-  const cast: CastEntry =
-    adjustments === undefined ? CASTS[rung] : { ...CASTS[rung], adjustments }
+  const view = SEAT_VIEW[seat]
+  // Each seat sees what the feed query would hand it: the same policy, so a
+  // fluid rung's adjustments reach the Storyteller's seat only.
+  const cast: CastEntry = withheldFrom({
+    userId: view.viewerUserId,
+    role: view.isStoryteller ? "storyteller" : "player",
+  })(adjustments === undefined ? CASTS[rung] : { ...CASTS[rung], adjustments })
   const adjust = async (next: ReadonlyArray<ParadoxPoolModifier>) =>
     setAdjusted((prev) => ({ ...prev, [rung]: next }))
-  const view = SEAT_VIEW[seat]
   const mySheet = seat === "caster" ? arctusSheet : null
 
   // Functional updaters: each knob patches only its own key, so a fast

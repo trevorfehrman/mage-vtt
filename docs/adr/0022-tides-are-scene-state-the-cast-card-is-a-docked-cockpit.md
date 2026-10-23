@@ -1,5 +1,19 @@
 # Tides are scene state; the cast card is a docked cockpit
 
+> **Amended** (2026-10-23, owner calls after MAG-45 and MAG-17's tour).
+> Three notes. **The Tides wait for the fix:** pass 3's "on every seat's
+> card" is withdrawn for the ST's adjustments — while the Tides are fluid
+> they are the ST's thoughts in progress, like the table, and no other seat
+> sees them (pills, mood, red dice), the caster included. The feed query
+> withholds them (`withheldFrom` in `src/domain/activity.ts`, the visibility
+> policy's home), so it is data, not styling; the fix publishes them. **The
+> eaten dice are public once rolled:** on the rolled rung every seat sees
+> the cast dice Paradox would eat ghosted — the caster's follow their live
+> containment bet, the other seats the default outlook (nothing contained).
+> **The Mana's ghosts outlive the commit:** the Paradox dice a commit
+> bought off stay ghosted at the row's end until the roll, and trail the
+> rolled faces on the record, so the price still reads on the felt.
+
 > **Amended** (2026-10-23, MAG-45 — the language audit across every rung
 > and seat). Three notes. **The odds beneath the felt speak one register:**
 > the 2026-10-22 amendment's "stands down on that beat and nowhere else" is
