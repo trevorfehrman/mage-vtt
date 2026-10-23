@@ -295,6 +295,38 @@ _Avoid_: Component (collides with React/XState components), Die source, Addend.
 A flat bonus or penalty in dice added to a pool at the Storyteller's discretion,
 on top of the Traits.
 
+**Felt**:
+Any surface dice sit on — the tray where a pool is composed, the Cast card's
+two printed areas (PARADOX above the chalk line, CAST below), a Chronicle roll
+card's row of faces. One grammar on every felt (ADR-0024): a die is a diamond,
+unrolled dice colored by where they came from, rolled dice by what they showed.
+_Avoid_: Tray (that is one felt, the composing one), dice line.
+
+**Ghost** (of a die):
+A die that is not (yet) real — dashed in its own ink over nothing, at 45%: a
+price being weighed before the commit, a declared die Paradox ate before the
+throw, a red die Mana bought off. One recipe for all of them (ADR-0024).
+_Avoid_: Eaten die or pending die as looks of their own (they are the one
+ghost; the words describe why it is ghosted, not how it is drawn).
+
+**Hole**:
+A Paradox die on the felt — reality's dice are scorch holes in the felt, the
+Gnosis base in verdigris and the Tides' dice in Paradox red, their rim-burn
+breathing at rest (ADR-0021's ambient-motion exception; ADR-0024).
+
+**Trigger die**:
+A rolled die at or above the Again threshold — the die that spawned an
+explosion. A Cast records each explosion's trigger (`parentIndex` into the
+roll's combined sequence: rolls, rote rerolls, explosions); `null` is a
+legacy record whose trigger was never known (ADR-0024).
+_Avoid_: Parent (the field's name, not the table's word), exploder.
+
+**Burst**:
+The chain of explosions a trigger die spawned, drawn beside it — the burst
+order regroups a roll so every explosion stands next to its cause, one child
+per trigger, a chain never a tree. Recorded and ordered today (ADR-0024); how
+it moves is MAG-18's.
+
 ### Realtime
 
 **Presence**:

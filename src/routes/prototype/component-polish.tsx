@@ -10,7 +10,8 @@
 // This settles the shared component language (density, active-states, glyph
 // usage, roll readout). ActivityLog depth + whiteboard tools are spawned as
 // follow-up tickets. Mock data; no Convex import (the MAG-13 die audition at the
-// top imports the real die components). DELETE once specced.
+// top and the roll card's faces import the real die, UnifiedDie — the one
+// app import this route is allowed). DELETE once specced.
 import { useState, type ReactNode } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { AnimatePresence, useReducedMotion } from "motion/react"
@@ -399,9 +400,12 @@ function RollCard({ e }: { e: RollLog }) {
         <span className="text-[11px]" style={{ color: "var(--dim)" }}>{e.successes === 1 ? "success" : "successes"} · {e.chance ? "chance die" : `${e.poolSize} dice`}{e.rote ? " · rote" : ""}</span>
       </div>
       <div className="mt-1.5 flex flex-wrap gap-1">
-        {e.base.map((d, i) => <Die key={`b${i}`} v={d} again={e.again} />)}
-        {e.rerolls.map((d, i) => <Die key={`r${i}`} v={d} again={e.again} ring="rote" />)}
-        {e.explosions.map((d, i) => <Die key={`e${i}`} v={d} again={e.again} ring="exp" />)}
+        {/* The roll card's faces are the unified die (MAG-19): the route's
+            private square Die retired with it — the last die in the app that
+            was not the one die. */}
+        {e.base.map((d, i) => <UnifiedDie key={`b${i}`} mode="face" v={d} again={e.again} chance={e.chance} />)}
+        {e.rerolls.map((d, i) => <UnifiedDie key={`r${i}`} mode="face" v={d} again={e.again} ring="rote" />)}
+        {e.explosions.map((d, i) => <UnifiedDie key={`e${i}`} mode="face" v={d} again={e.again} ring="exp" />)}
       </div>
       <div className="cp-data mt-1.5 text-[10px]" style={{ color: "var(--dim)" }}>
         {e.comps.map((c) => `${c.name} ${c.dots}`).join(" + ")}{e.modifier ? ` ${e.modifier > 0 ? "+" : ""}${e.modifier}` : ""}
@@ -409,20 +413,6 @@ function RollCard({ e }: { e: RollLog }) {
     </div>
   )
 }
-function Die({ v, again, ring }: { v: number; again: number; ring?: "rote" | "exp" }) {
-  const success = v >= 8
-  return (
-    <span className="cp-data grid size-5 place-items-center rounded-[2px] text-[10px] font-bold"
-      style={{
-        background: success ? "var(--accent)" : "var(--raise)",
-        color: success ? "#0a0a0c" : "var(--dim)",
-        boxShadow: ring === "rote" ? "0 0 0 1px var(--dim2)" : ring === "exp" ? "0 0 0 1px var(--accent)" : v >= again ? "0 0 0 1px var(--accent)" : undefined,
-      }}>
-      {v}
-    </span>
-  )
-}
-
 // ── shared bits ──
 function Dots({ current, on, max = 5 }: { current: number; on?: boolean; max?: number }) {
   return (
