@@ -1,5 +1,10 @@
 # The dice/felt language, unified — build plan
 
+> **Landed** (2026-10-23, MAG-13 → MAG-19): the unified die, the one ghost,
+> the provenance inks and the explosion-parentage record are built and
+> recorded in ADR-0024; `FeltDie` and `Die` are gone. Only decision 3's
+> motion — the burst itself — remains (MAG-18). This plan is history.
+
 Status: draft plan (2026-07-20). Supersedes the ad-hoc CastCard diamond
 experiment; folds it into one grammar for the whole app.
 
