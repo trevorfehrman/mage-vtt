@@ -598,23 +598,28 @@ export function CastCard({
           ST's named circumstances as two-part pills — the prose, a rule, the
           number — red rising, verdigris pulling back. This is the ST setting
           the stage: the premise of the beat, declared to the player, read
-          before the dice. It stands apart from the ladder above (a hairline)
-          and the felt below (which keeps the only box and tinted ground on
-          the card — the felt stays the star), under the felt's own eyebrow
-          grammar so it reads as a named area, not a stray row of chips. */}
+          before the dice. Fully contained (owner, 2026-10-22 late): its own
+          box on the felt's radius and line, but on the panel's plain ground
+          — no tint — so the felt below keeps the only colored ground on the
+          card and stays the star. The felt's eyebrow grammar names it. The
+          pills are toned down from the full inks: their tint is the ink
+          mixed well toward dim, so the weather reads as premise, not alarm. */}
       {weather.length > 0 && (
         <TooltipProvider>
-        <div className="mt-2.5 border-t pt-2" style={{ borderColor: "var(--line)" }}>
+        <div
+          className="mt-2.5 rounded-[6px] border px-3.5 pt-3 pb-3.5"
+          style={{ borderColor: "var(--line)" }}
+        >
         <div
           className="mv-data text-[9px] uppercase tracking-[0.18em]"
           style={{ color: "var(--dim)" }}
         >
           tides
         </div>
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
+        <div className="mt-2 flex flex-wrap gap-1.5">
           {weather.map(({ modifier, onRemove }, i) => {
             const ebb = modifier.dice < 0
-            const tint = ebb ? "var(--accent)" : "var(--paradox)"
+            const tint = `color-mix(in srgb, ${ebb ? "var(--accent)" : "var(--paradox)"} 58%, var(--dim))`
             const n = Math.abs(modifier.dice)
             return (
               <Tooltip key={`${modifier.source}-${i}`}>
