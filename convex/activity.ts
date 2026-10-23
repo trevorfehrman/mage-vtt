@@ -70,6 +70,8 @@ const castEntry = (c: Doc<"casts">) => {
     _tag: "cast" as const,
     _id,
     timestamp: c.updatedAt,
+    // The live cast's pinned order (MAG-46): creation, which no update moves.
+    startedAt: _creationTime,
     ...fields,
     // Healed to parented structs like the roll entry's `explosions` (#126),
     // through the one shared door so the two decode boundaries can't drift.

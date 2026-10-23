@@ -1,4 +1,5 @@
-import { Match, Result, Schema } from "effect"
+import { Array as Arr, Match, Order, Result, Schema } from "effect"
+import { isUnresolved } from "./cast"
 import { Explosion } from "./dice"
 import { SessionRole } from "./roles"
 import { ConvexId } from "./schema-bridge"
@@ -49,11 +50,14 @@ export type RollEntry = typeof RollEntry.Type
  * The live Cast card's entry (issue #43, ADR-0016): a projection of the whole
  * Cast document — the card is a *live* feed item that climbs the ladder in
  * place, unlike the immutable beats accruing around it. `timestamp` is the
- * document's `updatedAt`, so the card rides at the action's edge of the feed.
+ * document's `updatedAt`, where the resolved record lands in the feed;
+ * `startedAt` is its creation time, which orders the live casts pinned above
+ * a spectator's tray (MAG-46) — a live cast never rides the feed.
  */
 export const CastEntry = Schema.TaggedStruct("cast", {
   _id: ConvexId("casts"),
   timestamp: Schema.Number,
+  startedAt: Schema.Number,
   ...castFields,
   // Parented like RollEntry's `explosions` (issue #126): lineage rides along.
   paradoxExplosions: Schema.optionalKey(ParentedExplosions),
@@ -145,6 +149,34 @@ export const visibleEntries = <E extends ActivityEntry>(
   reader: Reader,
   entries: ReadonlyArray<E>,
 ): Array<E> => entries.filter(visibleTo(reader)).map(withheldFrom(reader))
+
+/** Whether an entry is a Cast still climbing the ladder — never a feed item (MAG-46). */
+export const isLiveCast = (entry: ActivityEntry): boolean =>
+  entry._tag === "cast" && isUnresolved(entry.status)
+
+/** The seat a viewer holds, as the pinned slot needs it. */
+export const PinViewer = Schema.Struct({ viewerUserId: Schema.String, isStoryteller: Schema.Boolean })
+export type PinViewer = typeof PinViewer.Type
+
+const byStart = Order.mapInput(Order.Number, (c: CastEntry) => c.startedAt)
+
+/**
+ * The live casts pinned above a viewer's tray (MAG-46, owner 2026-10-23: an
+ * in-progress cast never moves around anyone's Chronicle). The Storyteller's
+ * and the caster's own live cast stand in their roll zone instead, so the
+ * slot holds every OTHER caster's live cast — none for the Storyteller —
+ * oldest first, in a fixed order that no update reshuffles.
+ */
+export const pinnedLiveCasts = (viewer: PinViewer, entries: ReadonlyArray<ActivityEntry>): Array<CastEntry> =>
+  viewer.isStoryteller
+    ? []
+    : Arr.sort(
+        Arr.filter(
+          entries,
+          (e): e is CastEntry => e._tag === "cast" && isLiveCast(e) && e.casterUserId !== viewer.viewerUserId,
+        ),
+        byStart,
+      )
 
 /** The Activity Log's length: how many entries a merged feed keeps. */
 export const FEED_CAP = 100
