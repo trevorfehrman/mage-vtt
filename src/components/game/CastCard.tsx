@@ -1025,11 +1025,11 @@ export function CastCard({
           )}
           {controls.includes("commit") && (
             // The spend rides IN the button (pass 3, note 4 — reversing pass
-            // 2's glyph column): "Commit − 1 ◈" with the Mana part in Mana's
-            // blue, on a dark inset so the blue stays legible against the
-            // verdigris trigger. The precommitted Willpower point joins the
-            // same inset in Will's own color, wearing the Mana glyph shape
-            // (note 12) — the hue is the only difference between the two.
+            // 2's glyph column): "Commit 2 ◈" with the count and glyph in
+            // Mana's blue, bare on the trigger (the dark inset and the minus
+            // retired by the owner, 2026-10-22). The precommitted Willpower
+            // point follows in Will's own color, wearing the Mana glyph
+            // shape (note 12) — the hue is the only difference between the two.
             <button
               onClick={() =>
                 run(() => commit({ ...step, manaMitigation: mitigation }))
@@ -1039,28 +1039,26 @@ export function CastCard({
               title="The point of no return: mitigation, spell cost, and any precommitted Willpower commit now."
             >
               Commit
-              {(pendingManaNow > 0 || cast.spendWillpower) && (
-                <span
-                  className="mv-data inline-flex items-center gap-1.5 rounded-[2px] px-1 py-0.5 leading-none"
-                  style={{ background: "var(--bg)" }}
+              {/* The spend, bare (owner, 2026-10-22): "Commit 2 ◈" — the
+                  count and Mana's glyph in Mana's blue, no minus, no inset.
+                  Willpower's point follows in its own hue, same shape. */}
+              {pendingManaNow > 0 && (
+                <b
+                  className="mv-data leading-none"
+                  style={{ color: "var(--mana)" }}
+                  title="The Mana this commit spends — spell cost plus the selected mitigation"
                 >
-                  {pendingManaNow > 0 && (
-                    <b
-                      style={{ color: "var(--mana)" }}
-                      title="The Mana this commit spends — spell cost plus the selected mitigation"
-                    >
-                      − {pendingManaNow} ◈
-                    </b>
-                  )}
-                  {cast.spendWillpower && (
-                    <b
-                      style={{ color: "var(--accent)" }}
-                      title="The precommitted Willpower point — it spends at the commit"
-                    >
-                      − 1 ◈
-                    </b>
-                  )}
-                </span>
+                  {pendingManaNow} ◈
+                </b>
+              )}
+              {cast.spendWillpower && (
+                <b
+                  className="mv-data leading-none"
+                  style={{ color: "var(--will)" }}
+                  title="The precommitted Willpower point — it spends at the commit"
+                >
+                  1 ◈
+                </b>
               )}
             </button>
           )}
@@ -1243,9 +1241,9 @@ function MitigationPreview({
     <div className="mt-2 grid gap-1 py-1">
       {/* Danger reads as danger (#102): the risk is the headline — the
           Paradox glyph does the yelling (#114). Dice counts stay neutral
-          quantities — never accent-green good news. Picking a spend is the
-          caster's hand, so selection burns ember; the Mana price wears
-          Mana's own glyph alone (no symbol+word doubling). */}
+          quantities — never accent-green good news. The selected row's box
+          is verdigris (owner, 2026-10-22; it burned ember before); the Mana
+          price wears Mana's own glyph alone (no symbol+word doubling). */}
       {rows.map(({ spend, dice, odds, cast }) => {
         const locked = spend > affordable
         const here = !locked && spend === Math.min(selected, affordable)
@@ -1300,7 +1298,7 @@ function MitigationPreview({
             disabled={disabled}
             className="mv-data grid grid-cols-[3.5rem_5.5rem_4.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px] disabled:opacity-40"
             style={{
-              border: here ? "1px solid var(--ember)" : "1px solid transparent",
+              border: here ? "1px solid var(--accent)" : "1px solid transparent",
               color: here ? "var(--ink)" : "var(--dim)",
             }}
           >

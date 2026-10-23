@@ -25,7 +25,7 @@
 // refuses — the refusal renders inline, which is itself a state worth seeing.
 //
 // DELETE when map #95 clears.
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import type { CastEntry, MessageEntry, RollEntry } from "#/domain/activity"
 import { decodeSheet } from "#/domain/character"
@@ -277,6 +277,10 @@ function DressingRoom() {
   const { rung, seat, grammar } = Route.useSearch()
   const navigate = Route.useNavigate()
   const pool = useDicePool(SESSION_ID)
+  // The card's commit decision ghosts the Mana it would spend on the tracker
+  // (the session route's wiring; owner, 2026-10-22: "as I select the table
+  // we should ghost out the cost in the mana tracker").
+  const [castPendingMana, setCastPendingMana] = useState(0)
 
   const cast = CASTS[rung]
   const view = SEAT_VIEW[seat]
@@ -335,6 +339,7 @@ function DressingRoom() {
             // Every seat watches the caster's cockpit (note 14) — the rig
             // hands all three the same Arctus track.
             casterSheet={arctusSheet}
+            onPendingMana={setCastPendingMana}
           />
         </div>
       </ScrollArea>
@@ -362,7 +367,7 @@ function DressingRoom() {
         activityLog={feed}
         dicePoolBuilder={
           <>
-            {mySheet && <ResourceStrip character={mySheet} />}
+            {mySheet && <ResourceStrip character={mySheet} pendingMana={castPendingMana} />}
             <DicePoolBuilder pool={pool} />
           </>
         }
