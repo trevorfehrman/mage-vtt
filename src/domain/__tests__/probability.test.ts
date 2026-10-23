@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
 import {
+  castOddsUnderParadox,
   expectedSuccesses,
   probabilityOfDramaticFailure,
   probabilityOfExceptional,
@@ -109,5 +110,39 @@ describe("rollOdds (the composite readout the dialogs render)", () => {
     expect(odds.success).toBe(0.1)
     expect(odds.exceptional).toBe(0)
     expect(odds.dramaticFailure).toBe(0.1)
+  })
+})
+
+describe("castOddsUnderParadox (reality rolls first, one die eaten per success — p. 124)", () => {
+  it("one cast die against one Paradox die, by hand", () => {
+    // Paradox: P(0) = 0.7, P(≥1) = 0.3. Survivors: 1 die (0.3) or the chance
+    // die (0.1). Every Paradox success reduces the single die to the chance die.
+    const odds = castOddsUnderParadox(1, 1)
+    expect(odds.success).toBeCloseTo(0.7 * 0.3 + 0.3 * 0.1, 12)
+    expect(odds.chanceDie).toBeCloseTo(0.3, 12)
+    expect(odds.dramaticFailure).toBeCloseTo(0.3 * 0.1, 12)
+  })
+
+  it("a fully mitigated Paradox pool still throws its chance die", () => {
+    // Paradox at 0 dice: 0.9 nothing, 0.1 one success. Two cast dice: 0.51;
+    // one survivor: 0.3.
+    const odds = castOddsUnderParadox(2, 0)
+    expect(odds.success).toBeCloseTo(0.9 * 0.51 + 0.1 * 0.3, 12)
+    expect(odds.chanceDie).toBe(0)
+    expect(odds.dramaticFailure).toBe(0)
+  })
+
+  it("never beats the bare pool and only worsens as reality's dice grow", () => {
+    const bare = probabilityOfSuccess(6)
+    const ladder = [0, 1, 2, 3, 4, 5].map((r) => castOddsUnderParadox(6, r).success)
+    expect(ladder[0]).toBeLessThan(bare)
+    ladder.slice(1).forEach((p, i) => expect(p).toBeLessThan(ladder[i]!))
+  })
+
+  it("a cast already on the chance die stays there whatever Paradox rolls", () => {
+    const odds = castOddsUnderParadox(0, 4)
+    expect(odds.success).toBeCloseTo(0.1, 12)
+    expect(odds.chanceDie).toBeCloseTo(1, 12)
+    expect(odds.dramaticFailure).toBeCloseTo(0.1, 12)
   })
 })

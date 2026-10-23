@@ -1,5 +1,20 @@
 # Tides are scene state; the cast card is a docked cockpit
 
+> **Amended** (2026-10-22, MAG-44): pass 3's "the Tides-phase odds line
+> prices the spell" note is narrowed. On the commit beat — the last chance
+> to change your mind — the mitigation table owns the number: each row
+> carries, beside its Paradox %, the cast's own success % with THAT row's
+> red dice rolling first and eating one casting die per success (Mage
+> p. 124), no containment assumed (the floor; the ceiling is the bare pool).
+> The under-felt odds line stands down on that beat and nowhere else. The
+> owner's brief: the player reads the tradeoff across one row — Mana out,
+> Paradox in, spell landing — and decides "I'll take the Paradox and some
+> damage for a measly few points" or "I need at least one Mana". The
+> leaf is `castOddsUnderParadox` in `src/domain/probability.ts`. Also:
+> the dice a selected row buys off no longer vanish from the felt — they
+> ghost in place from the Paradox row's end (the cockpit's own doctrine for
+> eaten cast dice), so Mana erases the scene's red dice before Gnosis's.
+
 > **Amended** (2026-07-19, vulgar polish pass 3): six notes. **The felt's
 > Paradox pool goes provisional:** the red dice no longer wait for the fix —
 > from engage the felt carries a PROVISIONAL pool (Gnosis base + rote/tool +

@@ -116,3 +116,39 @@ export const rollOdds = (dice: number): RollOdds => ({
   dramaticFailure: probabilityOfDramaticFailure(dice),
   expected: expectedSuccesses(dice),
 })
+
+/**
+ * The cast priced with reality already in the room (Mage p. 124): the
+ * Paradox roll comes first and each of its successes eats one die off the
+ * casting pool before the throw, so the cast's odds are the Paradox pool's
+ * success-count distribution weighted over the shrunken pools — a zero or
+ * fully mitigated Paradox pool still throws its chance die. No containment
+ * is assumed: this is the honest floor the mitigation table shows per row;
+ * the ceiling (every success eaten by flesh) is the bare `rollOdds`.
+ */
+export const CastOddsUnderParadox = Schema.Struct({
+  /** P(the cast scores at least one success) once Paradox has eaten its dice. */
+  success: Schema.Number,
+  /** P(Paradox eats the whole pool and the cast is reduced to the chance die). */
+  chanceDie: Schema.Number,
+  /** P(the chance-die dramatic failure): one face in ten of `chanceDie`. */
+  dramaticFailure: Schema.Number,
+})
+export type CastOddsUnderParadox = typeof CastOddsUnderParadox.Type
+
+export const castOddsUnderParadox = (
+  castPool: number,
+  paradoxPool: number,
+): CastOddsUnderParadox =>
+  successDistribution(paradoxPool).reduce(
+    (odds, p, eaten) => {
+      const survivors = castPool - eaten
+      return {
+        success: odds.success + p * probabilityOfSuccess(survivors),
+        chanceDie: odds.chanceDie + (isChanceDiePool(survivors) ? p : 0),
+        dramaticFailure:
+          odds.dramaticFailure + p * probabilityOfDramaticFailure(survivors),
+      }
+    },
+    { success: 0, chanceDie: 0, dramaticFailure: 0 },
+  )

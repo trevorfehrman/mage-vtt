@@ -19,7 +19,7 @@ import {
   resolveParadox,
   type ParadoxPoolModifier,
 } from "#/domain/paradox"
-import { rollOdds } from "#/domain/probability"
+import { castOddsUnderParadox, rollOdds } from "#/domain/probability"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
@@ -194,15 +194,19 @@ export function CastCard({
           ],
         }
       : null
-  const priceFixedUncommitted = status === "price" && cast.tides !== undefined
+  // The pool reality will roll. Before the commit the local mitigation pick
+  // does NOT shrink it: the bought-off dice ghost in place on the felt (MAG-44,
+  // the owner's 2026-10-22 call — "as I click down the table there should be
+  // a ghost outline of the dice I'm erasing"), so the count is the
+  // unmitigated pool and `mitigated` below says how many of its dice are
+  // bought off. After the commit the stamped mitigation is real and the pool
+  // is simply smaller.
   const pool = poolInputs
     ? calculateParadoxPool({
         ...poolInputs,
-        ...(priceFixedUncommitted
-          ? { manaMitigation: mitigation }
-          : cast.manaMitigation !== undefined
-            ? { manaMitigation: cast.manaMitigation }
-            : {}),
+        ...(cast.manaMitigation !== undefined
+          ? { manaMitigation: cast.manaMitigation }
+          : {}),
       })
     : null
 
@@ -230,6 +234,11 @@ export function CastCard({
   const mitigateCap = mySheet
     ? mitigationCap(poolBeforeMitigation, mySheet.manaCurrent, cast.spellManaCost)
     : 0
+  // Dice the selected mitigation row buys off — live only while the commit
+  // decision is; they ghost from the Paradox row's end (the cockpit's own
+  // doctrine for eaten cast dice), which is where the scene's red dice sit,
+  // so Mana erases the weather first and only then reaches into Gnosis.
+  const mitigated = controls.includes("commit") ? Math.min(mitigation, mitigateCap) : 0
 
   // The cockpit's sheet: the CASTER's track, whichever seat is watching —
   // the caster's own when they hold the card, the passed-in caster sheet on
@@ -352,9 +361,11 @@ export function CastCard({
   // Paradox on the felt (2026-07-19 polish, note 11; walked forward to the
   // first fluid-phase moment by pass 3, note 1): the pool reality will roll,
   // standing beneath the declared pool from engage until the ST's roll —
-  // provisional while the Tides are fluid, shrinking live as mitigation rows
-  // are clicked once they're fixed. A fully mitigated pool still throws the
-  // chance die (the gamble is honest), so a ghosted die stands for it. The
+  // provisional while the Tides are fluid; once they're fixed the dice a
+  // mitigation row buys off ghost in place from the row's end, so the whole
+  // pool stays visible and the price of the pick is the ghosts. A pool with
+  // no dice at all still throws the chance die (the gamble is honest), so a
+  // ghosted die stands for it. The
   // first `baseDice` render gnosis-green with the red glyph inside (note 6):
   // reality's own base, never worded as the rank — the rest are the Tides'.
   const paradoxDiceCount =
@@ -464,9 +475,13 @@ export function CastCard({
   // The odds line beneath the felt (note 16; repointed by pass 3, note 3):
   // through the whole Tides phase it prices the SPELL — the declared pool's
   // success %, the same grammar every phase speaks — never the table's
-  // Paradox % (the mitigation table keeps its per-row odds). Between the
-  // commit and the ST's roll it prices the red dice; in the cockpit it
-  // prices the surviving cast pool, recomputing as boxes are clicked.
+  // Paradox %. On the commit beat the line steps aside: the mitigation
+  // table owns the number there, one cast % per row with that row's red
+  // dice priced in (the owner's 2026-10-22 call — the last chance to change
+  // your mind is where the tradeoff must read at a glance; before and after,
+  // the only question is "did it work"). Between the commit and the ST's
+  // roll it prices the red dice; in the cockpit it prices the surviving
+  // cast pool, recomputing as boxes are clicked.
   const paradoxOdds =
     status !== "price" && paradoxDiceCount !== null
       ? rollOdds(paradoxDiceCount)
@@ -477,17 +492,14 @@ export function CastCard({
       : status === "price"
         ? rollOdds(cast.declaredPool)
         : null
+  const tableOwnsOdds = controls.includes("commit") && poolInputs !== null
 
   // The masthead's Mana ghost (pass 2, note 1): the spell's cost ghosts from
   // the moment the cast is on stage ("phase 1" read as the first on-stage
   // phase — a waiting draft doesn't ghost), the selected mitigation joining
   // while the commit decision is live. After the commit the Mana is truly
   // spent and the masthead's real count carries it.
-  const pendingManaNow =
-    status === "price"
-      ? cast.spellManaCost +
-        (controls.includes("commit") ? Math.min(mitigation, mitigateCap) : 0)
-      : 0
+  const pendingManaNow = status === "price" ? cast.spellManaCost + mitigated : 0
   useEffect(() => {
     if (onPendingMana === undefined) return
     onPendingMana(pendingManaNow)
@@ -699,6 +711,7 @@ export function CastCard({
             <AnimatePresence initial={false}>
               {Array.from({ length: paradoxDiceCount }, (_, i) => {
                 const kind: DieKind = i < paradoxBaseCount ? "paradoxBase" : "paradox"
+                const ghosted = i >= paradoxDiceCount - mitigated
                 return (
                   <Tooltip key={`paradox:${i}`}>
                     <TooltipTrigger asChild>
@@ -708,13 +721,22 @@ export function CastCard({
                         onPointerEnter={() => setLitKind(kind)}
                         onPointerLeave={() => setLitKind(null)}
                       >
-                        <FeltDie kind={kind} reduced={reduced} glide={false} lit={litKind === kind} title="" />
+                        <FeltDie
+                          kind={kind}
+                          reduced={reduced}
+                          glide={false}
+                          ghosted={ghosted}
+                          lit={litKind === kind}
+                          title=""
+                        />
                       </span>
                     </TooltipTrigger>
                     <TooltipContent side="top" sideOffset={4}>
-                      {kind === "paradoxBase"
-                        ? `Gnosis ${cast.gnosis ?? "?"}: ${paradoxBaseCount}`
-                        : `Net Circumstance: +${paradoxDiceCount - paradoxBaseCount}`}
+                      {ghosted
+                        ? `Mitigated: −${mitigated}`
+                        : kind === "paradoxBase"
+                          ? `Gnosis ${cast.gnosis ?? "?"}: ${paradoxBaseCount}`
+                          : `Net Circumstance: +${paradoxDiceCount - paradoxBaseCount}`}
                     </TooltipContent>
                   </Tooltip>
                 )
@@ -726,7 +748,7 @@ export function CastCard({
                       <FeltDie kind="paradox" ghosted reduced={reduced} glide={false} title="" />
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={4}>Fully mitigated: chance die</TooltipContent>
+                  <TooltipContent side="top" sideOffset={4}>No pool: chance die</TooltipContent>
                 </Tooltip>
               )}
             </AnimatePresence>
@@ -782,8 +804,9 @@ export function CastCard({
       </div>
       {/* the odds line — directly beneath the felt (note 16); ONE line, and
           in the Tides phase it prices the spell, not the table's Paradox
-          (pass 3, note 3) */}
-      {(paradoxOdds !== null || successOdds !== null) && (
+          (pass 3, note 3 as amended 2026-10-22: on the commit beat the
+          table's rows carry the cast % and this line stands down) */}
+      {!tableOwnsOdds && (paradoxOdds !== null || successOdds !== null) && (
         <div
           className="mv-data mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px]"
           style={{ color: "var(--dim)" }}
@@ -890,6 +913,7 @@ export function CastCard({
         <MitigationPreview
           poolInputs={poolInputs}
           poolBefore={poolBeforeMitigation}
+          declaredPool={cast.declaredPool}
           affordable={mitigateCap}
           selected={mitigation}
           onSelect={setMitigation}
@@ -1178,6 +1202,9 @@ const pct = (p: number): string => {
   return `${(p * 100).toFixed(1)}%`
 }
 
+/** Below one chance in a thousand the chance-die warning is noise, not news. */
+const DRAMATIC_FAILURE_WARN_FLOOR = 0.001
+
 const diceLabel = (dice: number): string =>
   dice <= 0 ? "chance die" : dice === 1 ? "1 die" : `${dice} dice`
 
@@ -1192,6 +1219,7 @@ const diceLabel = (dice: number): string =>
 function MitigationPreview({
   poolInputs,
   poolBefore,
+  declaredPool,
   affordable,
   selected,
   onSelect,
@@ -1199,6 +1227,7 @@ function MitigationPreview({
 }: {
   poolInputs: Omit<Parameters<typeof calculateParadoxPool>[0], "manaMitigation">
   poolBefore: number
+  declaredPool: number
   affordable: number
   selected: number
   onSelect: (spend: number) => void
@@ -1206,7 +1235,7 @@ function MitigationPreview({
 }) {
   const rows = Array.from({ length: poolBefore + 1 }, (_, spend) => {
     const dice = calculateParadoxPool({ ...poolInputs, manaMitigation: spend }).totalDice
-    return { spend, dice, odds: rollOdds(dice) }
+    return { spend, dice, odds: rollOdds(dice), cast: castOddsUnderParadox(declaredPool, dice) }
   })
   return (
     // No explainer eyebrow, no dotted frame (#114): the table is the phase's
@@ -1217,7 +1246,7 @@ function MitigationPreview({
           quantities — never accent-green good news. Picking a spend is the
           caster's hand, so selection burns ember; the Mana price wears
           Mana's own glyph alone (no symbol+word doubling). */}
-      {rows.map(({ spend, dice, odds }) => {
+      {rows.map(({ spend, dice, odds, cast }) => {
         const locked = spend > affordable
         const here = !locked && spend === Math.min(selected, affordable)
         const cells = (
@@ -1233,6 +1262,24 @@ function MitigationPreview({
                 {pct(odds.success)}
               </b>
             </span>
+            {/* The tradeoff's other half (owner, 2026-10-22): the cast's own
+                odds with THIS row's red dice rolling first and eating dice
+                (p. 124), no containment assumed — the floor. Read across:
+                Mana out, Paradox in, spell landing. A chance-die reduction
+                that is a real possibility warns in the line's own grammar. */}
+            <span className="inline-flex flex-wrap items-center gap-x-2">
+              <span>
+                success{" "}
+                <b className="text-[12px]" style={{ color: "var(--rail-success)" }}>
+                  {pct(cast.success)}
+                </b>
+              </span>
+              {cast.dramaticFailure >= DRAMATIC_FAILURE_WARN_FLOOR && (
+                <span style={{ color: "var(--bad)" }}>
+                  dramatic failure {pct(cast.dramaticFailure)}
+                </span>
+              )}
+            </span>
           </>
         )
         // A locked row is a mark, not a disabled control (the FeltDie idiom):
@@ -1240,7 +1287,7 @@ function MitigationPreview({
         return locked ? (
           <span
             key={spend}
-            className="mv-data grid grid-cols-[3.5rem_5.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px]"
+            className="mv-data grid grid-cols-[3.5rem_5.5rem_4.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px]"
             style={{ border: "1px dashed var(--line)", color: "var(--dim)", opacity: 0.5 }}
             title={`Needs ${spend} Mana free after the spell's cost — ${affordable} ${affordable === 1 ? "is" : "are"} free.`}
           >
@@ -1251,7 +1298,7 @@ function MitigationPreview({
             key={spend}
             onClick={() => onSelect(spend)}
             disabled={disabled}
-            className="mv-data grid grid-cols-[3.5rem_5.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px] disabled:opacity-40"
+            className="mv-data grid grid-cols-[3.5rem_5.5rem_4.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px] disabled:opacity-40"
             style={{
               border: here ? "1px solid var(--ember)" : "1px solid transparent",
               color: here ? "var(--ink)" : "var(--dim)",
