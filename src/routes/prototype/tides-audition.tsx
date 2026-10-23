@@ -70,6 +70,33 @@ type Ground = { key: string; name: string; note: string; css: (mods: ReadonlyArr
 
 const GROUNDS: ReadonlyArray<Ground> = [
   {
+    key: "yinyang",
+    name: "E · yin and yang",
+    note: "competing soft gradients, shaped: Gnosis comes DOWN from the top and curls into the right as the ebb deepens; reality rushes UP from the floor and curls into the left as the flood rises. Each by its own weight.",
+    css: (mods) => {
+      const { ebb, flood } = sums(mods)
+      if (ebb === 0 && flood === 0) return undefined
+      // a side is a dome from its own edge plus a lobe that reaches across —
+      // the lobe is the curl; both grow with the side's weight.
+      const side = (ink: string, w: number, dome: string, lobe: string) => {
+        const a = clamp(14 + w * 3.5, 14, 30)
+        const rx = 62 + w * 14
+        const ry = 48 + w * 12
+        const lx = 24 + w * 11
+        const ly = 30 + w * 12
+        // a firmer body and a feathered rim: an edge you sense, never a line
+        return [
+          `radial-gradient(ellipse ${rx}% ${ry}% at ${dome}, ${mixSide(ink, a)} 0%, ${mixSide(ink, a * 0.8)} 58%, transparent 100%)`,
+          `radial-gradient(ellipse ${lx}% ${ly}% at ${lobe}, ${mixSide(ink, a * 0.9)} 0%, ${mixSide(ink, a * 0.5)} 60%, transparent 100%)`,
+        ]
+      }
+      return [
+        ...(flood > 0 ? side(FLOOD, flood, "80% 115%", "34% 72%") : []),
+        ...(ebb > 0 ? side(EBB, ebb, "20% -15%", "66% 28%") : []),
+      ].join(", ")
+    },
+  },
+  {
     key: "advance",
     name: "A · one tide advancing",
     note: "one gradient; the crossover moves with the net, alpha climbs with |net|. Contested reads calm.",
@@ -109,49 +136,6 @@ const GROUNDS: ReadonlyArray<Ground> = [
       const aE = ebb === 0 ? 0 : clamp(8 + ebb * 3.5, 8, 22)
       const aF = flood === 0 ? 0 : clamp(8 + flood * 3.5, 8, 22)
       return `linear-gradient(90deg, ${mixSide(EBB, aE)} 0%, transparent ${x}%, ${mixSide(FLOOD, aF)} 100%)`
-    },
-  },
-  {
-    key: "shore",
-    name: "E · shore and tide",
-    note: "two materials: verdigris is GROUND (flat, hard-edged, Gnosis's shelf at the left); red is WATER (soft, pooling in the right corner, climbing in). The water laps the shore.",
-    css: (mods) => {
-      const { ebb, flood } = sums(mods)
-      if (ebb === 0 && flood === 0) return undefined
-      const layers: string[] = []
-      if (flood > 0) {
-        const aF = clamp(10 + flood * 3.5, 10, 26)
-        const reach = clamp(48 + flood * 16, 48, 140)
-        // the pool, anchored bottom-right, feathered
-        layers.push(
-          `radial-gradient(ellipse ${reach}% 125% at 100% 100%, ${mix(FLOOD, aF)} 0%, ${mix(FLOOD, aF * 0.55)} 48%, transparent 100%)`,
-        )
-        // a low diagonal sweep: the water is coming in, not sitting still
-        layers.push(
-          `linear-gradient(255deg, ${mix(FLOOD, aF * 0.45)} 0%, transparent ${clamp(30 + flood * 9, 30, 80)}%)`,
-        )
-      }
-      if (ebb > 0) {
-        const aE = clamp(9 + ebb * 2.5, 9, 20)
-        const reach = clamp(30 + ebb * 9, 30, 72)
-        // the shelf: flat ground with a hard, slightly ramped edge and a brighter rim
-        layers.push(
-          `linear-gradient(72deg, ${mixSide(EBB, aE)} 0%, ${mixSide(EBB, aE)} ${reach - 0.6}%, ${mixSide(EBB, aE * 2.2)} ${reach - 0.6}%, ${mixSide(EBB, aE * 2.2)} ${reach}%, transparent ${reach + 0.4}%)`,
-        )
-      }
-      return layers.join(", ")
-    },
-  },
-  {
-    key: "water",
-    name: "D · water level (to rule out)",
-    note: "the net fills the box from the floor. Evocative, but the pills sit in it.",
-    css: (mods) => {
-      const { net } = sums(mods)
-      if (net === 0) return undefined
-      const h = clamp(Math.abs(net) * 16, 16, 90)
-      const ink = net > 0 ? FLOOD : EBB
-      return `linear-gradient(0deg, ${mixSide(ink, 20)} 0%, ${mixSide(ink, 10)} ${h}%, transparent ${h + 1}%)`
     },
   },
 ]
