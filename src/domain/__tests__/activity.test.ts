@@ -285,7 +285,7 @@ describe("pinnedLiveCasts: a live cast holds still (MAG-46)", () => {
   const feed: ReadonlyArray<ActivityEntry> = [message(), theirs, mine, resolved, older]
 
   it("pins every other caster's live cast for a spectator, oldest first, whatever the feed's order", () => {
-    expect(pinnedLiveCasts({ viewerUserId: "user_z", isStoryteller: false }, feed).map((c) => c._id)).toEqual([
+    expect(pinnedLiveCasts({ userId: "user_z", role: "player" }, feed).map((c) => c._id)).toEqual([
       "c_older",
       "c_theirs",
       "c_mine",
@@ -293,18 +293,18 @@ describe("pinnedLiveCasts: a live cast holds still (MAG-46)", () => {
   })
 
   it("leaves the caster's own live cast to their roll zone", () => {
-    expect(pinnedLiveCasts({ viewerUserId: "user_a", isStoryteller: false }, feed).map((c) => c._id)).toEqual([
+    expect(pinnedLiveCasts({ userId: "user_a", role: "player" }, feed).map((c) => c._id)).toEqual([
       "c_older",
       "c_theirs",
     ])
   })
 
-  it("pins nothing for the Storyteller, whose roll zone holds the live casts", () => {
-    expect(pinnedLiveCasts({ viewerUserId: "user_st", isStoryteller: true }, feed)).toEqual([])
+  it("pins nothing for the Storyteller, who holds the live cast on stage in their roll zone and counts the rest in the wings", () => {
+    expect(pinnedLiveCasts({ userId: "user_st", role: "storyteller" }, feed)).toEqual([])
   })
 
   it("never pins a resolved record — that belongs to the Chronicle", () => {
-    expect(pinnedLiveCasts({ viewerUserId: "user_z", isStoryteller: false }, feed).map((c) => c._id)).not.toContain(
+    expect(pinnedLiveCasts({ userId: "user_z", role: "player" }, feed).map((c) => c._id)).not.toContain(
       "c_done",
     )
   })
@@ -335,6 +335,14 @@ describe("mergeFeed", () => {
     expect(merged).toHaveLength(FEED_CAP)
     expect(merged[0]).toEqual(entries[entries.length - 1])
     expect(merged[merged.length - 1]).toEqual(entries[50])
+  })
+
+  it("never caps a live cast out — it is not a feed item, and the pinned slot and roll zones read it from here (MAG-46)", () => {
+    const quiet = { _tag: "cast", _id: "c_live", timestamp: 0, startedAt: 0, casterUserId: "user_a", status: "paradox" } as unknown as CastEntry
+    const chatter = Array.from({ length: FEED_CAP + 5 }, (_, i) => message({ _id: `m_${i}`, timestamp: i + 1 }))
+    const merged = mergeFeed([quiet, ...chatter])
+    expect(merged).toContainEqual(quiet)
+    expect(merged.filter((e) => e._tag === "message")).toHaveLength(FEED_CAP)
   })
 
   it("does not mutate its input", () => {

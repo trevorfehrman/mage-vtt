@@ -1,5 +1,18 @@
 # Tides are scene state; the cast card is a docked cockpit
 
+> **Amended** (2026-10-23, MAG-46). The 2026-07-19 note's "the feed carries
+> the live card **only for spectators**" is withdrawn: a live cast never
+> rides anyone's feed — its timestamp moved with every edit, so it popped
+> around the spectators' Chronicle (owner: an in-progress vulgar flow can't
+> pop around the activity feed of anyone). It stays the caster's and the
+> Storyteller's roll zone, and every other seat sees each other caster's
+> live cast **pinned** between the Chronicle and their own tray — a fixed
+> slot, oldest first by the Cast's creation (`pinnedLiveCasts`), which no
+> update reshuffles. Spectators keep their tray and their controls (owner:
+> "better than taking their freedom away"); the height that costs is the
+> shrunk tray's to give back (MAG-47). On resolution the record lands in the
+> feed for everyone, at its timestamp, as before.
+
 > **Amended** (2026-10-23, owner calls after MAG-45 and MAG-17's tour).
 > Four notes. **The Tides wait for the fix:** pass 3's "on every seat's
 > card" is withdrawn for the ST's adjustments — while the Tides are fluid

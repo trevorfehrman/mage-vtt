@@ -154,10 +154,6 @@ export const visibleEntries = <E extends ActivityEntry>(
 export const isLiveCast = (entry: ActivityEntry): boolean =>
   entry._tag === "cast" && isUnresolved(entry.status)
 
-/** The seat a viewer holds, as the pinned slot needs it. */
-export const PinViewer = Schema.Struct({ viewerUserId: Schema.String, isStoryteller: Schema.Boolean })
-export type PinViewer = typeof PinViewer.Type
-
 const byStart = Order.mapInput(Order.Number, (c: CastEntry) => c.startedAt)
 
 /**
@@ -167,13 +163,13 @@ const byStart = Order.mapInput(Order.Number, (c: CastEntry) => c.startedAt)
  * slot holds every OTHER caster's live cast — none for the Storyteller —
  * oldest first, in a fixed order that no update reshuffles.
  */
-export const pinnedLiveCasts = (viewer: PinViewer, entries: ReadonlyArray<ActivityEntry>): Array<CastEntry> =>
-  viewer.isStoryteller
+export const pinnedLiveCasts = (reader: NonNullable<Reader>, entries: ReadonlyArray<ActivityEntry>): Array<CastEntry> =>
+  reader.role === "storyteller"
     ? []
     : Arr.sort(
         Arr.filter(
           entries,
-          (e): e is CastEntry => e._tag === "cast" && isLiveCast(e) && e.casterUserId !== viewer.viewerUserId,
+          (e): e is CastEntry => e._tag === "cast" && isLiveCast(e) && e.casterUserId !== reader.userId,
         ),
         byStart,
       )
@@ -184,12 +180,15 @@ export const FEED_CAP = 100
 /**
  * The chronological merge: interleave by timestamp descending (ties keep input
  * order) and cap the feed. Database fetch caps stay in the query — they are
- * storage concerns; this cap is the feed's.
+ * storage concerns; this cap is the feed's. A live cast is never capped out
+ * (MAG-46): it is no feed item, and the pinned slot and the roll zones read
+ * it from this list, so a quiet cast behind a busy table must not vanish.
  */
-export const mergeFeed = <E extends { readonly timestamp: number }>(
-  entries: ReadonlyArray<E>,
-): Array<E> =>
-  [...entries].sort((a, b) => b.timestamp - a.timestamp).slice(0, FEED_CAP)
+export const mergeFeed = <E extends ActivityEntry>(entries: ReadonlyArray<E>): Array<E> => {
+  const newestFirst = [...entries].sort((a, b) => b.timestamp - a.timestamp)
+  const records = newestFirst.filter((e) => !isLiveCast(e)).slice(0, FEED_CAP)
+  return newestFirst.filter((e) => isLiveCast(e) || records.includes(e))
+}
 
 const decodeEntry = Schema.decodeUnknownResult(ActivityEntry)
 

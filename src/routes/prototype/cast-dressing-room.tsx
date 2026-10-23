@@ -30,7 +30,7 @@
 // DELETE when map #95 clears.
 import { useEffect, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
-import { withheldFrom, type CastEntry, type MessageEntry, type RollEntry } from "#/domain/activity"
+import { pinnedLiveCasts, withheldFrom, type CastEntry, type MessageEntry, type RollEntry } from "#/domain/activity"
 import type { ParadoxPoolModifier } from "#/domain/paradox"
 import { decodeSheet } from "#/domain/character"
 import { initialCurrentState } from "#/domain/character"
@@ -40,6 +40,7 @@ import { ScrollArea } from "#/components/ui/scroll-area"
 import { SessionLayout } from "#/components/game/SessionLayout"
 import { MessageItem, RollItem } from "#/components/game/ActivityLog"
 import { CastCard } from "#/components/game/CastCard"
+import { CastMount } from "#/components/game/CastMount"
 import { isUnresolved } from "#/domain/cast"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { ChatInput } from "#/components/game/ChatInput"
@@ -302,10 +303,11 @@ function DressingRoom() {
   const view = SEAT_VIEW[seat]
   // Each seat sees what the feed query would hand it: the same policy, so a
   // fluid rung's adjustments reach the Storyteller's seat only.
-  const cast: CastEntry = withheldFrom({
+  const reader = {
     userId: view.viewerUserId,
-    role: view.isStoryteller ? "storyteller" : "player",
-  })(adjustments === undefined ? CASTS[rung] : { ...CASTS[rung], adjustments })
+    role: view.isStoryteller ? ("storyteller" as const) : ("player" as const),
+  }
+  const cast: CastEntry = withheldFrom(reader)(adjustments === undefined ? CASTS[rung] : { ...CASTS[rung], adjustments })
   const adjust = async (next: ReadonlyArray<ParadoxPoolModifier>) =>
     setAdjusted((prev) => ({ ...prev, [rung]: next }))
   const mySheet = seat === "caster" ? arctusSheet : null
@@ -360,8 +362,10 @@ function DressingRoom() {
   // above a bystander's tray; never in the feed. The record (resolved,
   // cancelled, voided) lands in the feed for everyone.
   const live = isUnresolved(cast.status)
-  const inZone = live && seat !== "bystander"
-  const pinnedHere = live && seat === "bystander"
+  // the session's own policy decides the pin; the rest of a live cast's
+  // seats hold it as their roll zone
+  const pinnedHere = pinnedLiveCasts(reader, [cast]).length > 0
+  const inZone = live && !pinnedHere
 
   const feed = (
     <div className="flex h-full flex-col">
@@ -401,23 +405,13 @@ function DressingRoom() {
           )
         }
         activityLog={feed}
-        liveCasts={
-          pinnedHere && (
-            <div className="max-h-[60%] shrink-0 overflow-y-auto">
-              <div className="border-t p-2" style={{ borderColor: "var(--line)" }}>
-                {card}
-              </div>
-            </div>
-          )
-        }
+        liveCasts={pinnedHere && <CastMount>{card}</CastMount>}
         dicePoolBuilder={
           <>
             {mySheet && <ResourceStrip character={mySheet} pendingMana={castPendingMana} />}
             {inZone ? (
-              <div className="mv-stage">
-                <div className="border-t p-2" style={{ borderColor: "var(--line)" }}>
-                  {card}
-                </div>
+              <div className="mv-assemble mv-stage">
+                <CastMount>{card}</CastMount>
               </div>
             ) : (
               <DicePoolBuilder pool={pool} />

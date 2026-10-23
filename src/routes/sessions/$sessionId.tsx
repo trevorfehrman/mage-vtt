@@ -19,6 +19,7 @@ import {
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { ResourceStrip } from "#/components/game/ResourceStrip"
 import { CastCard } from "#/components/game/CastCard"
+import { CastMount } from "#/components/game/CastMount"
 import { ChatInput } from "#/components/game/ChatInput"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { SheetSky } from "#/components/game/TraitSky"
@@ -279,7 +280,10 @@ function SessionPage() {
   // Every other caster's live cast, pinned above this seat's tray (MAG-46):
   // a fixed slot, oldest first, so an in-progress cast never moves around
   // the Chronicle. The Storyteller's zone holds theirs, so none pin for them.
-  const pinned = pinnedLiveCasts({ viewerUserId, isStoryteller }, activity ?? [])
+  const pinned = pinnedLiveCasts(
+    { userId: viewerUserId, role: isStoryteller ? "storyteller" : "player" },
+    activity ?? [],
+  )
 
   // Build character sheet content
   let sheetContent: React.ReactNode = undefined
@@ -412,23 +416,20 @@ function SessionPage() {
         />
       }
       liveCasts={
-        pinned.length > 0 && (
-          <div className="max-h-[60%] shrink-0 overflow-y-auto">
-            {pinned.map((c) => (
-              <div key={`pinned-${c._id}`} className="border-t p-2" style={{ borderColor: "var(--line)" }}>
-                <CastCard
-                  cast={c}
-                  sessionId={sessionId}
-                  isStoryteller={isStoryteller}
-                  viewerUserId={viewerUserId}
-                  mySheet={mySheet}
-                  // the watched cockpit (note 14) reads the CASTER's track
-                  casterSheet={casterSheetOf(c.characterId)}
-                />
-              </div>
-            ))}
-          </div>
-        )
+        pinned.length > 0 &&
+        pinned.map((c) => (
+          <CastMount key={`pinned-${c._id}`}>
+            <CastCard
+              cast={c}
+              sessionId={sessionId}
+              isStoryteller={isStoryteller}
+              viewerUserId={viewerUserId}
+              mySheet={mySheet}
+              // the watched cockpit (note 14) reads the CASTER's track
+              casterSheet={casterSheetOf(c.characterId)}
+            />
+          </CastMount>
+        ))
       }
       dicePoolBuilder={
         // The console (owner call 2026-07-19, superseding #104's reach-order):
@@ -485,7 +486,7 @@ function SessionPage() {
             // Keyed by cast so a new occupant re-assembles; rung climbs
             // render in place.
             <div key={`cast-${stZoneCast._id}`} className="mv-assemble mv-stage">
-              <div className="border-t p-2" style={{ borderColor: "var(--line)" }}>
+              <CastMount>
                 <CastCard
                   cast={stZoneCast}
                   sessionId={sessionId}
@@ -495,14 +496,14 @@ function SessionPage() {
                   casterSheet={casterSheetOf(stZoneCast.characterId)}
                   moreWaiting={moreWaiting}
                 />
-              </div>
+              </CastMount>
             </div>
           ) : myPendingCast ? (
             // The caster's own live cast holds their zone the same way, from
             // draft clear through resolution — controls as their beats come,
             // the felt-dice declared pool standing where the roller was.
             <div key={`cast-${myPendingCast._id}`} className="mv-assemble mv-stage">
-              <div className="border-t p-2" style={{ borderColor: "var(--line)" }}>
+              <CastMount>
                 <CastCard
                   cast={myPendingCast}
                   sessionId={sessionId}
@@ -512,7 +513,7 @@ function SessionPage() {
                   casterSheet={mySheet}
                   onPendingMana={setCastPendingMana}
                 />
-              </div>
+              </CastMount>
             </div>
           ) : rawCast.state !== "idle" && mySheet ? (
             <div key="declaring" className="mv-assemble mv-stage">

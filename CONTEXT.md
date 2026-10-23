@@ -253,6 +253,12 @@ The single chronological feed showing all Activity (Messages and Rolls
 interleaved by time), with visibility filtering applied server-side.
 _Avoid_: Chat log, Roll history (those were the two separate panes this replaced).
 
+**Pinned cast**:
+Another caster's live Cast card, held in a fixed slot between the Activity Log
+and the viewer's own tray until it resolves (ADR-0022, MAG-46). A live Cast is
+never an Activity Log entry; its resolved record is.
+_Avoid_: Live feed card (the feed never carries a live Cast).
+
 **Message**:
 A chat Activity — public, a Whisper, or a system notice.
 
