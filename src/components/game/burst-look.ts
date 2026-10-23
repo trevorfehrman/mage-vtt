@@ -16,15 +16,20 @@ import { DieSize, FaceRing, SIZE_LADDER, UNSEEN } from "./die-look"
  */
 
 /**
- * The burst lineup, round two (owner, 2026-10-23): the trigger and its
- * children sit on one filled PLATE that never wraps apart — the one idea
- * the owner liked — and the plate carries an effect. `plain` is the bare
- * row the felts ship with until the pick. Effects burn while fresh and
- * settle to a still state; ADR-0021 allows ambient motion when it is
- * rare and earned, and a burst is both.
+ * The plate (owner's pick, 2026-10-23): a trigger and its children sit on
+ * one filled plate that never wraps apart, with a slow fog of the plate's
+ * ink drifting behind the dice. The radius and the fog are still being
+ * auditioned. The fog burns while fresh and holds still otherwise;
+ * ADR-0021 allows ambient motion when it is rare and earned.
  */
-export const BurstLook = Schema.Literals(["plain", "plate", "beam", "sparkles", "shimmer", "rays"])
-export type BurstLook = typeof BurstLook.Type
+export const PlateFog = Schema.Literals(["none", "drift", "flow"])
+export type PlateFog = typeof PlateFog.Type
+export const Plate = Schema.Struct({
+  /** Corner radius in px; "pill" is fully round. */
+  radius: Schema.Union([Schema.Number, Schema.Literal("pill")]),
+  fog: PlateFog,
+})
+export type Plate = typeof Plate.Type
 
 /** The row's gap a child springs across — one box and a gap to its left is where its trigger stands. */
 const FELT_GAP = 12

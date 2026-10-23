@@ -36,7 +36,7 @@ describe("BurstFaces", () => {
     ).toEqual(["0", "1", "2"])
   })
 
-  it("puts a chain on one plate under any look but plain, and leaves a lone die bare", () => {
+  it("puts a chain on one plate with its fog when given a plate, and leaves a lone die bare", () => {
     const props = {
       rolls: [10, 3],
       roteRerolls: [],
@@ -46,10 +46,12 @@ describe("BurstFaces", () => {
     }
     const plain = render(createElement(BurstFaces, props)).container
     expect((plain.querySelector('[data-burst="chain"]') as HTMLElement).className).toBe("contents")
-    const plated = render(createElement(BurstFaces, { ...props, look: "rays" })).container
+    const plated = render(
+      createElement(BurstFaces, { ...props, plate: { radius: 12, fog: "drift" } }),
+    ).container
     const chain = plated.querySelector('[data-burst="chain"]') as HTMLElement
-    expect(chain.className).toContain("rounded-full")
-    expect(chain.querySelector("svg")).not.toBeNull()
+    expect(chain.style.borderRadius).toBe("12px")
+    expect(chain.querySelector('[data-fog="drift"]')).not.toBeNull()
     expect((plated.querySelector('[data-burst="one"]') as HTMLElement).className).toBe("contents")
   })
 
