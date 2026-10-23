@@ -132,22 +132,55 @@ const realmInk = (arcanum: string): typeof Ink.Type => {
  * inset shadow; `poolClass` adds the slow breathing over it. */
 const holeBurn = (ink: string): string => `inset 0 0 3px 1px color-mix(in srgb, ${ink} 70%, transparent)`
 
-export const poolLook = (kind: PoolKind, ghost: boolean, arcanum?: string): DieLook => {
+/** The group-hover glow (the badges work, 2026-10-22 evening; MAG-16 moves
+ * it off the old FeltDie): a lit die wears a 1px ring in its own ink and an
+ * 8px bloom of it, both OUTSIDE the box so the geometry never moves. */
+const litHalo = (ink: string): string => `0 0 0 1px ${ink}, 0 0 8px 1px color-mix(in srgb, ${ink} 70%, transparent)`
+
+/** How deep a lit die of the mage's fills: the Willpower die's resting depth. */
+const LIT_FILL = 45
+
+export const PoolInput = Schema.Struct({
+  kind: PoolKind,
+  /** The one ghost recipe: a price being weighed, or a die eaten before the throw. */
+  ghost: Schema.Boolean,
+  /** The die's group is under the pointer (the Cast card's group hover). A
+   * ghost never lights — what is not (yet) real has nothing to come forward. */
+  lit: Schema.Boolean,
+  /** For `kind: "arcanum"`: which Arcanum's realm metal the die wears. */
+  arcanum: Schema.optional(Schema.String),
+})
+export type PoolInput = typeof PoolInput.Type
+
+export const poolLook = ({ kind, ghost, lit, arcanum }: PoolInput): DieLook => {
   const ink = kind === "arcanum" && arcanum !== undefined ? realmInk(arcanum) : POOL_INK[kind]
   if (ghost) return ghostLook(ink.border)
   const solid: DieLook = { border: `1px solid ${ink.border}`, background: ink.background }
   return Match.value(kind).pipe(
-    Match.whenOr("paradox", "paradoxBase", () => ({ ...solid, boxShadow: holeBurn(ink.border) })),
-    Match.orElse(() => solid),
+    // A hole keeps its scorch when lit — the ring and bloom join the burn outside it.
+    Match.whenOr("paradox", "paradoxBase", () => ({
+      ...solid,
+      boxShadow: lit ? `${holeBurn(ink.border)}, ${litHalo(ink.border)}` : holeBurn(ink.border),
+    })),
+    Match.orElse(() =>
+      lit
+        ? {
+            ...solid,
+            background: `color-mix(in srgb, ${ink.border} ${LIT_FILL}%, transparent)`,
+            boxShadow: litHalo(ink.border),
+          }
+        : solid,
+    ),
   )
 }
 
 /** The classes a pool die wears beyond its look: a hole names its burn ink
  * (`mv-hole-*` sets `--burn`) and breathes (`mv-hole-breathe`). Ghosts never
- * breathe (a price being weighed is still), and a reduced-motion owner gets
- * the still burn (the stylesheet also stops it). */
-export const poolClass = (kind: PoolKind, ghost: boolean, reduced: boolean | null): string => {
-  const breathe = ghost || reduced === true ? "" : " mv-hole-breathe"
+ * breathe (a price being weighed is still), a lit hole holds its breath (the
+ * glow is the attention), and a reduced-motion owner gets the still burn
+ * (the stylesheet also stops it). */
+export const poolClass = ({ kind, ghost, lit }: PoolInput, reduced: boolean | null): string => {
+  const breathe = ghost || lit || reduced === true ? "" : " mv-hole-breathe"
   return Match.value(kind).pipe(
     Match.when("paradox", () => `mv-hole-paradox${breathe}`),
     Match.when("paradoxBase", () => `mv-hole-base${breathe}`),

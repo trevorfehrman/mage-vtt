@@ -30,7 +30,7 @@ import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-l
 import { ArcanaGlyph, arcanumTint, isGrossArcanum } from "./ArcanaGlyph"
 import { healthBoxGlyph, ResistantDot } from "./CharacterSheet"
 import { UnifiedDie } from "./UnifiedDie"
-import { FeltDie, type DieKind } from "./FeltDie"
+import type { PoolKind } from "./die-look"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
 import { PriorRollsGlyph, SleeperGlyph, ToolGlyph } from "./TideGlyphs"
 import { ParadoxGlyph } from "./ParadoxGlyph"
@@ -145,8 +145,8 @@ export function CastCard({
   // opened for typing — local until Enter lands it on the document.
   const [draft, setDraft] = useState<TideDraft | null>(null)
   /** The cast-die group under the pointer (the badges work): its dice glow, the rest settle. */
-  const [litKind, setLitKind] = useState<DieKind | null>(null)
-  const settle = (kind: DieKind) => (litKind !== null && litKind !== kind ? 0.4 : 1)
+  const [litKind, setLitKind] = useState<PoolKind | null>(null)
+  const settle = (kind: PoolKind) => (litKind !== null && litKind !== kind ? 0.4 : 1)
 
   // A stale refusal clears whenever the document moves (the SceneStrip idiom).
   const liveKey = `${cast._id}:${cast.status}:${cast.updatedAt}`
@@ -293,8 +293,8 @@ export function CastCard({
     cast.declaredComponents.find((c) => c.name === WILLPOWER_COMPONENT_NAME)
       ?.dots ?? 0
   const HIGH_SPEECH_COMPONENT_NAME = "High Speech"
-  const FELT_ORDER: ReadonlyArray<DieKind> = ["sheet", "arcanum", "highSpeech", "willpower"]
-  const feltSpecs: ReadonlyArray<{ kind: DieKind; arcanum?: string }> = [
+  const FELT_ORDER: ReadonlyArray<PoolKind> = ["sheet", "arcanum", "highSpeech", "willpower"]
+  const feltSpecs: ReadonlyArray<{ kind: PoolKind; arcanum?: string }> = [
     ...cast.declaredComponents
       .filter((c) => c.name !== WILLPOWER_COMPONENT_NAME)
       .flatMap((c) =>
@@ -310,7 +310,7 @@ export function CastCard({
       .sort((x, y) => FELT_ORDER.indexOf(x.kind) - FELT_ORDER.indexOf(y.kind)),
     ...Array.from({ length: willpowerDice }, () => ({ kind: "willpower" as const })),
   ]
-  const feltKinds: ReadonlyArray<DieKind> = [
+  const feltKinds: ReadonlyArray<PoolKind> = [
     ...feltSpecs.map((s) => s.kind),
     ...Array.from({ length: Math.max(0, cast.declaredPool - feltSpecs.length) }, () => "sheet" as const),
   ].slice(0, cast.declaredPool)
@@ -321,17 +321,17 @@ export function CastCard({
   // No encompassing box — a group can split across a wrap, and per-die state
   // wraps for free. The Tooltip is the keyed presence child (presence reaches
   // the die's motion element through context, so exits still play); the
-  // trigger is a tight span around the die, since FeltDie takes no ref.
+  // trigger is a tight span around the die, since the die takes no ref.
   // Tooltip copy is max information, minimum characters (owner, 2026-10-22):
   // the intrinsic group names its sheet components ("Gnosis 3", or a rote's
   // "Resolve 2 · Occult 3"), the rest name themselves and their count.
-  const groupCount = (kind: DieKind) => feltKinds.filter((k) => k === kind).length
+  const groupCount = (kind: PoolKind) => feltKinds.filter((k) => k === kind).length
   const titleCase = (w: string) => w.charAt(0).toUpperCase() + w.slice(1)
   const sheetTerms = cast.declaredComponents
     .filter((c) => c.type !== "arcanum" && c.name !== HIGH_SPEECH_COMPONENT_NAME && c.name !== WILLPOWER_COMPONENT_NAME)
     .map((c) => `${c.name} ${c.dots}`)
     .join(" · ")
-  const groupSays = (kind: DieKind, arcanum: string | undefined) =>
+  const groupSays = (kind: PoolKind, arcanum: string | undefined) =>
     kind === "willpower"
       ? `Willpower +${groupCount(kind)}`
       : kind === "arcanum"
@@ -354,14 +354,14 @@ export function CastCard({
             onPointerEnter={() => setLitKind(kind)}
             onPointerLeave={() => setLitKind(null)}
           >
-            <FeltDie
+            <UnifiedDie
+              mode="pool"
               kind={kind}
               arcanum={arcanum}
               reduced={reduced}
               glide={false}
-              ghosted={ghosted}
+              ghost={ghosted}
               lit={litKind === kind}
-             
             />
           </span>
         </TooltipTrigger>
@@ -980,7 +980,7 @@ export function CastCard({
             <TooltipProvider>
             <AnimatePresence initial={false}>
               {Array.from({ length: paradoxDiceCount }, (_, i) => {
-                const kind: DieKind = i < paradoxBaseCount ? "paradoxBase" : "paradox"
+                const kind: PoolKind = i < paradoxBaseCount ? "paradoxBase" : "paradox"
                 const ghosted = i >= paradoxDiceCount - mitigated
                 return (
                   <Tooltip key={`paradox:${i}`}>
@@ -991,13 +991,13 @@ export function CastCard({
                         onPointerEnter={() => setLitKind(kind)}
                         onPointerLeave={() => setLitKind(null)}
                       >
-                        <FeltDie
+                        <UnifiedDie
+                          mode="pool"
                           kind={kind}
                           reduced={reduced}
                           glide={false}
-                          ghosted={ghosted}
+                          ghost={ghosted}
                           lit={litKind === kind}
-                         
                         />
                       </span>
                     </TooltipTrigger>
@@ -1015,7 +1015,7 @@ export function CastCard({
                 <Tooltip key="paradox:chance">
                   <TooltipTrigger asChild>
                     <span className="grid size-[20px] place-items-center">
-                      <FeltDie kind="paradox" ghosted reduced={reduced} glide={false} />
+                      <UnifiedDie mode="pool" kind="paradox" ghost reduced={reduced} glide={false} />
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="top" sideOffset={4}>No pool: chance die</TooltipContent>
@@ -1520,7 +1520,7 @@ function MitigationPreview({
       {rows.map((row) => {
         const locked = row.spend > affordable
         const here = onSelect !== undefined && !locked && row.spend === Math.min(selected, affordable)
-        // A locked row is a mark, not a disabled control (the FeltDie idiom):
+        // A locked row is a mark, not a disabled control (the pool die's idiom):
         // its title stays reachable and nothing pretends it could be clicked.
         return locked ? (
           <span
