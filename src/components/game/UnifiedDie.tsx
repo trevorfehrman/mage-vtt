@@ -2,10 +2,13 @@ import { Match, Schema } from "effect"
 import { motion } from "motion/react"
 import { entranceSpring } from "#/components/ui/entrance"
 import {
+  BurstDress,
   DIAMOND_ROTATION,
   SIZE_LADDER,
   UNSEEN,
   faceLook,
+  faceMark,
+  ringInk,
   poolClass,
   poolHasGlyph,
   poolLook,
@@ -70,6 +73,8 @@ const FaceModeProps = Schema.Struct({
   /** A declared die that never rolled — eaten before the throw. */
   ghost: Schema.optional(Schema.Boolean),
   title: Schema.optional(Schema.String),
+  /** The die's part in a burst (MAG-18): trigger, child, or a chain link. */
+  burst: Schema.optional(BurstDress),
 })
 type FaceModeProps = typeof FaceModeProps.Type
 
@@ -148,9 +153,11 @@ function FaceDie({
   size = "sm",
   ghost = false,
   title,
+  burst,
 }: FaceModeProps) {
-  const look = faceLook({ v, again, chance, tone, ring, ghost })
+  const look = faceLook({ v, again, chance, tone, ring, ghost, burst })
   const shape = shapeClass(size)
+  const mark = faceMark(burst, ghost)
   if (ghost) {
     // A ghost with a value is a face that rolled and was then absorbed (a
     // contained Paradox success, MAG-45): the number stays, in the ghost's
@@ -180,9 +187,20 @@ function FaceDie({
       data-face
       title={title}
       className={`mv-data ${shape} font-bold ${SIZE_LADDER[size].text}`}
-      style={{ ...look, ...DIAMOND_STANCE }}
+      style={{ ...look, ...DIAMOND_STANCE, position: "relative" }}
     >
       <span style={COUNTER_ROTATE}>{v}</span>
+      {mark === "spark" && (
+        // The spark sits on the diamond's top point: the rotated box's
+        // top-left corner. A four-point star reads the same at 45°.
+        <span
+          aria-hidden
+          data-mark="spark"
+          style={{ position: "absolute", top: -6, left: -6, fontSize: 9, lineHeight: 1, color: ringInk(tone) }}
+        >
+          ✦
+        </span>
+      )}
     </span>
   )
 }
