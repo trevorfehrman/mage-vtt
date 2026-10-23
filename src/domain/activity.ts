@@ -116,14 +116,31 @@ export const visibleTo =
   }
 
 /**
- * The list-level composition of `visibleTo`: the feed a Reader may see.
+ * What a visible entry still withholds (owner, 2026-10-23): while a Cast's
+ * Tides are fluid — before the fix stamps `tides` — the Storyteller's
+ * adjustments are their thoughts in progress, and no other seat sees them,
+ * the caster included. The fix publishes them to every seat.
+ */
+export const withheldFrom =
+  (reader: Reader) =>
+  <E extends ActivityEntry>(entry: E): E => {
+    if (reader?.role === "storyteller") return entry
+    const cast: ActivityEntry = entry
+    if (cast._tag !== "cast" || cast.tides !== undefined || cast.adjustments === undefined) return entry
+    const { adjustments: _inProgress, ...published } = entry as E & CastEntry
+    return published as unknown as E
+  }
+
+/**
+ * The list-level composition of the policy: the feed a Reader may see —
+ * `visibleTo`'s entries, each with what it still withholds removed.
  * Generic over the entry projection so the feed query's freshly-projected
  * (mutable) entries flow through without widening to the schema's readonly Type.
  */
 export const visibleEntries = <E extends ActivityEntry>(
   reader: Reader,
   entries: ReadonlyArray<E>,
-): Array<E> => entries.filter(visibleTo(reader))
+): Array<E> => entries.filter(visibleTo(reader)).map(withheldFrom(reader))
 
 /** The Activity Log's length: how many entries a merged feed keeps. */
 export const FEED_CAP = 100
