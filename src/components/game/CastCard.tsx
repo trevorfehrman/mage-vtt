@@ -407,18 +407,15 @@ export function CastCard({
   // row's end — the felt's one grammar for a price being weighed — and on
   // the record the stamped containment ghosts them for good. A ghosted
   // face is a success that never manifested, not a die that never rolled.
-  const rolledFaces: ReadonlyArray<RolledFace> =
-    status === "paradox" || status === "resolved"
-      ? [
-          ...(cast.paradoxRolls ?? []).map((v) => ({ v, chance: cast.paradoxIsChanceDie ?? false })),
-          ...(cast.paradoxExplosions ?? []).map((e) => ({ v: e.value, chance: false })),
-        ]
-      : []
+  // Reality has rolled: the faces stand in the Paradox area from the roll on.
+  const hasRolledFaces =
+    (status === "paradox" || status === "resolved") &&
+    ((cast.paradoxRolls?.length ?? 0) > 0 || (cast.paradoxExplosions?.length ?? 0) > 0)
   const containedNow =
     status === "paradox" ? cockpitContained : (cast.containedSuccesses ?? 0)
   // Reality's printed area exists only while it holds dice: the provisional
   // pool before the ST's roll, or the rolled faces from the roll onward.
-  const paradoxArea = paradoxDiceCount !== null || rolledFaces.length > 0
+  const paradoxArea = paradoxDiceCount !== null || hasRolledFaces
   // The Tides on the felt (notes 3/4/17): the pool's named ±s as ebb/flood
   // badges in the gutter, live on every seat's card — fluid and fixed alike
   // now that the provisional pool computes (note 1) — except on the ST's own
@@ -950,7 +947,7 @@ export function CastCard({
             </TooltipProvider>
           }
         >
-        {rolledFaces.length > 0 && (
+        {hasRolledFaces && (
           // The rolled Paradox faces in the burst order (MAG-18); the
           // successes the bet absorbs ghost from the row's end (MAG-45).
           <BurstFaces
@@ -1379,8 +1376,6 @@ const diceLabel = (dice: number): string =>
   dice <= 0 ? "chance die" : dice === 1 ? "1 die" : `${dice} dice`
 
 /** One of reality's rolled faces: its value, and whether it was the chance die. */
-const RolledFace = Schema.Struct({ v: Schema.Number, chance: Schema.Boolean })
-type RolledFace = typeof RolledFace.Type
 
 /** The one grid every odds row stands in: Mana · dice · Paradox · success. */
 const ROW_GRID = "grid grid-cols-[3.5rem_5.5rem_4.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px]"

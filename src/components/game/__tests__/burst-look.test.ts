@@ -3,9 +3,9 @@ import {
   BURST_BEAT,
   burstEntrance,
   burstPlan,
-  tetherInk,
   tetherPx,
 } from "#/components/game/burst-look"
+import { ringInk } from "#/components/game/die-look"
 import { entranceSpring } from "#/components/ui/entrance"
 
 /**
@@ -27,12 +27,12 @@ describe("burstPlan", () => {
     })
     expect(plan).toEqual([
       [
-        { value: 10, index: 0, kind: "roll", generation: 0, ghost: false },
-        { value: 10, index: 2, kind: "explosion", generation: 1, ghost: false },
-        { value: 8, index: 3, kind: "explosion", generation: 2, ghost: false },
+        { value: 10, index: 0, kind: "roll", generation: 0, ghost: false, chance: false },
+        { value: 10, index: 2, kind: "explosion", generation: 1, ghost: false, chance: false, ring: "exp" },
+        { value: 8, index: 3, kind: "explosion", generation: 2, ghost: false, chance: false, ring: "exp" },
       ],
-      [{ value: 3, index: 1, kind: "roll", generation: 0, ghost: false }],
-      [{ value: 0, index: 4, kind: "eaten", generation: 0, ghost: true }],
+      [{ value: 3, index: 1, kind: "roll", generation: 0, ghost: false, chance: false }],
+      [{ value: 0, index: 4, kind: "eaten", generation: 0, ghost: true, chance: false }],
     ])
   })
 
@@ -57,7 +57,7 @@ describe("burstPlan", () => {
 
   it("a chance die's 10 is its only success when the bet counts", () => {
     const plan = burstPlan({ rolls: [8], roteRerolls: [], explosions: [], eaten: 0, contained: 1, chance: true })
-    expect(plan.flat().map((d) => d.ghost)).toEqual([false])
+    expect(plan.flat().map((d) => [d.ghost, d.chance])).toEqual([[false, true]])
   })
 
   it("legacy parentless explosions stand alone at the row's end, generation 0", () => {
@@ -70,9 +70,9 @@ describe("burstPlan", () => {
       chance: false,
     })
     expect(plan).toEqual([
-      [{ value: 10, index: 0, kind: "roll", generation: 0, ghost: false }],
-      [{ value: 7, index: 1, kind: "rote", generation: 0, ghost: false }],
-      [{ value: 9, index: 2, kind: "explosion", generation: 0, ghost: false }],
+      [{ value: 10, index: 0, kind: "roll", generation: 0, ghost: false, chance: false }],
+      [{ value: 7, index: 1, kind: "rote", generation: 0, ghost: false, chance: false, ring: "rote" }],
+      [{ value: 9, index: 2, kind: "explosion", generation: 0, ghost: false, chance: false, ring: "exp" }],
     ])
   })
 })
@@ -109,9 +109,9 @@ describe("tetherPx", () => {
   })
 })
 
-describe("tetherInk", () => {
-  it("draws the tether in the trigger's ring ink", () => {
-    expect(tetherInk(undefined)).toBe("var(--accent)")
-    expect(tetherInk("paradox")).toBe("var(--paradox)")
+describe("ringInk", () => {
+  it("is the face's ring ink, and so the tether's", () => {
+    expect(ringInk(undefined)).toBe("var(--accent)")
+    expect(ringInk("paradox")).toBe("var(--paradox)")
   })
 })

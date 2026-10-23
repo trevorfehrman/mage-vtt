@@ -1,6 +1,7 @@
 import { useRef, useEffect, type ReactNode } from "react"
 import { Match } from "effect"
 import { useQuery } from "convex/react"
+import { AnimatePresence, useReducedMotion } from "motion/react"
 import { ScrollArea } from "#/components/ui/scroll-area"
 import { useActivity } from "#/hooks/use-activity"
 import type { MessageEntry, OverrideMark, RollEntry } from "#/domain/activity"
@@ -8,9 +9,8 @@ import { isUnresolved } from "#/domain/cast"
 import type { CharacterSheet } from "#/domain/character"
 import { decodeSheetDoc } from "#/lib/sheet-doc"
 import { ArcanaGlyph } from "./ArcanaGlyph"
-import { CastCard } from "./CastCard"
-import { useReducedMotion } from "motion/react"
 import { BurstFaces } from "./BurstFaces"
+import { CastCard } from "./CastCard"
 import { isLooseDice } from "./DicePoolBuilder"
 import { api } from "../../../convex/_generated/api"
 import type { Id } from "../../../convex/_generated/dataModel"
@@ -134,6 +134,11 @@ export function ActivityLog({
           rail past its box instead of scrolling. */}
       <ScrollArea className="min-h-0 flex-1 px-3 py-2">
         <div ref={contentRef} className="grid gap-2">
+          {/* initial={false}: history stands when the feed mounts; only an
+              entry that arrives later plays its entrance — a roll card's
+              burst (MAG-18), a cast resolving. The convention entrance.tsx
+              documents, applied to the live feed. */}
+          <AnimatePresence initial={false}>
           {sorted.map((item, i) =>
             Match.value(item).pipe(
               Match.tag("message", (message) => (
@@ -173,6 +178,7 @@ export function ActivityLog({
               Match.exhaustive,
             ),
           )}
+          </AnimatePresence>
 
           {/* Rolling indicator — appears immediately when dice are in flight */}
           {isRolling && <RollingIndicator count={rollingDiceCount} />}
