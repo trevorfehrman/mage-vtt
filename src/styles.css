@@ -1100,10 +1100,30 @@ a {
   .mv-hole-breathe { animation: none; }
 }
 
-/* ── The burst plate's fog (MAG-18) ──────────────────────────────────
-   A slow drift of the plate's ink behind the dice. Burns while fresh;
-   `.mv-burst-still` holds it. Reduced motion holds it still. ADR-0021:
-   ambient motion is rare and earned. */
+/* ── The burst plate (MAG-18) ─────────────────────────────────────────
+   A trigger and its children on one filled plate (ADR-0024): nearly
+   square — 3px, an echo of the die's own 4px — tinted with the dice's ring
+   ink (`--plate-ink`, set by BurstFaces), keeping the row's gap; a long
+   chain wraps inside its plate rather than spilling past the card. Padding
+   and the pull-out margin are per size (`platePad`), set inline. */
+.mv-plate {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: inherit;
+  max-width: 100%;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--plate-ink) 12%, var(--raise));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent),
+    0 1px 3px color-mix(in srgb, var(--bg) 70%, transparent);
+}
+
+/* The plate's fog: a slow drift of its ink behind the dice. Drifts while
+   the roll is fresh; `.mv-plate-fog-still` holds it after, and reduced
+   motion holds it always. ADR-0021: ambient motion is rare and earned. */
 .mv-plate-fog {
   position: absolute;
   inset: 0;
@@ -1123,7 +1143,7 @@ a {
   50% { background-position: 60% 40%, 30% 60%, 100% 70%; }
   100% { background-position: 100% 80%, 0% 20%, 0% 100%; }
 }
-.mv-burst-still { animation: none; }
+.mv-plate-fog-still { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .mv-plate-fog { animation: none; }
 }

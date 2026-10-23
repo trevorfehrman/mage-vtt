@@ -951,7 +951,8 @@ export function CastCard({
           // The rolled Paradox faces in the burst order (MAG-18); the
           // successes the bet absorbs ghost from the row's end (MAG-45).
           <BurstFaces
-            className="gap-3.5 px-3.5 pt-2.5 pb-4"
+            className="px-3.5 pt-2.5 pb-4"
+            gap={14}
             rolls={cast.paradoxRolls ?? []}
             roteRerolls={[]}
             explosions={cast.paradoxExplosions ?? []}
@@ -960,7 +961,7 @@ export function CastCard({
             tone="paradox"
             size="md"
             reduced={reduced}
-            burning={status === "paradox"}
+            rolledAt={cast.timestamp}
             contained={containedNow}
             ghostTitle="Contained — this Paradox success lands as Resistant bashing instead of manifesting"
           />
@@ -1029,7 +1030,8 @@ export function CastCard({
           // containment bet ATE as empty ghosts (declared − rolled) trailing,
           // so the felt shows the whole Gnosis + Arcanum pool.
           <BurstFaces
-            className="gap-3.5 px-3.5 pt-4 pb-2.5"
+            className="px-3.5 pt-4 pb-2.5"
+            gap={14}
             rolls={cast.castRolls}
             roteRerolls={cast.castRoteRerolls ?? []}
             explosions={cast.castExplosions ?? []}
@@ -1038,6 +1040,7 @@ export function CastCard({
             size="md"
             reduced={reduced}
             eaten={Math.max(0, cast.declaredPool - cast.castRolls.length)}
+            rolledAt={cast.timestamp}
           />
         ) : (
           <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-4 pb-2.5">
@@ -1376,7 +1379,6 @@ const DRAMATIC_FAILURE_WARN_FLOOR = 0.001
 const diceLabel = (dice: number): string =>
   dice <= 0 ? "chance die" : dice === 1 ? "1 die" : `${dice} dice`
 
-/** One of reality's rolled faces: its value, and whether it was the chance die. */
 
 /** The one grid every odds row stands in: Mana · dice · Paradox · success. */
 const ROW_GRID = "grid grid-cols-[3.5rem_5.5rem_4.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px]"

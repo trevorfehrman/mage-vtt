@@ -656,7 +656,7 @@ function DieAudition() {
                   {BURST_CASES.map((c) => (
                     <td key={c.label} className="rounded-md border px-5 py-4" style={{ borderColor: "var(--line)" }}>
                       <BurstFaces
-                        className="gap-3.5"
+                        gap={14}
                         rolls={c.rolls}
                         roteRerolls={[]}
                         explosions={c.explosions}

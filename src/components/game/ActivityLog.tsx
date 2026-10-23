@@ -148,7 +148,7 @@ export function ActivityLog({
                   dropCap={i === 0 && message.visibilityType === "system"}
                 />
               )),
-              Match.tag("roll", (roll) => <RollItem key={roll._id} roll={roll} newest={roll._id === newestId} />),
+              Match.tag("roll", (roll) => <RollItem key={roll._id} roll={roll} />),
               // The live Cast card (issue #43; the card takeover,
               // 2026-07-19): while the cast is live it stands in the
               // caster's and the Storyteller's roll zones, so the feed
@@ -258,7 +258,7 @@ function OverrideTag({ override }: { override: OverrideMark }) {
   )
 }
 
-export function RollItem({ roll, newest = false }: { roll: RollEntry; newest?: boolean }) {
+export function RollItem({ roll }: { roll: RollEntry }) {
   const reduced = useReducedMotion()
   const arcana = roll.components.filter((c) => c.type === "arcanum")
   return (
@@ -311,19 +311,21 @@ export function RollItem({ roll, newest = false }: { roll: RollEntry; newest?: b
         </p>
       )}
 
-      {/* The burst order (MAG-18): each explosion beside its trigger. A 20px
-          diamond overhangs its box ~4px a side, so the row keeps the Cast
-          card's clearance, not the old square die's 4px (MAG-19). */}
+      {/* The burst order (MAG-18): each explosion beside its trigger, a
+          chain on its plate. A 20px diamond overhangs its box ~4px a side,
+          so the row keeps a 12px gap (MAG-19), and the margin above clears
+          the plate's reach so it never touches the summary. */}
       <BurstFaces
-        className="mt-1.5 gap-3"
+        className="mt-2.5"
+        gap={12}
         rolls={roll.rolls}
         roteRerolls={roll.roteRerolls}
         explosions={roll.explosions}
         again={roll.againThreshold}
         chance={roll.isChanceDie}
         reduced={reduced}
-        // The fog drifts on the newest roll only; history holds still.
-        burning={newest}
+        // The fog drifts for a minute after the roll lands; history holds still.
+        rolledAt={roll.timestamp}
       />
 
       <div className="mv-data mt-1.5 text-[10px]" style={{ color: "var(--dim)" }}>
