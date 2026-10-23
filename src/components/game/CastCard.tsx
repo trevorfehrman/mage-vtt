@@ -20,6 +20,7 @@ import {
   type ParadoxPoolModifier,
 } from "#/domain/paradox"
 import { castOddsUnderParadox, rollOdds } from "#/domain/probability"
+import { signedDice, tidesGround, tidesNetInk, tidesPillEdge, tidesWeight } from "./tides-ground"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
@@ -594,67 +595,101 @@ export function CastCard({
         </div>
       )}
 
-      {/* The Tides, a section of their own (owner, 2026-10-22 late): the
-          ST's named circumstances as two-part pills — the prose, a rule, the
-          number — red rising, verdigris pulling back. This is the ST setting
-          the stage: the premise of the beat, declared to the player, read
-          before the dice. Fully contained (owner, 2026-10-22 late): its own
-          box on the felt's radius and line, but on the panel's plain ground
-          — no tint — so the felt below keeps the only colored ground on the
-          card and stays the star. The felt's eyebrow grammar names it. The
-          pills are toned down from the full inks: their tint is the ink
-          mixed well toward dim, so the weather reads as premise, not alarm. */}
-      {weather.length > 0 && (
-        <TooltipProvider>
-        <div
-          className="mt-2.5 rounded-[6px] border px-3.5 pt-3 pb-3.5"
-          style={{ borderColor: "var(--line)" }}
-        >
-        <div
-          className="mv-data text-[9px] uppercase tracking-[0.18em]"
-          style={{ color: "var(--dim)" }}
-        >
-          tides
-        </div>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {weather.map(({ modifier, onRemove }, i) => {
-            const ebb = modifier.dice < 0
-            const tint = `color-mix(in srgb, ${ebb ? "var(--accent)" : "var(--paradox)"} 58%, var(--dim))`
-            const n = Math.abs(modifier.dice)
-            return (
-              <Tooltip key={`${modifier.source}-${i}`}>
+      {/* The Tides, a section of their own (owner, 2026-10-22 late): the ST
+          setting the stage — the premise of the beat, declared to the player
+          and read before the dice. Its own box on the felt's radius and
+          line, and after the owner's audition (/prototype/tides-audition,
+          treatment H, see tides-ground.ts) the box's ground IS the mood:
+          green owns the left edge, red the right, the net slides the seam,
+          green leans into the top-left and red into the bottom-right. The
+          eyebrow prints the net beside TIDES. The circumstances stand as
+          two shores: ebbs stacked bottom-left, floods bottom-right, prose in
+          ink, the number outboard behind a rule in the pill's own edge —
+          weakest at the top, strongest sinking to the corner. The felt below
+          keeps its own ground and stays the star. */}
+      {weather.length > 0 && (() => {
+        const mods = weather.map((w) => w.modifier)
+        const { net } = tidesWeight(mods)
+        const ebbs = Array.from(weather).filter((w) => w.modifier.dice < 0).sort((a, b) => b.modifier.dice - a.modifier.dice)
+        const floods = Array.from(weather).filter((w) => w.modifier.dice > 0).sort((a, b) => a.modifier.dice - b.modifier.dice)
+        const pill = ({ modifier, onRemove }: (typeof weather)[number], side: "ebb" | "flood", i: number) => {
+          const edge = tidesPillEdge(modifier.dice)
+          const n = Math.abs(modifier.dice)
+          const num = (
+            <span
+              className="flex items-center whitespace-nowrap px-2 py-1 font-bold"
+              style={{
+                color: "var(--ink)",
+                ...(side === "ebb" ? { borderRight: `1px solid ${edge}` } : { borderLeft: `1px solid ${edge}` }),
+              }}
+            >
+              {signedDice(modifier.dice)}
+              {onRemove && (
+                <button
+                  onClick={onRemove}
+                  disabled={busy}
+                  className="ml-1.5 leading-none opacity-70 hover:opacity-100 disabled:opacity-40"
+                  style={{ color: "var(--dim)" }}
+                  title="Remove"
+                >
+                  ×
+                </button>
+              )}
+            </span>
+          )
+          return (
+            <Tooltip key={`${side}-${modifier.source}-${i}`}>
               <TooltipTrigger asChild>
-              <span
-                className="mv-data inline-flex items-stretch overflow-hidden rounded-full border text-[12px] leading-none"
-                style={{ borderColor: tint, color: tint }}
-              >
-                <span className="px-2.5 py-1">{modifier.source}</span>
-                <span className="flex items-center border-l px-2 py-1 font-bold" style={{ borderColor: tint, background: `color-mix(in srgb, ${tint} 14%, transparent)` }}>
-                  {ebb ? `−${Math.abs(modifier.dice)}` : `+${modifier.dice}`}
-                  {onRemove && (
-                    <button
-                      onClick={onRemove}
-                      disabled={busy}
-                      className="ml-1.5 leading-none opacity-70 hover:opacity-100 disabled:opacity-40"
-                      style={{ color: tint }}
-                      title="Remove"
-                    >
-                      ×
-                    </button>
-                  )}
+                <span
+                  className="mv-data inline-flex max-w-full items-stretch overflow-hidden border text-[12px] leading-none"
+                  style={{
+                    borderRadius: 11,
+                    borderColor: edge,
+                    color: "var(--ink)",
+                    background: "color-mix(in srgb, var(--panel) 88%, transparent)",
+                  }}
+                >
+                  {side === "ebb" && num}
+                  {/* break between words only — a shore never splits a word */}
+                  <span className="px-2.5 py-1" style={{ overflowWrap: "normal", wordBreak: "normal" }}>
+                    {modifier.source}
+                  </span>
+                  {side === "flood" && num}
                 </span>
-              </span>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={4}>
-                {ebb ? `Ebb · −${n}` : `Flood · +${n}`}
+                {side === "ebb" ? `Ebb · −${n}` : `Flood · +${n}`}
               </TooltipContent>
-              </Tooltip>
-            )
-          })}
-        </div>
-        </div>
-        </TooltipProvider>
-      )}
+            </Tooltip>
+          )
+        }
+        return (
+          <TooltipProvider>
+            <div
+              className="mt-2.5 rounded-[6px] border px-3.5 pt-3 pb-3.5"
+              style={{ borderColor: "var(--line)", background: tidesGround(mods) }}
+            >
+              <div
+                className="mv-data flex items-baseline justify-between text-[9px] uppercase tracking-[0.18em]"
+                style={{ color: "var(--dim)" }}
+              >
+                <span>tides</span>
+                <span className="text-[12px] normal-case tracking-normal" style={{ color: tidesNetInk(net) }}>
+                  ≈ {net === 0 ? "0" : signedDice(net)}
+                </span>
+              </div>
+              <div className="mt-2 flex items-end justify-between gap-3">
+                <div className="flex flex-col items-start gap-1.5" style={{ maxWidth: "64%" }}>
+                  {ebbs.map((w, i) => pill(w, "ebb", i))}
+                </div>
+                <div className="ml-auto flex flex-col items-end gap-1.5" style={{ maxWidth: "64%" }}>
+                  {floods.map((w, i) => pill(w, "flood", i))}
+                </div>
+              </div>
+            </div>
+          </TooltipProvider>
+        )
+      })()}
 
       {/* Provenance ABOVE the felt (2026-07-20): the pool's lineage and the
           declared terms sit above the dice; the felt itself holds only the
