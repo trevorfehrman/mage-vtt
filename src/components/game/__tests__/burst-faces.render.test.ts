@@ -5,8 +5,8 @@ import { afterEach, describe, expect, it } from "@effect/vitest"
 import { BurstFaces } from "#/components/game/BurstFaces"
 
 /**
- * MAG-18, the render half: a chain is one cluster with a tether between each
- * generation, a legacy explosion stands alone, ghosting follows the combined
+ * MAG-18, the render half: a chain is one cluster on its plate, each child a
+ * generation on, a legacy explosion stands alone, ghosting follows the combined
  * index, eaten ghosts trail, and reduced motion skips the entrance.
  */
 afterEach(cleanup)
@@ -48,10 +48,10 @@ describe("BurstFaces", () => {
     expect((plain.querySelector('[data-burst="chain"]') as HTMLElement).className).toBe("contents")
     const plated = render(createElement(BurstFaces, props)).container
     const chain = plated.querySelector('[data-burst="chain"]') as HTMLElement
-    expect(chain.style.borderRadius).toBe("3px")
+    expect(chain.className).toBe("mv-plate")
     // Flush: padded past the points and pulled out by the same, so the dice keep the grid.
-    expect(chain.style.padding).toBe("6px")
-    expect(chain.style.margin).toBe("-6px")
+    expect(chain.style.padding).toBe("5px")
+    expect(chain.style.margin).toBe("-5px")
     expect(chain.querySelector("[data-fog]")).not.toBeNull()
     expect((plated.querySelector('[data-burst="one"]') as HTMLElement).className).toBe("contents")
   })

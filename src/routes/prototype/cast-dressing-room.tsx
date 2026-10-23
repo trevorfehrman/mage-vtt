@@ -341,7 +341,7 @@ function DressingRoom() {
         <div className="grid gap-2">
           <MessageItem message={systemMsg} dropCap />
           <MessageItem message={chatMsg} />
-          <RollItem roll={priorRoll} newest />
+          <RollItem roll={priorRoll} />
           {/* Remount per knob flip: the card's local drafts (mitigation row,
               containment boxes, refusal line) must not bleed across states. */}
           <CastCard

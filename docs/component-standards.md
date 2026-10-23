@@ -71,9 +71,12 @@ A component passes when every box on every axis checks.
       `FeedEntry` (`src/components/ui/entrance.tsx`).
 - [ ] Hover and state color fades stay one-line CSS transitions — no JS
       wrapper per button.
-- [ ] **Nothing animates ambiently.** The only sanctioned exceptions are the
-      ones ADR-0021 names (the Arcana material system while lit, the one
-      night-sky canvas); everything else moves only when an event moves it.
+- [ ] **Nothing animates ambiently without earning it.** Ambient motion is
+      rare and earned, not banned (ADR-0021, 2026-10-23); the sanctioned
+      exceptions are the ones ADR-0021 names (the Arcana material system
+      while lit, the one night-sky canvas, the Paradox holes' breath, the
+      burst plate's fog while its roll is fresh); everything else moves only
+      when an event moves it.
 - [ ] `useReducedMotion` / `prefers-reduced-motion` is respected on every
       animation: entrances render instantly, ambient exceptions hold a static
       frame.

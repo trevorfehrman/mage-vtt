@@ -241,7 +241,7 @@ const faceInks = (tone: FaceTone | undefined) =>
     })),
   )
 
-/** The ink a face's ring draws in — and the tether a burst child hangs from (MAG-18). */
+/** The ink a face's ring draws in — and the tint of the plate a burst sits on (MAG-18). */
 export const ringInk = (tone: FaceTone | undefined): string => faceInks(tone).ring
 
 /**

@@ -9,10 +9,9 @@ import { DieSize, FaceRing, SIZE_LADDER, UNSEEN } from "./die-look"
  * child enters. The ORDER is the domain's (`burstClusters`, ADR-0024); this
  * file only adds what a render needs — each die's generation within its
  * cluster, whether it triggered the next, the eaten ghosts trailing the
- * row, the entrance per generation. How a trigger and a child DRESS is
- * `die-look.ts`'s (`BurstDress`): the relationship rides on the dice, not
- * the gap, so it survives a row wrap (owner, 2026-10-23). `BurstFaces.tsx`
- * lays the pixels.
+ * row, the entrance per generation, how far the plate reaches, and how
+ * long a roll stays fresh. `BurstFaces.tsx` lays the pixels; the plate's
+ * own look (3px radius, fill, fog) is the `.mv-plate` CSS in styles.css.
  */
 
 /**
@@ -25,21 +24,24 @@ import { DieSize, FaceRing, SIZE_LADDER, UNSEEN } from "./die-look"
  * shimmer, burst rays) — and before the plate, faint per-die dressings and
  * corners brought together until they touched, which read as a CSS bug.
  */
-export const PLATE_RADIUS = 3
 
 /**
  * How far the plate reaches past its dice (owner, 2026-10-23: the dice must
  * stay on the row's grid). A diamond's point overhangs its box by
- * px·(√2−1)/2, so the plate clears the points by 2px — and the plate is
+ * px·(√2−1)/2, so the plate clears the points by 1px — and the plate is
  * pulled out by the same amount (negative margin), so its dice sit exactly
- * where they would bare and the row's height never changes.
+ * where they would bare and the row's height never changes. Two plates side
+ * by side (or on wrapped rows) keep a seam of gap − 2·pad between them: 2px
+ * at the felts' gaps (12px sm, 14px md), so neighbours never fuse into one.
  */
 export const platePad = (size: DieSize): number =>
-  Math.round((SIZE_LADDER[size].px * (Math.SQRT2 - 1)) / 2) + 2
+  Math.round((SIZE_LADDER[size].px * (Math.SQRT2 - 1)) / 2) + 1
 
+/** How long a roll stays fresh — its plate's fog drifts this long after it lands (ms). */
+export const FRESH_MS = 60_000
 
-/** The row's gap a child springs across — one box and a gap to its left is where its trigger stands. */
-const FELT_GAP = 12
+/** How much freshness a roll that landed at `rolledAt` has left at `now` (ms, never negative). */
+export const freshLeft = (rolledAt: number, now: number): number => Math.max(0, rolledAt + FRESH_MS - now)
 /** One beat of the chain: each generation springs out this much later (s). */
 export const BURST_BEAT = 0.09
 
@@ -79,7 +81,7 @@ export type BurstInput = typeof BurstInput.Type
  * The burst order with generations: `burstClusters` puts each base die first
  * and its chain behind it, so a die's position in its cluster IS its
  * generation. Legacy or unhonorable explosions come back as single-die
- * clusters (generation 0, no tether) — the inline render they always had.
+ * clusters (generation 0, never plated) — the inline render they always had.
  * Eaten ghosts trail the whole row. The successes the containment bet
  * absorbs ghost "from the row's end" (ADR-0022, MAG-45) — and the row is
  * the BURST row, the one the eye walks, so the last `contained` successes
@@ -152,16 +154,21 @@ const STANDING = { x: 0, scale: 1, opacity: 1 } as const
 
 /**
  * The trigger stands where the row put it. A child springs OUT of the die
- * before it — from one box-and-tether to its left, small and unseen, with
- * the felt's accrete spring — each generation one beat after the last, so a
- * chain reads as cause, then effect, then effect's effect. Reduced motion:
- * every die stands at once; the grouping and the tethers still say it.
+ * before it — from one box and the row's `gap` to its left, small and
+ * unseen, with the felt's accrete spring — each generation one beat after
+ * the last, so a chain reads as cause, then effect, then effect's effect.
+ * Reduced motion: every die stands at once; the plate still says it.
  */
-export const burstEntrance = (generation: number, size: DieSize, reduced: boolean | null): BurstEntrance =>
+export const burstEntrance = (
+  generation: number,
+  size: DieSize,
+  gap: number,
+  reduced: boolean | null,
+): BurstEntrance =>
   generation === 0 || reduced === true
     ? { initial: false, animate: STANDING, transition: { duration: 0 } }
     : {
-        initial: { x: -(SIZE_LADDER[size].px + FELT_GAP), ...UNSEEN },
+        initial: { x: -(SIZE_LADDER[size].px + gap), ...UNSEEN },
         animate: STANDING,
         transition: { ...entranceSpring, delay: BURST_BEAT * (generation - 1) },
       }
