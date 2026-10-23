@@ -15,6 +15,17 @@ import { DieSize, FaceRing, SIZE_LADDER, UNSEEN } from "./die-look"
  * lays the pixels.
  */
 
+/**
+ * The burst lineup, round two (owner, 2026-10-23): the trigger and its
+ * children sit on one filled PLATE that never wraps apart — the one idea
+ * the owner liked — and the plate carries an effect. `plain` is the bare
+ * row the felts ship with until the pick. Effects burn while fresh and
+ * settle to a still state; ADR-0021 allows ambient motion when it is
+ * rare and earned, and a burst is both.
+ */
+export const BurstLook = Schema.Literals(["plain", "plate", "beam", "sparkles", "shimmer", "rays"])
+export type BurstLook = typeof BurstLook.Type
+
 /** The row's gap a child springs across — one box and a gap to its left is where its trigger stands. */
 const FELT_GAP = 12
 /** One beat of the chain: each generation springs out this much later (s). */

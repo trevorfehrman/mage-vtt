@@ -17,7 +17,8 @@ import { createFileRoute } from "@tanstack/react-router"
 import { AnimatePresence, useReducedMotion } from "motion/react"
 import { BurstFaces } from "#/components/game/BurstFaces"
 import { UnifiedDie } from "#/components/game/UnifiedDie"
-import type { BurstLook, PoolKind } from "#/components/game/die-look"
+import type { PoolKind } from "#/components/game/die-look"
+import type { BurstLook } from "#/components/game/burst-look"
 
 // ── Arcana glyph set (hybrid grammar, copied from the visual-identity spec) ──
 type Arc =
@@ -548,12 +549,12 @@ const BURST_CASES: BurstCase[] = [
   { label: "legacy orphan 7", rolls: [], explosions: [{ value: 7, parentIndex: null }], again: 10 },
 ]
 const BURST_LOOKS: ReadonlyArray<readonly [BurstLook, string]> = [
-  ["plain", "Nothing but order and the explosion ring — what ships until the pick"],
-  ["hot", "The trigger is lit (the group-hover halo in its ring ink); the child wears the explosion ring"],
-  ["lean", "The trigger's halo leans toward its child, so the glow points at what it spawned"],
-  ["ripple", "The trigger is lit; the child's ring ripples — a second, fainter band outside the first"],
-  ["spark", "The trigger is lit; the child wears a spark on its top point"],
-  ["inherit", "The trigger is lit; the child's outline and ring take the trigger's fill ink, even on a miss"],
+  ["plain", "No plate, no effect — what ships until the pick"],
+  ["plate", "Trigger and children on one filled plate, nothing else"],
+  ["beam", "The plate, with a light running its edge like a fuse"],
+  ["sparkles", "The plate, with glints twinkling round the trigger"],
+  ["shimmer", "The plate, with a flickering heat halo behind the trigger"],
+  ["rays", "The plate, with a starburst behind the trigger, turning slowly"],
 ]
 type FaceCase = { label: string; v: number; again?: number; chance?: boolean; tone?: "paradox"; ring?: "rote" | "exp"; ghost?: boolean }
 const FACE_CASES: FaceCase[] = [
@@ -581,6 +582,8 @@ function DieAudition() {
     Object.fromEntries(POOL_KINDS.map((k) => [k, [0, 1, 2]])) as Record<PoolKind, number[]>,
   )
   const [nextId, setNextId] = useState(3)
+  const [burning, setBurning] = useState(true)
+  const [replay, setReplay] = useState(0)
   const feed = (kind: PoolKind) => { setFelts((f) => ({ ...f, [kind]: [...f[kind], nextId] })); setNextId((n) => n + 1) }
   const skim = (kind: PoolKind, id: number) => setFelts((f) => ({ ...f, [kind]: f[kind].filter((d) => d !== id) }))
   const cell = "flex h-9 w-9 items-center justify-center"
@@ -638,7 +641,14 @@ function DieAudition() {
         {/* The burst grid (MAG-18, owner 2026-10-23: "I need to see each
             case"): one isolated cell per case a burst look must handle,
             one row per look. */}
-        <div className="mt-3 overflow-x-auto" data-audition="burst-grid">
+        <div className="mt-4 flex items-center gap-3">
+          <span className="cp-eyebrow">Burst grid · MAG-18</span>
+          <button type="button" className={`cp-mini ${burning ? "cp-mini-on" : ""}`} onClick={() => setBurning((b) => !b)}>
+            {burning ? "burning" : "settled"}
+          </button>
+          <button type="button" className="cp-mini" onClick={() => setReplay((n) => n + 1)}>replay arrival</button>
+        </div>
+        <div key={replay} className="mt-2 overflow-x-auto" data-audition="burst-grid">
           <table className="border-separate" style={{ borderSpacing: "8px 6px" }}>
             <thead>
               <tr>
@@ -653,7 +663,7 @@ function DieAudition() {
                 <tr key={look}>
                   <td className="cp-eyebrow pr-2" title={says}>{look}</td>
                   {BURST_CASES.map((c) => (
-                    <td key={c.label} className="rounded-md border px-4 py-3" style={{ borderColor: "var(--line)" }}>
+                    <td key={c.label} className="rounded-md border px-5 py-4" style={{ borderColor: "var(--line)" }}>
                       <BurstFaces
                         className="gap-3.5"
                         rolls={c.rolls}
@@ -663,6 +673,7 @@ function DieAudition() {
                         size="md"
                         reduced={reduced}
                         look={look}
+                        burning={burning}
                         {...(c.tone ? { tone: c.tone } : {})}
                       />
                     </td>
