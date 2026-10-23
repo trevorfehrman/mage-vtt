@@ -88,13 +88,17 @@ export type BurstInput = typeof BurstInput.Type
  * in this order ghost, misses passed over, a chance die's 10 its only
  * success.
  */
+/** The containment walk's running state: successes still to absorb, and the faces absorbed so far. */
+const Absorbing = Schema.Struct({ left: Schema.Number, indices: Schema.Array(Schema.Number) })
+type Absorbing = typeof Absorbing.Type
+
 export const burstPlan = ({ rolls, roteRerolls, explosions, eaten, contained, chance }: BurstInput): Array<Array<BurstFace>> => {
   const clusters = burstClusters(rolls, roteRerolls, explosions).map((cluster) =>
     cluster.map((die, generation) => ({ ...die, generation })),
   )
   const absorbed = clusters
     .flat()
-    .reduceRight<{ left: number; indices: ReadonlyArray<number> }>(
+    .reduceRight<Absorbing>(
       ({ left, indices }, die) => {
         const hit = left > 0 && isDieSuccess(die.value, die.kind === "roll" && chance)
         return hit ? { left: left - 1, indices: [...indices, die.index] } : { left, indices }

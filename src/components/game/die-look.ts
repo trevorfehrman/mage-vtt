@@ -148,6 +148,14 @@ const holeBurn = (ink: string): string => `inset 0 0 3px 1px ${dilute(ink, 70)}`
  * 8px bloom of it, both OUTSIDE the box so the geometry never moves. */
 const litHalo = (ink: string): string => `0 0 0 1px ${ink}, 0 0 8px 1px ${dilute(ink, 70)}`
 
+/** How far the other groups settle back while one is lit — a step, not a fade. */
+const SETTLE_OPACITY = 0.4
+
+/** The group hover's other half: while a group is lit (its dice glow,
+ * `litHalo`), every other group's dice settle back a step. */
+export const settleOpacity = (lit: PoolKind | null, kind: PoolKind): number =>
+  lit !== null && lit !== kind ? SETTLE_OPACITY : 1
+
 export const PoolInput = Schema.Struct({
   kind: PoolKind,
   /** The one ghost recipe: a price being weighed, or a die eaten before the throw. */

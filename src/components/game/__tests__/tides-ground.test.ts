@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest"
-import { signedDice, tidesGround, tidesNetInk, tidesSeam, tidesWeight } from "../tides-ground"
+import { SHORE, TideCount, signedDice, stepTideCount, tideDraftDice, tidesGround, tidesNetInk, tidesSeam, tidesWeight } from "../tides-ground"
 
 const ebb = (dice: number) => ({ source: "Hallowed ground", dice: -dice })
 const flood = (dice: number) => ({ source: "Ley line nexus", dice })
@@ -50,5 +50,32 @@ describe("the eyebrow's net", () => {
     expect(signedDice(-2)).toBe("−2")
     expect(signedDice(3)).toBe("+3")
     expect(signedDice(0)).toBe("0")
+  })
+})
+
+describe("the ST's draft tide (MAG-45)", () => {
+  const draft = (side: "ebb" | "flood", count: number) => ({ side, source: "Ley line nexus", count: TideCount.make(count) })
+
+  it("takes its sign from the shore it opens on", () => {
+    expect(tideDraftDice(draft("ebb", 2))).toBe(-2)
+    expect(tideDraftDice(draft("flood", 3))).toBe(3)
+  })
+
+  it("steps its count within 1..10", () => {
+    expect(stepTideCount(TideCount.make(1), -1)).toBe(1)
+    expect(stepTideCount(TideCount.make(4), 1)).toBe(5)
+    expect(stepTideCount(TideCount.make(10), 1)).toBe(10)
+  })
+
+  it("refuses a count outside 1..10", () => {
+    expect(() => TideCount.make(0)).toThrow()
+    expect(() => TideCount.make(11)).toThrow()
+  })
+
+  it("mirrors the shores: the number sits outboard, toward each shore's own edge", () => {
+    expect(SHORE.ebb.numberFirst).toBe(true)
+    expect(SHORE.flood.numberFirst).toBe(false)
+    expect(SHORE.ebb.sign).toBe(-1)
+    expect(SHORE.flood.sign).toBe(1)
   })
 })
