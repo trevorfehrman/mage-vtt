@@ -1,7 +1,7 @@
 # Tides are scene state; the cast card is a docked cockpit
 
 > **Amended** (2026-10-23, owner calls after MAG-45 and MAG-17's tour).
-> Three notes. **The Tides wait for the fix:** pass 3's "on every seat's
+> Four notes. **The Tides wait for the fix:** pass 3's "on every seat's
 > card" is withdrawn for the ST's adjustments — while the Tides are fluid
 > they are the ST's thoughts in progress, like the table, and no other seat
 > sees them (pills, mood, red dice), the caster included. The feed query
@@ -13,6 +13,9 @@
 > **The Mana's ghosts outlive the commit:** the Paradox dice a commit
 > bought off stay ghosted at the row's end until the roll, and trail the
 > rolled faces on the record, so the price still reads on the felt.
+> **The net prints twice after all:** MAG-45's print-it-once is reversed —
+> the Paradox area's instrument row leads with the Tides glyph and the net
+> again, beside the TIDES eyebrow's own "≈ net" (the box keeps its word).
 
 > **Amended** (2026-10-23, MAG-45 — the language audit across every rung
 > and seat). Three notes. **The odds beneath the felt speak one register:**

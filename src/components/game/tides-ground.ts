@@ -133,9 +133,6 @@ export const SHORE: Record<Shore, ShoreSpec> = {
   },
 }
 
-/** A live tide's shore, read off its signed dice. */
-export const shoreOf = (dice: number): Shore => (dice < 0 ? "ebb" : "flood")
-
 /** The most a draft tide swings — the swing a single ruling plausibly reaches
  * (issue #44); a wilder swing is several named rulings, each readable. */
 export const TIDE_COUNT_MAX = 10

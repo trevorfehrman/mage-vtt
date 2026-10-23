@@ -125,9 +125,13 @@ export const withheldFrom =
   (reader: Reader) =>
   <E extends ActivityEntry>(entry: E): E => {
     if (reader?.role === "storyteller") return entry
-    const cast: ActivityEntry = entry
-    if (cast._tag !== "cast" || cast.tides !== undefined || cast.adjustments === undefined) return entry
+    // Only a fluid Cast withholds anything; the guard reads the union, since
+    // a generic E does not narrow on its tag.
+    const read: ActivityEntry = entry
+    if (read._tag !== "cast" || read.tides !== undefined || read.adjustments === undefined) return entry
     const { adjustments: _inProgress, ...published } = entry as E & CastEntry
+    // Sound: `adjustments` is an optional key on CastEntry, so the entry
+    // without it is still an E — the projection loses nothing else.
     return published as unknown as E
   }
 
