@@ -1,7 +1,7 @@
 import { Array as Arr, Match, Schema } from "effect"
-import { Explosion, burstClusters, isDieSuccess } from "#/domain/dice"
+import { BurstDie, Explosion, burstClusters, isDieSuccess } from "#/domain/dice"
 import { entranceSpring } from "#/components/ui/entrance"
-import { DieSize, FaceTone, SIZE_LADDER } from "./die-look"
+import { DieSize, FaceRing, SIZE_LADDER, UNSEEN } from "./die-look"
 
 /**
  * The burst's look rules (MAG-18), the pure half: how a felt lays out a roll
@@ -23,17 +23,20 @@ export const tetherPx = (size: DieSize): number => Math.round(SIZE_LADDER[size].
 /** One beat of the chain: each generation springs out this much later (s). */
 export const BURST_BEAT = 0.09
 
+/** The domain's burst die plus what a render needs; `index` stays the
+ * row-unique key (an eaten ghost takes the next free positions). */
 export const BurstFace = Schema.Struct({
-  value: Schema.Number,
-  /** The die's position in the roll's combined sequence (a row-unique key);
-   * an eaten ghost takes the next free positions after it. */
-  index: Schema.Number,
-  kind: Schema.Literals(["roll", "rote", "explosion", "eaten"]),
+  ...BurstDie.fields,
+  kind: Schema.Literals([...BurstDie.fields.kind.literals, "eaten"]),
   /** 0 for a die that rolled in its own right, 1 for its child, 2 for the
    * child's child — the position in the chain, which is also the beat. */
   generation: Schema.Number,
   /** Not (yet) real: eaten before the throw, or a success the bet absorbs. */
   ghost: Schema.Boolean,
+  /** The ring its kind wears: a rote reroll's, an explosion's, or none. */
+  ring: Schema.optionalKey(FaceRing),
+  /** Only a base roll can be the chance die (chance dice never explode). */
+  chance: Schema.Boolean,
 })
 export type BurstFace = typeof BurstFace.Type
 
@@ -75,18 +78,34 @@ export const burstPlan = ({ rolls, roteRerolls, explosions, eaten, contained, ch
       { left: contained, indices: [] },
     ).indices
   const faces = clusters.map((cluster) =>
-    cluster.map((die): BurstFace => ({ ...die, ghost: absorbed.includes(die.index) })),
+    cluster.map(
+      (die): BurstFace => ({
+        ...die,
+        ghost: absorbed.includes(die.index),
+        ...dressing(die.kind, chance),
+      }),
+    ),
   )
   const combined = rolls.length + roteRerolls.length + explosions.length
   // makeBy normalizes its count to >= 1, so an empty bet is guarded by hand.
   const ghosts =
     eaten > 0
       ? Arr.makeBy(eaten, (i): Array<BurstFace> => [
-          { value: 0, index: combined + i, kind: "eaten", generation: 0, ghost: true },
+          { value: 0, index: combined + i, kind: "eaten", generation: 0, ghost: true, chance: false },
         ])
       : []
   return [...faces, ...ghosts]
 }
+
+/** What each kind wears — one dispatch, so a new kind fails to compile here. */
+const dressing = (kind: BurstFace["kind"], chance: boolean): { ring?: FaceRing; chance: boolean } =>
+  Match.value(kind).pipe(
+    Match.when("roll", () => ({ chance })),
+    Match.when("rote", () => ({ ring: "rote" as const, chance: false })),
+    Match.when("explosion", () => ({ ring: "exp" as const, chance: false })),
+    Match.when("eaten", () => ({ chance: false })),
+    Match.exhaustive,
+  )
 
 const Stance = Schema.Struct({ x: Schema.Number, scale: Schema.Number, opacity: Schema.Number })
 const Spring = Schema.Struct({
@@ -119,14 +138,7 @@ export const burstEntrance = (generation: number, size: DieSize, reduced: boolea
   generation === 0 || reduced === true
     ? { initial: false, animate: STANDING, transition: { duration: 0 } }
     : {
-        initial: { x: -(SIZE_LADDER[size].px + tetherPx(size)), scale: 0.4, opacity: 0 },
+        initial: { x: -(SIZE_LADDER[size].px + tetherPx(size)), ...UNSEEN },
         animate: STANDING,
         transition: { ...entranceSpring, delay: BURST_BEAT * (generation - 1) },
       }
-
-/** The tether is drawn in the trigger's ring ink — the same line that rings an explosive face. */
-export const tetherInk = (tone: FaceTone | undefined): string =>
-  Match.value(tone).pipe(
-    Match.when("paradox", () => "var(--paradox)"),
-    Match.orElse(() => "var(--accent)"),
-  )

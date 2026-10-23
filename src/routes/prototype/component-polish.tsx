@@ -15,6 +15,7 @@
 import { useState, type ReactNode } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { AnimatePresence, useReducedMotion } from "motion/react"
+import { BurstFaces } from "#/components/game/BurstFaces"
 import { UnifiedDie } from "#/components/game/UnifiedDie"
 import type { PoolKind } from "#/components/game/die-look"
 
@@ -615,6 +616,26 @@ function DieAudition() {
             </div>
           ))}
         </div>
+        {/* The burst (MAG-18): a 10 whose child is a 10 whose child is an 8;
+            a rote reroll's own child; a legacy orphan standing alone. */}
+        {(["md", "sm"] as const).map((size) => (
+          <div key={`burst-${size}`} className="flex flex-wrap items-center gap-2"><span className={head} title="Explosions beside their trigger, corners kissing; the orphan at the end has no recorded parent">burst · {size}</span>
+            <BurstFaces
+              className="gap-3.5"
+              rolls={[10, 3, 9]}
+              roteRerolls={[10]}
+              explosions={[
+                { value: 10, parentIndex: 0 },
+                { value: 8, parentIndex: 4 },
+                { value: 7, parentIndex: 3 },
+                { value: 6, parentIndex: null },
+              ]}
+              again={10}
+              size={size}
+              reduced={reduced}
+            />
+          </div>
+        ))}
         {(["md", "sm"] as const).map((size) => (
           <div key={size} className="flex flex-wrap items-center gap-2"><span className={head}>face · {size}</span>
             {FACE_CASES.map((c) => (

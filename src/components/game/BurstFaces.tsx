@@ -2,8 +2,8 @@ import { Fragment } from "react"
 import { Schema } from "effect"
 import { motion } from "motion/react"
 import { Explosion } from "#/domain/dice"
-import { burstEntrance, burstPlan, tetherInk, tetherPx } from "./burst-look"
-import { DieSize, FaceTone } from "./die-look"
+import { burstEntrance, burstPlan, tetherPx } from "./burst-look"
+import { DieSize, FaceTone, ringInk } from "./die-look"
 import { UnifiedDie } from "./UnifiedDie"
 
 /**
@@ -52,7 +52,7 @@ export function BurstFaces({
   className,
 }: BurstFacesProps) {
   const plan = burstPlan({ rolls, roteRerolls, explosions, eaten, contained, chance })
-  const ink = tetherInk(tone)
+  const ink = ringInk(tone)
   const tether = tetherPx(size)
   return (
     <div className={`flex flex-wrap content-start ${className ?? ""}`.trimEnd()}>
@@ -86,12 +86,11 @@ export function BurstFaces({
                     mode="face"
                     v={die.value}
                     again={again}
-                    chance={die.kind === "roll" && chance}
+                    chance={die.chance}
                     size={size}
                     ghost={ghost}
                     {...(tone !== undefined ? { tone } : {})}
-                    {...(die.kind === "rote" ? { ring: "rote" as const } : {})}
-                    {...(die.kind === "explosion" ? { ring: "exp" as const } : {})}
+                    {...(die.ring !== undefined ? { ring: die.ring } : {})}
                     {...(ghost && !eatenDie && ghostTitle !== undefined ? { title: ghostTitle } : {})}
                   />
                 </motion.span>

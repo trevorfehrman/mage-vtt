@@ -4,6 +4,7 @@ import { entranceSpring } from "#/components/ui/entrance"
 import {
   DIAMOND_ROTATION,
   SIZE_LADDER,
+  UNSEEN,
   faceLook,
   poolClass,
   poolHasGlyph,
@@ -96,9 +97,9 @@ function PoolDie({
   const look = poolLook(input)
   const anim = {
     layout: !reduced && glide,
-    initial: { scale: 0.4, opacity: 0 },
+    initial: UNSEEN,
     animate: { scale: 1, opacity: look.opacity ?? 1, rotate: DIAMOND_ROTATION },
-    exit: { scale: 0.4, opacity: 0 },
+    exit: UNSEEN,
     transition: reduced ? { duration: 0 } : entranceSpring,
   }
   // The die rotates into its diamond stance; the glyph counter-rotates so

@@ -24,6 +24,8 @@ import { arcanumRealm } from "./ArcanaGlyph"
 
 export const DIAMOND_ROTATION = 45
 const DIAMOND_RADIUS = "rounded-[4px]"
+/** Where a die is before it lands — small and unseen; the accrete spring brings it in. */
+export const UNSEEN = { scale: 0.4, opacity: 0 } as const
 const GHOST_OPACITY = 0.45
 
 export const DieSize = Schema.Literals(["sm", "md"])
@@ -238,6 +240,9 @@ const faceInks = (tone: FaceTone | undefined) =>
       miss: "var(--dim2)",
     })),
   )
+
+/** The ink a face's ring draws in — and the tether a burst child hangs from (MAG-18). */
+export const ringInk = (tone: FaceTone | undefined): string => faceInks(tone).ring
 
 /**
  * Every outcome judgment is the domain's (isDieSuccess / isDieDramaticFailure
