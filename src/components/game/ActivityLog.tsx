@@ -3,7 +3,7 @@ import { Match } from "effect"
 import { AnimatePresence, useReducedMotion } from "motion/react"
 import { ScrollArea } from "#/components/ui/scroll-area"
 import { useActivity } from "#/hooks/use-activity"
-import { isLiveCast, type MessageEntry, type OverrideMark, type RollEntry } from "#/domain/activity"
+import type { MessageEntry, OverrideMark, RollEntry } from "#/domain/activity"
 import type { CharacterSheet } from "#/domain/character"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import { BurstFaces } from "./BurstFaces"
@@ -136,26 +136,23 @@ export function ActivityLog({
                 />
               )),
               Match.tag("roll", (roll) => <RollItem key={roll._id} roll={roll} />),
-              // A live Cast never rides the feed (MAG-46, owner 2026-10-23:
-              // an in-progress cast never moves around anyone's Chronicle).
-              // It stands in the caster's and the Storyteller's roll zones,
-              // and pinned above every other seat's tray. On resolution the
+              // Records only: a live Cast is never a Chronicle entry (MAG-46)
+              // — the server's chronicleFor leaves it out; it has its own
+              // read for the roll zones and the pinned slot. The resolved
               // record lands here for everyone, at its timestamp.
-              Match.tag("cast", (cast) =>
-                isLiveCast(cast) ? null : (
-                  <CastCard
-                    key={cast._id}
-                    cast={cast}
-                    sessionId={sessionId}
-                    isStoryteller={isStoryteller}
-                    viewerUserId={viewerUserId}
-                    mySheet={mySheet}
-                    // Only a live Paradox rung reads the caster's health
-                    // track (the cockpit); the feed shows records alone.
-                    casterSheet={null}
-                  />
-                ),
-              ),
+              Match.tag("cast", (cast) => (
+                <CastCard
+                  key={cast._id}
+                  cast={cast}
+                  sessionId={sessionId}
+                  isStoryteller={isStoryteller}
+                  viewerUserId={viewerUserId}
+                  mySheet={mySheet}
+                  // Only a live Paradox rung reads the caster's health
+                  // track (the cockpit); the feed shows records alone.
+                  casterSheet={null}
+                />
+              )),
               Match.exhaustive,
             ),
           )}

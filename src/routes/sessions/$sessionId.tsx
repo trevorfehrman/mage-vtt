@@ -5,7 +5,7 @@ import usePresence from "@convex-dev/presence/react"
 import { api } from "../../../convex/_generated/api"
 import type { PoolComponentInput } from "#/domain/dice"
 import { pooledDice } from "#/machines/dice-pool"
-import { useActivity } from "#/hooks/use-activity"
+import { useLiveCasts } from "#/hooks/use-live-casts"
 import { pinnedLiveCasts } from "#/domain/activity"
 import { useCast } from "#/hooks/use-cast"
 import { useDicePool } from "#/hooks/use-dice-pool"
@@ -31,7 +31,7 @@ import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { SecondSeatControl } from "#/components/game/SecondSeatControl"
 import { seamErrorMessage } from "#/lib/seam-errors"
-import { isOnStage, isUnresolved } from "#/domain/cast"
+import { isOnStage } from "#/domain/cast"
 import type { CharacterSheet as CharacterSheetData } from "#/domain/character"
 import { decodeSheetDoc } from "#/lib/sheet-doc"
 import { arctusData } from "#/domain/fixtures/arctus"
@@ -147,29 +147,24 @@ function SessionPage() {
   // The live cast occupies the ST's roll zone (the card takeover, owner
   // ruling 2026-07-19, superseding #110's postures): the engaged cast holds
   // the zone through the entire ladder; with the stage free, the oldest
-  // waiting draft stands as the offer (FIFO through the wings) — the same
-  // feed the Chronicle subscribes to (Convex dedupes). No StageOccupied
+  // waiting draft stands as the offer (FIFO through the wings) — read off the
+  // table's live casts, never the Chronicle (MAG-46). No StageOccupied
   // mirror travels with the offer: it only surfaces when the stage is free,
   // so the gate could never fire (the seam still refuses, inline).
-  const activity = useActivity(sessionId, seatMember?._id)
+  const live = useLiveCasts(sessionId, seatMember?._id)
   const { pendingOffer, stageCast, moreWaiting } = useMemo(() => {
-    if (!activity) return { pendingOffer: null, stageCast: null, moreWaiting: 0 }
-    // The feed arrives newest-first — the last match is the oldest draft.
-    const drafts = activity.flatMap((e) =>
-      e._tag === "cast" && e.status === "draft" ? [e] : [],
-    )
-    const onStage =
-      activity.flatMap((e) =>
-        e._tag === "cast" && isOnStage(e.status) ? [e] : [],
-      )[0] ?? null
+    if (!live) return { pendingOffer: null, stageCast: null, moreWaiting: 0 }
+    // The live casts arrive oldest-first — the first draft is the oldest.
+    const drafts = live.filter((c) => c.status === "draft")
+    const onStage = live.find((c) => isOnStage(c.status)) ?? null
     return {
-      pendingOffer: drafts[drafts.length - 1] ?? null,
+      pendingOffer: drafts[0] ?? null,
       stageCast: onStage,
       // Behind an engaged cast the whole wings queue waits; behind the offer
       // itself, everyone but the offer.
       moreWaiting: onStage ? drafts.length : Math.max(0, drafts.length - 1),
     }
-  }, [activity])
+  }, [live])
 
   // Switching sheets clears the pool: its components carry the previous
   // sheet's dots while the roll would anchor to the new one — a stale mix
@@ -261,16 +256,11 @@ function SessionPage() {
   const isStoryteller = effectiveMember?.role === "storyteller"
 
   // The caster's occupied roll zone (the card takeover; was #110's posture):
-  // the viewer's own pending vulgar cast, read off the same feed as the
+  // the viewer's own pending vulgar cast, read off the same live casts as the
   // offer. While it stands, their roll zone IS the cast — honest, since the
   // seam refuses their every other roll (issue #109).
   const viewerUserId = effectiveMember?.userId ?? user._id
-  const myPendingCast =
-    activity?.flatMap((e) =>
-      e._tag === "cast" && e.casterUserId === viewerUserId && isUnresolved(e.status)
-        ? [e]
-        : [],
-    )[0] ?? null
+  const myPendingCast = live?.find((c) => c.casterUserId === viewerUserId) ?? null
 
   // The ST's zone cast: the engaged cast through the whole ladder — during
   // beats where the ST has no move they watch the cast live, never a freed
@@ -282,7 +272,7 @@ function SessionPage() {
   // the Chronicle. The Storyteller's zone holds theirs, so none pin for them.
   const pinned = pinnedLiveCasts(
     { userId: viewerUserId, role: isStoryteller ? "storyteller" : "player" },
-    activity ?? [],
+    live ?? [],
   )
 
   // Build character sheet content

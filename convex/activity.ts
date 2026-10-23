@@ -1,7 +1,7 @@
 import { v } from "convex/values"
 import { query } from "./_generated/server"
 import { seatedMember } from "./lib/auth"
-import { ActivityFeed, mergeFeed, visibleEntries } from "../src/domain/activity"
+import { ActivityFeed, chronicleFor } from "../src/domain/activity"
 import { healCastExplosions, normalizeExplosions } from "../src/domain/dice"
 import { schemaToConvexValidator } from "../src/domain/schema-bridge"
 import type { Doc } from "./_generated/dataModel"
@@ -58,7 +58,7 @@ const rollEntry = (r: Doc<"diceRolls">) => ({
 // live it climbs its ladder in place in the roll zones and the pinned slot,
 // never the feed (MAG-46); `updatedAt` places the resolved record in the
 // feed, `_creationTime` orders the pinned live casts. All Casts are public.
-const castEntry = (c: Doc<"casts">) => {
+export const castEntry = (c: Doc<"casts">) => {
   const {
     _id,
     _creationTime,
@@ -121,6 +121,6 @@ export const list = query({
       ...rolls.map(rollEntry),
       ...casts.map(castEntry),
     ]
-    return mergeFeed(visibleEntries(reader, entries))
+    return chronicleFor(reader, entries)
   },
 })

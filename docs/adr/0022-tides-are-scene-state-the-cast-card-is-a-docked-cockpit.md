@@ -8,7 +8,10 @@
 > Storyteller's roll zone, and every other seat sees each other caster's
 > live cast **pinned** between the Chronicle and their own tray — a fixed
 > slot, oldest first by the Cast's creation (`pinnedLiveCasts`), which no
-> update reshuffles. Spectators keep their tray and their controls (owner:
+> update reshuffles. Live casts have their own read (`casts.live`, through
+> `liveCastsFor`: the feed's policy, no cap), so the Chronicle's 100-entry
+> window can never decide whether a live cast exists on screen; the feed
+> query serves records only (`chronicleFor`). Spectators keep their tray and their controls (owner:
 > "better than taking their freedom away"); the height that costs is the
 > shrunk tray's to give back (MAG-47). On resolution the record lands in the
 > feed for everyone, at its timestamp, as before.
