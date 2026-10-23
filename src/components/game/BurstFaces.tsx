@@ -2,7 +2,7 @@ import { Fragment } from "react"
 import { Schema } from "effect"
 import { motion } from "motion/react"
 import { Explosion } from "#/domain/dice"
-import { PLATE, Plate, burstEntrance, burstPlan } from "./burst-look"
+import { PLATE, Plate, burstEntrance, burstPlan, platePad } from "./burst-look"
 import { DieSize, FaceTone, ringInk } from "./die-look"
 import { UnifiedDie } from "./UnifiedDie"
 
@@ -61,6 +61,7 @@ export function BurstFaces({
   const ink = ringInk(tone)
   const live = burning && reduced !== true
   const radius = plate === null ? 0 : plate.radius === "pill" ? 9999 : plate.radius
+  const pad = platePad(size)
   return (
     <div className={`flex flex-wrap items-center content-start ${className ?? ""}`.trimEnd()}>
       {plan.map((cluster) => {
@@ -70,10 +71,16 @@ export function BurstFaces({
           <span
             key={cluster[0]!.index}
             data-burst={chain ? "chain" : "one"}
-            className={onPlate ? "relative inline-flex items-center gap-3.5 px-4 py-2.5" : "contents"}
+            className={onPlate ? "relative inline-flex items-center" : "contents"}
             style={
               onPlate
                 ? {
+                    // Flush: the plate clears the dice's points and is pulled
+                    // out by the same, so the dice keep the row's grid and
+                    // spacing ('gap: inherit') and the row keeps its height.
+                    gap: "inherit",
+                    padding: pad,
+                    margin: -pad,
                     borderRadius: radius,
                     background: `color-mix(in srgb, ${ink} 12%, var(--raise))`,
                     boxShadow: `inset 0 1px 0 color-mix(in srgb, white 6%, transparent), 0 1px 3px rgba(0,0,0,.45)`,
