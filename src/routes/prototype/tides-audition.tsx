@@ -12,7 +12,7 @@
 // long prose and the worst legibility case (a green pill on a red ground)
 // included on purpose.
 
-import { useState, type ReactNode } from "react"
+import { useId, useState, type ReactNode } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 
 export const Route = createFileRoute("/prototype/tides-audition")({ component: TidesAudition })
@@ -66,9 +66,74 @@ const sums = (mods: ReadonlyArray<Mod>) => {
 }
 
 // ── GROUND treatments: each returns a CSS background for the box ──
-type Ground = { key: string; name: string; note: string; css: (mods: ReadonlyArray<Mod>) => string | undefined }
+type Ground = {
+  key: string
+  name: string
+  note: string
+  css: (mods: ReadonlyArray<Mod>) => string | undefined
+  /** A drawn ground instead of a CSS one: painted behind the box's content. */
+  paint?: (mods: ReadonlyArray<Mod>) => ReactNode
+}
+
+/**
+ * F · the vertical yin-yang, no dots. The box is split top and bottom:
+ * verdigris owns the top edge (Gnosis, the mage's own), red owns the floor
+ * (reality's tide). The seam between them is a sideways S — green bulging
+ * down on the left, red bulging up on the right — and the NET moves the
+ * whole seam up or down, never past the edges: at +5 the red has risen to
+ * near the top but the green still holds a band, because the player always
+ * has a chance. Each side's alpha is its own weight. The seam is blurred so
+ * it is an edge you sense, not a line; the paths run past the box so only
+ * the seam softens, never the owned edges.
+ */
+function YinYangGround({ mods }: { mods: ReadonlyArray<Mod> }) {
+  const id = useId()
+  const { ebb, flood, net } = sums(mods)
+  if (ebb === 0 && flood === 0) return null
+  const Y = clamp(50 - net * 7.5, 18, 82)
+  const A = 15
+  const lo = clamp(Y + A, 8, 94)
+  const hi = clamp(Y - A, 6, 92)
+  const seam = `C 12 ${Y} 12 ${lo} 25 ${lo} C 38 ${lo} 38 ${Y} 50 ${Y} C 62 ${Y} 62 ${hi} 75 ${hi} C 88 ${hi} 88 ${Y} 100 ${Y}`
+  const top = `M -20 -20 L -20 ${Y} L 0 ${Y} ${seam} L 120 ${Y} L 120 -20 Z`
+  const bottom = `M -20 120 L -20 ${Y} L 0 ${Y} ${seam} L 120 ${Y} L 120 120 Z`
+  const aE = ebb === 0 ? 0 : Math.min(clamp(12 + ebb * 3, 12, 26) * EBB_BOOST, 40) / 100
+  const aF = flood === 0 ? 0 : clamp(12 + flood * 3, 12, 26) / 100
+  return (
+    <svg
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id={`${id}e`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#6fae97" stopOpacity={aE} />
+          <stop offset="1" stopColor="#6fae97" stopOpacity={aE * 0.55} />
+        </linearGradient>
+        <linearGradient id={`${id}r`} x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stopColor="#e34b4b" stopOpacity={aF} />
+          <stop offset="1" stopColor="#e34b4b" stopOpacity={aF * 0.55} />
+        </linearGradient>
+        {/* viewBox units stretch ~3.7px wide and ~1.2px tall in a card-width box */}
+        <filter id={`${id}f`} x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="1.4 4.5" />
+        </filter>
+      </defs>
+      {ebb > 0 && <path d={top} fill={`url(#${id}e)`} filter={`url(#${id}f)`} />}
+      {flood > 0 && <path d={bottom} fill={`url(#${id}r)`} filter={`url(#${id}f)`} />}
+    </svg>
+  )
+}
 
 const GROUNDS: ReadonlyArray<Ground> = [
+  {
+    key: "seam",
+    name: "F · vertical yin-yang, no dots",
+    note: "top is Gnosis's, floor is reality's, always. The seam is a sideways S the net moves up or down — never past the edges. Drawn, not gradient-faked.",
+    css: () => undefined,
+    paint: (mods) => <YinYangGround mods={mods} />,
+  },
   {
     key: "yinyang",
     name: "E · yin and yang",
@@ -275,15 +340,16 @@ function TidesBox({
   const netInk = net === 0 ? "var(--dim)" : tintOf(net, false)
   return (
     <div
-      className="rounded-[6px] border px-3.5 pt-3 pb-3.5"
+      className="relative overflow-hidden rounded-[6px] border px-3.5 pt-3 pb-3.5"
       style={{
         width: 372,
         borderColor: "var(--line)",
         background: ground.css(mods) ?? "transparent",
       }}
     >
+      {ground.paint?.(mods)}
       <div
-        className="mv-data flex items-baseline justify-between text-[9px] uppercase tracking-[0.18em]"
+        className="mv-data relative flex items-baseline justify-between text-[9px] uppercase tracking-[0.18em]"
         style={{ color: "var(--dim)" }}
       >
         <span>tides</span>
@@ -293,7 +359,7 @@ function TidesBox({
           </span>
         )}
       </div>
-      <div className="mt-2 min-h-[26px]">
+      <div className="relative mt-2 min-h-[26px]">
         {mods.length === 0 ? (
           <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
             —
