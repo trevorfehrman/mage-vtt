@@ -28,8 +28,9 @@ import { ArcanaGlyph } from "./ArcanaGlyph"
  * Both modes share ONE geometry, ONE ghost, and ONE counter-rotation for
  * whatever stands inside the diamond (the Paradox glyph, the face value), so
  * a pool die resolving into a face is the same object changing state. The
- * rules live in `die-look.ts`; this file only lays them out. Built beside
- * `FeltDie`/`Die`; no caller is wired yet (MAG-15/16 do that).
+ * rules live in `die-look.ts`; this file only lays them out. Face mode is
+ * the app's only rolled face (MAG-15, under MAG-45: the old `Die` is gone);
+ * pool mode is built beside `FeltDie`, which MAG-16 retires.
  */
 
 const COUNTER_ROTATE = { transform: `rotate(-${DIAMOND_ROTATION}deg)` } as const

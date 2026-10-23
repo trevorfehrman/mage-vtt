@@ -9,7 +9,7 @@ import type { CharacterSheet } from "#/domain/character"
 import { decodeSheetDoc } from "#/lib/sheet-doc"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import { CastCard } from "./CastCard"
-import { Die } from "./Die"
+import { UnifiedDie } from "./UnifiedDie"
 import { isLooseDice } from "./DicePoolBuilder"
 import { api } from "../../../convex/_generated/api"
 import type { Id } from "../../../convex/_generated/dataModel"
@@ -305,13 +305,13 @@ export function RollItem({ roll }: { roll: RollEntry }) {
 
       <div className="mt-1.5 flex flex-wrap gap-1">
         {roll.rolls.map((v, i) => (
-          <Die key={`b${i}`} v={v} again={roll.againThreshold} chance={roll.isChanceDie} />
+          <UnifiedDie key={`b${i}`} mode="face" v={v} again={roll.againThreshold} chance={roll.isChanceDie} />
         ))}
         {roll.roteRerolls.map((v, i) => (
-          <Die key={`r${i}`} v={v} again={roll.againThreshold} ring="rote" />
+          <UnifiedDie key={`r${i}`} mode="face" v={v} again={roll.againThreshold} ring="rote" />
         ))}
         {roll.explosions.map((e, i) => (
-          <Die key={`e${i}`} v={e.value} again={roll.againThreshold} ring="exp" />
+          <UnifiedDie key={`e${i}`} mode="face" v={e.value} again={roll.againThreshold} ring="exp" />
         ))}
       </div>
 
