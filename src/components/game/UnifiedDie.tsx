@@ -144,7 +144,19 @@ function FaceDie({
   const look = faceLook({ v, again, chance, tone, ring, ghost })
   const shape = shapeClass(size)
   if (ghost) {
-    return (
+    // A ghost with a value is a face that rolled and was then absorbed (a
+    // contained Paradox success, MAG-45): the number stays, in the ghost's
+    // own dashed ink, so the record still says what it was. A ghost with
+    // none is a die that never rolled — empty.
+    return v > 0 ? (
+      <span
+        title={title}
+        className={`mv-data ${shape} font-bold ${SIZE_LADDER[size].text}`}
+        style={{ ...look, ...DIAMOND_STANCE, color: look.border.replace(/^1px (solid|dashed) /, "") }}
+      >
+        <span style={COUNTER_ROTATE}>{v}</span>
+      </span>
+    ) : (
       <span
         aria-hidden
         title={title ?? "Eaten by the containment bet — declared, never rolled"}

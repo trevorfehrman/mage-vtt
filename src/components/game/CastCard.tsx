@@ -179,7 +179,7 @@ export function CastCard({
         ],
       }),
     )
-    if (ok) setDraft(null)
+    if (ok) setDraft((d) => (d === draft ? null : d))
   }
 
   // The Paradox pool as the fix stamped it (ADR-0022) — the same leaf the
@@ -726,29 +726,32 @@ export function CastCard({
         }
         // The ST's hand on each shore (MAG-45, owner 2026-10-23): a skeleton
         // pill at the shore's end — dashed in the shore's ink, "+ ebb" /
-        // "+ flood" — opens into a live pill where the prose is typed in the
-        // pill's own text cell and the number cell steps (↑/↓, or click;
-        // shift-click steps down); Enter lands it, Esc closes it. Opening the
-        // other shore carries the typed prose across. The block of chips
-        // that used to sit beneath the card is gone with it.
+        // "+ flood" — that is ALWAYS there (owner's second look). Clicking it
+        // opens a draft pill above it: the prose typed in the pill's own
+        // text cell, the count a plain number in its number cell (− / +, or
+        // ↑/↓) — the shore supplies the sign when it lands. ✓ or Enter lands
+        // it; × or Esc discards it; clicking away lands it if it has a name
+        // and discards it if not. The block of chips that used to sit
+        // beneath the card is gone with it.
         const shoreEnd = (side: TideDraft["side"]) => {
           if (!controls.includes("adjust")) return null
           const edge = tidesPillEdge(side === "ebb" ? -1 : 1)
           const shell = "mv-data inline-flex max-w-full items-stretch overflow-hidden border text-[12px] leading-none"
-          if (draft === null || draft.side !== side) {
-            return (
-              <button
-                key={`${side}-new`}
-                onClick={() => setDraft({ side, source: draft?.source ?? "", count: draft?.count ?? 1 })}
-                disabled={busy}
-                className={`${shell} px-2.5 py-1 opacity-60 hover:opacity-100 disabled:opacity-40 ${RING}`}
-                style={{ borderRadius: 11, borderStyle: "dashed", borderColor: edge, color: "var(--dim)", background: "transparent" }}
-                title={side === "ebb" ? "Name an ebb — the Tides pull back: fewer Paradox dice" : "Name a flood — the Tides rise: more Paradox dice"}
-              >
-                + {side}
-              </button>
-            )
-          }
+          const skeleton = (
+            <button
+              key={`${side}-new`}
+              onClick={() => {
+                if (draft === null || draft.side !== side) setDraft({ side, source: "", count: 1 })
+              }}
+              disabled={busy}
+              className={`${shell} px-2.5 py-1 opacity-60 hover:opacity-100 disabled:opacity-40 ${RING}`}
+              style={{ borderRadius: 11, borderStyle: "dashed", borderColor: edge, color: "var(--dim)", background: "transparent" }}
+              title={side === "ebb" ? "Name an ebb — the Tides pull back: fewer Paradox dice" : "Name a flood — the Tides rise: more Paradox dice"}
+            >
+              + {side}
+            </button>
+          )
+          if (draft === null || draft.side !== side) return skeleton
           // The number cell steps with its own − and + (owner, 2026-10-23:
           // shift-click and the arrow keys were invisible); the arrow keys
           // still work in the field. The prose cell ends in ✓ (add; Enter)
@@ -774,7 +777,9 @@ export function CastCard({
               }}
             >
               {stepButton(-1)}
-              <span className="px-0.5">{signedDice(tideDraftDice(draft))}</span>
+              <span className="px-0.5" title={side === "ebb" ? "Dice the ebb takes" : "Dice the flood adds"}>
+                {draft.count}
+              </span>
               {stepButton(1)}
             </span>
           )
@@ -822,11 +827,17 @@ export function CastCard({
               style={{ width: `${Math.max(10, draft.source.length + 2)}ch`, border: "none", borderRadius: 0 }}
             />
           )
-          return (
+          const draftPill = (
             <span
               key={`${side}-draft`}
               className={shell}
               style={{ borderRadius: 11, borderColor: edge, color: "var(--ink)", background: "color-mix(in srgb, var(--panel) 88%, transparent)" }}
+              onBlur={(e) => {
+                // focus left the pill (not just moved between its cells)
+                if (e.currentTarget.contains(e.relatedTarget)) return
+                if (draft.source.trim().length > 0) void addTide()
+                else setDraft(null)
+              }}
             >
               {side === "ebb" ? (
                 <>
@@ -844,6 +855,12 @@ export function CastCard({
                 </>
               )}
             </span>
+          )
+          return (
+            <>
+              {draftPill}
+              {skeleton}
+            </>
           )
         }
         return (
