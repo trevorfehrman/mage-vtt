@@ -383,10 +383,17 @@ export function CastCard({
     feltPool !== null && cast.paradoxSuccesses === undefined && !terminal
       ? feltPool.totalDice
       : null
+  // The mage's own reductions — the tool in hand, a rote — come off the
+  // mage's own green dice, never the red (owner, 2026-10-23: three floods
+  // showed two red dice because the tool's −1 was eating a flood). So the
+  // red dice are always exactly the weather: the Tides' net, the Sleepers,
+  // the prior rolls, and Mana's ghosts come off the red end as before.
+  const ownReductions = (cast.usesMagicalTool ? 1 : 0) + (isRoteCast(cast) ? 1 : 0)
   const paradoxBaseCount =
     paradoxDiceCount !== null && feltPool !== null
-      ? Math.min(feltPool.baseDice, paradoxDiceCount)
+      ? Math.min(Math.max(0, feltPool.baseDice - ownReductions), paradoxDiceCount)
       : 0
+  const baseSays = `Gnosis ${cast.gnosis ?? "?"}${cast.usesMagicalTool ? " − tool" : ""}${isRoteCast(cast) ? " − rote" : ""}: ${paradoxBaseCount}`
   // Once the ST has rolled, the faces live in the Paradox area (MAG-45,
   // owner 2026-10-23 — they used to drop below the felt as glyphs over the
   // lore term): the record from the rolled rung onward, the same area, so
@@ -998,8 +1005,8 @@ export function CastCard({
                       {ghosted
                         ? `Mitigated: −${mitigated}`
                         : kind === "paradoxBase"
-                          ? `Gnosis ${cast.gnosis ?? "?"}: ${paradoxBaseCount}`
-                          : `Net Circumstance: +${paradoxDiceCount - paradoxBaseCount}`}
+                          ? baseSays
+                          : `Tides: +${paradoxDiceCount - paradoxBaseCount}`}
                     </TooltipContent>
                   </Tooltip>
                 )
