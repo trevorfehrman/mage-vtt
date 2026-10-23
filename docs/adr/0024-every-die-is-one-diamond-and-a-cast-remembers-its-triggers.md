@@ -5,13 +5,16 @@
 > Chronicle's roll cards and the Cast card's Paradox and CAST rows, on
 > every seat — now draws through one `BurstFaces` component in the burst
 > order. **How a burst looks:** each explosion stands beside the trigger
-> that spawned it, corner to corner — the within-chain spacing is exactly
-> the diamond's corner overhang (`tetherPx`: 8px sm, 10px md), so a chain's
-> corners *kiss* and never cross while the row's own 14px gap stays
-> visibly wider; a hairline in the trigger's ring ink (`tetherInk`) runs
-> beneath, and the explosion child wears the explosion ring. A chain (a
-> 10 whose child is a 10) is the same motif continued. **How it moves:** a
-> child springs out of the die before it — from one box-and-tether to the
+> that spawned it at the row's own gap, and the relationship rides on the
+> *dice*, never the gap — a connector, glyph or spacing rhythm breaks the
+> moment a child wraps to the next row. A first cut that brought a chain's
+> corners together until they touched was rejected by the owner (it read
+> as a layout bug, not as consequence). The dressing — the trigger lit,
+> the child marked — is `BurstDress` in `die-look.ts`; *which* dressing is
+> pending the owner's pick from the lineup on the polish route, and the
+> felts ship the neutral `plain` look until then; this note is rewritten
+> when the pick lands. **How it moves:** a
+> child springs out of the die before it — from one box-and-gap to the
 > left, scaled to 0.4 and unseen, on the felt's accrete spring — each
 > generation one beat (90ms) after the last, so cause reads before effect
 > before effect's effect; the trigger itself stands where the row put it.
