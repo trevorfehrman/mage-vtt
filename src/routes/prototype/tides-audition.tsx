@@ -87,12 +87,14 @@ const GROUNDS: ReadonlyArray<Ground> = [
       const aE = ebb === 0 ? 0 : clamp(8 + ebb * 3.5, 8, 22)
       const aF = flood === 0 ? 0 : clamp(8 + flood * 3.5, 8, 22)
       return [
-        // the tilt: a soft wash from the top-left corner for green, from the
-        // bottom-right for red — about half the base weight, short reach
-        ...(ebb > 0 ? [`linear-gradient(155deg, ${mixSide(EBB, aE * 0.55)} 0%, transparent 48%)`] : []),
-        ...(flood > 0 ? [`linear-gradient(335deg, ${mixSide(FLOOD, aF * 0.55)} 0%, transparent 48%)`] : []),
-        // the base: C
-        `linear-gradient(90deg, ${mixSide(EBB, aE)} 0%, transparent ${x}%, ${mixSide(FLOOD, aF)} 100%)`,
+        // the tilt, pronounced: green's weight lives mostly in a wash from
+        // the top-left corner, so its column fades toward the floor and is
+        // never a straight bar; red's wash comes from the bottom-right at
+        // near full weight, and red keeps its whole floor in the base.
+        ...(ebb > 0 ? [`linear-gradient(150deg, ${mixSide(EBB, aE * 1.1)} 0%, ${mixSide(EBB, aE * 0.45)} 38%, transparent 72%)`] : []),
+        ...(flood > 0 ? [`linear-gradient(330deg, ${mixSide(FLOOD, aF * 0.9)} 0%, transparent 62%)`] : []),
+        // the base: C, with green's edge lightened so the wash carries it
+        `linear-gradient(90deg, ${mixSide(EBB, aE * 0.5)} 0%, transparent ${x}%, ${mixSide(FLOOD, aF)} 100%)`,
       ].join(", ")
     },
   },
