@@ -91,10 +91,13 @@ const GROUNDS: ReadonlyArray<Ground> = [
         // the top-left corner, so its column fades toward the floor and is
         // never a straight bar; red's wash comes from the bottom-right at
         // near full weight, and red keeps its whole floor in the base.
-        ...(ebb > 0 ? [`linear-gradient(150deg, ${mixSide(EBB, aE * 1.1)} 0%, ${mixSide(EBB, aE * 0.45)} 38%, transparent 72%)`] : []),
-        ...(flood > 0 ? [`linear-gradient(330deg, ${mixSide(FLOOD, aF * 0.9)} 0%, transparent 62%)`] : []),
-        // the base: C, with green's edge lightened so the wash carries it
-        `linear-gradient(90deg, ${mixSide(EBB, aE * 0.5)} 0%, transparent ${x}%, ${mixSide(FLOOD, aF)} 100%)`,
+        ...(ebb > 0 ? [`linear-gradient(150deg, ${mixSide(EBB, aE * 1.1)} 0%, ${mixSide(EBB, aE * 0.45)} 34%, transparent 60%)`] : []),
+        ...(flood > 0 ? [`linear-gradient(330deg, ${mixSide(FLOOD, aF * 0.9)} 0%, transparent 54%)`] : []),
+        // the base: C, with green's edge lightened so the wash carries it —
+        // and a dead band either side of the crossover (experimental, owner
+        // 2026-10-22): the two inks go dark before they meet, so the seam is
+        // felt as a dark water-line rather than a brown mix
+        `linear-gradient(90deg, ${mixSide(EBB, aE * 0.5)} 0%, transparent ${clamp(x - 7, 0, 100)}%, transparent ${clamp(x + 7, 0, 100)}%, ${mixSide(FLOOD, aF)} 100%)`,
       ].join(", ")
     },
   },
@@ -166,10 +169,16 @@ const ordered = (mods: ReadonlyArray<Mod>) => Array.from(mods).sort((a, b) => a.
 // to the corner.
 function ShorePill({ m, side }: { m: Mod; side: "ebb" | "flood" }) {
   const tint = tintOf(m.dice, false)
+  const edge = `color-mix(in srgb, ${tint} 45%, var(--line))`
+  // the number: no fill, ink text, parted from the prose by a rule in the
+  // pill's own border color (owner, 2026-10-22)
   const num = (
     <span
       className="flex items-center whitespace-nowrap px-2 py-1 font-bold"
-      style={{ color: tint, background: mix(tint, 16) }}
+      style={{
+        color: "var(--ink)",
+        ...(side === "ebb" ? { borderRight: `1px solid ${edge}` } : { borderLeft: `1px solid ${edge}` }),
+      }}
     >
       {signed(m.dice)}
     </span>
@@ -179,7 +188,7 @@ function ShorePill({ m, side }: { m: Mod; side: "ebb" | "flood" }) {
       className="mv-data inline-flex max-w-full items-stretch overflow-hidden border text-[12px] leading-none"
       style={{
         borderRadius: 11,
-        borderColor: `color-mix(in srgb, ${tint} 45%, var(--line))`,
+        borderColor: edge,
         color: "var(--ink)",
         background: "color-mix(in srgb, var(--panel) 88%, transparent)",
       }}
