@@ -630,7 +630,7 @@ function DieAudition() {
             dressed six ways. The relationship rides on the dice, so a wrap
             can't break it. `plain` is what ships until the pick. */}
         {BURST_LOOKS.map(([look, says]) => (
-          <div key={`burst-${look}`} className="flex flex-wrap items-center gap-2"><span className={head} title={says}>burst · {look}</span>
+          <div key={`burst-${look}`} className="flex flex-wrap items-center gap-2 py-2"><span className={head} title={says}>burst · {look}</span>
             <BurstFaces
               className="gap-3.5"
               rolls={[10, 3, 9]}
