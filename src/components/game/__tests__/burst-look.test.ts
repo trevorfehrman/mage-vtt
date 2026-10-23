@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
 import { BURST_BEAT, burstEntrance, burstPlan } from "#/components/game/burst-look"
-import { faceLook, faceMark, ringInk } from "#/components/game/die-look"
+import { ringInk } from "#/components/game/die-look"
 import { entranceSpring } from "#/components/ui/entrance"
 
 /**
@@ -96,31 +96,9 @@ describe("burstEntrance", () => {
   })
 })
 
-describe("burst dressing (the lineup)", () => {
-  const face = { v: 10, again: 10, chance: false, ghost: false } as const
-  const bare = faceLook(face)
-  it("plain dresses nothing; every other look lights the trigger in its ring ink", () => {
-    expect(faceLook({ ...face, burst: { trigger: true, child: false, look: "plain" } })).toEqual(bare)
-    for (const look of ["hot", "ripple", "spark", "inherit"] as const) {
-      const lit = faceLook({ ...face, burst: { trigger: true, child: false, look } })
-      expect(lit.boxShadow, look).toContain("0 0 8px 1px")
-      expect(lit.boxShadow, look).toContain(ringInk(undefined))
-    }
-    const lean = faceLook({ ...face, burst: { trigger: true, child: false, look: "lean" } })
-    expect(lean.boxShadow).toContain("7px 0 10px")
-  })
-  it("a child is marked by its look: a rippled ring, the trigger's ink handed down, or a spark", () => {
-    const miss = { v: 3, again: 10, chance: false, ghost: false } as const
-    expect(faceLook({ ...miss, burst: { trigger: false, child: true, look: "ripple" } }).boxShadow).toContain("0 0 0 3px")
-    const handed = faceLook({ ...miss, burst: { trigger: false, child: true, look: "inherit" } })
-    expect(handed.border).toBe("1px solid var(--rail-success)")
-    expect(faceMark({ trigger: false, child: true, look: "spark" }, false)).toBe("spark")
-    expect(faceMark({ trigger: false, child: true, look: "hot" }, false)).toBeUndefined()
-    expect(faceMark({ trigger: true, child: false, look: "spark" }, false)).toBeUndefined()
-  })
-  it("a ghost never dresses", () => {
-    const ghost = { v: 10, again: 10, chance: false, ghost: true } as const
-    expect(faceLook({ ...ghost, burst: { trigger: true, child: true, look: "hot" } })).toEqual(faceLook(ghost))
-    expect(faceMark({ trigger: false, child: true, look: "spark" }, true)).toBeUndefined()
+describe("ringInk", () => {
+  it("is the face's ring ink — and the plate's", () => {
+    expect(ringInk(undefined)).toBe("var(--accent)")
+    expect(ringInk("paradox")).toBe("var(--paradox)")
   })
 })

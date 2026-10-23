@@ -1099,3 +1099,57 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .mv-hole-breathe { animation: none; }
 }
+
+/* ── The burst lineup (MAG-18, round two) ─────────────────────────────
+   Effects on the plate a trigger and its children share. Each burns while
+   fresh; `.mv-burst-still` holds its settled state. Reduced motion holds
+   every one still. ADR-0021: ambient motion is rare and earned. */
+@property --beam-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.mv-burst-beam {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(from var(--beam-angle), transparent 0 70%, var(--beam-ink) 88%, white 92%, transparent 97%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+  animation: mv-burst-beam 2.4s linear infinite;
+}
+.mv-burst-beam.mv-burst-still {
+  background: color-mix(in srgb, var(--beam-ink) 45%, transparent);
+}
+@keyframes mv-burst-beam { to { --beam-angle: 360deg; } }
+
+.mv-burst-sparkle { animation: mv-burst-twinkle 2.6s ease-in-out infinite; transform-origin: center; }
+.mv-burst-sparkle.mv-burst-still { opacity: 0.55; transform: scale(0.8); }
+@keyframes mv-burst-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+  45% { opacity: 1; transform: scale(1.15) rotate(45deg); }
+  70% { opacity: 0.6; transform: scale(0.8) rotate(70deg); }
+}
+
+.mv-burst-shimmer { animation: mv-burst-flicker 1.7s ease-in-out infinite; }
+.mv-burst-shimmer.mv-burst-still { opacity: 0.6; transform: scale(0.95); }
+@keyframes mv-burst-flicker {
+  0%, 100% { opacity: 0.55; transform: scale(0.92); }
+  18% { opacity: 0.95; transform: scale(1.06); }
+  33% { opacity: 0.7; transform: scale(0.98); }
+  52% { opacity: 1; transform: scale(1.1); }
+  71% { opacity: 0.6; transform: scale(0.95); }
+  86% { opacity: 0.85; transform: scale(1.03); }
+}
+
+.mv-burst-rays { animation: mv-burst-turn 14s linear infinite, mv-burst-pulse 2.2s ease-in-out infinite; transform-origin: center; }
+.mv-burst-rays.mv-burst-still { animation: none; opacity: 0.75; }
+@keyframes mv-burst-turn { to { rotate: 360deg; } }
+@keyframes mv-burst-pulse { 0%, 100% { scale: 0.92; opacity: 0.7; } 50% { scale: 1.08; opacity: 1; } }
+
+.mv-burst-still { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .mv-burst-beam, .mv-burst-sparkle, .mv-burst-shimmer, .mv-burst-rays { animation: none; }
+}

@@ -36,22 +36,21 @@ describe("BurstFaces", () => {
     ).toEqual(["0", "1", "2"])
   })
 
-  it("dresses the dice for their parts under a look: the trigger lit, the child marked", () => {
-    const { container } = render(
-      createElement(BurstFaces, {
-        rolls: [10, 3],
-        roteRerolls: [],
-        explosions: [{ value: 6, parentIndex: 0 }],
-        again: 10,
-        reduced: true,
-        look: "spark",
-      }),
-    )
-    const faces = [...container.querySelectorAll("[data-face]")] as HTMLElement[]
-    expect(faces[0]!.style.boxShadow).toContain("0 0 8px 1px")
-    expect(faces[1]!.querySelector('[data-mark="spark"]')).not.toBeNull()
-    expect(faces[2]!.style.boxShadow).toBe("")
-    expect(faces[2]!.querySelector("[data-mark]")).toBeNull()
+  it("puts a chain on one plate under any look but plain, and leaves a lone die bare", () => {
+    const props = {
+      rolls: [10, 3],
+      roteRerolls: [],
+      explosions: [{ value: 6, parentIndex: 0 }],
+      again: 10,
+      reduced: true,
+    }
+    const plain = render(createElement(BurstFaces, props)).container
+    expect((plain.querySelector('[data-burst="chain"]') as HTMLElement).className).toBe("contents")
+    const plated = render(createElement(BurstFaces, { ...props, look: "rays" })).container
+    const chain = plated.querySelector('[data-burst="chain"]') as HTMLElement
+    expect(chain.className).toContain("rounded-full")
+    expect(chain.querySelector("svg")).not.toBeNull()
+    expect((plated.querySelector('[data-burst="one"]') as HTMLElement).className).toBe("contents")
   })
 
   it("legacy parentless explosions fall back to the inline render, undressed", () => {
