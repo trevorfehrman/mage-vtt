@@ -180,15 +180,31 @@ export const FEED_CAP = 100
 /**
  * The chronological merge: interleave by timestamp descending (ties keep input
  * order) and cap the feed. Database fetch caps stay in the query — they are
- * storage concerns; this cap is the feed's. A live cast is never capped out
- * (MAG-46): it is no feed item, and the pinned slot and the roll zones read
- * it from this list, so a quiet cast behind a busy table must not vanish.
+ * storage concerns; this cap is the feed's.
  */
-export const mergeFeed = <E extends ActivityEntry>(entries: ReadonlyArray<E>): Array<E> => {
-  const newestFirst = [...entries].sort((a, b) => b.timestamp - a.timestamp)
-  const records = newestFirst.filter((e) => !isLiveCast(e)).slice(0, FEED_CAP)
-  return newestFirst.filter((e) => isLiveCast(e) || records.includes(e))
-}
+export const mergeFeed = <E extends { readonly timestamp: number }>(
+  entries: ReadonlyArray<E>,
+): Array<E> =>
+  [...entries].sort((a, b) => b.timestamp - a.timestamp).slice(0, FEED_CAP)
+
+/**
+ * The Chronicle a Reader reads: the records only — a live cast is never a
+ * Chronicle entry (MAG-46), it has its own read (`liveCastsFor`) — through
+ * the visibility policy, merged and capped.
+ */
+export const chronicleFor = <E extends ActivityEntry>(reader: Reader, entries: ReadonlyArray<E>): Array<E> =>
+  mergeFeed(visibleEntries(reader, entries.filter((e) => !isLiveCast(e))))
+
+/**
+ * The live casts a Reader reads (MAG-46): every unresolved Cast at the table,
+ * oldest first, through the same policy as the feed — so the fluid Tides stay
+ * the Storyteller's — and with no feed cap, so a quiet cast behind a busy
+ * table can never fall out of the pinned slot or a roll zone.
+ */
+export const liveCastsFor = <E extends CastEntry>(reader: Reader, casts: ReadonlyArray<E>): Array<E> =>
+  Arr.sort(visibleEntries(reader, casts.filter(isLiveCast)), byStart)
+
+export const LiveCasts = Schema.Array(CastEntry)
 
 const decodeEntry = Schema.decodeUnknownResult(ActivityEntry)
 
@@ -202,6 +218,19 @@ export const decodeFeed = (input: ReadonlyArray<unknown>): Array<ActivityEntry> 
     const result = decodeEntry(raw)
     if (Result.isFailure(result)) {
       console.warn("Activity: dropped an unrecognizable feed entry", result.failure)
+      return []
+    }
+    return [result.success]
+  })
+
+const decodeCast = Schema.decodeUnknownResult(CastEntry)
+
+/** Decode the live casts off the wire, one at a time — the feed's atom-level isolation (ADR-0009). */
+export const decodeLiveCasts = (input: ReadonlyArray<unknown>): Array<CastEntry> =>
+  input.flatMap((raw) => {
+    const result = decodeCast(raw)
+    if (Result.isFailure(result)) {
+      console.warn("Activity: dropped an unrecognizable live cast", result.failure)
       return []
     }
     return [result.success]

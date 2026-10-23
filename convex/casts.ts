@@ -1,6 +1,8 @@
 import { v } from "convex/values"
 import { query } from "./_generated/server"
-import { requireMember } from "./lib/auth"
+import { requireMember, seatedMember } from "./lib/auth"
+import { castEntry } from "./activity"
+import { LiveCasts, liveCastsFor } from "../src/domain/activity"
 import { enforcedMutation } from "./lib/enforce"
 import { isUnresolved, sceneParadoxPips } from "../src/domain/cast"
 import { ParadoxPoolModifier } from "../src/domain/paradox"
@@ -91,6 +93,26 @@ export const release = enforcedMutation({
 
 // The repair door (ADR-0015): named for what it does, stamped for how it did it.
 export const voidCast = enforcedMutation({ args: step, flow: voidCastFlow })
+
+// The table's live casts (MAG-46): every unresolved Cast, read on its own —
+// never through the Chronicle, whose cap and fetch window once decided
+// whether a quiet live cast existed on screen at all. The same Reader and
+// policy as the feed (the fluid Tides stay the Storyteller's), oldest first.
+export const live = query({
+  args: { sessionId: v.id("sessions"), seat: v.optional(v.id("sessionMembers")) },
+  returns: schemaToConvexValidator(LiveCasts),
+  handler: async (ctx, args) => {
+    const member = await seatedMember(ctx, args.sessionId, args.seat)
+    const casts = await ctx.db
+      .query("casts")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .collect()
+    return liveCastsFor(
+      { userId: member.userId, role: member.role },
+      casts.filter((c) => isUnresolved(c.status)).map(castEntry),
+    )
+  },
+})
 
 // The strip's per-caster Paradox pips (issue #44): who is pushing their luck
 // this Scene, derived live from resolved Cast history through the same leaf

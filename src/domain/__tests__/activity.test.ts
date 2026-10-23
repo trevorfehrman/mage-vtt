@@ -5,6 +5,8 @@ import {
   ActivityFeed,
   FEED_CAP,
   decodeFeed,
+  chronicleFor,
+  liveCastsFor,
   mergeFeed,
   pinnedLiveCasts,
   visibleEntries,
@@ -310,6 +312,43 @@ describe("pinnedLiveCasts: a live cast holds still (MAG-46)", () => {
   })
 })
 
+describe("live casts have their own read (MAG-46)", () => {
+  const cast = (id: string, startedAt: number, over: Record<string, unknown> = {}) =>
+    ({
+      _tag: "cast",
+      _id: id,
+      timestamp: 5000 - startedAt,
+      startedAt,
+      casterUserId: "user_a",
+      status: "price",
+      ...over,
+    }) as unknown as CastEntry
+  const fluid = cast("c_fluid", 200, { adjustments: [{ source: "Ley line nexus", dice: 1 }] })
+  const older = cast("c_older", 100, { status: "draft" })
+  const done = cast("c_done", 50, { status: "resolved" })
+  const player: Reader = { userId: "user_z", role: "player" }
+
+  it("liveCastsFor: the unresolved casts, oldest first, never a record", () => {
+    expect(liveCastsFor(player, [fluid, done, older]).map((c) => c._id)).toEqual(["c_older", "c_fluid"])
+  })
+
+  it("liveCastsFor: withholds fluid Tides from a player, as the feed did", () => {
+    expect(liveCastsFor(player, [fluid])[0]).not.toHaveProperty("adjustments")
+    expect(liveCastsFor({ userId: "user_st", role: "storyteller" }, [fluid])[0]).toHaveProperty("adjustments")
+  })
+
+  it("liveCastsFor: a non-member reads nothing", () => {
+    expect(liveCastsFor(null, [fluid])).toEqual([])
+  })
+
+  it("chronicleFor: records only — a live cast is never a Chronicle entry, so its cap can't touch one", () => {
+    const chatter = Array.from({ length: FEED_CAP + 5 }, (_, i) => message({ _id: `m_${i}`, timestamp: i + 1 }))
+    const feed = chronicleFor(player, [fluid, done, ...chatter])
+    expect(feed).toHaveLength(FEED_CAP)
+    expect(feed.some((e) => e._tag === "cast" && e._id === "c_fluid")).toBe(false)
+  })
+})
+
 // --- mergeFeed: the chronological merge (issue #26) ---
 
 describe("mergeFeed", () => {
@@ -335,14 +374,6 @@ describe("mergeFeed", () => {
     expect(merged).toHaveLength(FEED_CAP)
     expect(merged[0]).toEqual(entries[entries.length - 1])
     expect(merged[merged.length - 1]).toEqual(entries[50])
-  })
-
-  it("never caps a live cast out — it is not a feed item, and the pinned slot and roll zones read it from here (MAG-46)", () => {
-    const quiet = { _tag: "cast", _id: "c_live", timestamp: 0, startedAt: 0, casterUserId: "user_a", status: "paradox" } as unknown as CastEntry
-    const chatter = Array.from({ length: FEED_CAP + 5 }, (_, i) => message({ _id: `m_${i}`, timestamp: i + 1 }))
-    const merged = mergeFeed([quiet, ...chatter])
-    expect(merged).toContainEqual(quiet)
-    expect(merged.filter((e) => e._tag === "message")).toHaveLength(FEED_CAP)
   })
 
   it("does not mutate its input", () => {
