@@ -1,6 +1,6 @@
 import { Option } from "effect"
 import { describe, expect, it } from "@effect/vitest"
-import { previewImprovisedCast, previewRoteCast } from "../cast-preview"
+import { previewImprovisedCast, previewParadoxDice, previewRoteCast } from "../cast-preview"
 import { KnownRote } from "../character"
 import { RotePool } from "../rote-pool"
 import { makeAldousSheet as makeSheet } from "../testing/fixtures"
@@ -146,5 +146,52 @@ describe("CastPreview.rote", () => {
       { type: "modifier", name: "Rote Specialty", dots: 1 },
     ])
     expect(preview.contestedVs).toEqual(["Resolve", "Gnosis"])
+  })
+})
+
+/**
+ * MAG-32: the vulgar half of the sealed trigger names the Paradox pool the
+ * cast would start from before the caster opens it — the book's base for
+ * the caster's Gnosis, the rote and tool discounts, and the Scene's Tides
+ * seed. The Storyteller's own adjustments and Mana mitigation come later.
+ */
+describe("previewParadoxDice", () => {
+  const calm = { witnessCount: 0, circumstances: [], priorParadoxRolls: 0 }
+
+  it("starts from the book's base for the caster's Gnosis", () => {
+    expect(previewParadoxDice({ sheet: makeSheet({ gnosis: 1 }), isRote: false, tides: calm })).toBe(1)
+    expect(previewParadoxDice({ sheet: makeSheet({ gnosis: 3 }), isRote: false, tides: calm })).toBe(2)
+  })
+
+  it("adds the Scene's Tides: Sleepers watching, prior rolls, circumstances", () => {
+    expect(
+      previewParadoxDice({
+        sheet: makeSheet({ gnosis: 1 }),
+        isRote: false,
+        tides: {
+          witnessCount: 3,
+          circumstances: [{ source: "Ley line nexus", dice: 1 }],
+          priorParadoxRolls: 2,
+        },
+      }),
+    ).toBe(1 + 2 + 2 + 1)
+  })
+
+  it("takes a die off for a rote and for a magical tool in hand", () => {
+    const tides = { ...calm, witnessCount: 1 }
+    expect(previewParadoxDice({ sheet: makeSheet({ gnosis: 1 }), isRote: true, tides })).toBe(2)
+    expect(
+      previewParadoxDice({ sheet: makeSheet({ gnosis: 1, hasMagicalTool: true }), isRote: true, tides }),
+    ).toBe(1)
+  })
+
+  it("never goes below none", () => {
+    expect(
+      previewParadoxDice({
+        sheet: makeSheet({ gnosis: 1, hasMagicalTool: true }),
+        isRote: true,
+        tides: { ...calm, circumstances: [{ source: "Hallowed ground", dice: -2 }] },
+      }),
+    ).toBe(0)
   })
 })

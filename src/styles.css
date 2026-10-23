@@ -570,12 +570,154 @@ pre code {
   opacity: 1;
 }
 
+/* The declaration's sealed trigger (MAG-32): the commit button arrives
+ * sealed, Covert left and Vulgar right, the spell's glyph on the seam. Each
+ * half draws its own border (none on the seam side) and the seam is one
+ * line between them, so the bar has single lines everywhere; the half under
+ * the pointer or the keyboard takes its ink on its border, its wash, the
+ * seam and the seal. Open, the seal rests at the commit's near end. */
+.mv-seal,
+.mv-seal-open {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+}
+.mv-seal-open {
+  gap: 4px;
+}
+.mv-seal-half {
+  --seal-ink: var(--accent);
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  background: var(--raise);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
+}
+.mv-seal-half[data-side="Covert"] {
+  justify-content: flex-start;
+  border-right: 0;
+  border-radius: 3px 0 0 3px;
+}
+.mv-seal-half[data-side="Vulgar"] {
+  --seal-ink: var(--paradox);
+  justify-content: flex-end;
+  border-left: 0;
+  border-radius: 0 3px 3px 0;
+}
+.mv-seal-half:hover:not(:disabled),
+.mv-seal-half:focus-visible {
+  color: var(--seal-ink);
+  border-color: var(--seal-ink);
+  background: color-mix(in srgb, var(--seal-ink) 14%, var(--raise));
+}
+.mv-seal-half:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.mv-seal-seam {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: var(--line);
+  pointer-events: none;
+  transition: background 0.15s;
+}
+.mv-seal-mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px dashed var(--dim);
+  color: var(--ink);
+  background: var(--panel);
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.mv-seal > .mv-seal-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.mv-seal:has(.mv-seal-half[data-side="Covert"]:hover:not(:disabled), .mv-seal-half[data-side="Covert"]:focus-visible) {
+  --seal-hot: var(--accent);
+}
+.mv-seal:has(.mv-seal-half[data-side="Vulgar"]:hover:not(:disabled), .mv-seal-half[data-side="Vulgar"]:focus-visible) {
+  --seal-hot: var(--paradox);
+}
+.mv-seal .mv-seal-seam {
+  background: var(--seal-hot, var(--line));
+}
+.mv-seal > .mv-seal-mark {
+  color: var(--seal-hot, var(--ink));
+  border-color: var(--seal-hot, var(--dim));
+}
+/* open: the seal rests at the near end in a solid ring of the chosen ink */
+.mv-seal-open[data-side="Covert"] {
+  --seal-ink: var(--accent);
+}
+.mv-seal-open[data-side="Vulgar"] {
+  --seal-ink: var(--paradox);
+}
+.mv-seal-reseal {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 30px;
+  padding: 0;
+  border-radius: 3px;
+  border-color: var(--seal-ink);
+}
+.mv-seal-open .mv-seal-mark {
+  border-style: solid;
+  border-color: var(--seal-ink);
+  color: var(--seal-ink);
+}
+/* the opened side's ink rings the declaration felt */
+.mv-felt-ring {
+  border-radius: 6px;
+}
+.mv-felt-ring[data-side="Covert"] {
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.mv-felt-ring[data-side="Vulgar"] {
+  box-shadow:
+    0 0 0 1px var(--paradox),
+    0 0 14px color-mix(in srgb, var(--paradox) 30%, transparent);
+}
+/* the vulgar door burns Paradox, not verdigris */
+.mv-roll.mv-roll-vulgar {
+  background: var(--paradox);
+  border-color: var(--paradox);
+}
+
 /* The a11y floor's focus ring (ADR-0021): keyboard focus is always visible —
  * one accent ring, offset so the control's own border stays legible. One rule
  * owns the plank: mv-* controls and the restyled shadcn primitives
  * (data-slot) all take the same ring. */
 .mv-btn:focus-visible,
 .mv-grip:focus-visible,
+.mv-seal-half:focus-visible,
 .mv-mini:focus-visible,
 .mv-chip:focus-visible,
 .mv-roll:focus-visible,

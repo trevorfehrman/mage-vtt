@@ -308,6 +308,14 @@ card's row of faces. One grammar on every felt (ADR-0024): a die is a diamond,
 unrolled dice colored by where they came from, rolled dice by what they showed.
 _Avoid_: Tray (that is one felt, the composing one), dice line.
 
+**Sealed trigger**:
+The declaration felt's commit button before the caster has chosen covert or
+vulgar (MAG-32, ADR-0022): one bar, Covert left and Vulgar right, the spell's
+Arcanum glyph the seal between them. Pressing a half opens it to that side
+(Cast, or Draft Vulgar); the seal at the opened button's end closes it again.
+A rote the book fixes to one aspect arrives already open.
+_Avoid_: Covert/vulgar toggle (it is not a standing switch; nothing starts chosen).
+
 **Shrunk tray** / **Tall tray**:
 The dice tray's two forms, the viewer's choice (MAG-47, ADR-0021). The shrunk
 tray is one line — the count, the options a throw carries, Roll — and still

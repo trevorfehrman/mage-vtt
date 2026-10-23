@@ -8,6 +8,7 @@ import { pooledDice } from "#/machines/dice-pool"
 import { useLiveCasts } from "#/hooks/use-live-casts"
 import { pinnedLiveCasts } from "#/domain/activity"
 import { useCast } from "#/hooks/use-cast"
+import { useScene } from "#/hooks/use-scene"
 import { useDicePool } from "#/hooks/use-dice-pool"
 import { useSession } from "#/hooks/use-session"
 import { SessionLayout } from "#/components/game/SessionLayout"
@@ -31,7 +32,7 @@ import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { SecondSeatControl } from "#/components/game/SecondSeatControl"
 import { seamErrorMessage } from "#/lib/seam-errors"
-import { isOnStage } from "#/domain/cast"
+import { isOnStage, stripTides } from "#/domain/cast"
 import type { CharacterSheet as CharacterSheetData } from "#/domain/character"
 import { decodeSheetDoc } from "#/lib/sheet-doc"
 import { arctusData } from "#/domain/fixtures/arctus"
@@ -133,9 +134,12 @@ function SessionPage() {
   // your own (or seat's) character.
   const pool = useDicePool(sessionId, viewed?._id)
   const rawCast = useCast(sessionId, character?._id)
+  // The Scene's Tides, as the strip reads them: the sealed trigger names the
+  // Paradox pool a vulgar cast would start from (MAG-32).
+  const { scene, pips } = useScene(sessionId)
 
   // One unresolved Cast per character (issue #68): the same domain leaf the
-  // draft flow refuses with, read plainly so the Draft Vulgar button can gate
+  // draft flow refuses with, read plainly so the opened vulgar door (Draft Vulgar) can gate
   // instead of round-tripping into CastAlreadyPending.
   const hasPendingCast = useQuery(
     api.casts.hasPending,
@@ -511,6 +515,7 @@ function SessionPage() {
                 cast={cast}
                 character={mySheet}
                 hasPendingCast={hasPendingCast === true}
+                tides={stripTides(scene, pips, mySheet.id)}
               />
             </div>
           ) : (

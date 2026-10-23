@@ -10,6 +10,8 @@ import {
 } from "./spellcasting"
 import { WILLPOWER_BONUS_DICE, WILLPOWER_COMPONENT_NAME } from "./willpower-economy"
 import type { RawPoolComponent } from "./dice"
+import { toGnosisRank, type TidesSnapshot } from "./cast"
+import { calculateParadoxPool } from "./paradox"
 
 /**
  * The casting UX's live readout (PRD #11, issue #20): a client-side preview of
@@ -145,3 +147,25 @@ const rotePreview = (input: RotePreviewInput, resolved: ResolvedRotePool): CastP
     ...(input.rote.pool.vs ? { contestedVs: input.rote.pool.vs } : {}),
   } satisfies CastPreview
 }
+
+/**
+ * The Paradox pool a vulgar cast would start from (MAG-32): what the sealed
+ * trigger's vulgar half names before the caster opens it — the book's base
+ * for the caster's Gnosis, the rote and magical-tool discounts, and the
+ * Scene's Tides seed (`sceneTides`). The Storyteller's personal adjustments
+ * and the caster's Mana mitigation come later, on the Cast card; the fixed
+ * seed stamped at the Tides rung stays the authority.
+ */
+export const previewParadoxDice = (input: {
+  sheet: CharacterSheet
+  isRote: boolean
+  tides: TidesSnapshot
+}): number =>
+  calculateParadoxPool({
+    gnosis: toGnosisRank(input.sheet.gnosis),
+    isRote: input.isRote,
+    usesMagicalTool: input.sheet.magicalTool,
+    witnessCount: input.tides.witnessCount,
+    priorParadoxRollsThisScene: input.tides.priorParadoxRolls,
+    discretionaryModifiers: input.tides.circumstances,
+  }).totalDice

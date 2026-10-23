@@ -1,5 +1,24 @@
 # Tides are scene state; the cast card is a docked cockpit
 
+> **Amended** (2026-10-23, MAG-32, the owner's call: the caster must choose
+> covert or vulgar on purpose, where the Roll button lives, with no added
+> height). Covert/vulgar is a property of the declaration, held by the cast
+> machine (`aspect`, nothing chosen at arming; a rote the book fixes arms
+> already chosen and won't change). The declaration felt's commit is a
+> **sealed trigger**: one bar, Covert left and Vulgar right, the spell's
+> Arcanum glyph the seal on the seam; pressing a half cracks it open to
+> that side, and the opened button is its own press (Cast, or Draft
+> Vulgar in the Paradox ink), with the seal resting at its near end to
+> close it again. The machine opens each door only for its aspect. The
+> vulgar half names the Paradox pool the cast would start from
+> (`previewParadoxDice`: the Gnosis base, the rote and tool discounts, the
+> Scene's Tides as the strip reads them, `stripTides`), so the price is
+> read before the choice — the home the Tides' ask was evicted to in pass 2.
+> The header's Draft Vulgar placeholder (2026-07-19) is gone. Chosen from a
+> two-round audition (a fork, a seal on the declaring line, two doors; then
+> three ways to open the seal: crack, slide, hold — slide and hold "will
+> get tedious").
+
 > **Amended** (2026-10-23, MAG-46). The 2026-07-19 note's "the feed carries
 > the live card **only for spectators**" is withdrawn: a live cast never
 > rides anyone's feed — its timestamp moved with every edit, so it popped
