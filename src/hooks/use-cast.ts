@@ -11,6 +11,7 @@ import {
 } from "#/machines/cast"
 import { seamFailure } from "#/lib/seam-errors"
 import type { ArcanumName, KnownRote } from "#/domain/character"
+import type { SpellAspect } from "#/domain/rote-cast"
 import type { Id } from "../../convex/_generated/dataModel"
 
 /** A seam refusal keeps its typed tag (issue #36); anything else is prose only. */
@@ -90,6 +91,7 @@ export function useCast(
     setExtraMana: (value: number) => send({ type: "SET_EXTRA_MANA", value }),
     setSpendWillpower: (value: boolean) =>
       send({ type: "SET_SPEND_WILLPOWER", value }),
+    setAspect: (value: SpellAspect | null) => send({ type: "SET_ASPECT", value }),
     cast: () => send({ type: "CAST" }),
     draftVulgar: () => send({ type: "DRAFT_VULGAR" }),
     cancel: () => send({ type: "CANCEL" }),

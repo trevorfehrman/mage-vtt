@@ -4,6 +4,7 @@ import {
   buildDraftSubmission,
   buildSubmission,
   castMachine,
+  lockedAspect,
   type CastSubmission,
   type DraftSubmission,
 } from "../cast"
@@ -94,6 +95,7 @@ describe("cast machine", () => {
     actor.send({ type: "ARM_ROTE", rote: orPoolRote })
     expect(actor.getSnapshot().context.skillChoice).toBeNull()
 
+    actor.send({ type: "SET_ASPECT", value: "Covert" })
     actor.send({ type: "CAST" })
     expect(actor.getSnapshot().value).toBe("declaring") // guard refused
 
@@ -154,6 +156,7 @@ describe("cast machine", () => {
     })
     actor.send({ type: "ARM_IMPROVISED", arcanum: "death", dots: 3 })
     actor.send({ type: "SET_LEVEL", value: 2 })
+    actor.send({ type: "SET_ASPECT", value: "Covert" })
     actor.send({ type: "CAST" })
 
     await waitFor(actor, (s) => s.matches("idle"))
@@ -171,6 +174,7 @@ describe("cast machine", () => {
     })
     actor.send({ type: "ARM_IMPROVISED", arcanum: "death", dots: 3 })
     actor.send({ type: "SET_EXTRA_MANA", value: 2 })
+    actor.send({ type: "SET_ASPECT", value: "Covert" })
     actor.send({ type: "CAST" })
 
     await waitFor(actor, (s) => s.matches("declaring"))
@@ -197,6 +201,7 @@ describe("cast machine", () => {
     const actor = startMachine(undefined, () => new Promise(() => {}))
     actor.send({ type: "ARM_ROTE", rote: orPoolRote })
 
+    actor.send({ type: "SET_ASPECT", value: "Vulgar" })
     actor.send({ type: "DRAFT_VULGAR" })
     expect(actor.getSnapshot().value).toBe("declaring") // guard refused
 
@@ -211,6 +216,7 @@ describe("cast machine", () => {
       drafted.push(input)
     })
     actor.send({ type: "ARM_ROTE", rote: graveMien })
+    actor.send({ type: "SET_ASPECT", value: "Vulgar" })
     actor.send({ type: "DRAFT_VULGAR" })
 
     await waitFor(actor, (s) => s.matches("idle"))
@@ -233,6 +239,7 @@ describe("cast machine", () => {
     })
     actor.send({ type: "ARM_ROTE", rote: graveMien })
     actor.send({ type: "SET_EXTRA_MANA", value: 2 })
+    actor.send({ type: "SET_ASPECT", value: "Vulgar" })
     actor.send({ type: "DRAFT_VULGAR" })
 
     await waitFor(actor, (s) => s.matches("declaring"))
@@ -246,6 +253,7 @@ describe("cast machine", () => {
       throw new Error("Network hiccup.")
     })
     actor.send({ type: "ARM_IMPROVISED", arcanum: "death", dots: 3 })
+    actor.send({ type: "SET_ASPECT", value: "Covert" })
     actor.send({ type: "CAST" })
 
     await waitFor(actor, (s) => s.matches("declaring"))
@@ -253,6 +261,87 @@ describe("cast machine", () => {
       tag: null,
       message: "Network hiccup.",
     })
+  })
+})
+
+// MAG-32: covert or vulgar is chosen on purpose, on the felt, before either
+// door opens; nothing starts chosen except a rote the book fixes.
+const vulgarOnly = new KnownRote({
+  name: "Grave Wind",
+  spellName: "Grave Wind",
+  spellArcanum: "Death",
+  spellLevel: 2,
+  order: "Mysterium",
+  pool: new RotePool({ attribute: "Presence", skills: ["Occult"], arcanum: "Death" }),
+  spellAspect: "Vulgar",
+})
+
+describe("the aspect, chosen on purpose (MAG-32)", () => {
+  const inFlight = () => startMachine(() => new Promise(() => {}), () => new Promise(() => {}))
+
+  test("an armed spell starts unchosen, and neither door opens", () => {
+    const actor = inFlight()
+    actor.send({ type: "ARM_IMPROVISED", arcanum: "death", dots: 3 })
+    expect(actor.getSnapshot().context.aspect).toBeNull()
+    actor.send({ type: "CAST" })
+    actor.send({ type: "DRAFT_VULGAR" })
+    expect(actor.getSnapshot().value).toBe("declaring")
+  })
+
+  test("opened covert, it casts and will not draft", () => {
+    const actor = inFlight()
+    actor.send({ type: "ARM_IMPROVISED", arcanum: "death", dots: 3 })
+    actor.send({ type: "SET_ASPECT", value: "Covert" })
+    actor.send({ type: "DRAFT_VULGAR" })
+    expect(actor.getSnapshot().value).toBe("declaring")
+    actor.send({ type: "CAST" })
+    expect(actor.getSnapshot().value).toBe("casting")
+  })
+
+  test("opened vulgar, it drafts and will not cast", () => {
+    const actor = inFlight()
+    actor.send({ type: "ARM_IMPROVISED", arcanum: "death", dots: 3 })
+    actor.send({ type: "SET_ASPECT", value: "Vulgar" })
+    actor.send({ type: "CAST" })
+    expect(actor.getSnapshot().value).toBe("declaring")
+    actor.send({ type: "DRAFT_VULGAR" })
+    expect(actor.getSnapshot().value).toBe("drafting")
+  })
+
+  test("sealing it again closes both doors", () => {
+    const actor = inFlight()
+    actor.send({ type: "ARM_IMPROVISED", arcanum: "death", dots: 3 })
+    actor.send({ type: "SET_ASPECT", value: "Covert" })
+    actor.send({ type: "SET_ASPECT", value: null })
+    actor.send({ type: "CAST" })
+    expect(actor.getSnapshot().value).toBe("declaring")
+  })
+
+  test("re-arming seals it again", () => {
+    const actor = inFlight()
+    actor.send({ type: "ARM_IMPROVISED", arcanum: "death", dots: 3 })
+    actor.send({ type: "SET_ASPECT", value: "Vulgar" })
+    actor.send({ type: "ARM_IMPROVISED", arcanum: "matter", dots: 2 })
+    expect(actor.getSnapshot().context.aspect).toBeNull()
+  })
+
+  test("a rote the book fixes arms already chosen, and stays that way", () => {
+    const actor = inFlight()
+    actor.send({ type: "ARM_ROTE", rote: vulgarOnly })
+    expect(actor.getSnapshot().context.aspect).toBe("Vulgar")
+    expect(lockedAspect(actor.getSnapshot().context.selection)).toBe("Vulgar")
+    actor.send({ type: "SET_ASPECT", value: "Covert" })
+    actor.send({ type: "SET_ASPECT", value: null })
+    expect(actor.getSnapshot().context.aspect).toBe("Vulgar")
+    actor.send({ type: "DRAFT_VULGAR" })
+    expect(actor.getSnapshot().value).toBe("drafting")
+  })
+
+  test("a rote with no stamped aspect starts unchosen", () => {
+    const actor = inFlight()
+    actor.send({ type: "ARM_ROTE", rote: graveMien })
+    expect(actor.getSnapshot().context.aspect).toBeNull()
+    expect(lockedAspect(actor.getSnapshot().context.selection)).toBeNull()
   })
 })
 

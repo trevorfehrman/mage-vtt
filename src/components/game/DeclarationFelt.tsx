@@ -3,9 +3,11 @@ import { Option } from "effect"
 import { AnimatePresence, useReducedMotion } from "motion/react"
 import {
   previewImprovisedCast,
+  previewParadoxDice,
   previewRoteCast,
   type CastPreview,
 } from "#/domain/cast-preview"
+import { CALM_TIDES, type TidesSnapshot } from "#/domain/cast"
 import type { CharacterSheet } from "#/domain/character"
 import { rollOdds } from "#/domain/probability"
 import {
@@ -15,8 +17,10 @@ import {
 } from "#/domain/spellcasting"
 import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy"
 import { GateButton } from "#/components/ui/gate-button"
-import { declaredFactors, type CastContext } from "#/machines/cast"
+import { declaredFactors, lockedAspect, type CastContext } from "#/machines/cast"
 import { ArcanaGlyph } from "./ArcanaGlyph"
+import { ParadoxGlyph } from "./ParadoxGlyph"
+import { SealedTrigger } from "./SealedTrigger"
 import { UnifiedDie } from "./UnifiedDie"
 import { Felt } from "./Felt"
 import type { useCast } from "#/hooks/use-cast"
@@ -35,9 +39,15 @@ type CastAPI = ReturnType<typeof useCast>
  * dice · odds) on the right. The price line is dead: Mana speaks as the
  * strip's pending ghost and inside the Cast trigger; the Tides' ask and its
  * bite belong to the vulgar posture, not here. Rider Mana is a felt fitting
- * (◈−/◈+) beside Willpower — the strip stays a gauge, never a dial. Draft
- * Vulgar sits in the header as the placeholder for the coming covert/vulgar
- * toggle. Numbers come from the real leaves — cast-preview, rollOdds; the
+ * (◈−/◈+) beside Willpower — the strip stays a gauge, never a dial.
+ *
+ * Covert or vulgar is chosen on purpose, where the Roll button lives
+ * (MAG-32): the commit arrives as a SealedTrigger and the caster cracks it
+ * open to one side (the cast machine holds the choice; nothing starts
+ * chosen but a rote the book fixes). Once open, the felt wears that
+ * side's ink and a vulgar felt's gutter names the Paradox pool it would
+ * start from. This replaces 2026-07-19's Draft Vulgar placeholder in the
+ * header. Numbers come from the real leaves — cast-preview, rollOdds; the
  * server recomputes and stays authoritative.
  */
 
@@ -89,14 +99,17 @@ export function DeclarationFelt({
   cast,
   character,
   hasPendingCast = false,
+  tides = CALM_TIDES,
 }: {
   cast: CastAPI
   character: CharacterSheet
   /** One unresolved Cast per character (issue #68): gates Draft Vulgar. */
   hasPendingCast?: boolean
+  /** The Scene's Tides seed for this caster: what the vulgar side names. */
+  tides?: TidesSnapshot
 }) {
   const reduced = useReducedMotion()
-  const { selection, skillChoice, potency, targets, spendWillpower, extraMana } =
+  const { selection, skillChoice, potency, targets, spendWillpower, extraMana, aspect } =
     cast.context
   const casting = cast.state === "casting"
   const drafting = cast.state === "drafting"
@@ -146,31 +159,56 @@ export function DeclarationFelt({
       ? "No Willpower left to spend."
       : null
 
-  const roteAspect =
-    selection.method === "rote" ? selection.rote.spellAspect : undefined
   const needsSkillChoice = selection.method === "rote" && skillChoice === null
 
-  // Button gates (issue #68): each mirrors a server refusal through shared
+  // A rote the book fixes arrives open and won't reseal; it says why.
+  const arcanum =
+    selection.method === "rote" ? selection.rote.spellArcanum : selection.arcanum
+  const locked = lockedAspect(selection)
+  const lockNote =
+    locked === null ? null : `This rote's spell is always ${locked.toLowerCase()}: the book fixes it.`
+  const paradoxDice = previewParadoxDice({
+    sheet: character,
+    isRote: selection.method === "rote",
+    tides,
+  })
+
+  // Door gates (issue #68): each mirrors a server refusal through shared
   // domain data, so a refusable click explains itself at the control
-  // (ADR-0021). Controls that can never succeed for this spell don't render.
-  const showCast = roteAspect !== "Vulgar"
-  const showDraft = roteAspect !== "Covert"
+  // (ADR-0021).
   const castGate = needsSkillChoice
     ? "Pick the rote's skill first."
     : manaShort
       ? `Not enough Mana: need ${manaCost}, have ${character.manaCurrent}.`
       : null
-  const draftGate = needsSkillChoice
-    ? "Pick the rote's skill first."
-    : manaShort
-      ? `Not enough Mana: need ${manaCost}, have ${character.manaCurrent}.`
-      : hasPendingCast
-        ? "This character already has an unresolved Cast."
-        : null
+  const draftGate =
+    castGate ?? (hasPendingCast ? "This character already has an unresolved Cast." : null)
+  const manaWords = manaCost > 0 ? ` · ◈${manaCost}` : ""
 
-  // The one verdigris trigger the eye should land on: the only open door
-  // when the aspect closes the other, Cast otherwise.
-  const primary: "cast" | "draft" = showCast ? "cast" : "draft"
+  // The opened door: Cast for covert, Draft Vulgar for vulgar.
+  const commit =
+    aspect === "Vulgar" ? (
+      <GateButton
+        gate={draftGate}
+        onClick={cast.draftVulgar}
+        disabled={busy}
+        className="mv-roll mv-roll-vulgar min-w-0 flex-1 rounded-[3px] px-3 text-[12px] disabled:opacity-40"
+        title={draftGate ?? "Draft into the wings: the Paradox handshake plays out on the Cast card."}
+      >
+        {drafting ? "Drafting…" : `Draft Vulgar${manaWords}`}
+      </GateButton>
+    ) : (
+      <GateButton
+        gate={castGate}
+        onClick={cast.cast}
+        disabled={busy}
+        className="mv-roll min-w-0 flex-1 rounded-[3px] px-3 text-[12px] disabled:opacity-40"
+      >
+        {casting
+          ? "Casting…"
+          : `${preview === null || preview.isChanceDie ? "Cast ◈" : `Cast ${preview.dice}`}${manaWords}`}
+      </GateButton>
+    )
 
   const dice = Array.from({ length: physical }, (_, i) => {
     const ghosted = i >= physical - ghosts
@@ -207,11 +245,7 @@ export function DeclarationFelt({
       <div className="flex flex-wrap items-baseline gap-1.5 px-3 pt-2.5">
         <span className="mv-eyebrow">Declaring</span>
         <ArcanaGlyph
-          arcanum={
-            selection.method === "rote"
-              ? selection.rote.spellArcanum.toLowerCase()
-              : selection.arcanum
-          }
+          arcanum={arcanum}
           size={14}
           className="mv-accent self-center"
         />
@@ -248,28 +282,6 @@ export function DeclarationFelt({
             level {"●".repeat(cast.context.level)}
           </button>
         )}
-        {/* Draft Vulgar — pinned interim home (2026-07-19): this corner is
-            where the covert/vulgar toggle will live; the button holds its
-            seat until that design lands. */}
-        {showDraft && (
-          <GateButton
-            gate={draftGate}
-            onClick={cast.draftVulgar}
-            disabled={busy}
-            className="mv-mini ml-auto self-center whitespace-nowrap disabled:opacity-40"
-            style={
-              primary === "draft"
-                ? { borderColor: "var(--accent)", color: "var(--ink)" }
-                : undefined
-            }
-            title={
-              draftGate ??
-              "Draft into the wings — the Paradox handshake plays out on the Cast card."
-            }
-          >
-            {drafting ? "Drafting…" : "Draft Vulgar"}
-          </GateButton>
-        )}
       </div>
 
       {/* the felt — the pool as physical dice; ghosts are the price being
@@ -277,6 +289,8 @@ export function DeclarationFelt({
           Fixed two-row height (no shift as dice arrive; a third row scrolls)
           over the felt's own gutter: provenance left, the live tally right. */}
       <div className="px-3 pt-2">
+        {/* the opened side's ink rings the felt */}
+        <div className="mv-felt-ring" data-side={aspect ?? undefined}>
         <Felt>
           <div className="relative px-2 pt-2">
             <span className="flex h-[58px] flex-wrap content-start gap-2.5 overflow-y-auto p-1">
@@ -304,6 +318,19 @@ export function DeclarationFelt({
                   : `${diceLabel(live)} · ${pct(odds.success)} at least one success`
               }
             >
+              {aspect === "Vulgar" && (
+                <>
+                  <b
+                    className="inline-flex items-center gap-0.5 text-[12px]"
+                    style={{ color: "var(--paradox)" }}
+                    title={`Paradox starts at ${paradoxDice}, before the Storyteller weighs in`}
+                  >
+                    <ParadoxGlyph size={10} title="Paradox" />
+                    {paradoxDice}
+                  </b>
+                  {" · "}
+                </>
+              )}
               {manaCost > 0 && (
                 <>
                   <b
@@ -323,6 +350,7 @@ export function DeclarationFelt({
             </span>
           </div>
         </Felt>
+        </div>
       </div>
 
       {/* lip fittings — the two summonable bets + Willpower's arriving dice */}
@@ -392,37 +420,28 @@ export function DeclarationFelt({
 
       {/* No intent line (owner, 2026-10-22): what the spell is for is said
           on camera, not typed into the record. */}
-      {/* the trigger row — Cancel walks away on the left, Cast commits on
-          the right; a Mana cost rides inside the trigger (owner call
-          2026-07-19: about to spend, said where you press) */}
-      <div className="flex flex-wrap items-center gap-2 p-3">
+      {/* the trigger row — Cancel walks away on the left; the commit, sealed
+          until the caster opens it covert or vulgar (MAG-32). A Mana cost
+          rides inside the open button (owner call 2026-07-19: about to
+          spend, said where you press) */}
+      <div className="flex items-center gap-2 p-3">
         <button
           onClick={cast.cancel}
           disabled={busy}
-          className="mv-btn rounded-[3px] px-2.5 py-1.5 text-[12px]"
+          className="mv-btn rounded-[3px] px-2.5 text-[12px]"
+          style={{ height: 30 }}
         >
           Cancel
         </button>
-        <span className="flex-1" />
-        {showCast && (
-          <GateButton
-            gate={castGate}
-            onClick={cast.cast}
-            disabled={busy}
-            className={`${primary === "cast" ? "mv-roll" : "mv-btn"} rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40`}
-          >
-            {casting ? (
-              "Casting…"
-            ) : (
-              <>
-                {preview === null || preview.isChanceDie
-                  ? "Cast ◈"
-                  : `Cast ${preview.dice}`}
-                {manaCost > 0 && ` · ◈${manaCost}`}
-              </>
-            )}
-          </GateButton>
-        )}
+        <SealedTrigger
+          arcanum={arcanum}
+          aspect={aspect}
+          lockNote={lockNote}
+          busy={busy}
+          paradoxDice={paradoxDice}
+          onChoose={cast.setAspect}
+          commit={commit}
+        />
       </div>
 
       {/* error — the seam's typed refusal (cast or draft, one channel) */}

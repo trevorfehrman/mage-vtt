@@ -1,5 +1,6 @@
 import { assertEvent, assign, fromPromise, setup } from "xstate"
 import type { ArcanumName, KnownRote } from "#/domain/character"
+import type { SpellAspect } from "#/domain/rote-cast"
 import type { SeamFailure } from "#/lib/seam-errors"
 
 /**
@@ -37,6 +38,12 @@ export interface CastContext {
   /** Declared rider Mana — driven from the Mana strip, never a bench dial. */
   extraMana: number
   spendWillpower: boolean
+  /**
+   * Covert or Vulgar, chosen on purpose (MAG-32): nothing starts chosen, and
+   * neither door opens until the caster unseals the trigger one way or the
+   * other. A rote the book fixes to one aspect arms already chosen and stays.
+   */
+  aspect: SpellAspect | null
   error: CastError | null
 }
 
@@ -49,6 +56,7 @@ type CastEvent =
   | { type: "SET_TARGETS"; value: number }
   | { type: "SET_EXTRA_MANA"; value: number }
   | { type: "SET_SPEND_WILLPOWER"; value: boolean }
+  | { type: "SET_ASPECT"; value: SpellAspect | null }
   | { type: "CAST" }
   | { type: "DRAFT_VULGAR" }
   | { type: "CANCEL" }
@@ -110,8 +118,14 @@ const IDLE_CONTEXT: CastContext = {
   targets: 1,
   extraMana: 0,
   spendWillpower: false,
+  aspect: null,
   error: null,
 }
+
+/** The aspect the book fixes for this selection, or null when the caster
+ * chooses (an improvised cast, or a rote whose spell isn't stamped). */
+export const lockedAspect = (selection: CastSelection | null): SpellAspect | null =>
+  selection?.method === "rote" ? (selection.rote.spellAspect ?? null) : null
 
 /** The submit actors throw a CastError (see use-cast.ts); anything else —
  * e.g. the unprovided-actor guard — is prose without a tag. */
@@ -122,6 +136,10 @@ const toCastError = (error: unknown): CastError =>
         tag: null,
         message: error instanceof Error ? error.message : String(error),
       }
+
+const declarationComplete = (context: CastContext): boolean =>
+  context.selection !== null &&
+  (context.selection.method === "improvised" || context.skillChoice !== null)
 
 export const castMachine = setup({
   types: {
@@ -157,14 +175,17 @@ export const castMachine = setup({
         // A single-skill pool needs no pick; an "or" pool starts unpicked.
         skillChoice:
           event.rote.pool.skills.length === 1 ? event.rote.pool.skills[0] : null,
+        aspect: event.rote.spellAspect ?? null,
       }
     }),
   },
   guards: {
-    /** An "or"-pool Rote is uncastable until the caster picks a skill. */
-    canSubmit: ({ context }) =>
-      context.selection !== null &&
-      (context.selection.method === "improvised" || context.skillChoice !== null),
+    /** An "or"-pool Rote is uncastable until the caster picks a skill, and
+     * each door opens only for the aspect the caster chose (MAG-32). */
+    canCast: ({ context }) => declarationComplete(context) && context.aspect === "Covert",
+    canDraft: ({ context }) => declarationComplete(context) && context.aspect === "Vulgar",
+    /** A rote the book fixes keeps its aspect. */
+    aspectIsFree: ({ context }) => lockedAspect(context.selection) === null,
   },
 }).createMachine({
   id: "cast",
@@ -207,8 +228,12 @@ export const castMachine = setup({
         SET_SPEND_WILLPOWER: {
           actions: assign({ spendWillpower: ({ event }) => event.value }),
         },
-        CAST: { target: "casting", guard: "canSubmit" },
-        DRAFT_VULGAR: { target: "drafting", guard: "canSubmit" },
+        SET_ASPECT: {
+          guard: "aspectIsFree",
+          actions: assign({ aspect: ({ event }) => event.value }),
+        },
+        CAST: { target: "casting", guard: "canCast" },
+        DRAFT_VULGAR: { target: "drafting", guard: "canDraft" },
         CANCEL: { target: "idle", actions: assign(() => IDLE_CONTEXT) },
       },
     },

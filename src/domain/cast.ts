@@ -1,4 +1,4 @@
-import { Array as Arr, Match, Order, Schema } from "effect"
+import { Array as Arr, Match, Option, Order, Schema } from "effect"
 import type { HealthTrack } from "./damage"
 import { Explosion } from "./dice"
 import { applyDamage, isIncapacitated, woundPenalty } from "./health"
@@ -186,6 +186,26 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   updatedAt: Schema.Number,
 }) {}
 
+/** Downtime's Tides: no Scene, so no witnesses, circumstances or pips. */
+export const CALM_TIDES: TidesSnapshot = {
+  witnessCount: 0,
+  circumstances: [],
+  priorParadoxRolls: 0,
+}
+
+/** A Scene's ambient Tides plus one caster's prior Paradox rolls. */
+const seedOf = (
+  scene: {
+    readonly witnessCount: number
+    readonly circumstances: ReadonlyArray<ParadoxPoolModifier>
+  },
+  priorParadoxRolls: number,
+): TidesSnapshot => ({
+  witnessCount: scene.witnessCount,
+  circumstances: scene.circumstances,
+  priorParadoxRolls,
+})
+
 /**
  * The Tides seed a fix stamps (ADR-0022): the Scene's ambient truth plus
  * this caster's derived pips (ADR-0012). Downtime (no Scene) seeds nothing —
@@ -204,12 +224,36 @@ export const sceneTides = (
   characterId: string,
 ): TidesSnapshot =>
   scene === undefined
-    ? { witnessCount: 0, circumstances: [], priorParadoxRolls: 0 }
-    : {
-        witnessCount: scene.witnessCount,
-        circumstances: scene.circumstances,
-        priorParadoxRolls: deriveAccumulator(casts, scene.id, characterId),
+    ? CALM_TIDES
+    : seedOf(scene, deriveAccumulator(casts, scene.id, characterId))
+
+/**
+ * The same seed as a declaring caster reads it off the scene strip (MAG-32):
+ * the active Scene's Tides and this caster's already-derived pip, so the
+ * sealed trigger can name the Paradox pool before anything is drafted.
+ * Downtime, or a strip still loading, seeds nothing. The fix's own stamp
+ * (`sceneTides`) stays the authority.
+ */
+export const stripTides = (
+  scene:
+    | {
+        readonly witnessCount: number
+        readonly circumstances: ReadonlyArray<ParadoxPoolModifier>
       }
+    | null
+    | undefined,
+  pips: ReadonlyArray<ScenePip> | undefined,
+  characterId: string,
+): TidesSnapshot =>
+  scene === null || scene === undefined
+    ? CALM_TIDES
+    : seedOf(
+        scene,
+        Arr.findFirst(pips ?? [], (p) => p.characterId === characterId).pipe(
+          Option.map((p) => p.accumulator),
+          Option.getOrElse(() => 0),
+        ),
+      )
 
 /**
  * The per-(Scene, caster) Paradox accumulator (ADR-0012, ADR-0016): derived by

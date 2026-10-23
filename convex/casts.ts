@@ -120,7 +120,7 @@ export const live = query({
 // Member-gated like the Scene read; empty in downtime.
 // Whether a character already has an unresolved Cast (issue #68) — the same
 // domain leaf the draft flow refuses `CastAlreadyPending` with, read plainly
-// (ADR-0004) so the Draft Vulgar button can gate instead of round-tripping.
+// (ADR-0004) so the opened vulgar door can gate instead of round-tripping.
 export const hasPending = query({
   args: { sessionId: v.id("sessions"), characterId: v.id("characters") },
   handler: async (ctx, args) => {

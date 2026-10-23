@@ -13,6 +13,7 @@ import {
   isUnresolved,
   sceneParadoxPips,
   sceneTides,
+  stripTides,
   toGnosisRank,
   waitingOn,
   type CastStatus,
@@ -103,6 +104,32 @@ describe("waitingOn (ADR-0022: two-colored phases of one rung)", () => {
     expect(waitingOn({ status: "resolved" })).toBeNull()
     expect(waitingOn({ status: "cancelled" })).toBeNull()
     expect(waitingOn({ status: "voided" })).toBeNull()
+  })
+})
+
+describe("stripTides (MAG-32: the seed a declaring caster reads off the strip)", () => {
+  const scene = { witnessCount: 2, circumstances: [{ source: "Ley-line surge", dice: 1 }] }
+  const pips = [
+    { characterId: "char-a", casterName: "A", accumulator: 3 },
+    { characterId: "char-b", casterName: "B", accumulator: 1 },
+  ]
+
+  it("reads the Scene's Tides and this caster's pips", () => {
+    expect(stripTides(scene, pips, "char-b")).toEqual({
+      witnessCount: 2,
+      circumstances: [{ source: "Ley-line surge", dice: 1 }],
+      priorParadoxRolls: 1,
+    })
+  })
+
+  it("a caster with no pip has rolled no Paradox this Scene", () => {
+    expect(stripTides(scene, pips, "char-c").priorParadoxRolls).toBe(0)
+  })
+
+  it("downtime, or a strip still loading, seeds nothing", () => {
+    const calm = { witnessCount: 0, circumstances: [], priorParadoxRolls: 0 }
+    expect(stripTides(null, pips, "char-a")).toEqual(calm)
+    expect(stripTides(undefined, undefined, "char-a")).toEqual(calm)
   })
 })
 
