@@ -18,6 +18,7 @@ import { GateButton } from "#/components/ui/gate-button"
 import { declaredFactors, type CastContext } from "#/machines/cast"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import { UnifiedDie } from "./UnifiedDie"
+import { Felt } from "./Felt"
 import type { useCast } from "#/hooks/use-cast"
 
 type CastAPI = ReturnType<typeof useCast>
@@ -276,13 +277,7 @@ export function DeclarationFelt({
           Fixed two-row height (no shift as dice arrive; a third row scrolls)
           over the felt's own gutter: provenance left, the live tally right. */}
       <div className="px-3 pt-2">
-        <div
-          className="mv-felt rounded-[6px] border"
-          style={{
-            borderColor: "var(--line)",
-            background: "color-mix(in srgb, var(--accent) 6%, transparent)",
-          }}
-        >
+        <Felt>
           <div className="relative px-2 pt-2">
             <span className="flex h-[58px] flex-wrap content-start gap-2.5 overflow-y-auto p-1">
               <AnimatePresence initial={false}>{dice}</AnimatePresence>
@@ -327,7 +322,7 @@ export function DeclarationFelt({
               {live === 0 ? "chance" : `dice · ${pct(odds.success)}`}
             </span>
           </div>
-        </div>
+        </Felt>
       </div>
 
       {/* lip fittings — the two summonable bets + Willpower's arriving dice */}
