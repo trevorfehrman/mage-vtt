@@ -749,19 +749,78 @@ export function CastCard({
               </button>
             )
           }
-          const num = (
+          // The number cell steps with its own − and + (owner, 2026-10-23:
+          // shift-click and the arrow keys were invisible); the arrow keys
+          // still work in the field. The prose cell ends in ✓ (add; Enter)
+          // and × (discard; Esc), in the shore's ink — the same × the live
+          // pill wears. The flood pill mirrors, like the live ones.
+          const stepButton = (dir: 1 | -1) => (
             <button
-              onClick={(e) => setDraft({ ...draft, count: stepTideCount(draft.count, e.shiftKey ? -1 : 1) })}
-              disabled={busy}
-              className={`flex cursor-pointer items-center whitespace-nowrap px-2 py-1 font-bold disabled:opacity-40 ${RING}`}
+              onClick={() => setDraft({ ...draft, count: stepTideCount(draft.count, dir) })}
+              disabled={busy || (dir === -1 ? draft.count <= 1 : draft.count >= TIDE_COUNT_MAX)}
+              className={`px-1.5 py-1 leading-none disabled:opacity-30 ${RING}`}
+              style={{ color: "var(--dim)" }}
+              title={dir === 1 ? "One more die (↑)" : "One fewer die (↓)"}
+            >
+              {dir === 1 ? "+" : "−"}
+            </button>
+          )
+          const num = (
+            <span
+              className="flex items-center whitespace-nowrap font-bold"
               style={{
                 color: "var(--ink)",
                 ...(side === "ebb" ? { borderRight: `1px solid ${edge}` } : { borderLeft: `1px solid ${edge}` }),
               }}
-              title="↑ ↓ step the count (click: up, shift-click: down)"
             >
-              {signedDice(tideDraftDice(draft))}
+              {stepButton(-1)}
+              <span className="px-0.5">{signedDice(tideDraftDice(draft))}</span>
+              {stepButton(1)}
+            </span>
+          )
+          const canAdd = !busy && draft.source.trim().length > 0
+          const accept = (
+            <button
+              onClick={() => void addTide()}
+              disabled={!canAdd}
+              className={`px-1.5 py-1 leading-none disabled:opacity-30 ${RING}`}
+              style={{ color: edge }}
+              title="Add this tide (Enter)"
+            >
+              ✓
             </button>
+          )
+          const discard = (
+            <button
+              onClick={() => setDraft(null)}
+              disabled={busy}
+              className={`px-1.5 py-1 leading-none opacity-70 hover:opacity-100 disabled:opacity-40 ${RING}`}
+              style={{ color: "var(--dim)" }}
+              title="Discard (Esc)"
+            >
+              ×
+            </button>
+          )
+          const field = (
+            <input
+              autoFocus
+              value={draft.source}
+              onChange={(e) => setDraft({ ...draft, source: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void addTide()
+                else if (e.key === "Escape") setDraft(null)
+                else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                  e.preventDefault()
+                  setDraft({ ...draft, count: stepTideCount(draft.count, e.key === "ArrowUp" ? 1 : -1) })
+                }
+              }}
+              disabled={busy}
+              placeholder="name it…"
+              // mv-field is the repo's text control (component-standards §6);
+              // the pill's own edge is the border, so the field's is cleared.
+              className="mv-field mv-data min-w-0 px-2 py-1 text-[12px]"
+              style={{ width: `${Math.max(10, draft.source.length + 2)}ch`, border: "none", borderRadius: 0 }}
+            />
           )
           return (
             <span
@@ -769,27 +828,21 @@ export function CastCard({
               className={shell}
               style={{ borderRadius: 11, borderColor: edge, color: "var(--ink)", background: "color-mix(in srgb, var(--panel) 88%, transparent)" }}
             >
-              {side === "ebb" && num}
-              <input
-                autoFocus
-                value={draft.source}
-                onChange={(e) => setDraft({ ...draft, source: e.target.value })}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void addTide()
-                  else if (e.key === "Escape") setDraft(null)
-                  else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-                    e.preventDefault()
-                    setDraft({ ...draft, count: stepTideCount(draft.count, e.key === "ArrowUp" ? 1 : -1) })
-                  }
-                }}
-                disabled={busy}
-                placeholder="name it…"
-                // mv-field is the repo's text control (component-standards §6);
-                // the pill's own edge is the border, so the field's is cleared.
-                className="mv-field mv-data min-w-0 px-2.5 py-1 text-[12px]"
-                style={{ width: `${Math.max(10, draft.source.length + 2)}ch`, border: "none", borderRadius: 0 }}
-              />
-              {side === "flood" && num}
+              {side === "ebb" ? (
+                <>
+                  {num}
+                  {field}
+                  {accept}
+                  {discard}
+                </>
+              ) : (
+                <>
+                  {discard}
+                  {accept}
+                  {field}
+                  {num}
+                </>
+              )}
             </span>
           )
         }
