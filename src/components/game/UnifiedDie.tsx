@@ -92,7 +92,8 @@ function PoolDie({
   arcanum,
   lit = false,
 }: PoolModeProps) {
-  const look = poolLook({ kind, ghost, lit, arcanum })
+  const input = { kind, ghost, lit, arcanum }
+  const look = poolLook(input)
   const anim = {
     layout: !reduced && glide,
     initial: { scale: 0.4, opacity: 0 },
@@ -115,7 +116,7 @@ function PoolDie({
         <ArcanaGlyph arcanum={arcanum} size={SIZE_LADDER[size].glyph} />
       </span>
     ) : null
-  const shape = `${shapeClass(size)} ${poolClass({ kind, ghost, lit }, reduced)}`.trimEnd()
+  const shape = `${shapeClass(size)} ${poolClass(input, reduced)}`.trimEnd()
   return onSkim === undefined ? (
     <motion.span {...anim} title={title} className={shape} style={style}>
       {mark}
