@@ -21,39 +21,45 @@ describe("the one diamond geometry", () => {
 })
 
 describe("pool mode (the FeltDie job)", () => {
+  const pool = (kind: Parameters<typeof poolLook>[0]["kind"], over: Partial<Parameters<typeof poolLook>[0]> = {}) =>
+    poolLook({ kind, ghost: false, lit: false, ...over })
+  const ghostOf = (kind: Parameters<typeof poolLook>[0]["kind"]) => pool(kind, { ghost: true })
+  const cls = (kind: Parameters<typeof poolClass>[0]["kind"], reduced: boolean | null, over: Partial<Parameters<typeof poolClass>[0]> = {}) =>
+    poolClass({ kind, ghost: false, lit: false, ...over }, reduced)
+
   it("colors a sheet die verdigris with a solid inside border", () => {
-    expect(poolLook("sheet", false)).toEqual({
+    expect(pool("sheet")).toEqual({
       border: "1px solid var(--accent)",
       background: "color-mix(in srgb, var(--accent) 22%, transparent)",
     })
   })
 
   it("keeps every provenance ink the felt already speaks", () => {
-    expect(poolLook("loose", false).border).toBe("1px solid var(--dim)")
-    expect(poolLook("willpower", false)).toEqual({
+    expect(pool("loose").border).toBe("1px solid var(--dim)")
+    expect(pool("willpower")).toEqual({
       border: "1px solid var(--will)",
       background: "color-mix(in srgb, var(--will) 45%, transparent)",
     })
-    expect(poolLook("arcanum", false)).toEqual(poolLook("loose", false))
+    expect(pool("arcanum")).toEqual(pool("loose"))
     // Named, an Arcanum's dice wear its Supernal realm's metal (Death → Stygia).
-    expect(poolLook("arcanum", false, "Death")).toEqual({
+    expect(pool("arcanum", { arcanum: "Death" })).toEqual({
       border: "1px solid var(--realm-stygia)",
       background: "color-mix(in srgb, var(--realm-stygia) 22%, transparent)",
     })
     // The Tides' dice are a HOLE: red rim, opaque scorch center (the one die
     // darker than the felt), the red burning in from the rim (owner 2026-10-22).
-    expect(poolLook("paradox", false)).toEqual({
+    expect(pool("paradox")).toEqual({
       border: "1px solid var(--paradox)",
       background: "var(--scorch)",
       boxShadow: "inset 0 0 3px 1px color-mix(in srgb, var(--paradox) 70%, transparent)",
     })
     // No die of the mage's carries an inset burn.
-    expect(poolLook("sheet", false).boxShadow).toBeUndefined()
-    expect(poolLook("willpower", false).boxShadow).toBeUndefined()
+    expect(pool("sheet").boxShadow).toBeUndefined()
+    expect(pool("willpower").boxShadow).toBeUndefined()
     // High Speech is white: the one ink that is no identity's.
-    expect(poolLook("highSpeech", false).border).toBe("1px solid var(--ink)")
+    expect(pool("highSpeech").border).toBe("1px solid var(--ink)")
     // Reality's base die wears the sheet's green, and is a hole too (owner 2026-10-22 evening).
-    expect(poolLook("paradoxBase", false)).toEqual({
+    expect(pool("paradoxBase")).toEqual({
       border: "1px solid var(--accent)",
       background: "var(--scorch)",
       boxShadow: "inset 0 0 3px 1px color-mix(in srgb, var(--accent) 70%, transparent)",
@@ -61,21 +67,57 @@ describe("pool mode (the FeltDie job)", () => {
   })
 
   it("reality's holes name their burn ink and breathe; ghosts and reduced-motion owners get the still burn", () => {
-    expect(poolClass("paradox", false, false)).toBe("mv-hole-paradox mv-hole-breathe")
-    expect(poolClass("paradox", false, null)).toBe("mv-hole-paradox mv-hole-breathe")
-    expect(poolClass("paradoxBase", false, false)).toBe("mv-hole-base mv-hole-breathe")
-    expect(poolClass("paradox", true, false)).toBe("mv-hole-paradox")
-    expect(poolClass("paradox", false, true)).toBe("mv-hole-paradox")
-    expect(poolClass("sheet", false, false)).toBe("")
-    expect(poolClass("willpower", false, false)).toBe("")
+    expect(cls("paradox", false)).toBe("mv-hole-paradox mv-hole-breathe")
+    expect(cls("paradox", null)).toBe("mv-hole-paradox mv-hole-breathe")
+    expect(cls("paradoxBase", false)).toBe("mv-hole-base mv-hole-breathe")
+    expect(cls("paradox", false, { ghost: true })).toBe("mv-hole-paradox")
+    expect(cls("paradox", true)).toBe("mv-hole-paradox")
+    expect(cls("sheet", false)).toBe("")
+    expect(cls("willpower", false)).toBe("")
   })
 
   it("ghosts in the die's own ink: dashed, transparent, faded", () => {
-    expect(poolLook("paradox", true)).toEqual({
+    expect(ghostOf("paradox")).toEqual({
       border: "1px dashed var(--paradox)",
       background: "transparent",
       opacity: 0.45,
     })
+  })
+
+  // MAG-16: the Cast card's group hover (2026-10-22 evening) — every die of
+  // the hovered kind glows in its own ink. The old FeltDie held this; the
+  // unified die takes it so the pre-roll rungs can move over.
+  it("lit, a die of the mage's fills deeper in its own ink and wears a ring and a glow outside the box", () => {
+    expect(pool("sheet", { lit: true })).toEqual({
+      border: "1px solid var(--accent)",
+      background: "color-mix(in srgb, var(--accent) 45%, transparent)",
+      boxShadow: "0 0 0 1px var(--accent), 0 0 8px 1px color-mix(in srgb, var(--accent) 70%, transparent)",
+    })
+    // An Arcanum's lit glow is its realm's metal, like its rim.
+    expect(pool("arcanum", { arcanum: "Forces", lit: true }).boxShadow).toBe(
+      "0 0 0 1px var(--realm-aether), 0 0 8px 1px color-mix(in srgb, var(--realm-aether) 70%, transparent)",
+    )
+  })
+
+  it("lit, a hole keeps its scorch and its inset burn and adds the same ring and glow outside", () => {
+    expect(pool("paradox", { lit: true })).toEqual({
+      border: "1px solid var(--paradox)",
+      background: "var(--scorch)",
+      boxShadow:
+        "inset 0 0 3px 1px color-mix(in srgb, var(--paradox) 70%, transparent), 0 0 0 1px var(--paradox), 0 0 8px 1px color-mix(in srgb, var(--paradox) 70%, transparent)",
+    })
+    expect(pool("paradoxBase", { lit: true }).background).toBe("var(--scorch)")
+  })
+
+  it("a ghost does not light — a price being weighed stays still and faint under the pointer", () => {
+    expect(pool("sheet", { ghost: true, lit: true })).toEqual(ghostOf("sheet"))
+    expect(pool("paradox", { ghost: true, lit: true })).toEqual(ghostOf("paradox"))
+  })
+
+  it("a lit hole holds its breath: the glow is the attention, the breathing stops", () => {
+    expect(cls("paradox", false, { lit: true })).toBe("mv-hole-paradox")
+    expect(cls("paradoxBase", null, { lit: true })).toBe("mv-hole-base")
+    expect(cls("sheet", false, { lit: true })).toBe("")
   })
 
   it("only an Arcanum's dice carry a glyph; reality's section says whose the red ones are", () => {
@@ -133,7 +175,7 @@ describe("face mode (the Die job)", () => {
   })
 
   it("ghosts with the ONE ghost recipe — a face ghost equals a pool ghost of the same ink", () => {
-    expect(face(0, { ghost: true })).toEqual(poolLook("sheet", true))
+    expect(face(0, { ghost: true })).toEqual(poolLook({ kind: "sheet", ghost: true, lit: false }))
     // A rolled Paradox face ghost keeps the outcome tone's red: a different axis
     // from the pool die's provenance neutral.
     expect(face(0, { ghost: true, tone: "paradox" })).toEqual({
