@@ -86,6 +86,7 @@ export function CastCard({
   casterSheet = null,
   moreWaiting = 0,
   onPendingMana,
+  adjust,
 }: {
   cast: CastEntry
   sessionId: Id<"sessions">
@@ -103,6 +104,11 @@ export function CastCard({
    * spell's cost from the first on-stage phase, plus the selected mitigation
    * while the commit decision is live; 0 once committed (truly spent). */
   onPendingMana?: ((mana: number) => void) | undefined
+  /** The dressing room's door (MAG-45): its cast is a fixture the server
+   * would refuse, so the rig keeps the ST's adjustments in local state and
+   * hands this in. The live route leaves it undefined and the Convex
+   * mutation runs. */
+  adjust?: ((adjustments: ReadonlyArray<ParadoxPoolModifier>) => Promise<unknown>) | undefined
 }) {
   // The machine is a projection of the document (ADR-0016): input rehydrates
   // mid-ladder, SYNC tracks every realtime update, and the card renders from
@@ -163,6 +169,11 @@ export function CastCard({
   }
 
   const step = { sessionId, castId: cast._id }
+  // Every change to the ST's adjustments goes through one door.
+  const applyAdjustments = (adjustments: ReadonlyArray<ParadoxPoolModifier>) =>
+    adjust !== undefined
+      ? adjust(adjustments)
+      : adjustPrice({ ...step, adjustments: adjustments.map((d) => ({ ...d })) })
 
   // Enter in the open pill lands the tide on the document (MAG-45: the pill
   // IS the form — the owner retired the block of chips beneath the card).
@@ -171,13 +182,7 @@ export function CastCard({
     const source = draft.source.trim()
     if (source.length === 0) return
     const ok = await run(() =>
-      adjustPrice({
-        ...step,
-        adjustments: [
-          ...(cast.adjustments ?? []).map((d) => ({ ...d })),
-          { source, dice: tideDraftDice(draft) },
-        ],
-      }),
+      applyAdjustments([...(cast.adjustments ?? []), { source, dice: tideDraftDice(draft) }]),
     )
     if (ok) setDraft((d) => (d === draft ? null : d))
   }
@@ -443,14 +448,7 @@ export function CastCard({
       ...(controls.includes("adjust")
         ? {
             onRemove: () =>
-              run(() =>
-                adjustPrice({
-                  ...step,
-                  adjustments: (cast.adjustments ?? [])
-                    .filter((_, j) => j !== i)
-                    .map((d) => ({ ...d })),
-                }),
-              ),
+              run(() => applyAdjustments((cast.adjustments ?? []).filter((_, j) => j !== i))),
           }
         : {}),
     })),
@@ -737,14 +735,27 @@ export function CastCard({
           if (!controls.includes("adjust")) return null
           const edge = tidesPillEdge(side === "ebb" ? -1 : 1)
           const shell = "mv-data inline-flex max-w-full items-stretch overflow-hidden border text-[12px] leading-none"
+          // A fresh draft on this shore. By mouse it is one press even with a
+          // draft open (owner's third look): the press lands the open one if
+          // it has a name (not through blur — mousedown is intercepted so
+          // the field never loses focus to a disabled button) and opens the
+          // new one; a keyboard activation reaches onClick after Tab's blur
+          // has already landed or discarded the old draft.
+          const openDraft = () => {
+            if (draft !== null && draft.side === side && draft.source.trim().length > 0) void addTide()
+            setDraft({ side, source: "", count: 1 })
+          }
           const skeleton = (
             <button
               key={`${side}-new`}
-              onClick={() => {
-                if (draft === null || draft.side !== side) setDraft({ side, source: "", count: 1 })
+              onMouseDown={(e) => {
+                e.preventDefault()
+                if (!busy) openDraft()
               }}
-              disabled={busy}
-              className={`${shell} px-2.5 py-1 opacity-60 hover:opacity-100 disabled:opacity-40 ${RING}`}
+              onClick={(e) => {
+                if (e.detail === 0 && !busy) openDraft()
+              }}
+              className={`${shell} px-2.5 py-1 opacity-60 hover:opacity-100 ${RING}`}
               style={{ borderRadius: 11, borderStyle: "dashed", borderColor: edge, color: "var(--dim)", background: "transparent" }}
               title={side === "ebb" ? "Name an ebb — the Tides pull back: fewer Paradox dice" : "Name a flood — the Tides rise: more Paradox dice"}
             >

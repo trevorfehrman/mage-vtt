@@ -28,6 +28,7 @@
 import { useEffect, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import type { CastEntry, MessageEntry, RollEntry } from "#/domain/activity"
+import type { ParadoxPoolModifier } from "#/domain/paradox"
 import { decodeSheet } from "#/domain/character"
 import { initialCurrentState } from "#/domain/character"
 import { arctusData } from "#/domain/fixtures/arctus"
@@ -282,7 +283,15 @@ function DressingRoom() {
   // we should ghost out the cost in the mana tracker").
   const [castPendingMana, setCastPendingMana] = useState(0)
 
-  const cast = CASTS[rung]
+  // The ST's adjustments live here, per rung (MAG-45): the fixture cast has
+  // no server document, so the card's adjust door writes local state and
+  // the Tides box, the felt and the table all move as they would live.
+  const [adjusted, setAdjusted] = useState<Partial<Record<RigRung, ReadonlyArray<ParadoxPoolModifier>>>>({})
+  const adjustments = adjusted[rung]
+  const cast: CastEntry =
+    adjustments === undefined ? CASTS[rung] : { ...CASTS[rung], adjustments }
+  const adjust = async (next: ReadonlyArray<ParadoxPoolModifier>) =>
+    setAdjusted((prev) => ({ ...prev, [rung]: next }))
   const view = SEAT_VIEW[seat]
   const mySheet = seat === "caster" ? arctusSheet : null
 
@@ -340,6 +349,7 @@ function DressingRoom() {
             // hands all three the same Arctus track.
             casterSheet={arctusSheet}
             onPendingMana={setCastPendingMana}
+            adjust={adjust}
           />
         </div>
       </ScrollArea>
