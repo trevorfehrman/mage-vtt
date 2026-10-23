@@ -17,7 +17,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { AnimatePresence, useReducedMotion } from "motion/react"
 import { BurstFaces } from "#/components/game/BurstFaces"
 import { UnifiedDie } from "#/components/game/UnifiedDie"
-import type { PoolKind } from "#/components/game/die-look"
+import type { BurstLook, PoolKind } from "#/components/game/die-look"
 
 // ── Arcana glyph set (hybrid grammar, copied from the visual-identity spec) ──
 type Arc =
@@ -536,6 +536,14 @@ const CSS = `
 // (faces under MAG-15, pool dice under MAG-16), so now it is the one die's
 // catalogue — kinds, ghosts, the lit glow, both sizes, the felts' motion.
 const POOL_KINDS: PoolKind[] = ["sheet", "loose", "willpower", "paradox", "paradoxBase"]
+const BURST_LOOKS: ReadonlyArray<readonly [BurstLook, string]> = [
+  ["plain", "Nothing but order and the explosion ring — what ships until the pick"],
+  ["hot", "The trigger is lit (the group-hover halo in its ring ink); the child wears the explosion ring"],
+  ["lean", "The trigger's halo leans toward its child, so the glow points at what it spawned"],
+  ["ripple", "The trigger is lit; the child's ring ripples — a second, fainter band outside the first"],
+  ["spark", "The trigger is lit; the child wears a spark on its top point"],
+  ["inherit", "The trigger is lit; the child's outline and ring take the trigger's fill ink, even on a miss"],
+]
 type FaceCase = { label: string; v: number; again?: number; chance?: boolean; tone?: "paradox"; ring?: "rote" | "exp"; ghost?: boolean }
 const FACE_CASES: FaceCase[] = [
   { label: "success 8", v: 8 },
@@ -616,10 +624,13 @@ function DieAudition() {
             </div>
           ))}
         </div>
-        {/* The burst (MAG-18): a 10 whose child is a 10 whose child is an 8;
-            a rote reroll's own child; a legacy orphan standing alone. */}
-        {(["md", "sm"] as const).map((size) => (
-          <div key={`burst-${size}`} className="flex flex-wrap items-center gap-2"><span className={head} title="Explosions beside their trigger, corners kissing; the orphan at the end has no recorded parent">burst · {size}</span>
+        {/* The burst lineup (MAG-18, the owner's brainstorm 2026-10-23): the
+            same roll in every row — a 10 whose child is a 10 whose child is
+            an 8, a rote reroll's own child, a legacy orphan at the end —
+            dressed six ways. The relationship rides on the dice, so a wrap
+            can't break it. `plain` is what ships until the pick. */}
+        {BURST_LOOKS.map(([look, says]) => (
+          <div key={`burst-${look}`} className="flex flex-wrap items-center gap-2"><span className={head} title={says}>burst · {look}</span>
             <BurstFaces
               className="gap-3.5"
               rolls={[10, 3, 9]}
@@ -631,8 +642,9 @@ function DieAudition() {
                 { value: 6, parentIndex: null },
               ]}
               again={10}
-              size={size}
+              size="md"
               reduced={reduced}
+              look={look}
             />
           </div>
         ))}

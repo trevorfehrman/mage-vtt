@@ -8,18 +8,15 @@ import { DieSize, FaceRing, SIZE_LADDER, UNSEEN } from "./die-look"
  * so every explosion stands beside the trigger that spawned it, and how a
  * child enters. The ORDER is the domain's (`burstClusters`, ADR-0024); this
  * file only adds what a render needs — each die's generation within its
- * cluster, the eaten ghosts trailing the row, the entrance per generation,
- * the tether's ink. `BurstFaces.tsx` lays the pixels.
+ * cluster, whether it triggered the next, the eaten ghosts trailing the
+ * row, the entrance per generation. How a trigger and a child DRESS is
+ * `die-look.ts`'s (`BurstDress`): the relationship rides on the dice, not
+ * the gap, so it survives a row wrap (owner, 2026-10-23). `BurstFaces.tsx`
+ * lays the pixels.
  */
 
-/**
- * The tether between a trigger and its child, in px: exactly the diamond's
- * corner overhang (a box rotated 45° overhangs each side by px·(√2−1)/2,
- * two sides between two dice), so a chain's corners KISS — touching, never
- * crossing (the owner's overlap flag, MAG-19) — while the row's own gap
- * stays visibly wider. The hairline beneath is what shows when they part.
- */
-export const tetherPx = (size: DieSize): number => Math.round(SIZE_LADDER[size].px * (Math.SQRT2 - 1))
+/** The row's gap a child springs across — one box and a gap to its left is where its trigger stands. */
+const FELT_GAP = 12
 /** One beat of the chain: each generation springs out this much later (s). */
 export const BURST_BEAT = 0.09
 
@@ -37,6 +34,8 @@ export const BurstFace = Schema.Struct({
   ring: Schema.optionalKey(FaceRing),
   /** Only a base roll can be the chance die (chance dice never explode). */
   chance: Schema.Boolean,
+  /** This die spawned the next die in its cluster. */
+  trigger: Schema.Boolean,
 })
 export type BurstFace = typeof BurstFace.Type
 
@@ -79,9 +78,10 @@ export const burstPlan = ({ rolls, roteRerolls, explosions, eaten, contained, ch
     ).indices
   const faces = clusters.map((cluster) =>
     cluster.map(
-      (die): BurstFace => ({
+      (die, at): BurstFace => ({
         ...die,
         ghost: absorbed.includes(die.index),
+        trigger: at < cluster.length - 1,
         ...dressing(die.kind, chance),
       }),
     ),
@@ -91,7 +91,7 @@ export const burstPlan = ({ rolls, roteRerolls, explosions, eaten, contained, ch
   const ghosts =
     eaten > 0
       ? Arr.makeBy(eaten, (i): Array<BurstFace> => [
-          { value: 0, index: combined + i, kind: "eaten", generation: 0, ghost: true, chance: false },
+          { value: 0, index: combined + i, kind: "eaten", generation: 0, ghost: true, chance: false, trigger: false },
         ])
       : []
   return [...faces, ...ghosts]
@@ -138,7 +138,7 @@ export const burstEntrance = (generation: number, size: DieSize, reduced: boolea
   generation === 0 || reduced === true
     ? { initial: false, animate: STANDING, transition: { duration: 0 } }
     : {
-        initial: { x: -(SIZE_LADDER[size].px + tetherPx(size)), ...UNSEEN },
+        initial: { x: -(SIZE_LADDER[size].px + FELT_GAP), ...UNSEEN },
         animate: STANDING,
         transition: { ...entranceSpring, delay: BURST_BEAT * (generation - 1) },
       }

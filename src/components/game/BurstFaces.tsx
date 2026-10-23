@@ -2,19 +2,22 @@ import { Fragment } from "react"
 import { Schema } from "effect"
 import { motion } from "motion/react"
 import { Explosion } from "#/domain/dice"
-import { burstEntrance, burstPlan, tetherPx } from "./burst-look"
-import { DieSize, FaceTone, ringInk } from "./die-look"
+import { burstEntrance, burstPlan } from "./burst-look"
+import { BurstLook, DieSize, FaceTone } from "./die-look"
 import { UnifiedDie } from "./UnifiedDie"
 
 /**
  * A rolled row drawn in the burst order (MAG-18): every explosion stands
- * beside the trigger that spawned it, tethered by a hairline in the
- * trigger's ink, and springs out of it on arrival — generation by
- * generation, so a ten-again reads as cause and effect on every seat. The
- * Chronicle's roll cards and the Cast card's two resolved rows all draw
- * through here; the rules are `burst-look.ts`'s and the order is the
- * domain's (`burstClusters`). Legacy casts with no recorded parent get the
- * inline render they always had — single dice, no tether, no motion.
+ * beside the trigger that spawned it, at the row's own gap, dressed for its
+ * part (`BurstDress` in die-look: the trigger lit, the child marked — the
+ * lineup the owner is choosing from), and springs out of it on arrival —
+ * generation by generation, so a ten-again reads as cause and effect on
+ * every seat. A cluster is `display: contents`, so the row wraps die by die
+ * like any other and the relationship rides on the dice. The Chronicle's
+ * roll cards and the Cast card's two resolved rows all draw through here;
+ * the rules are `burst-look.ts`'s and the order is the domain's
+ * (`burstClusters`). Legacy casts with no recorded parent get the inline
+ * render they always had — single dice, undressed, no motion.
  */
 const BurstFacesProps = Schema.Struct({
   rolls: Schema.Array(Schema.Number),
@@ -34,6 +37,8 @@ const BurstFacesProps = Schema.Struct({
   eaten: Schema.optional(Schema.Number),
   /** The row's gap and padding — the caller's felt sets them. */
   className: Schema.optional(Schema.String),
+  /** How a trigger and its child dress (the lineup; `plain` until the owner picks). */
+  look: Schema.optional(BurstLook),
 })
 type BurstFacesProps = typeof BurstFacesProps.Type
 
@@ -50,17 +55,16 @@ export function BurstFaces({
   ghostTitle,
   eaten = 0,
   className,
+  look = "plain",
 }: BurstFacesProps) {
   const plan = burstPlan({ rolls, roteRerolls, explosions, eaten, contained, chance })
-  const ink = ringInk(tone)
-  const tether = tetherPx(size)
   return (
     <div className={`flex flex-wrap content-start ${className ?? ""}`.trimEnd()}>
       {plan.map((cluster) => (
         <span
           key={cluster[0]!.index}
           data-burst={cluster.length > 1 ? "chain" : "one"}
-          className="inline-flex items-center"
+          className="contents"
         >
           {cluster.map((die) => {
             const entrance = burstEntrance(die.generation, size, reduced)
@@ -68,13 +72,6 @@ export function BurstFaces({
             const ghost = die.ghost
             return (
               <Fragment key={die.index}>
-                {die.generation > 0 && (
-                  <span
-                    aria-hidden
-                    data-tether
-                    style={{ width: tether, height: 1, background: ink, flex: "none" }}
-                  />
-                )}
                 <motion.span
                   data-generation={die.generation}
                   style={{ display: "inline-grid" }}
@@ -91,6 +88,7 @@ export function BurstFaces({
                     ghost={ghost}
                     {...(tone !== undefined ? { tone } : {})}
                     {...(die.ring !== undefined ? { ring: die.ring } : {})}
+                    burst={{ trigger: die.trigger, child: die.generation > 0, look }}
                     {...(ghost && !eatenDie && ghostTitle !== undefined ? { title: ghostTitle } : {})}
                   />
                 </motion.span>

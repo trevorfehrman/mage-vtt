@@ -210,6 +210,24 @@ export type FaceTone = typeof FaceTone.Type
 export const FaceRing = Schema.Literals(["rote", "exp"])
 export type FaceRing = typeof FaceRing.Type
 
+/**
+ * The burst lineup (MAG-18, the owner's brainstorm 2026-10-23): the
+ * relationship between a trigger and the die it spawned rides on the DICE,
+ * not the gap, so it survives a row wrap. `plain` is the neutral look the
+ * felts ship with until the owner picks; the rest are auditioned side by
+ * side on the polish route. Every look but `plain` lights the trigger.
+ */
+export const BurstLook = Schema.Literals(["plain", "hot", "lean", "ripple", "spark", "inherit"])
+export type BurstLook = typeof BurstLook.Type
+
+/** A die's part in a burst: a trigger spawned the next die, a child was spawned; a chain link is both. */
+export const BurstDress = Schema.Struct({
+  trigger: Schema.Boolean,
+  child: Schema.Boolean,
+  look: BurstLook,
+})
+export type BurstDress = typeof BurstDress.Type
+
 export const FaceInput = Schema.Struct({
   v: Schema.Number,
   again: Schema.Number,
@@ -220,6 +238,7 @@ export const FaceInput = Schema.Struct({
   tone: Schema.optional(FaceTone),
   ring: Schema.optional(FaceRing),
   ghost: Schema.Boolean,
+  burst: Schema.optional(BurstDress),
 })
 export type FaceInput = typeof FaceInput.Type
 
@@ -250,7 +269,7 @@ export const ringInk = (tone: FaceTone | undefined): string => faceInks(tone).ri
  * burns --bad, successes fill, misses keep a faint outline so the row reads
  * as every die thrown, and explosive faces ring outside the box.
  */
-export const faceLook = ({ v, again, chance, tone, ring, ghost }: FaceInput): DieLook => {
+export const faceLook = ({ v, again, chance, tone, ring, ghost, burst }: FaceInput): DieLook => {
   const inks = faceInks(tone)
   if (ghost) return ghostLook(inks.ring)
   const body = Match.value(v).pipe(
@@ -273,5 +292,39 @@ export const faceLook = ({ v, again, chance, tone, ring, ghost }: FaceInput): Di
     Match.when("exp", () => `0 0 0 1px ${inks.ring}`),
     Match.orElse(() => (isDieExplosive(v, again, chance) ? `0 0 0 1px ${inks.ring}` : undefined)),
   )
-  return halo === undefined ? body : { ...body, boxShadow: halo }
+  const bare = halo === undefined ? body : { ...body, boxShadow: halo }
+  return burst === undefined ? bare : burstDress(bare, burst, inks)
 }
+
+/** The lit halo leaning toward the die's right — the child's side. */
+const leanHalo = (ink: string): string => `0 0 0 1px ${ink}, 7px 0 10px 1px ${dilute(ink, 70)}`
+/** A child's rippled ring: the ring, then a wider faint band of it. */
+const rippleRing = (ink: string): string => `0 0 0 1px ${ink}, 0 0 0 3px ${dilute(ink, 30)}`
+
+/**
+ * Dress a face for its part in a burst (a ghost never dresses — the ghost
+ * is the whole statement). The trigger side first, then the child side;
+ * a chain link takes both.
+ */
+const burstDress = (
+  look: DieLook,
+  { trigger, child, look: variant }: BurstDress,
+  inks: ReturnType<typeof faceInks>,
+): DieLook => {
+  const lit = Match.value(variant).pipe(
+    Match.when("plain", () => look),
+    Match.when("lean", () => (trigger ? { ...look, boxShadow: leanHalo(inks.ring) } : look)),
+    Match.orElse(() => (trigger ? { ...look, boxShadow: litHalo(inks.ring) } : look)),
+  )
+  return Match.value(variant).pipe(
+    Match.when("ripple", () => (child ? { ...lit, boxShadow: rippleRing(inks.ring) } : lit)),
+    Match.when("inherit", () =>
+      child ? { ...lit, border: `1px solid ${inks.success}`, boxShadow: `0 0 0 1px ${inks.success}` } : lit,
+    ),
+    Match.orElse(() => lit),
+  )
+}
+
+/** What stands beside the face beyond its look: the spark at a child's top corner. */
+export const faceMark = (burst: BurstDress | undefined, ghost: boolean): "spark" | undefined =>
+  burst !== undefined && burst.child && burst.look === "spark" && !ghost ? "spark" : undefined

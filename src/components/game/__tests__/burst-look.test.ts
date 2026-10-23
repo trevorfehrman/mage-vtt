@@ -1,11 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
-import {
-  BURST_BEAT,
-  burstEntrance,
-  burstPlan,
-  tetherPx,
-} from "#/components/game/burst-look"
-import { ringInk } from "#/components/game/die-look"
+import { BURST_BEAT, burstEntrance, burstPlan } from "#/components/game/burst-look"
+import { faceLook, faceMark, ringInk } from "#/components/game/die-look"
 import { entranceSpring } from "#/components/ui/entrance"
 
 /**
@@ -27,12 +22,12 @@ describe("burstPlan", () => {
     })
     expect(plan).toEqual([
       [
-        { value: 10, index: 0, kind: "roll", generation: 0, ghost: false, chance: false },
-        { value: 10, index: 2, kind: "explosion", generation: 1, ghost: false, chance: false, ring: "exp" },
-        { value: 8, index: 3, kind: "explosion", generation: 2, ghost: false, chance: false, ring: "exp" },
+        { value: 10, index: 0, kind: "roll", generation: 0, ghost: false, chance: false, trigger: true },
+        { value: 10, index: 2, kind: "explosion", generation: 1, ghost: false, chance: false, ring: "exp", trigger: true },
+        { value: 8, index: 3, kind: "explosion", generation: 2, ghost: false, chance: false, ring: "exp", trigger: false },
       ],
-      [{ value: 3, index: 1, kind: "roll", generation: 0, ghost: false, chance: false }],
-      [{ value: 0, index: 4, kind: "eaten", generation: 0, ghost: true, chance: false }],
+      [{ value: 3, index: 1, kind: "roll", generation: 0, ghost: false, chance: false, trigger: false }],
+      [{ value: 0, index: 4, kind: "eaten", generation: 0, ghost: true, chance: false, trigger: false }],
     ])
   })
 
@@ -70,9 +65,9 @@ describe("burstPlan", () => {
       chance: false,
     })
     expect(plan).toEqual([
-      [{ value: 10, index: 0, kind: "roll", generation: 0, ghost: false, chance: false }],
-      [{ value: 7, index: 1, kind: "rote", generation: 0, ghost: false, chance: false, ring: "rote" }],
-      [{ value: 9, index: 2, kind: "explosion", generation: 0, ghost: false, chance: false, ring: "exp" }],
+      [{ value: 10, index: 0, kind: "roll", generation: 0, ghost: false, chance: false, trigger: false }],
+      [{ value: 7, index: 1, kind: "rote", generation: 0, ghost: false, chance: false, ring: "rote", trigger: false }],
+      [{ value: 9, index: 2, kind: "explosion", generation: 0, ghost: false, chance: false, ring: "exp", trigger: false }],
     ])
   })
 })
@@ -84,12 +79,12 @@ describe("burstEntrance", () => {
     expect(base.transition).toEqual({ duration: 0 })
 
     const first = burstEntrance(1, "sm", false)
-    expect(first.initial).toEqual({ x: -(20 + tetherPx("sm")), scale: 0.4, opacity: 0 })
+    expect(first.initial).toEqual({ x: -(20 + 12), scale: 0.4, opacity: 0 })
     expect(first.animate).toEqual({ x: 0, scale: 1, opacity: 1 })
     expect(first.transition).toEqual({ ...entranceSpring, delay: 0 })
 
     const second = burstEntrance(2, "md", false)
-    expect(second.initial).toEqual({ x: -(24 + tetherPx("md")), scale: 0.4, opacity: 0 })
+    expect(second.initial).toEqual({ x: -(24 + 12), scale: 0.4, opacity: 0 })
     expect(second.transition).toEqual({ ...entranceSpring, delay: BURST_BEAT })
   })
 
@@ -101,17 +96,31 @@ describe("burstEntrance", () => {
   })
 })
 
-describe("tetherPx", () => {
-  it("is the diamond's corner overhang, so a chain's corners kiss and never cross", () => {
-    // 20·(√2−1) ≈ 8.3 → 8; 24·(√2−1) ≈ 9.9 → 10.
-    expect(tetherPx("sm")).toBe(8)
-    expect(tetherPx("md")).toBe(10)
+describe("burst dressing (the lineup)", () => {
+  const face = { v: 10, again: 10, chance: false, ghost: false } as const
+  const bare = faceLook(face)
+  it("plain dresses nothing; every other look lights the trigger in its ring ink", () => {
+    expect(faceLook({ ...face, burst: { trigger: true, child: false, look: "plain" } })).toEqual(bare)
+    for (const look of ["hot", "ripple", "spark", "inherit"] as const) {
+      const lit = faceLook({ ...face, burst: { trigger: true, child: false, look } })
+      expect(lit.boxShadow, look).toContain("0 0 8px 1px")
+      expect(lit.boxShadow, look).toContain(ringInk(undefined))
+    }
+    const lean = faceLook({ ...face, burst: { trigger: true, child: false, look: "lean" } })
+    expect(lean.boxShadow).toContain("7px 0 10px")
   })
-})
-
-describe("ringInk", () => {
-  it("is the face's ring ink, and so the tether's", () => {
-    expect(ringInk(undefined)).toBe("var(--accent)")
-    expect(ringInk("paradox")).toBe("var(--paradox)")
+  it("a child is marked by its look: a rippled ring, the trigger's ink handed down, or a spark", () => {
+    const miss = { v: 3, again: 10, chance: false, ghost: false } as const
+    expect(faceLook({ ...miss, burst: { trigger: false, child: true, look: "ripple" } }).boxShadow).toContain("0 0 0 3px")
+    const handed = faceLook({ ...miss, burst: { trigger: false, child: true, look: "inherit" } })
+    expect(handed.border).toBe("1px solid var(--rail-success)")
+    expect(faceMark({ trigger: false, child: true, look: "spark" }, false)).toBe("spark")
+    expect(faceMark({ trigger: false, child: true, look: "hot" }, false)).toBeUndefined()
+    expect(faceMark({ trigger: true, child: false, look: "spark" }, false)).toBeUndefined()
+  })
+  it("a ghost never dresses", () => {
+    const ghost = { v: 10, again: 10, chance: false, ghost: true } as const
+    expect(faceLook({ ...ghost, burst: { trigger: true, child: true, look: "hot" } })).toEqual(faceLook(ghost))
+    expect(faceMark({ trigger: false, child: true, look: "spark" }, true)).toBeUndefined()
   })
 })

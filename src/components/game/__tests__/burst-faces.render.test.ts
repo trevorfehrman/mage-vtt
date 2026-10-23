@@ -15,7 +15,7 @@ const values = (root: ParentNode) =>
   [...root.querySelectorAll("[data-face]")].map((d) => d.textContent)
 
 describe("BurstFaces", () => {
-  it("draws a chain as one cluster, each child tethered to the die before it", () => {
+  it("draws a chain as one cluster, each child a generation on from the die before it", () => {
     const { container } = render(
       createElement(BurstFaces, {
         rolls: [10, 3],
@@ -31,14 +31,30 @@ describe("BurstFaces", () => {
     const clusters = [...container.querySelectorAll("[data-burst]")]
     expect(clusters.map((c) => c.getAttribute("data-burst"))).toEqual(["chain", "one"])
     expect(values(clusters[0]!)).toEqual(["10", "10", "8"])
-    expect(clusters[0]!.querySelectorAll("[data-tether]")).toHaveLength(2)
     expect(
       [...clusters[0]!.querySelectorAll("[data-generation]")].map((d) => d.getAttribute("data-generation")),
     ).toEqual(["0", "1", "2"])
-    expect(clusters[1]!.querySelectorAll("[data-tether]")).toHaveLength(0)
   })
 
-  it("legacy parentless explosions fall back to the inline render, no tethers", () => {
+  it("dresses the dice for their parts under a look: the trigger lit, the child marked", () => {
+    const { container } = render(
+      createElement(BurstFaces, {
+        rolls: [10, 3],
+        roteRerolls: [],
+        explosions: [{ value: 6, parentIndex: 0 }],
+        again: 10,
+        reduced: true,
+        look: "spark",
+      }),
+    )
+    const faces = [...container.querySelectorAll("[data-face]")] as HTMLElement[]
+    expect(faces[0]!.style.boxShadow).toContain("0 0 8px 1px")
+    expect(faces[1]!.querySelector('[data-mark="spark"]')).not.toBeNull()
+    expect(faces[2]!.style.boxShadow).toBe("")
+    expect(faces[2]!.querySelector("[data-mark]")).toBeNull()
+  })
+
+  it("legacy parentless explosions fall back to the inline render, undressed", () => {
     const { container } = render(
       createElement(BurstFaces, {
         rolls: [10, 8],
@@ -52,7 +68,6 @@ describe("BurstFaces", () => {
       }),
     )
     expect(values(container)).toEqual(["10", "8", "7", "9"])
-    expect(container.querySelectorAll("[data-tether]")).toHaveLength(0)
     expect([...container.querySelectorAll("[data-burst]")].every((c) => c.getAttribute("data-burst") === "one")).toBe(true)
   })
 
