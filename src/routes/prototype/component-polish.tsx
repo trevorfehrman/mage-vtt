@@ -399,7 +399,7 @@ function RollCard({ e }: { e: RollLog }) {
         <span className="cp-data text-[24px] font-bold leading-none" style={{ color: e.successes > 0 ? "var(--accent)" : "var(--dim)" }}>{e.successes}</span>
         <span className="text-[11px]" style={{ color: "var(--dim)" }}>{e.successes === 1 ? "success" : "successes"} · {e.chance ? "chance die" : `${e.poolSize} dice`}{e.rote ? " · rote" : ""}</span>
       </div>
-      <div className="mt-1.5 flex flex-wrap gap-1">
+      <div className="mt-1.5 flex flex-wrap gap-3">
         {/* The roll card's faces are the unified die (MAG-19): the route's
             private square Die retired with it — the last die in the app that
             was not the one die. */}
