@@ -899,8 +899,8 @@ export const cancelCast = Effect.fn("Flows.vulgarCast.cancelCast")(function* (
  * stamped successes flip its phase to the caster's cockpit, zero included
  * (nothing to contain is still the caster's release to click). The roll's
  * faces stamp onto the Cast document like the release's (the 2026-07-19
- * polish, note 5) — no roll entry lands beside the live card, so a
- * spectator's feed carries exactly one artifact per cast; the card renders
+ * polish, note 5) — no roll entry lands beside the live card, so every
+ * seat sees exactly one artifact per cast; the card renders
  * the faces and speaks the dramatic-failure grace itself.
  */
 export const rollParadox = Effect.fn("Flows.vulgarCast.rollParadox")(function* (

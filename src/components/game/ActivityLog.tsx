@@ -150,7 +150,8 @@ export function ActivityLog({
                     isStoryteller={isStoryteller}
                     viewerUserId={viewerUserId}
                     mySheet={mySheet}
-                    // the cockpit is a live rung's; the record needs no track
+                    // Only a live Paradox rung reads the caster's health
+                    // track (the cockpit); the feed shows records alone.
                     casterSheet={null}
                   />
                 ),

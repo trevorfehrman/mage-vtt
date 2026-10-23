@@ -45,8 +45,9 @@ import type { Id } from "../../../convex/_generated/dataModel"
  * 2026-07-19): a projection of the Cast document — one artifact rendered by
  * seat. While the cast is live it IS the caster's and the Storyteller's roll
  * zones (the vulgar UI is the card, standing where the dice roller was, with
- * every control the seat needs — engage/decline included); the Activity feed
- * carries it only for spectators. The XState machine mirrors the subscribed
+ * every control the seat needs — engage/decline included); every other seat
+ * sees it pinned above their own tray (MAG-46), and the Activity feed carries
+ * only the record, once it resolves. The XState machine mirrors the subscribed
  * document (rehydrating mid-ladder on reload is just "render the snapshot");
  * every button is a Convex mutation whose refusal surfaces inline in table
  * language (ADR-0010).
@@ -124,7 +125,7 @@ export function CastCard({
   const isCaster = cast.casterUserId === viewerUserId
   // The full vocabulary, engage/decline included (card takeover, 2026-07-19):
   // the card is the ST's roll zone now, so the offer's decision lives on it —
-  // and the feed hides the live card from the ST, so it never doubles.
+  // and no feed carries a live card (MAG-46), so it never doubles.
   const controls = ladderControls(cast, { isStoryteller, isCaster })
 
   const engage = useMutation(api.casts.engage)

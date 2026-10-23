@@ -54,9 +54,10 @@ const rollEntry = (r: Doc<"diceRolls">) => ({
   ...(r.override !== undefined && { override: r.override }),
 })
 
-// The live Cast card (issue #43, ADR-0016): the whole document, projected —
-// the card is a live feed item climbing its ladder in place, timestamped by
-// `updatedAt` so it rides at the action's edge. All Casts are public.
+// The Cast card (issue #43, ADR-0016): the whole document, projected. While
+// live it climbs its ladder in place in the roll zones and the pinned slot,
+// never the feed (MAG-46); `updatedAt` places the resolved record in the
+// feed, `_creationTime` orders the pinned live casts. All Casts are public.
 const castEntry = (c: Doc<"casts">) => {
   const {
     _id,

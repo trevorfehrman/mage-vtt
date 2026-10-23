@@ -326,8 +326,8 @@ export const CastDoc = Schema.Struct({
   manaMitigation: Schema.optionalKey(Schema.Number),
   // The Paradox roll — stamped mid-rung; its presence flips the phase. The
   // roll's faces ride the document too (the 2026-07-19 polish, note 5: the
-  // same resolution-merge treatment as the release), so a spectator's feed
-  // carries the one live card and no roll entry beside it. Rows rolled
+  // same resolution-merge treatment as the release), so the table sees the
+  // one card and no roll entry beside it. Rows rolled
   // before the merge carry only successes; the card renders what's there.
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
   paradoxRolls: Schema.optionalKey(Schema.Array(Schema.Number)),

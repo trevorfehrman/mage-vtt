@@ -161,7 +161,7 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   manaMitigation: Schema.optionalKey(Schema.Number),
   // The Paradox roll — stamped mid-rung; its presence flips the phase. Its
   // faces ride the document like the release's (the 2026-07-19 polish,
-  // note 5): one live card in the feed, no roll entry beside it. Rows
+  // note 5): one card, no roll entry beside it. Rows
   // rolled before the merge carry only successes.
   paradoxSuccesses: Schema.optionalKey(Schema.Number),
   paradoxRolls: Schema.optionalKey(Schema.Array(Schema.Number)),

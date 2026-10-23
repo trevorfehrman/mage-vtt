@@ -210,7 +210,13 @@ export function SessionLayout({
             {/* A live cast holds still (MAG-46): pinned below the Chronicle's
                 chat and rolls, above the viewer's own tray — a fixed slot,
                 never a feed entry. Empty when no one else is casting. */}
-            {liveCasts}
+            {liveCasts && (
+              // capped so a stack of casts never squeezes the Chronicle out;
+              // inline, so the cap holds under a running dev server
+              <div className="shrink-0 overflow-y-auto" style={{ maxHeight: "60%" }}>
+                {liveCasts}
+              </div>
+            )}
             {/* Dice pool — foot of the rail, above chat. The memory/judgment
                 boundary (styles.css): the panel ends with the Chronicle and
                 the working zone stands on the void — postures wear the

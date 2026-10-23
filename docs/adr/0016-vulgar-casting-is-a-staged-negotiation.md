@@ -8,6 +8,11 @@
 > refinement. The Cast document as single source of truth, the exclusive
 > stage, no timeouts, and void-anytime all stand.
 
+> **Amended by ADR-0022** (2026-10-23, MAG-46): the live Cast card is no
+> longer "in the Activity feed" for anyone. It is the caster's and the
+> Storyteller's roll zone, and every other seat sees it pinned between the
+> Activity Log and their own tray; only the resolved record is a feed entry.
+
 Vulgar casting is modeled as a first-class **Cast** document walking a status
 ladder, with one Convex mutation per dramatic beat:
 
