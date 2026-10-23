@@ -594,13 +594,24 @@ export function CastCard({
         </div>
       )}
 
-      {/* The weather ABOVE the felt (the badges work, 2026-10-22 evening):
-          the ST's named circumstances as two-part pills — the prose, a rule,
-          the number — red rising, verdigris pulling back. Storytelling first:
-          these are new every cast and the player reads them before the dice. */}
+      {/* The Tides, a section of their own (owner, 2026-10-22 late): the
+          ST's named circumstances as two-part pills — the prose, a rule, the
+          number — red rising, verdigris pulling back. This is the ST setting
+          the stage: the premise of the beat, declared to the player, read
+          before the dice. It stands apart from the ladder above (a hairline)
+          and the felt below (which keeps the only box and tinted ground on
+          the card — the felt stays the star), under the felt's own eyebrow
+          grammar so it reads as a named area, not a stray row of chips. */}
       {weather.length > 0 && (
         <TooltipProvider>
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-2.5 border-t pt-2" style={{ borderColor: "var(--line)" }}>
+        <div
+          className="mv-data text-[9px] uppercase tracking-[0.18em]"
+          style={{ color: "var(--dim)" }}
+        >
+          tides
+        </div>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
           {weather.map(({ modifier, onRemove }, i) => {
             const ebb = modifier.dice < 0
             const tint = ebb ? "var(--accent)" : "var(--paradox)"
@@ -635,6 +646,7 @@ export function CastCard({
               </Tooltip>
             )
           })}
+        </div>
         </div>
         </TooltipProvider>
       )}
@@ -1026,10 +1038,10 @@ export function CastCard({
           {controls.includes("commit") && (
             // The spend rides IN the button (pass 3, note 4 — reversing pass
             // 2's glyph column): "Commit 2 ◈" with the count and glyph in
-            // Mana's blue, bare on the trigger (the dark inset and the minus
-            // retired by the owner, 2026-10-22). The precommitted Willpower
-            // point follows in Will's own color, wearing the Mana glyph
-            // shape (note 12) — the hue is the only difference between the two.
+            // the button's own ink, bare on the trigger (the dark inset, the
+            // minus and the blue retired by the owner, 2026-10-22 — the blue
+            // did not read on verdigris). The precommitted Willpower point
+            // follows wearing the Mana glyph shape (note 12).
             <button
               onClick={() =>
                 run(() => commit({ ...step, manaMitigation: mitigation }))
@@ -1040,12 +1052,13 @@ export function CastCard({
             >
               Commit
               {/* The spend, bare (owner, 2026-10-22): "Commit 2 ◈" — the
-                  count and Mana's glyph in Mana's blue, no minus, no inset.
-                  Willpower's point follows in its own hue, same shape. */}
+                  count and Mana's glyph in the button's own ink ("the same
+                  black as the text — this doesn't read at all" in Mana's
+                  blue on verdigris), no minus, no inset. Willpower's point
+                  follows the same way; the titles say which is which. */}
               {pendingManaNow > 0 && (
                 <b
                   className="mv-data leading-none"
-                  style={{ color: "var(--mana)" }}
                   title="The Mana this commit spends — spell cost plus the selected mitigation"
                 >
                   {pendingManaNow} ◈
@@ -1054,7 +1067,6 @@ export function CastCard({
               {cast.spendWillpower && (
                 <b
                   className="mv-data leading-none"
-                  style={{ color: "var(--will)" }}
                   title="The precommitted Willpower point — it spends at the commit"
                 >
                   1 ◈
