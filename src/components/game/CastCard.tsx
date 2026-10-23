@@ -351,7 +351,7 @@ export function CastCard({
               glide={false}
               ghosted={ghosted}
               lit={litKind === kind}
-              title=""
+             
             />
           </span>
         </TooltipTrigger>
@@ -432,15 +432,14 @@ export function CastCard({
   // it pulls: red for what adds Paradox dice, verdigris for what takes them.
   const seeded = cast.tides !== undefined
   const count = (n: number | undefined) => (n === undefined ? "—" : String(n))
-  const tidesNet = weather.reduce((sum, w) => sum + w.modifier.dice, 0)
-  const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "0")
+  const tidesNet = tidesWeight(weather.map((w) => w.modifier)).net
   const instruments: ReadonlyArray<{ key: string; glyph: ReactNode; value: string | null; ink: string; says: string }> = [
     {
       key: "tides",
       glyph: <TidesGlyph size={13} />,
-      value: signed(tidesNet),
-      ink: tidesNet > 0 ? "var(--paradox)" : tidesNet < 0 ? "var(--accent)" : "var(--dim)",
-      says: `Tides: ${signed(tidesNet)}`,
+      value: signedDice(tidesNet),
+      ink: tidesNetInk(tidesNet),
+      says: `Tides: ${signedDice(tidesNet)}`,
     },
     {
       key: "sleepers",
@@ -677,7 +676,7 @@ export function CastCard({
               >
                 <span>tides</span>
                 <span className="text-[12px] normal-case tracking-normal" style={{ color: tidesNetInk(net) }}>
-                  ≈ {net === 0 ? "0" : signedDice(net)}
+                  ≈ {signedDice(net)}
                 </span>
               </div>
               <div className="mt-2 flex items-end justify-between gap-3">
@@ -781,7 +780,7 @@ export function CastCard({
                           glide={false}
                           ghosted={ghosted}
                           lit={litKind === kind}
-                          title=""
+                         
                         />
                       </span>
                     </TooltipTrigger>
@@ -799,7 +798,7 @@ export function CastCard({
                 <Tooltip key="paradox:chance">
                   <TooltipTrigger asChild>
                     <span className="grid size-[20px] place-items-center">
-                      <FeltDie kind="paradox" ghosted reduced={reduced} glide={false} title="" />
+                      <FeltDie kind="paradox" ghosted reduced={reduced} glide={false} />
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="top" sideOffset={4}>No pool: chance die</TooltipContent>

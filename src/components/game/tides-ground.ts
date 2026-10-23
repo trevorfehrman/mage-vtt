@@ -14,6 +14,7 @@
  * inks from mixing into brown: they go dark before they meet.
  */
 
+import { Schema } from "effect"
 import type { ParadoxPoolModifier } from "#/domain/paradox"
 
 const EBB = "var(--accent)"
@@ -25,36 +26,62 @@ const EBB_BOOST = 1.7
 
 const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x))
 const mix = (ink: string, pct: number) => `color-mix(in srgb, ${ink} ${pct}%, transparent)`
+/** A side at zero weight paints nothing — never its ink at 0%. */
 const mixSide = (ink: string, pct: number) =>
-  mix(ink, ink === EBB ? Math.min(pct * EBB_BOOST, 40) : pct)
+  pct <= 0 ? "transparent" : mix(ink, ink === EBB ? Math.min(pct * EBB_BOOST, 40) : pct)
 
 /** The weather summed: ebb and flood weights (both ≥ 0) and the net. */
-export const tidesWeight = (
-  mods: ReadonlyArray<ParadoxPoolModifier>,
-): { ebb: number; flood: number; net: number } => {
+export const TidesWeight = Schema.Struct({
+  ebb: Schema.Number,
+  flood: Schema.Number,
+  net: Schema.Number,
+})
+export type TidesWeight = typeof TidesWeight.Type
+
+export const tidesWeight = (mods: ReadonlyArray<ParadoxPoolModifier>): TidesWeight => {
   const ebb = mods.filter((m) => m.dice < 0).reduce((s, m) => s + Math.abs(m.dice), 0)
   const flood = mods.filter((m) => m.dice > 0).reduce((s, m) => s + m.dice, 0)
   return { ebb, flood, net: flood - ebb }
 }
 
+/**
+ * The ground's numbers, before any CSS: where the seam sits (percent of the
+ * box's width, from the left; clamped so neither edge is ever reached) and
+ * each side's alpha (percent; zero when the side has no weight).
+ */
+export const TidesSeam = Schema.Struct({
+  seam: Schema.Number,
+  ebbAlpha: Schema.Number,
+  floodAlpha: Schema.Number,
+})
+export type TidesSeam = typeof TidesSeam.Type
+
+export const tidesSeam = (mods: ReadonlyArray<ParadoxPoolModifier>): TidesSeam => {
+  const { ebb, flood, net } = tidesWeight(mods)
+  return {
+    seam: clamp(50 - net * 9, 4, 96),
+    ebbAlpha: ebb === 0 ? 0 : clamp(8 + ebb * 3.5, 8, 22),
+    floodAlpha: flood === 0 ? 0 : clamp(8 + flood * 3.5, 8, 22),
+  }
+}
+
 /** The box's CSS background, or undefined when there is no weather. */
 export const tidesGround = (mods: ReadonlyArray<ParadoxPoolModifier>): string | undefined => {
-  const { ebb, flood, net } = tidesWeight(mods)
-  if (ebb === 0 && flood === 0) return undefined
-  const x = clamp(50 - net * 9, 4, 96)
-  const aE = ebb === 0 ? 0 : clamp(8 + ebb * 3.5, 8, 22)
-  const aF = flood === 0 ? 0 : clamp(8 + flood * 3.5, 8, 22)
+  const { seam, ebbAlpha, floodAlpha } = tidesSeam(mods)
+  if (ebbAlpha === 0 && floodAlpha === 0) return undefined
   return [
     // the tilt: green's weight lives mostly in a wash from the top-left
     // corner, red's in one from the bottom-right, both stopping short of
     // the seam
-    ...(ebb > 0
-      ? [`linear-gradient(150deg, ${mixSide(EBB, aE * 1.1)} 0%, ${mixSide(EBB, aE * 0.45)} 34%, transparent 60%)`]
+    ...(ebbAlpha > 0
+      ? [`linear-gradient(150deg, ${mixSide(EBB, ebbAlpha * 1.1)} 0%, ${mixSide(EBB, ebbAlpha * 0.45)} 34%, transparent 60%)`]
       : []),
-    ...(flood > 0 ? [`linear-gradient(330deg, ${mixSide(FLOOD, aF * 0.9)} 0%, transparent 54%)`] : []),
+    ...(floodAlpha > 0
+      ? [`linear-gradient(330deg, ${mixSide(FLOOD, floodAlpha * 0.9)} 0%, transparent 54%)`]
+      : []),
     // the base: green's edge lightened so the wash carries it, red owning
     // its whole floor, a dead band of seven percent either side of the seam
-    `linear-gradient(90deg, ${mixSide(EBB, aE * 0.5)} 0%, transparent ${clamp(x - 7, 0, 100)}%, transparent ${clamp(x + 7, 0, 100)}%, ${mixSide(FLOOD, aF)} 100%)`,
+    `linear-gradient(90deg, ${mixSide(EBB, ebbAlpha * 0.5)} 0%, transparent ${clamp(seam - 7, 0, 100)}%, transparent ${clamp(seam + 7, 0, 100)}%, ${mixSide(FLOOD, floodAlpha)} 100%)`,
   ].join(", ")
 }
 
@@ -66,5 +93,6 @@ export const tidesPillEdge = (dice: number): string =>
 export const tidesNetInk = (net: number): string =>
   net === 0 ? "var(--dim)" : net < 0 ? EBB : FLOOD
 
+/** A true minus, a plus, and a bare zero. */
 export const signedDice = (dice: number): string =>
-  dice < 0 ? `−${Math.abs(dice)}` : `+${dice}`
+  dice < 0 ? `−${Math.abs(dice)}` : dice > 0 ? `+${dice}` : "0"

@@ -1,5 +1,18 @@
 # Component polish runs shared-first, on Motion, against an amended identity
 
+> **Amended** (2026-10-22, MAG-44, owner's calls on the cast card): two
+> exceptions to the standards below are now sanctioned. **Ambient motion:**
+> the felt's Paradox dice are scorch holes whose rim-burn *breathes* at rest
+> (`mv-hole-breathe`, a 4s ease, stilled by reduced-motion and while lit) —
+> a third exception to "nothing animates ambiently", beside the lit Arcana
+> material and the night sky; nothing else breathes. **Color grammar:** the
+> mitigation table's selected row is boxed in verdigris, not ember (the
+> owner: selection is a reading, the commit is the act); ember keeps its
+> meaning everywhere else. Also recorded: the Commit button's spend wears
+> the button's own ink, not Mana's blue (contrast), and the Tides box is a
+> borderless gradient ground whose doctrine lives in
+> `src/components/game/tides-ground.ts`.
+
 Context: the component-polish campaign (2026-07-08 grilling; census in
 `docs/census/census.md`) touches every component in the app. Four decisions
 shape how all of its issues execute, and each had a real alternative.

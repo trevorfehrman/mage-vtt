@@ -67,7 +67,7 @@ const DIE_LOOK: Record<DieKind, { border: string; background: string }> = {
  */
 export function FeltDie({
   kind,
-  title,
+  title = "",
   reduced,
   ghosted = false,
   glide = true,
@@ -77,7 +77,8 @@ export function FeltDie({
   lit = false,
 }: {
   kind: DieKind;
-  title: string;
+  /** The die's native title; the card's dice use a Tooltip instead and omit it. */
+  title?: string;
   /** For `kind: "arcanum"`: which Arcanum's glyph stands inside the die. */
   arcanum?: string | undefined;
   /** The owner's `useReducedMotion()` — one read per tray, not per die. */
