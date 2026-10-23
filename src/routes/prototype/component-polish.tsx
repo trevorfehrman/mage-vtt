@@ -14,7 +14,6 @@
 import { useState, type ReactNode } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { AnimatePresence, useReducedMotion } from "motion/react"
-import { Die as GameDie } from "#/components/game/Die"
 import { FeltDie, type DieKind } from "#/components/game/FeltDie"
 import { UnifiedDie } from "#/components/game/UnifiedDie"
 
@@ -632,11 +631,8 @@ function DieAudition() {
           <div key={size} className="flex flex-wrap items-center gap-2"><span className={head}>face · {size}</span>
             {FACE_CASES.map((c) => (
               <div key={c.label} className="flex items-center gap-1 pr-3" title={c.label}>
-                <span className={cell}>
-                  <GameDie v={c.v} again={c.again ?? 10} size={size} diamond
-                    {...(c.chance ? { chance: true } : {})} {...(c.tone ? { tone: c.tone } : {})}
-                    {...(c.ring ? { ring: c.ring } : {})} {...(c.ghost ? { ghost: true } : {})} />
-                </span>
+                {/* The old Die's column retired with MAG-15: the face mode
+                    is the only face now. */}
                 <span className={cell}>
                   <UnifiedDie mode="face" v={c.v} again={c.again ?? 10} size={size}
                     {...(c.chance ? { chance: true } : {})} {...(c.tone ? { tone: c.tone } : {})}

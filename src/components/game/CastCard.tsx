@@ -26,7 +26,7 @@ import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
 import { ArcanaGlyph, arcanumTint, isGrossArcanum } from "./ArcanaGlyph"
 import { healthBoxGlyph, ResistantDot } from "./CharacterSheet"
-import { Die } from "./Die"
+import { UnifiedDie } from "./UnifiedDie"
 import { FeltDie, type DieKind } from "./FeltDie"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
 import { PriorRollsGlyph, SleeperGlyph, TidesGlyph, ToolGlyph } from "./TideGlyphs"
@@ -736,24 +736,24 @@ export function CastCard({
         {status === "resolved" && (cast.paradoxRolls ?? []).length > 0 && (
           <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-2.5 pb-4">
             {(cast.paradoxRolls ?? []).map((v, i) => (
-              <Die
+              <UnifiedDie
                 key={`fp${i}`}
+                mode="face"
                 v={v}
                 again={10}
                 chance={cast.paradoxIsChanceDie ?? false}
                 tone="paradox"
                 size="md"
-                diamond
               />
             ))}
             {(cast.paradoxExplosions ?? []).map((e, i) => (
-              <Die
+              <UnifiedDie
                 key={`fpe${i}`}
+                mode="face"
                 v={e.value}
                 again={10}
                 tone="paradox"
                 size="md"
-                diamond
               />
             ))}
           </div>
@@ -817,8 +817,9 @@ export function CastCard({
           // felt shows the whole Gnosis + Arcanum pool. Explosions sit inline.
           <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-4 pb-2.5">
             {cast.castRolls.map((v, i) => (
-              <Die
+              <UnifiedDie
                 key={`fb${i}`}
+                mode="face"
                 v={v}
                 again={10}
                 chance={
@@ -826,19 +827,18 @@ export function CastCard({
                   (cast.castPool !== undefined && cast.castPool <= 0)
                 }
                 size="md"
-                diamond
               />
             ))}
             {Array.from({
               length: Math.max(0, cast.declaredPool - cast.castRolls.length),
             }).map((_, i) => (
-              <Die key={`fg${i}`} v={0} again={10} size="md" diamond ghost />
+              <UnifiedDie key={`fg${i}`} mode="face" v={0} again={10} size="md" ghost />
             ))}
             {(cast.castRoteRerolls ?? []).map((v, i) => (
-              <Die key={`fr${i}`} v={v} again={10} ring="rote" size="md" diamond />
+              <UnifiedDie key={`fr${i}`} mode="face" v={v} again={10} ring="rote" size="md" />
             ))}
             {(cast.castExplosions ?? []).map((e, i) => (
-              <Die key={`fe${i}`} v={e.value} again={10} size="md" diamond />
+              <UnifiedDie key={`fe${i}`} mode="face" v={e.value} again={10} size="md" />
             ))}
           </div>
         ) : (
