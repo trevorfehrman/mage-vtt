@@ -1,5 +1,30 @@
 # Tides are scene state; the cast card is a docked cockpit
 
+> **Amended** (2026-10-23, MAG-45 — the language audit across every rung
+> and seat). Three notes. **The odds beneath the felt speak one register:**
+> the 2026-10-22 amendment's "stands down on that beat and nowhere else" is
+> withdrawn — the under-felt line had grown three voices across the rungs
+> (the declared pool's success %, a bare Paradox %, the surviving pool's
+> success %). Now every rung prints the mitigation table's own row — Mana ·
+> dice · Paradox · success, the cast's success priced with reality rolling
+> first (`castOddsUnderParadox`): the zero row before the commit (nothing
+> spent yet; where the table itself stands the row stands down), the
+> committed row after it, and once reality has rolled the Paradox cell
+> carries the rolled count while the success % tracks the containment bet.
+> **The Storyteller reads the table on the fluid rung**, read-only, off the
+> felt's provisional pool (the scene seed joins at the fix, as pass 3 says),
+> its affordable rows from the caster's Mana — so the ST sees what each
+> ruling does to the player's choices before fixing. The other seats do not
+> see it until the fix: the ST's thoughts in progress are the ST's. **The
+> ST's hand is in the Tides box:** the block of chips beneath the card
+> (issue #44's input, ebb/flood steppers, Add) is retired; each shore ends
+> in a skeleton pill on the ST's seat while the Tides are fluid that opens
+> into a live pill — prose in its text cell, the count in its number cell —
+> Enter landing it on the document. Also: from the ST's roll onward the
+> Paradox faces live in the PARADOX area (the cockpit's glyph row is gone),
+> and the successes the containment bet absorbs ghost there from the row's
+> end — the felt's one grammar for a price being weighed.
+
 > **Amended** (2026-10-22, MAG-44): pass 3's "the Tides-phase odds line
 > prices the spell" note is narrowed. On the commit beat — the last chance
 > to change your mind — the mitigation table owns the number: each row
