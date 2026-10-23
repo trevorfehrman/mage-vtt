@@ -1,5 +1,19 @@
 # Component polish runs shared-first, on Motion, against an amended identity
 
+> **Amended** (2026-10-23, MAG-47, the owner's call: "much of the time i do
+> not need all these controls"): the dice tray has **two forms**, the
+> viewer's choice. The **shrunk** strip is one line on the tall tray's own
+> columns (‹ · felt with the count, the options a throw carries and Roll ·
+> ›), so the rails stand still when it opens; it composes and rolls on its
+> own. The **tall** tray is every control. A **grip** (`.mv-grip`, a drawer
+> handle on the tray's top edge, same place in both forms, on the shared
+> focus ring) flips them; the choice is remembered per browser
+> (`use-tray-form`, starting shrunk) and nothing flips it on its own. This
+> reverses 2026-07-19's "the tray is ALWAYS OPEN", which had reversed
+> 2026-07-18's caret: the caret hid the tray behind a disclosure, while the
+> strip is still a tray. Chosen from an audition (three strips, then three
+> switches: grip, a bare MORE/LESS word, a DICE heading).
+
 > **Amended** (2026-10-23, MAG-18, the owner's call): a fourth ambient
 > exception — the burst plate's **fog** (`.mv-plate-fog`, an 11s drift of
 > the plate's ink behind its dice) moves while the roll is fresh (the
