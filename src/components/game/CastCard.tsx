@@ -390,7 +390,7 @@ export function CastCard({
   // row's end — the felt's one grammar for a price being weighed — and on
   // the record the stamped containment ghosts them for good. A ghosted
   // face is a success that never manifested, not a die that never rolled.
-  const rolledFaces: ReadonlyArray<{ v: number; chance: boolean }> =
+  const rolledFaces: ReadonlyArray<RolledFace> =
     status === "paradox" || status === "resolved"
       ? [
           ...(cast.paradoxRolls ?? []).map((v) => ({ v, chance: cast.paradoxIsChanceDie ?? false })),
@@ -506,9 +506,10 @@ export function CastCard({
     : controls.includes("adjust")
       ? provisionalInputs
       : null
+  const tablePoolBefore = tableInputs !== null ? calculateParadoxPool(tableInputs).totalDice : 0
   const tableAffordable =
     tableInputs !== null && cockpitSheet !== null
-      ? mitigationCap(calculateParadoxPool(tableInputs).totalDice, cockpitSheet.manaCurrent, cast.spellManaCost)
+      ? mitigationCap(tablePoolBefore, cockpitSheet.manaCurrent, cast.spellManaCost)
       : 0
 
   // The odds beneath the felt speak ONE register (MAG-45, owner 2026-10-23
@@ -528,21 +529,31 @@ export function CastCard({
         : pricedRow(0, feltPool.totalDice, cast.declaredPool),
     ),
     Match.when("paradox", () => {
+      if (pool === null) return null
       if (cast.paradoxSuccesses === undefined) {
-        return pool === null ? null : pricedRow(cast.manaMitigation ?? 0, pool.totalDice, cast.declaredPool)
+        return pricedRow(cast.manaMitigation ?? 0, pool.totalDice, cast.declaredPool)
       }
+      // The surviving cast pool under the bet — the cockpit's own number
+      // when the sheet decoded, the same leaf off the local count when it
+      // did not (the NumberInput fallback still bets).
       const castPool =
-        outlook?.castPool ?? castPoolAfterParadox(cast.declaredPool, cast.paradoxSuccesses, 0)
+        outlook?.castPool ??
+        castPoolAfterParadox(cast.declaredPool, cast.paradoxSuccesses, cockpitContained)
       const odds = rollOdds(castPool)
       return {
         spend: cast.manaMitigation ?? 0,
-        dice: rolledFaces.length,
+        // the committed pool, as the table priced it — explosions are the
+        // felt's to show, not a change of what was rolled against
+        dice: pool.totalDice,
         paradox: { kind: "rolled", successes: cast.paradoxSuccesses },
         success: odds.success,
         dramaticFailure: odds.isChanceDie ? odds.dramaticFailure : 0,
       }
     }),
-    Match.orElse(() => null),
+    // The draft prices nothing yet; the record and the dead rungs say nothing
+    // here — listed, not defaulted (ADR-0018).
+    Match.whenOr("draft", "resolved", "cancelled", "voided", () => null),
+    Match.exhaustive,
   )
 
   // The masthead's Mana ghost (pass 2, note 1): the spell's cost ghosts from
@@ -730,7 +741,7 @@ export function CastCard({
                 key={`${side}-new`}
                 onClick={() => setDraft({ side, source: draft?.source ?? "", count: draft?.count ?? 1 })}
                 disabled={busy}
-                className={`${shell} px-2.5 py-1 opacity-60 hover:opacity-100 disabled:opacity-40`}
+                className={`${shell} px-2.5 py-1 opacity-60 hover:opacity-100 disabled:opacity-40 ${RING}`}
                 style={{ borderRadius: 11, borderStyle: "dashed", borderColor: edge, color: "var(--dim)", background: "transparent" }}
                 title={side === "ebb" ? "Name an ebb — the Tides pull back: fewer Paradox dice" : "Name a flood — the Tides rise: more Paradox dice"}
               >
@@ -742,7 +753,7 @@ export function CastCard({
             <button
               onClick={(e) => setDraft({ ...draft, count: stepTideCount(draft.count, e.shiftKey ? -1 : 1) })}
               disabled={busy}
-              className="flex cursor-pointer items-center whitespace-nowrap px-2 py-1 font-bold disabled:opacity-40"
+              className={`flex cursor-pointer items-center whitespace-nowrap px-2 py-1 font-bold disabled:opacity-40 ${RING}`}
               style={{
                 color: "var(--ink)",
                 ...(side === "ebb" ? { borderRight: `1px solid ${edge}` } : { borderLeft: `1px solid ${edge}` }),
@@ -773,8 +784,10 @@ export function CastCard({
                 }}
                 disabled={busy}
                 placeholder="name it…"
-                className="mv-data min-w-0 bg-transparent px-2.5 py-1 text-[12px] outline-none placeholder:text-[var(--dim)]"
-                style={{ width: `${Math.max(10, draft.source.length + 2)}ch`, color: "var(--ink)" }}
+                // mv-field is the repo's text control (component-standards §6);
+                // the pill's own edge is the border, so the field's is cleared.
+                className="mv-field mv-data min-w-0 px-2.5 py-1 text-[12px]"
+                style={{ width: `${Math.max(10, draft.source.length + 2)}ch`, border: "none", borderRadius: 0 }}
               />
               {side === "flood" && num}
             </span>
@@ -990,7 +1003,7 @@ export function CastCard({
       {tableInputs !== null && (
         <MitigationPreview
           poolInputs={tableInputs}
-          poolBefore={calculateParadoxPool(tableInputs).totalDice}
+          poolBefore={tablePoolBefore}
           declaredPool={cast.declaredPool}
           affordable={tableAffordable}
           selected={mitigation}
@@ -1220,6 +1233,8 @@ export function CastCard({
  * shore's: an ebb takes dice, a flood adds them.
  */
 const TIDE_COUNT_MAX = 10
+/** The shared focus plank (styles.css) on controls that wear no mv-* class. */
+const RING = "focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
 const TideDraft = Schema.Struct({
   side: Schema.Literals(["ebb", "flood"]),
   source: Schema.String,
@@ -1291,6 +1306,10 @@ const DRAMATIC_FAILURE_WARN_FLOOR = 0.001
 
 const diceLabel = (dice: number): string =>
   dice <= 0 ? "chance die" : dice === 1 ? "1 die" : `${dice} dice`
+
+/** One of reality's rolled faces: its value, and whether it was the chance die. */
+const RolledFace = Schema.Struct({ v: Schema.Number, chance: Schema.Boolean })
+type RolledFace = typeof RolledFace.Type
 
 /** The one grid every odds row stands in: Mana · dice · Paradox · success. */
 const ROW_GRID = "grid grid-cols-[3.5rem_5.5rem_4.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px]"
