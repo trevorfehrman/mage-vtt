@@ -1,5 +1,30 @@
 # Every die is one diamond, and a cast remembers its triggers
 
+> **Amended** (2026-10-23, MAG-18 — the burst lands). The "what this ADR
+> does not decide" reservation below is discharged: every rolled row — the
+> Chronicle's roll cards and the Cast card's Paradox and CAST rows, on
+> every seat — now draws through one `BurstFaces` component in the burst
+> order. **How a burst looks:** each explosion stands beside the trigger
+> that spawned it, corner to corner — the within-chain spacing is exactly
+> the diamond's corner overhang (`tetherPx`: 8px sm, 10px md), so a chain's
+> corners *kiss* and never cross while the row's own 14px gap stays
+> visibly wider; a hairline in the trigger's ring ink (`tetherInk`) runs
+> beneath, and the explosion child wears the explosion ring. A chain (a
+> 10 whose child is a 10) is the same motif continued. **How it moves:** a
+> child springs out of the die before it — from one box-and-tether to the
+> left, scaled to 0.4 and unseen, on the felt's accrete spring — each
+> generation one beat (90ms) after the last, so cause reads before effect
+> before effect's effect; the trigger itself stands where the row put it.
+> Reduced motion renders every die at once; the grouping still says it.
+> **Legacy casts** (parentless explosions) fall back to single-die
+> clusters at the row's end — the inline render they always had. **One
+> doctrine adjusted:** the Paradox row's contained successes "ghost from
+> the row's end" (MAG-45), and the row is now the *burst* row, the one the
+> eye walks — so the last N successes in burst order ghost, computed in
+> the plan (`burstPlan`), not in the card. The CAST row's eaten ghosts
+> trail the whole row for the same reason. Rules in
+> `src/components/game/burst-look.ts`, plain functions over Schema shapes.
+
 Adopted 2026-10-23 at the close of the "Dice/felt unified language" project
 (MAG-13 → MAG-19; the owner's four decisions of 2026-07-20 in
 `docs/vulgar-dice-language-plan.md`, worked eyes-on through the
@@ -118,14 +143,11 @@ component. The order is a rule about the roll, and the legacy fallback is
 a rule about the record; both belong in `src/domain/dice.ts` where seeded
 tests can pin them.
 
-**What this ADR does not decide:** how an explosion *moves*. Today every
-felt still draws explosions inline, in stored order, with the explosion
-ring — the Chronicle's roll cards and the Cast card alike — and nothing
-calls `burstClusters` but its tests. The animation (each exploded die
-visibly emerging from its trigger, chains reading as cause and effect for
-every seat, reduced-motion honoured) is MAG-18's work, and when it lands
-this ADR takes an amendment note saying what the burst looks like. The
-substrate was recorded here so that MAG-18 is purely a rendering ticket.
+**What this ADR did not decide when adopted:** how an explosion *moves*.
+At adoption every felt still drew explosions inline, in stored order, and
+nothing called `burstClusters` but its tests; the substrate was recorded
+so that MAG-18 would be purely a rendering ticket. *(Discharged by the
+2026-10-23 amendment above: MAG-18 landed the burst.)*
 
 ## Consequences
 
@@ -142,7 +164,7 @@ substrate was recorded here so that MAG-18 is purely a rendering ticket.
   them as present.
 - Glossary (CONTEXT.md, "Dice pools"): **felt**, **ghost** (of a die),
   **hole**, **trigger die**, **burst** are the table's words.
-- MAG-18 amends the burst section above. MAG-17's two open owner calls
+- MAG-18 amended the burst section above (header note). MAG-17's two open owner calls
   (whether every seat sees the caster's containment ghosts before the
   Cast; whether a Mana-mitigated die stays ghosted in the record) are
   presentation choices under "one ghost" and do not reopen this ADR.

@@ -21,7 +21,6 @@ import {
   resolveParadox,
   type ParadoxPoolModifier,
 } from "#/domain/paradox"
-import { isDieSuccess } from "#/domain/dice"
 import { castOddsUnderParadox, rollOdds } from "#/domain/probability"
 import { signedDice, tidesGround, tidesNetInk, tidesPillEdge, tidesWeight } from "./tides-ground"
 import { seamErrorMessage } from "#/lib/seam-errors"
@@ -29,6 +28,7 @@ import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
 import { ArcanaGlyph, arcanumTint, isGrossArcanum } from "./ArcanaGlyph"
 import { healthBoxGlyph, ResistantDot } from "./CharacterSheet"
+import { BurstFaces } from "./BurstFaces"
 import { UnifiedDie } from "./UnifiedDie"
 import type { PoolKind } from "./die-look"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
@@ -416,15 +416,6 @@ export function CastCard({
       : []
   const containedNow =
     status === "paradox" ? cockpitContained : (cast.containedSuccesses ?? 0)
-  // The last `containedNow` successes, counted from the row's end.
-  const ghostedFaces = rolledFaces
-    .reduceRight<{ left: number; ghosts: ReadonlyArray<boolean> }>(
-      ({ left, ghosts }, face) => {
-        const ghost = left > 0 && isDieSuccess(face.v, face.chance)
-        return { left: ghost ? left - 1 : left, ghosts: [ghost, ...ghosts] }
-      },
-      { left: containedNow, ghosts: [] },
-    ).ghosts
   // Reality's printed area exists only while it holds dice: the provisional
   // pool before the ST's roll, or the rolled faces from the roll onward.
   const paradoxArea = paradoxDiceCount !== null || rolledFaces.length > 0
@@ -960,25 +951,21 @@ export function CastCard({
           }
         >
         {rolledFaces.length > 0 && (
-          <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-2.5 pb-4">
-            {rolledFaces.map((face, i) => (
-              <UnifiedDie
-                key={`fp${i}`}
-                mode="face"
-                v={face.v}
-                again={10}
-                chance={face.chance}
-                tone="paradox"
-                size="md"
-                ghost={ghostedFaces[i] ?? false}
-                title={
-                  ghostedFaces[i]
-                    ? "Contained — this Paradox success lands as Resistant bashing instead of manifesting"
-                    : undefined
-                }
-              />
-            ))}
-          </div>
+          // The rolled Paradox faces in the burst order (MAG-18); the
+          // successes the bet absorbs ghost from the row's end (MAG-45).
+          <BurstFaces
+            className="gap-3.5 px-3.5 pt-2.5 pb-4"
+            rolls={cast.paradoxRolls ?? []}
+            roteRerolls={[]}
+            explosions={cast.paradoxExplosions ?? []}
+            again={10}
+            chance={cast.paradoxIsChanceDie ?? false}
+            tone="paradox"
+            size="md"
+            reduced={reduced}
+            contained={containedNow}
+            ghostTitle="Contained — this Paradox success lands as Resistant bashing instead of manifesting"
+          />
         )}
         {paradoxDiceCount !== null && (
           <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-2.5 pb-4">
@@ -1039,35 +1026,21 @@ export function CastCard({
         )}
         <FeltSection label="cast" labelAt="bottom" divided={paradoxArea}>
         {status === "resolved" && cast.castRolls !== undefined ? (
-          // The cast roll on ONE row (2026-07-20): rolled faces, then the dice
-          // the containment bet ATE as empty ghosts (declared − rolled), so the
-          // felt shows the whole Gnosis + Arcanum pool. Explosions sit inline.
-          <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-4 pb-2.5">
-            {cast.castRolls.map((v, i) => (
-              <UnifiedDie
-                key={`fb${i}`}
-                mode="face"
-                v={v}
-                again={10}
-                chance={
-                  cast.castIsChanceDie ??
-                  (cast.castPool !== undefined && cast.castPool <= 0)
-                }
-                size="md"
-              />
-            ))}
-            {Array.from({
-              length: Math.max(0, cast.declaredPool - cast.castRolls.length),
-            }).map((_, i) => (
-              <UnifiedDie key={`fg${i}`} mode="face" v={0} again={10} size="md" ghost />
-            ))}
-            {(cast.castRoteRerolls ?? []).map((v, i) => (
-              <UnifiedDie key={`fr${i}`} mode="face" v={v} again={10} ring="rote" size="md" />
-            ))}
-            {(cast.castExplosions ?? []).map((e, i) => (
-              <UnifiedDie key={`fe${i}`} mode="face" v={e.value} again={10} size="md" />
-            ))}
-          </div>
+          // The cast roll on ONE row (2026-07-20), in the burst order
+          // (MAG-18): each explosion beside its trigger, then the dice the
+          // containment bet ATE as empty ghosts (declared − rolled) trailing,
+          // so the felt shows the whole Gnosis + Arcanum pool.
+          <BurstFaces
+            className="gap-3.5 px-3.5 pt-4 pb-2.5"
+            rolls={cast.castRolls}
+            roteRerolls={cast.castRoteRerolls ?? []}
+            explosions={cast.castExplosions ?? []}
+            again={10}
+            chance={cast.castIsChanceDie ?? (cast.castPool !== undefined && cast.castPool <= 0)}
+            size="md"
+            reduced={reduced}
+            eaten={Math.max(0, cast.declaredPool - cast.castRolls.length)}
+          />
         ) : (
           <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-4 pb-2.5">
             <TooltipProvider>

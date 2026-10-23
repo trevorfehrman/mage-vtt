@@ -33,13 +33,15 @@ const SizeRung = Schema.Struct({
   box: Schema.String,
   text: Schema.String,
   glyph: Schema.Number,
+  /** The box's side in px — what a burst child travels from (MAG-18). */
+  px: Schema.Number,
 })
 
 /** One size ladder for both modes. `md` is the vulgar floor — nothing inside
  * one renders under 12px (#114). Glyph and text scale with the box. */
 export const SIZE_LADDER: Record<DieSize, typeof SizeRung.Type> = {
-  sm: { box: "size-[20px]", text: "text-[10px]", glyph: 12 },
-  md: { box: "size-[24px]", text: "text-[12px]", glyph: 14 },
+  sm: { box: "size-[20px]", text: "text-[10px]", glyph: 12, px: 20 },
+  md: { box: "size-[24px]", text: "text-[12px]", glyph: 14, px: 24 },
 }
 
 /** The box every die stands in: one grid, one radius, the ladder's size. */

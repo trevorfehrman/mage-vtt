@@ -157,6 +157,7 @@ function FaceDie({
     // none is a die that never rolled — empty.
     return v > 0 ? (
       <span
+        data-face
         title={title}
         className={`mv-data ${shape} font-bold ${SIZE_LADDER[size].text}`}
         style={{ ...look, ...DIAMOND_STANCE, color: look.border.replace(/^1px (solid|dashed) /, "") }}
@@ -165,6 +166,7 @@ function FaceDie({
       </span>
     ) : (
       <span
+        data-face
         aria-hidden
         title={title ?? "Eaten by the containment bet — declared, never rolled"}
         className={shape}
@@ -174,6 +176,7 @@ function FaceDie({
   }
   return (
     <span
+      data-face
       title={title}
       className={`mv-data ${shape} font-bold ${SIZE_LADDER[size].text}`}
       style={{ ...look, ...DIAMOND_STANCE }}

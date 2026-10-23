@@ -9,7 +9,8 @@ import type { CharacterSheet } from "#/domain/character"
 import { decodeSheetDoc } from "#/lib/sheet-doc"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import { CastCard } from "./CastCard"
-import { UnifiedDie } from "./UnifiedDie"
+import { useReducedMotion } from "motion/react"
+import { BurstFaces } from "./BurstFaces"
 import { isLooseDice } from "./DicePoolBuilder"
 import { api } from "../../../convex/_generated/api"
 import type { Id } from "../../../convex/_generated/dataModel"
@@ -252,6 +253,7 @@ function OverrideTag({ override }: { override: OverrideMark }) {
 }
 
 export function RollItem({ roll }: { roll: RollEntry }) {
+  const reduced = useReducedMotion()
   const arcana = roll.components.filter((c) => c.type === "arcanum")
   return (
     <div className="mv-cornered mv-panel rounded-[3px] p-2.5">
@@ -303,19 +305,18 @@ export function RollItem({ roll }: { roll: RollEntry }) {
         </p>
       )}
 
-      {/* A 20px diamond overhangs its box ~4px a side, so the faces need
-          the Cast card's clearance, not the old square die's 4px (MAG-19). */}
-      <div className="mt-1.5 flex flex-wrap gap-3">
-        {roll.rolls.map((v, i) => (
-          <UnifiedDie key={`b${i}`} mode="face" v={v} again={roll.againThreshold} chance={roll.isChanceDie} />
-        ))}
-        {roll.roteRerolls.map((v, i) => (
-          <UnifiedDie key={`r${i}`} mode="face" v={v} again={roll.againThreshold} ring="rote" />
-        ))}
-        {roll.explosions.map((e, i) => (
-          <UnifiedDie key={`e${i}`} mode="face" v={e.value} again={roll.againThreshold} ring="exp" />
-        ))}
-      </div>
+      {/* The burst order (MAG-18): each explosion beside its trigger. A 20px
+          diamond overhangs its box ~4px a side, so the row keeps the Cast
+          card's clearance, not the old square die's 4px (MAG-19). */}
+      <BurstFaces
+        className="mt-1.5 gap-3"
+        rolls={roll.rolls}
+        roteRerolls={roll.roteRerolls}
+        explosions={roll.explosions}
+        again={roll.againThreshold}
+        chance={roll.isChanceDie}
+        reduced={reduced}
+      />
 
       <div className="mv-data mt-1.5 text-[10px]" style={{ color: "var(--dim)" }}>
         {roll.components
