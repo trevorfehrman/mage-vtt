@@ -34,6 +34,7 @@ import type { PoolKind } from "./die-look"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
 import { PriorRollsGlyph, SleeperGlyph, ToolGlyph } from "./TideGlyphs"
 import { ParadoxGlyph } from "./ParadoxGlyph"
+import { Felt } from "./Felt"
 import { api } from "../../../convex/_generated/api"
 import type { Id } from "../../../convex/_generated/dataModel"
 
@@ -918,13 +919,7 @@ export function CastCard({
             rune, Willpower amethyst) and its title names it on hover. */}
         <span className="whitespace-nowrap">{declaredTerms.join(" · ")}</span>
       </div>
-      <div
-        className="mv-felt mt-1.5 rounded-[6px] border"
-        style={{
-          borderColor: "var(--line)",
-          background: "color-mix(in srgb, var(--accent) 6%, transparent)",
-        }}
-      >
+      <Felt className="mt-1.5">
         {paradoxArea && (
         <FeltSection
           label="paradox"
@@ -1055,7 +1050,7 @@ export function CastCard({
           </div>
         )}
         </FeltSection>
-      </div>
+      </Felt>
       {/* the odds row — directly beneath the felt (note 16), in the table's
           own grid (MAG-45): one register on every rung */}
       {oddsRow !== null && <OddsRow {...oddsRow} />}

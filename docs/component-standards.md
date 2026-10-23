@@ -101,6 +101,7 @@ A component passes when every box on every axis checks.
 | Piece | Home | Job |
 |---|---|---|
 | `mv-panel`, `mv-cornered` | `styles.css` | surfaces; corner-ticks mark important ones |
+| `mv-felt` + `Felt` | `styles.css` + `game/Felt.tsx` | the bordered felt panel dice land on (tray, declaration, Cast card) |
 | `mv-h`, `mv-eyebrow`, `mv-data`, `mv-book-text` | `styles.css` | the type roles |
 | `mv-rule` | `styles.css` | the named-boundary rule's line |
 | `mv-btn`, `mv-mini`(+`-on`), `mv-chip`, `mv-trait`(+`-on`), `mv-roll`, `mv-handle` | `styles.css` | the control family |

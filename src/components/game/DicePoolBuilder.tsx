@@ -3,6 +3,7 @@ import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy";
 import type { CharacterSheet } from "#/domain/character";
 import { GateButton } from "#/components/ui/gate-button";
 import { UnifiedDie } from "./UnifiedDie";
+import { Felt } from "./Felt";
 import type { PoolKind } from "./die-look";
 import { pooledDice } from "#/machines/dice-pool";
 import type { useDicePool } from "#/hooks/use-dice-pool";
@@ -129,7 +130,7 @@ export function DicePoolBuilder({
           >
             ‹
           </button>
-          <div
+          <Felt
             role="button"
             tabIndex={0}
             onClick={() => setLoose(loose + 1)}
@@ -139,11 +140,7 @@ export function DicePoolBuilder({
                 setLoose(loose + 1);
               }
             }}
-            className="mv-felt relative block min-w-0 cursor-copy rounded-[6px] border px-2 pt-2 pb-1 text-left"
-            style={{
-              borderColor: "var(--line)",
-              background: "color-mix(in srgb, var(--accent) 6%, transparent)",
-            }}
+            className="relative block min-w-0 cursor-copy px-2 pt-2 pb-1 text-left"
             title="Tap the felt to add a die"
           >
             {/* fixed two-row height — no shift as dice arrive; a third row
@@ -181,7 +178,7 @@ export function DicePoolBuilder({
                 </motion.span>
               )}
             </AnimatePresence>
-          </div>
+          </Felt>
           <button
             onClick={() => setLoose(loose + 1)}
             disabled={!canInteract}
