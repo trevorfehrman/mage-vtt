@@ -536,6 +536,17 @@ const CSS = `
 // (faces under MAG-15, pool dice under MAG-16), so now it is the one die's
 // catalogue — kinds, ghosts, the lit glow, both sizes, the felts' motion.
 const POOL_KINDS: PoolKind[] = ["sheet", "loose", "willpower", "paradox", "paradoxBase"]
+type BurstCase = { label: string; rolls: number[]; explosions: { value: number; parentIndex: number | null }[]; again: number; tone?: "paradox" }
+const BURST_CASES: BurstCase[] = [
+  { label: "lone 8 (no trigger)", rolls: [8], explosions: [], again: 10 },
+  { label: "10 → success", rolls: [10], explosions: [{ value: 8, parentIndex: 0 }], again: 10 },
+  { label: "10 → failure", rolls: [10], explosions: [{ value: 3, parentIndex: 0 }], again: 10 },
+  { label: "chain 10 → 10 → 4", rolls: [10], explosions: [{ value: 10, parentIndex: 0 }, { value: 4, parentIndex: 1 }], again: 10 },
+  { label: "9-again: 9 → 5", rolls: [9], explosions: [{ value: 5, parentIndex: 0 }], again: 9 },
+  { label: "10-again: lone 9", rolls: [9], explosions: [], again: 10 },
+  { label: "paradox 10 → 9", rolls: [10], explosions: [{ value: 9, parentIndex: 0 }], again: 10, tone: "paradox" },
+  { label: "legacy orphan 7", rolls: [], explosions: [{ value: 7, parentIndex: null }], again: 10 },
+]
 const BURST_LOOKS: ReadonlyArray<readonly [BurstLook, string]> = [
   ["plain", "Nothing but order and the explosion ring — what ships until the pick"],
   ["hot", "The trigger is lit (the group-hover halo in its ring ink); the child wears the explosion ring"],
@@ -624,30 +635,43 @@ function DieAudition() {
             </div>
           ))}
         </div>
-        {/* The burst lineup (MAG-18, the owner's brainstorm 2026-10-23): the
-            same roll in every row — a 10 whose child is a 10 whose child is
-            an 8, a rote reroll's own child, a legacy orphan at the end —
-            dressed six ways. The relationship rides on the dice, so a wrap
-            can't break it. `plain` is what ships until the pick. */}
-        {BURST_LOOKS.map(([look, says]) => (
-          <div key={`burst-${look}`} className="flex flex-wrap items-center gap-2 py-2"><span className={head} title={says}>burst · {look}</span>
-            <BurstFaces
-              className="gap-3.5"
-              rolls={[10, 3, 9]}
-              roteRerolls={[10]}
-              explosions={[
-                { value: 10, parentIndex: 0 },
-                { value: 8, parentIndex: 4 },
-                { value: 7, parentIndex: 3 },
-                { value: 6, parentIndex: null },
-              ]}
-              again={10}
-              size="md"
-              reduced={reduced}
-              look={look}
-            />
-          </div>
-        ))}
+        {/* The burst grid (MAG-18, owner 2026-10-23: "I need to see each
+            case"): one isolated cell per case a burst look must handle,
+            one row per look. */}
+        <div className="mt-3 overflow-x-auto" data-audition="burst-grid">
+          <table className="border-separate" style={{ borderSpacing: "8px 6px" }}>
+            <thead>
+              <tr>
+                <th />
+                {BURST_CASES.map((c) => (
+                  <th key={c.label} className="cp-eyebrow px-1 text-left align-bottom" style={{ maxWidth: 120 }}>{c.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {BURST_LOOKS.map(([look, says]) => (
+                <tr key={look}>
+                  <td className="cp-eyebrow pr-2" title={says}>{look}</td>
+                  {BURST_CASES.map((c) => (
+                    <td key={c.label} className="rounded-md border px-4 py-3" style={{ borderColor: "var(--line)" }}>
+                      <BurstFaces
+                        className="gap-3.5"
+                        rolls={c.rolls}
+                        roteRerolls={[]}
+                        explosions={c.explosions}
+                        again={c.again}
+                        size="md"
+                        reduced={reduced}
+                        look={look}
+                        {...(c.tone ? { tone: c.tone } : {})}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {(["md", "sm"] as const).map((size) => (
           <div key={size} className="flex flex-wrap items-center gap-2"><span className={head}>face · {size}</span>
             {FACE_CASES.map((c) => (
