@@ -96,3 +96,64 @@ export const tidesNetInk = (net: number): string =>
 /** A true minus, a plus, and a bare zero. */
 export const signedDice = (dice: number): string =>
   dice < 0 ? `−${Math.abs(dice)}` : dice > 0 ? `+${dice}` : "0"
+
+/** The two shores a tide lands on: an ebb takes Paradox dice, a flood adds them. */
+export const Shore = Schema.Literals(["ebb", "flood"])
+export type Shore = typeof Shore.Type
+
+/** Everything that differs between the shores, in one closed table. */
+const ShoreSpec = Schema.Struct({
+  /** The sign the shore gives a tide's count. */
+  sign: Schema.Literals([-1, 1]),
+  /** The number cell sits outboard, toward the shore's own edge — first on the left shore, last on the right. */
+  numberFirst: Schema.Boolean,
+  /** The tooltip's prefix before the count. */
+  says: Schema.String,
+  /** The skeleton pill's invitation. */
+  invite: Schema.String,
+  /** The draft pill's number cell. */
+  countTitle: Schema.String,
+})
+type ShoreSpec = typeof ShoreSpec.Type
+
+export const SHORE: Record<Shore, ShoreSpec> = {
+  ebb: {
+    sign: -1,
+    numberFirst: true,
+    says: "Ebb · −",
+    invite: "Name an ebb — the Tides pull back: fewer Paradox dice",
+    countTitle: "Dice the ebb takes",
+  },
+  flood: {
+    sign: 1,
+    numberFirst: false,
+    says: "Flood · +",
+    invite: "Name a flood — the Tides rise: more Paradox dice",
+    countTitle: "Dice the flood adds",
+  },
+}
+
+/** A live tide's shore, read off its signed dice. */
+export const shoreOf = (dice: number): Shore => (dice < 0 ? "ebb" : "flood")
+
+/** The most a draft tide swings — the swing a single ruling plausibly reaches
+ * (issue #44); a wilder swing is several named rulings, each readable. */
+export const TIDE_COUNT_MAX = 10
+
+/** A draft tide's count: 1..TIDE_COUNT_MAX dice, unsigned — the shore signs it. */
+export const TideCount = Schema.Number.check(
+  Schema.isInt(),
+  Schema.isBetween({ minimum: 1, maximum: TIDE_COUNT_MAX }),
+).pipe(Schema.brand("TideCount"))
+export type TideCount = typeof TideCount.Type
+
+/** The ST's draft tide (MAG-45): the shore it opens on, its prose, its count. */
+export const TideDraft = Schema.Struct({ side: Shore, source: Schema.String, count: TideCount })
+export type TideDraft = typeof TideDraft.Type
+
+/** The dice a draft lands as: its count, signed by its shore. */
+export const tideDraftDice = (d: TideDraft): number => SHORE[d.side].sign * d.count
+
+/** One step of the draft's count, held within 1..TIDE_COUNT_MAX. */
+export const stepTideCount = (count: TideCount, dir: 1 | -1): TideCount =>
+  TideCount.make(clamp(count + dir, 1, TIDE_COUNT_MAX))

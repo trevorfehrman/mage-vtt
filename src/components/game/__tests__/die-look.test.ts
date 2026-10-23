@@ -4,6 +4,7 @@ import {
   poolClass,
   poolHasGlyph,
   poolLook,
+  settleOpacity,
   shapeClass,
   type PoolInput,
   type PoolKind,
@@ -128,6 +129,17 @@ describe("pool mode (an unrolled die on the felt)", () => {
     expect(poolHasGlyph("sheet")).toBe(false)
     expect(poolHasGlyph("loose")).toBe(false)
     expect(poolHasGlyph("willpower")).toBe(false)
+  })
+})
+
+describe("the group hover (the badges work)", () => {
+  it("settles the other groups back a step while one is lit", () => {
+    expect(settleOpacity("willpower", "sheet")).toBe(0.4)
+  })
+
+  it("leaves the lit group, and every group when none is lit, at full strength", () => {
+    expect(settleOpacity("willpower", "willpower")).toBe(1)
+    expect(settleOpacity(null, "sheet")).toBe(1)
   })
 })
 
