@@ -14,8 +14,8 @@
 import { useState, type ReactNode } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { AnimatePresence, useReducedMotion } from "motion/react"
-import { FeltDie, type DieKind } from "#/components/game/FeltDie"
 import { UnifiedDie } from "#/components/game/UnifiedDie"
+import type { PoolKind } from "#/components/game/die-look"
 
 // ── Arcana glyph set (hybrid grammar, copied from the visual-identity spec) ──
 type Arc =
@@ -540,10 +540,11 @@ const CSS = `
 
 // ────────────────────────────── Die audition (MAG-13) ──────────────────────────────
 // The unified die's proof surface: every pool kind and every face state the
-// app renders today, OLD (FeltDie / Die) beside NEW (UnifiedDie), same props.
-// Pixel-identical is the bar, judged by eye; the four tour decisions
-// (4px radius, inside border, one ghost, 20/24 ladder) are what differs.
-const POOL_KINDS: DieKind[] = ["sheet", "loose", "willpower", "paradox", "paradoxBase"]
+// app renders today. It began as OLD (FeltDie / Die) beside NEW (UnifiedDie)
+// with the same props; the old columns retired as each job moved over
+// (faces under MAG-15, pool dice under MAG-16), so now it is the one die's
+// catalogue — kinds, ghosts, the lit glow, both sizes, the felts' motion.
+const POOL_KINDS: PoolKind[] = ["sheet", "loose", "willpower", "paradox", "paradoxBase"]
 type FaceCase = { label: string; v: number; again?: number; chance?: boolean; tone?: "paradox"; ring?: "rote" | "exp"; ghost?: boolean }
 const FACE_CASES: FaceCase[] = [
   { label: "success 8", v: 8 },
@@ -563,15 +564,15 @@ const FACE_CASES: FaceCase[] = [
 ]
 function DieAudition() {
   const reduced = useReducedMotion()
-  // Two felts per kind — OLD and NEW — holding the SAME dice (by id), so a
-  // feed lands one old die and one new die side by side, and a skim pulls
-  // the same die off both: entrance, exit and the neighbours' glide compare.
-  const [felts, setFelts] = useState<Record<DieKind, number[]>>(() =>
-    Object.fromEntries(POOL_KINDS.map((k) => [k, [0, 1, 2]])) as Record<DieKind, number[]>,
+  // One felt per kind holding dice by id, so a feed lands a die with the
+  // accrete spring and a skim pulls it off: entrance, exit and the
+  // neighbours' glide, live.
+  const [felts, setFelts] = useState<Record<PoolKind, number[]>>(() =>
+    Object.fromEntries(POOL_KINDS.map((k) => [k, [0, 1, 2]])) as Record<PoolKind, number[]>,
   )
   const [nextId, setNextId] = useState(3)
-  const feed = (kind: DieKind) => { setFelts((f) => ({ ...f, [kind]: [...f[kind], nextId] })); setNextId((n) => n + 1) }
-  const skim = (kind: DieKind, id: number) => setFelts((f) => ({ ...f, [kind]: f[kind].filter((d) => d !== id) }))
+  const feed = (kind: PoolKind) => { setFelts((f) => ({ ...f, [kind]: [...f[kind], nextId] })); setNextId((n) => n + 1) }
+  const skim = (kind: PoolKind, id: number) => setFelts((f) => ({ ...f, [kind]: f[kind].filter((d) => d !== id) }))
   const cell = "flex h-9 w-9 items-center justify-center"
   const head = "cp-eyebrow w-24 shrink-0"
   const felt = "flex h-10 min-w-[132px] items-center gap-2 rounded-md border px-2"
@@ -579,13 +580,12 @@ function DieAudition() {
     <section className="cp-panel mb-4 p-3" data-audition="unified-die">
       <div className="mb-2 flex items-baseline gap-3">
         <span className="cp-eyebrow">Die audition · MAG-13</span>
-        <span className="cp-data text-[11px]" style={{ color: "var(--dim)" }}>each pair: OLD · NEW — same props. Felts: + feeds a die onto both, click a die to skim it off both.</span>
+        <span className="cp-data text-[11px]" style={{ color: "var(--dim)" }}>one die, every job. Felts: + feeds a die, click a die to skim it off.</span>
       </div>
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2"><span className={head}>pool</span>
           {POOL_KINDS.map((kind) => (
             <div key={kind} className="flex items-center gap-1 pr-3" title={kind}>
-              <span className={cell}><FeltDie kind={kind} title={kind} reduced={reduced} /></span>
               <span className={cell}><UnifiedDie mode="pool" kind={kind} title={kind} reduced={reduced} /></span>
             </div>
           ))}
@@ -593,29 +593,27 @@ function DieAudition() {
         <div className="flex items-center gap-2"><span className={head}>pool · ghost</span>
           {POOL_KINDS.map((kind) => (
             <div key={kind} className="flex items-center gap-1 pr-3" title={`${kind} ghost`}>
-              <span className={cell}><FeltDie kind={kind} title={kind} reduced={reduced} ghosted /></span>
               <span className={cell}><UnifiedDie mode="pool" kind={kind} title={kind} reduced={reduced} ghost /></span>
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-2"><span className={head} title="The old FeltDie has no md size; the left die is its only (20px) size">pool · md ⓘ</span>
+        <div className="flex items-center gap-2"><span className={head} title="The Cast card's group hover: the die glows in its own ink; a hole holds its breath">pool · lit ⓘ</span>
           {POOL_KINDS.map((kind) => (
-            <div key={kind} className="flex items-center gap-1 pr-3" title={`${kind}: old 20px (its only size) · new md 24px`}>
-              <span className={cell}><FeltDie kind={kind} title={kind} reduced={reduced} /></span>
+            <div key={kind} className="flex items-center gap-1 pr-3" title={`${kind} lit`}>
+              <span className={cell}><UnifiedDie mode="pool" kind={kind} title={kind} reduced={reduced} lit /></span>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-2"><span className={head}>pool · md</span>
+          {POOL_KINDS.map((kind) => (
+            <div key={kind} className="flex items-center gap-1 pr-3" title={`${kind} md 24px`}>
               <span className={cell}><UnifiedDie mode="pool" kind={kind} title={kind} reduced={reduced} size="md" /></span>
             </div>
           ))}
         </div>
         <div className="mt-1 flex flex-wrap items-start gap-3"><span className={`${head} pt-3`}>felts</span>
           {POOL_KINDS.map((kind) => (
-            <div key={kind} className="flex items-center gap-1" title={`${kind} felt — OLD · NEW`}>
-              <div className={felt} style={{ borderColor: "var(--line)" }}>
-                <AnimatePresence initial={false}>
-                  {felts[kind].map((id) => (
-                    <FeltDie key={id} kind={kind} title={`${kind} · skim`} reduced={reduced} onSkim={() => skim(kind, id)} />
-                  ))}
-                </AnimatePresence>
-              </div>
+            <div key={kind} className="flex items-center gap-1" title={`${kind} felt`}>
               <div className={felt} style={{ borderColor: "var(--accent)" }}>
                 <AnimatePresence initial={false}>
                   {felts[kind].map((id) => (
@@ -623,7 +621,7 @@ function DieAudition() {
                   ))}
                 </AnimatePresence>
               </div>
-              <button type="button" className="cp-data h-8 w-8 cursor-pointer rounded-md border text-[13px]" style={{ borderColor: "var(--line)", color: "var(--accent)" }} onClick={() => feed(kind)} title={`feed a ${kind} die onto both felts`}>+</button>
+              <button type="button" className="cp-data h-8 w-8 cursor-pointer rounded-md border text-[13px]" style={{ borderColor: "var(--line)", color: "var(--accent)" }} onClick={() => feed(kind)} title={`feed a ${kind} die onto the felt`}>+</button>
             </div>
           ))}
         </div>

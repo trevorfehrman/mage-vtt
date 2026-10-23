@@ -2,7 +2,8 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy";
 import type { CharacterSheet } from "#/domain/character";
 import { GateButton } from "#/components/ui/gate-button";
-import { FeltDie, type DieKind } from "./FeltDie";
+import { UnifiedDie } from "./UnifiedDie";
+import type { PoolKind } from "./die-look";
 import { pooledDice } from "#/machines/dice-pool";
 import type { useDicePool } from "#/hooks/use-dice-pool";
 
@@ -68,13 +69,14 @@ export function DicePoolBuilder({
       : null;
 
   const die = (
-    kind: DieKind,
+    kind: PoolKind,
     key: string,
     title: string,
     onSkim?: () => void,
   ) => (
-    <FeltDie
+    <UnifiedDie
       key={key}
+      mode="pool"
       kind={kind}
       title={title}
       reduced={reduced}

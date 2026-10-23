@@ -30,7 +30,7 @@ import { ArcanaGlyph } from "./ArcanaGlyph"
  * a pool die resolving into a face is the same object changing state. The
  * rules live in `die-look.ts`; this file only lays them out. Face mode is
  * the app's only rolled face (MAG-15, under MAG-45: the old `Die` is gone);
- * pool mode is built beside `FeltDie`, which MAG-16 retires.
+ * pool mode is the app's only unrolled die (MAG-16: the old `FeltDie` is gone).
  */
 
 const COUNTER_ROTATE = { transform: `rotate(-${DIAMOND_ROTATION}deg)` } as const
@@ -40,7 +40,8 @@ const DIAMOND_STANCE = { transform: `rotate(${DIAMOND_ROTATION}deg)` } as const
 interface PoolModeProps {
   mode: "pool"
   kind: PoolKind
-  title: string
+  /** The die's native title; the Cast card's dice use a Tooltip instead and omit it. */
+  title?: string
   /** The owner's `useReducedMotion()` — one read per tray, not per die. */
   reduced: boolean | null
   size?: DieSize
@@ -52,6 +53,8 @@ interface PoolModeProps {
   disabled?: boolean
   /** For `kind: "arcanum"`: which Arcanum's glyph stands inside the die. */
   arcanum?: string | undefined
+  /** The die's group is under the pointer: it glows in its own ink (MAG-16). */
+  lit?: boolean
 }
 
 /** Face props are all data, so a Schema (ADR-0017). */
@@ -87,8 +90,9 @@ function PoolDie({
   onSkim,
   disabled = false,
   arcanum,
+  lit = false,
 }: PoolModeProps) {
-  const look = poolLook(kind, ghost, arcanum)
+  const look = poolLook({ kind, ghost, lit, arcanum })
   const anim = {
     layout: !reduced && glide,
     initial: { scale: 0.4, opacity: 0 },
@@ -98,7 +102,9 @@ function PoolDie({
   }
   // The die rotates into its diamond stance; the glyph counter-rotates so
   // it stays upright inside it.
-  const { opacity: _presence, ...style } = look
+  // The glow comes and goes on a short ease, not a snap (the group hover).
+  const { opacity: _presence, ...paint } = look
+  const style = { ...paint, transition: "box-shadow 160ms, background 160ms" }
   const mark =
     poolHasGlyph(kind) && arcanum !== undefined ? (
       <span
@@ -109,7 +115,7 @@ function PoolDie({
         <ArcanaGlyph arcanum={arcanum} size={SIZE_LADDER[size].glyph} />
       </span>
     ) : null
-  const shape = `${shapeClass(size)} ${poolClass(kind, ghost, reduced)}`.trimEnd()
+  const shape = `${shapeClass(size)} ${poolClass({ kind, ghost, lit }, reduced)}`.trimEnd()
   return onSkim === undefined ? (
     <motion.span {...anim} title={title} className={shape} style={style}>
       {mark}

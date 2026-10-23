@@ -17,7 +17,7 @@ import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy"
 import { GateButton } from "#/components/ui/gate-button"
 import { declaredFactors, type CastContext } from "#/machines/cast"
 import { ArcanaGlyph } from "./ArcanaGlyph"
-import { FeltDie } from "./FeltDie"
+import { UnifiedDie } from "./UnifiedDie"
 import type { useCast } from "#/hooks/use-cast"
 
 type CastAPI = ReturnType<typeof useCast>
@@ -175,11 +175,12 @@ export function DeclarationFelt({
     const ghosted = i >= physical - ghosts
     const kind = i >= sheetDiceCount ? "willpower" : "sheet"
     return (
-      <FeltDie
+      <UnifiedDie
         key={`${kind}:${i}`}
+        mode="pool"
         kind={kind}
         reduced={reduced}
-        ghosted={ghosted}
+        ghost={ghosted}
         title={
           ghosted
             ? "Spent on spell factors — the price you're weighing"
