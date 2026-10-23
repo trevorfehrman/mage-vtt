@@ -30,7 +30,7 @@ import { healthBoxGlyph, ResistantDot } from "./CharacterSheet"
 import { UnifiedDie } from "./UnifiedDie"
 import { FeltDie, type DieKind } from "./FeltDie"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
-import { PriorRollsGlyph, SleeperGlyph, TidesGlyph, ToolGlyph } from "./TideGlyphs"
+import { PriorRollsGlyph, SleeperGlyph, ToolGlyph } from "./TideGlyphs"
 import { ParadoxGlyph } from "./ParadoxGlyph"
 import { api } from "../../../convex/_generated/api"
 import type { Id } from "../../../convex/_generated/dataModel"
@@ -428,7 +428,8 @@ export function CastCard({
   // the felt, the first thing the player reads (owner, 2026-10-22 evening):
   // pills, prose | number, red for a flood (more Paradox dice) and verdigris
   // for an ebb, floods first. Long names run and wrap. The Paradox area's
-  // instrument row keeps only the net pull.
+  // instrument row no longer prints the net at all (MAG-45, owner
+  // 2026-10-23: it printed twice — the TIDES eyebrow keeps it).
   const bySign = (a: { modifier: ParadoxPoolModifier }, b: { modifier: ParadoxPoolModifier }) =>
     Math.sign(b.modifier.dice) - Math.sign(a.modifier.dice)
   const weather: ReadonlyArray<{ modifier: ParadoxPoolModifier; onRemove?: () => void }> = Array.from([
@@ -457,15 +458,7 @@ export function CastCard({
   // it pulls: red for what adds Paradox dice, verdigris for what takes them.
   const seeded = cast.tides !== undefined
   const count = (n: number | undefined) => (n === undefined ? "—" : String(n))
-  const tidesNet = tidesWeight(weather.map((w) => w.modifier)).net
   const instruments: ReadonlyArray<{ key: string; glyph: ReactNode; value: string | null; ink: string; says: string }> = [
-    {
-      key: "tides",
-      glyph: <TidesGlyph size={13} />,
-      value: signedDice(tidesNet),
-      ink: tidesNetInk(tidesNet),
-      says: `Tides: ${signedDice(tidesNet)}`,
-    },
     {
       key: "sleepers",
       glyph: <SleeperGlyph size={13} />,
