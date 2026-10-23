@@ -183,15 +183,13 @@ describe("cast machine", () => {
   })
 
   test("re-arming resets the vulgar declaration's extras (issue #69's bug)", () => {
-    // Intent typed for spell A must not ride into spell B's draft.
+    // Extras set for spell A must not ride into spell B's draft.
     const actor = startMachine()
     actor.send({ type: "ARM_ROTE", rote: graveMien })
-    actor.send({ type: "SET_INTENT", value: "melt the lock" })
     actor.send({ type: "SET_EXTRA_MANA", value: 2 })
 
     actor.send({ type: "ARM_ROTE", rote: orPoolRote })
     const snap = actor.getSnapshot()
-    expect(snap.context.intent).toBe("")
     expect(snap.context.extraMana).toBe(0)
   })
 
@@ -213,7 +211,6 @@ describe("cast machine", () => {
       drafted.push(input)
     })
     actor.send({ type: "ARM_ROTE", rote: graveMien })
-    actor.send({ type: "SET_INTENT", value: "  melt the lock  " })
     actor.send({ type: "DRAFT_VULGAR" })
 
     await waitFor(actor, (s) => s.matches("idle"))
@@ -223,7 +220,6 @@ describe("cast machine", () => {
         method: "rote",
         roteName: "Grave Mien",
         skillChoice: "Occult",
-        intent: "melt the lock",
       },
     ])
   })
@@ -236,13 +232,13 @@ describe("cast machine", () => {
       }
     })
     actor.send({ type: "ARM_ROTE", rote: graveMien })
-    actor.send({ type: "SET_INTENT", value: "melt the lock" })
+    actor.send({ type: "SET_EXTRA_MANA", value: 2 })
     actor.send({ type: "DRAFT_VULGAR" })
 
     await waitFor(actor, (s) => s.matches("declaring"))
     const snap = actor.getSnapshot()
     expect(snap.context.error?.tag).toBe("SpellNotVulgar")
-    expect(snap.context.intent).toBe("melt the lock") // fix, don't retype
+    expect(snap.context.extraMana).toBe(2) // fix, don't retype
   })
 
   test("a non-seam failure lands as prose without a tag", async () => {
@@ -269,17 +265,6 @@ describe("buildDraftSubmission", () => {
       method: "improvised",
       arcanum: "forces",
       level: 2,
-    })
-  })
-
-  test("whitespace-only intent stays off the wire", () => {
-    const actor = startMachine()
-    actor.send({ type: "ARM_ROTE", rote: graveMien })
-    actor.send({ type: "SET_INTENT", value: "   " })
-    expect(buildDraftSubmission(actor.getSnapshot().context)).toEqual({
-      method: "rote",
-      roteName: "Grave Mien",
-      skillChoice: "Occult",
     })
   })
 

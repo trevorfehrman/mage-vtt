@@ -90,7 +90,6 @@ export function useCast(
     setExtraMana: (value: number) => send({ type: "SET_EXTRA_MANA", value }),
     setSpendWillpower: (value: boolean) =>
       send({ type: "SET_SPEND_WILLPOWER", value }),
-    setIntent: (value: string) => send({ type: "SET_INTENT", value }),
     cast: () => send({ type: "CAST" }),
     draftVulgar: () => send({ type: "DRAFT_VULGAR" }),
     cancel: () => send({ type: "CANCEL" }),

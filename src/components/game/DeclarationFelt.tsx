@@ -15,7 +15,6 @@ import {
 } from "#/domain/spellcasting"
 import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy"
 import { GateButton } from "#/components/ui/gate-button"
-import { Input } from "#/components/ui/input"
 import { declaredFactors, type CastContext } from "#/machines/cast"
 import { ArcanaGlyph } from "./ArcanaGlyph"
 import { FeltDie } from "./FeltDie"
@@ -395,18 +394,8 @@ export function DeclarationFelt({
         </p>
       )}
 
-      {/* intent gets its own full-width line (owner call 2026-07-19): room
-          for the player to add color; the triggers move beneath */}
-      <div className="px-3 pt-2">
-        <Input
-          value={cast.context.intent}
-          onChange={(e) => cast.setIntent(e.target.value)}
-          placeholder="What is the spell for?"
-          disabled={busy}
-          className="w-full"
-        />
-      </div>
-
+      {/* No intent line (owner, 2026-10-22): what the spell is for is said
+          on camera, not typed into the record. */}
       {/* the trigger row — Cancel walks away on the left, Cast commits on
           the right; a Mana cost rides inside the trigger (owner call
           2026-07-19: about to spend, said where you press) */}

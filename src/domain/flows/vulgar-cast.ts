@@ -286,7 +286,6 @@ export const DraftCastArgs = Schema.Struct({
   /** Rote lane (issue #47): the trained Rote, plus the "or"-pool pick. */
   roteName: Schema.optionalKey(Schema.String),
   skillChoice: Schema.optionalKey(Schema.String),
-  intent: Schema.optionalKey(Schema.String),
   /** The bought floor (issue #107): Potency beyond 1 (−2 dice per dot) and
    * the targets bracket (−2 per doubling) — stamped for the ST's dispel. */
   potency: Schema.optionalKey(Schema.Number),
@@ -548,8 +547,6 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
   // OTHER characters are locked too — the lock follows the person.
   yield* requireRollFreedom(member)
 
-  const intent = args.intent?.trim()
-
   // The bought floor stamps only when bought — Potency 1 and one target are
   // the free defaults, not declarations (issue #107).
   const bought = {
@@ -571,7 +568,6 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
     ...(declaration.isRote
       ? { isRote: true, roteName: declaration.roteName }
       : {}),
-    ...(intent ? { intent } : {}),
     // The standing sheet fact, stamped at declaration (issue #107) — the
     // bench reports it; no per-cast toggle exists.
     usesMagicalTool: sheet.magicalTool,
@@ -595,7 +591,7 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
   yield* store.insertMessage({
     sessionId,
     sender: { userId: member.userId, displayName: member.displayName },
-    text: `${member.displayName} ${declared}${willpower}${intent ? ` — "${intent}"` : ""}. It waits in the wings.`,
+    text: `${member.displayName} ${declared}${willpower}. It waits in the wings.`,
     visibility: "system",
   })
 

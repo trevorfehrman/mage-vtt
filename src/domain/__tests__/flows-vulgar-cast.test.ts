@@ -163,7 +163,6 @@ describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
         characterId: CHARACTER,
         arcanum: "death",
         level: 2,
-        intent: "Rot the warehouse door off its hinges",
       }).pipe(as(PLAYER), Effect.provide(store.layer))
 
       expect(store.casts).toHaveLength(1)
@@ -1377,7 +1376,6 @@ describe("Flows.vulgarCast — the rote lane (issue #47)", () => {
         sessionId: SESSION,
         characterId: CHARACTER,
         roteName: "Seal of Bone",
-        intent: "Seal the crypt with grave-wax",
       }).pipe(as(PLAYER), Effect.provide(store.layer))
 
       const cast = store.casts[0]!

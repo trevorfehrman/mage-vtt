@@ -184,7 +184,6 @@ const runHandshake = (
       characterId: CHARACTER,
       arcanum: "death",
       level: 2,
-      intent: "Rot the door",
       potency: 2,
     }).pipe(Effect.provide(layerFor(PLAYER)))
     yield* engageCast({ sessionId: SESSION, castId }).pipe(
@@ -220,7 +219,6 @@ const observedCast = (row: Record<string, unknown>) => ({
   status: row.status,
   arcanum: row.arcanum,
   level: row.level,
-  intent: row.intent,
   usesMagicalTool: row.usesMagicalTool,
   potency: row.potency ?? null,
   targets: row.targets ?? null,

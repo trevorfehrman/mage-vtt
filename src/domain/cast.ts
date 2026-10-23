@@ -137,7 +137,6 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   level: Schema.Number,
   isRote: Schema.optionalKey(Schema.Boolean),
   roteName: Schema.optionalKey(Schema.String),
-  intent: Schema.optionalKey(Schema.String),
   usesMagicalTool: Schema.Boolean,
   spendWillpower: Schema.optionalKey(Schema.Boolean),
   // The bought floor (issue #107): declared spell factors, stamped so the

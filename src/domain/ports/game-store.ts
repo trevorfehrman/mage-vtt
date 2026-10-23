@@ -109,7 +109,6 @@ export const CastDraft = Schema.Struct({
   /** The rote lane's stamp (issue #47): −1 Paradox die and the Rote's name. */
   isRote: Schema.optionalKey(Schema.Boolean),
   roteName: Schema.optionalKey(Schema.String),
-  intent: Schema.optionalKey(Schema.String),
   usesMagicalTool: Schema.Boolean,
   /** The blind Willpower precommitment (ADR-0022, WoD p. 133). */
   spendWillpower: Schema.optionalKey(Schema.Boolean),

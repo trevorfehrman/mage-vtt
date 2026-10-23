@@ -301,6 +301,9 @@ export const CastDoc = Schema.Struct({
   level: Schema.Number,
   isRote: Schema.optionalKey(Schema.Boolean),
   roteName: Schema.optionalKey(Schema.String),
+  /** Retired (owner, 2026-10-22): intent is spoken on camera, not typed.
+   * Kept optional here only so documents written before the retirement
+   * still validate; nothing reads or writes it. */
   intent: Schema.optionalKey(Schema.String),
   usesMagicalTool: Schema.Boolean,
   spendWillpower: Schema.optionalKey(Schema.Boolean),

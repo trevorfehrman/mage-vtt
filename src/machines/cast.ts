@@ -37,8 +37,6 @@ export interface CastContext {
   /** Declared rider Mana — driven from the Mana strip, never a bench dial. */
   extraMana: number
   spendWillpower: boolean
-  /** Vulgar draft only (issue #66/#69): the caster's one-line intent. */
-  intent: string
   error: CastError | null
 }
 
@@ -51,7 +49,6 @@ type CastEvent =
   | { type: "SET_TARGETS"; value: number }
   | { type: "SET_EXTRA_MANA"; value: number }
   | { type: "SET_SPEND_WILLPOWER"; value: boolean }
-  | { type: "SET_INTENT"; value: string }
   | { type: "CAST" }
   | { type: "DRAFT_VULGAR" }
   | { type: "CANCEL" }
@@ -90,7 +87,6 @@ export type DraftSubmission =
       method: "improvised"
       arcanum: ArcanumName
       level: number
-      intent?: string
       potency?: number
       targets?: number
       extraManaCost?: number
@@ -100,7 +96,6 @@ export type DraftSubmission =
       method: "rote"
       roteName: string
       skillChoice?: string
-      intent?: string
       potency?: number
       targets?: number
       extraManaCost?: number
@@ -115,7 +110,6 @@ const IDLE_CONTEXT: CastContext = {
   targets: 1,
   extraMana: 0,
   spendWillpower: false,
-  intent: "",
   error: null,
 }
 
@@ -213,9 +207,6 @@ export const castMachine = setup({
         SET_SPEND_WILLPOWER: {
           actions: assign({ spendWillpower: ({ event }) => event.value }),
         },
-        SET_INTENT: {
-          actions: assign({ intent: ({ event }) => event.value }),
-        },
         CAST: { target: "casting", guard: "canSubmit" },
         DRAFT_VULGAR: { target: "drafting", guard: "canSubmit" },
         CANCEL: { target: "idle", actions: assign(() => IDLE_CONTEXT) },
@@ -268,18 +259,14 @@ export function declaredFactors(context: CastContext): {
 }
 
 /** The wire shape of a Vulgar draft — the declaration by route, extras only
- * when they act (a blank or whitespace intent stays off the wire). The
+ * when they act. The
  * Willpower spend precommits at declaration (ADR-0022, WoD p. 133); the
  * bought floor and the rider ride the same way (issue #107). */
 export function buildDraftSubmission(context: CastContext): DraftSubmission {
   if (context.selection === null) {
     throw new Error("Cannot build a draft submission with nothing armed")
   }
-  const intent = context.intent.trim()
-  const extras = {
-    ...(intent !== "" ? { intent } : {}),
-    ...declaredFactors(context),
-  }
+  const extras = declaredFactors(context)
   if (context.selection.method === "improvised") {
     return {
       method: "improvised",

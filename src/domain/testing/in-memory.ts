@@ -103,7 +103,6 @@ export interface StoredCast {
   readonly level: number
   readonly isRote?: boolean
   readonly roteName?: string
-  readonly intent?: string
   readonly usesMagicalTool: boolean
   readonly potency?: number
   readonly targets?: number
@@ -342,7 +341,6 @@ export const makeInMemory = (seed: {
           level: draft.level,
           ...(draft.isRote !== undefined ? { isRote: draft.isRote } : {}),
           ...(draft.roteName !== undefined ? { roteName: draft.roteName } : {}),
-          ...(draft.intent !== undefined ? { intent: draft.intent } : {}),
           usesMagicalTool: draft.usesMagicalTool,
           ...(draft.spendWillpower !== undefined
             ? { spendWillpower: draft.spendWillpower }

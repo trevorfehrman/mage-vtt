@@ -47,7 +47,6 @@ export const draft = enforcedMutation({
     level: v.optional(v.number()),
     roteName: v.optional(v.string()),
     skillChoice: v.optional(v.string()),
-    intent: v.optional(v.string()),
     // The bought floor and the rider (issue #107); the tool is the sheet's
     // standing fact — the flow stamps it, no arg carries it.
     potency: v.optional(v.number()),

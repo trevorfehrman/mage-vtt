@@ -124,7 +124,6 @@ const draft: CastEntry = {
   status: "draft",
   arcanum: "death",
   level: 3,
-  intent: "Unravel the warding knot sealing the mausoleum door",
   usesMagicalTool: true,
   // Improvised-cast shape (Gnosis + Arcanum + boosts, spellcasting.ts) and a
   // 0-Mana cost: Death is Moros-ruling, so the honest price is nothing — the

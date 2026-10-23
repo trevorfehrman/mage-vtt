@@ -359,7 +359,6 @@ export const convexLive = (
             level: draft.level,
             ...(draft.isRote !== undefined ? { isRote: draft.isRote } : {}),
             ...(draft.roteName !== undefined ? { roteName: draft.roteName } : {}),
-            ...(draft.intent !== undefined ? { intent: draft.intent } : {}),
             usesMagicalTool: draft.usesMagicalTool,
             ...(draft.spendWillpower !== undefined
               ? { spendWillpower: draft.spendWillpower }
