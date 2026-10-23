@@ -303,7 +303,9 @@ export function RollItem({ roll }: { roll: RollEntry }) {
         </p>
       )}
 
-      <div className="mt-1.5 flex flex-wrap gap-1">
+      {/* A 20px diamond overhangs its box ~4px a side, so the faces need
+          the Cast card's clearance, not the old square die's 4px (MAG-19). */}
+      <div className="mt-1.5 flex flex-wrap gap-3">
         {roll.rolls.map((v, i) => (
           <UnifiedDie key={`b${i}`} mode="face" v={v} again={roll.againThreshold} chance={roll.isChanceDie} />
         ))}
