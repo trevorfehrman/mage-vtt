@@ -211,6 +211,15 @@ the same member, and character ownership is decided by matching that pair.
 **Invite code**:
 The short code that admits a user to a Session as a new session member.
 
+**Video tile**:
+A Session member's seat in the left rail, the Storyteller's first and then the
+players' in the order they joined (MAG-51). A member with a sheet wears its
+depletables inside the tile on every seat: the sheet's headline name at the
+head, the whole health track and Will · Mana at the foot, a pending spend
+shown as what would be left, in ember. The tiles share the rail's height, so a
+full table never scrolls. The video itself is still a stand-in.
+_Avoid_: Portrait, Card.
+
 ### The sheet
 
 **Character Sheet**:

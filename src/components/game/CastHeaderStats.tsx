@@ -18,12 +18,14 @@ const PoolNumeralsProps = Schema.Struct({
   sheet: CharacterSheet,
   pendingMana: Schema.Number,
   pendingWillpower: Schema.Number,
+  /** Font size in px; the Cast header's 13 by default. */
+  size: Schema.optionalKey(Schema.Number),
 })
 
 /** Will · Mana as numerals; a pending spend shows what would be left, in ember. */
-export function PoolNumerals({ sheet, pendingMana, pendingWillpower }: typeof PoolNumeralsProps.Type) {
+export function PoolNumerals({ sheet, pendingMana, pendingWillpower, size = 13 }: typeof PoolNumeralsProps.Type) {
   return (
-    <span className="mv-data flex items-baseline gap-3 text-[13px] leading-none">
+    <span className="mv-data flex items-baseline gap-3 leading-none" style={{ fontSize: size }}>
       <Pool
         label="Willpower"
         color="var(--will)"
@@ -66,9 +68,14 @@ function Pool({ label, color, current, max, pending }: typeof PoolProps.Type) {
 }
 
 /** The whole health track in miniature; boxes being bet ghost in ember. */
-const HealthLineProps = Schema.Struct({ track: HealthTrack, ghosts: Schema.Number })
+const HealthLineProps = Schema.Struct({
+  track: HealthTrack,
+  ghosts: Schema.Number,
+  /** Box edge in px; the Cast header's 14 by default. */
+  box: Schema.optionalKey(Schema.Number),
+})
 
-export function HealthLine({ track, ghosts }: typeof HealthLineProps.Type) {
+export function HealthLine({ track, ghosts, box: edge = 14 }: typeof HealthLineProps.Type) {
   const ordinals = emptyOrdinals(track)
   const penalty = woundPenalty(track)
   return (
@@ -80,10 +87,11 @@ export function HealthLine({ track, ghosts }: typeof HealthLineProps.Type) {
           return (
             <span key={i} className="relative">
               <span
-                className="mv-data grid place-items-center rounded-[2px] border text-[9px] font-bold"
+                className="mv-data grid place-items-center rounded-[2px] border font-bold"
                 style={{
-                  width: 14,
-                  height: 14,
+                  width: edge,
+                  height: edge,
+                  fontSize: Math.round(edge * 0.64),
                   borderColor: ghosted
                     ? "var(--ember)"
                     : box.severity === "empty"
@@ -108,7 +116,7 @@ export function HealthLine({ track, ghosts }: typeof HealthLineProps.Type) {
       </span>
       {penalty < 0 && (
         <span
-          className="mv-data text-[12px] font-bold"
+          className="mv-data text-[12px] leading-none font-bold"
           style={{ color: "var(--bad)", paddingBottom: 6 }}
           title="Wound penalty — it rides every roll"
         >
