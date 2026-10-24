@@ -28,7 +28,7 @@
 // refuses — the refusal renders inline, which is itself a state worth seeing.
 //
 // DELETE when map #95 clears.
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { withheldFrom, type CastEntry, type MessageEntry, type RollEntry } from "#/domain/activity"
 import type { ParadoxPoolModifier } from "#/domain/paradox"
@@ -45,7 +45,6 @@ import { isUnresolved } from "#/domain/cast"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { ChatInput } from "#/components/game/ChatInput"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
-import { ResourceStrip } from "#/components/game/ResourceStrip"
 import { VideoRail } from "#/components/game/VideoRail"
 import type { CharacterSheet as Sheet } from "#/domain/character"
 import type { VideoSeat } from "#/domain/video-rail"
@@ -111,14 +110,15 @@ const T0 = 1752800000000
 // The caster's decoded sheet — the real Arctus fixture with a fresh current
 // state, so the mitigation cap (Mana) and containment bet (health track)
 // read real numbers.
-const arctusSheet = decodeSheet({
+const ARCTUS_INPUT = {
   id: "proto-character",
   sessionId: SESSION_ID,
   userId: CASTER,
   sessionMemberId: "proto-member",
   ...arctusData,
   ...initialCurrentState(arctusData),
-})
+}
+const arctusSheet = decodeSheet(ARCTUS_INPUT)
 
 // The video rail's table (MAG-51): the Storyteller and five players in five
 // states, so the tiles are judged on the hard cases as well as the easy one:
@@ -149,19 +149,21 @@ const player = (
 const RIG_PLAYERS: ReadonlyArray<Sheet | null> = [
   arctusSheet,
   player("Corvin Ashe", {
+    shadowName: "Tessellate",
     gnosis: 2,
     healthTrack: track([box("lethal"), box("lethal"), box("bashing"), box("bashing"), box("bashing")], 7),
     willpowerCurrent: 3,
     manaCurrent: 6,
   }),
   player("Mirela Voss", {
+    shadowName: "Ninefold",
     gnosis: 3,
     healthTrack: track([box("aggravated", true), box("lethal", true)], 7),
     willpowerCurrent: 5,
     manaCurrent: 1,
   }),
-  player("Tobias Wren", { willpowerCurrent: 0, manaCurrent: 4 }),
-  player("Sable", { healthTrack: track([box("bashing")], 9) }),
+  player("Tobias Wren", { shadowName: "Wick", willpowerCurrent: 0, manaCurrent: 4 }),
+  player("Sable", { shadowName: "Hollow Bell", healthTrack: track([box("bashing")], 9) }),
 ]
 
 const RIG_SEATS: ReadonlyArray<VideoSeat> = [
@@ -342,6 +344,12 @@ const SEAT_VIEW: Record<
 
 function DressingRoom() {
   const { rung, seat, grammar } = Route.useSearch()
+  // MAG-52: the sheet's tool switch flips a local copy (no server here).
+  const [toolInHand, setToolInHand] = useState(false)
+  const shownSheet = useMemo(
+    () => decodeSheet({ ...ARCTUS_INPUT, hasMagicalTool: toolInHand }),
+    [toolInHand],
+  )
   const navigate = Route.useNavigate()
   const pool = useDicePool(SESSION_ID)
 
@@ -441,8 +449,17 @@ function DressingRoom() {
         inviteCode="PROTO-96"
         videoRail={<VideoRail seats={RIG_SEATS} pending={null} />}
         characterSheet={
-          arctusSheet ? (
-            <CharacterSheet character={arctusSheet} />
+          shownSheet ? (
+            <CharacterSheet
+              character={shownSheet}
+              // a pending spend, so the header's ember is judged too
+              pendingMana={2}
+              pendingWillpower={1}
+              onSetMagicalTool={(next) => {
+                setToolInHand(next)
+                return Promise.resolve()
+              }}
+            />
           ) : (
             <p className="text-sm" style={{ color: "var(--bad)" }}>
               The Arctus fixture failed to decode — the rig needs a sheet.
@@ -453,7 +470,6 @@ function DressingRoom() {
         liveCasts={live && <CastMount>{card}</CastMount>}
         dicePoolBuilder={
           <>
-            {mySheet && <ResourceStrip character={mySheet} />}
             <DicePoolBuilder pool={pool} />
           </>
         }

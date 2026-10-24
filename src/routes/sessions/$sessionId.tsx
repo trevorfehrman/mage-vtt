@@ -18,7 +18,6 @@ import {
   DeclarationFelt,
 } from "#/components/game/DeclarationFelt"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
-import { ResourceStrip } from "#/components/game/ResourceStrip"
 import { CastCard } from "#/components/game/CastCard"
 import { CastMount } from "#/components/game/CastMount"
 import { ChatInput } from "#/components/game/ChatInput"
@@ -289,6 +288,18 @@ function SessionPage() {
   ]
 
   // Build character sheet content
+  // The viewer's armed spend, weighed wherever their depletables show — the
+  // sheet's header and their own video tile. The ghost means "armed on the
+  // felt, spent on the roll/cast": whichever posture holds the felt. Mana is
+  // what the declaring felt has armed (auto + rider, issue #107). A live
+  // cast holds the whole zone and its header weighs its own spend (MAG-48).
+  const pendingWillpower =
+    rawCast.state === "idle" ? pool.context.spendWillpower : rawCast.context.spendWillpower
+  const pendingMana =
+    rawCast.state !== "idle" && mySheet
+      ? (armedPreview(rawCast.context, mySheet)?.manaCost ?? 0)
+      : 0
+
   let sheetContent: React.ReactNode = undefined
   if (viewed === undefined) {
     sheetContent = (
@@ -318,6 +329,17 @@ function SessionPage() {
           character={sheet}
           pool={mayDrivePool ? poolForSheet : undefined}
           cast={isMine ? cast : undefined}
+          // your own sheet weighs your armed spend and flips your tool fact
+          // (issue #107, seated on the sheet by MAG-52) — the refusal
+          // speaks at the switch
+          pendingMana={isMine ? pendingMana : 0}
+          pendingWillpower={isMine && pendingWillpower ? 1 : 0}
+          onSetMagicalTool={
+            isMine
+              ? (hasMagicalTool) =>
+                  setMagicalTool({ sessionId, characterId: viewed._id, hasMagicalTool })
+              : undefined
+          }
         />
         {/* The hand-edit panel (issue #19): ST-only, on any sheet — the one
             edit affordance in the app; players never see edit controls. */}
@@ -365,18 +387,6 @@ function SessionPage() {
       {sheetContent}
     </>
   )
-
-  // The viewer's armed spend, weighed wherever their depletables show — the
-  // masthead strip and their own video tile. The ghost means "armed on the
-  // felt, spent on the roll/cast": whichever posture holds the felt. Mana is
-  // what the declaring felt has armed (auto + rider, issue #107). A live
-  // cast holds the whole zone and its header weighs its own spend (MAG-48).
-  const pendingWillpower =
-    rawCast.state === "idle" ? pool.context.spendWillpower : rawCast.context.spendWillpower
-  const pendingMana =
-    rawCast.state !== "idle" && mySheet
-      ? (armedPreview(rawCast.context, mySheet)?.manaCost ?? 0)
-      : 0
 
   return (
     <SessionLayout
@@ -464,35 +474,13 @@ function SessionPage() {
         ))
       }
       dicePoolBuilder={
-        // The console (owner call 2026-07-19, superseding #104's reach-order):
-        // the masthead first — the depletables are the constant plate above
-        // an instrument that shifts forms — then the posture. Arming a cast
-        // puts the felt in its declaring posture (issue #107) — same
-        // instrument, same slot. A live cast takes the whole zone over
-        // instead (MAG-48, liveCasts above), its header carrying the
+        // The console: the posture alone now (MAG-52) — the depletables
+        // left the masthead for the sheet's header and each video tile.
+        // Arming a cast puts the felt in its declaring posture (issue #107)
+        // — same instrument, same slot. A live cast takes the whole zone
+        // over instead (MAG-48, liveCasts above), its header carrying the
         // caster's stats, so none of this renders while one is up.
         <>
-          {mySheet && (
-            <ResourceStrip
-              character={mySheet}
-              // the viewer's armed spend, weighed here and on their tile
-              pendingWillpower={pendingWillpower}
-              pendingMana={pendingMana}
-              // The standing tool fact (issue #107; masthead-seated by pass
-              // 3, note 10): the seat's own to maintain — the refusal speaks
-              // at the toggle.
-              onSetMagicalTool={
-                character
-                  ? (hasMagicalTool) =>
-                      setMagicalTool({
-                        sessionId,
-                        characterId: character._id,
-                        hasMagicalTool,
-                      })
-                  : undefined
-              }
-            />
-          )}
           {/* Each posture keyed so a change remounts through the assembly
               beat (.mv-assemble): the zone doesn't swap, it re-marshals
               beneath the masthead (styles.css). */}

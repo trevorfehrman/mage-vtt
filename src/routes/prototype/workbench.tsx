@@ -58,7 +58,6 @@ import {
 } from "#/components/game/ArcanaGlyph";
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder";
 import { DotRating } from "#/components/game/DotRating";
-import { ResourceStrip } from "#/components/game/ResourceStrip";
 import { SecondSeatControl } from "#/components/game/SecondSeatControl";
 import { useDicePool } from "#/hooks/use-dice-pool";
 import type { SessionMemberRow } from "#/domain/session";
@@ -737,12 +736,7 @@ function RailFootBench() {
             <DicePoolBuilder pool={sheetless} />
           </div>
         </Spec>
-        <Spec label="masthead — spends being weighed (pending ghosts on both pools)">
-          <div className="mv-panel w-[430px] rounded-[3px]">
-            <ResourceStrip character={arctusSheet} pendingWillpower pendingMana={2} />
-          </div>
-        </Spec>
-        <Spec label="the stage — memory/judgment boundary: the rail's panel ends, the void breathes, the console opens masthead-first">
+        <Spec label="the stage — memory/judgment boundary: the rail's panel ends, the void breathes, the console opens">
           <div className="mv-panel w-[430px] rounded-[3px]">
             {/* a feed stand-in, so the seam has a memory to end */}
             <p
@@ -752,7 +746,6 @@ function RailFootBench() {
               — the chronicle&apos;s last beat —
             </p>
             <div className="mv-stage-ground">
-              <ResourceStrip character={arctusSheet} />
               <div className="mv-stage">
                 <DicePoolBuilder pool={staged} character={arctusSheet} />
               </div>

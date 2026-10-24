@@ -89,7 +89,8 @@ const previewOf = (
 /**
  * The armed declaration's full preview — factors applied, Mana priced — the
  * same call the felt renders from, exported so the session route can ghost
- * the pending Mana spend on the ResourceStrip without a second derivation.
+ * the pending Mana spend on the sheet's header and the viewer's video tile
+ * without a second derivation.
  */
 export const armedPreview = (
   context: CastContext,

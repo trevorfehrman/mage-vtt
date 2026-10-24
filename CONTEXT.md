@@ -231,6 +231,13 @@ legally earned: whether a change is allowed is a question about the *action*
 that can be written can always be read back.
 _Avoid_: Stat block, character record.
 
+**Sheet header**:
+The top of the Character Sheet (MAG-52): the mage name with Will · Mana and
+the health track beneath it, Gnosis with Defense · Initiative · Speed beneath
+it, then Path | Order | ruling Arcana | Virtue | Vice, and the Magical Tool
+switch at its corner. Each player's depletables also ride their Video tile.
+_Avoid_: Masthead, resource strip (the rail-foot HUD it replaced).
+
 **Hand edit**:
 A direct, free-form change to a Character Sheet value made outside any game
 action — the fudge/repair path. Storyteller- or Dev-only, and always carries an

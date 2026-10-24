@@ -2,9 +2,9 @@ import { Schema } from "effect"
 import { CharacterSheet } from "#/domain/character"
 import { HealthTrack } from "#/domain/damage"
 import { emptyOrdinals, woundPenalty } from "#/domain/health"
-import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
 import { ArcanaGlyph, arcanumTint, isGrossArcanum } from "./ArcanaGlyph"
-import { healthBoxGlyph, ResistantDot } from "./CharacterSheet"
+import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { Lozenge } from "./Lozenge"
 
 /**
@@ -25,22 +25,24 @@ const PoolNumeralsProps = Schema.Struct({
 /** Will · Mana as numerals; a pending spend shows what would be left, in ember. */
 export function PoolNumerals({ sheet, pendingMana, pendingWillpower, size = 13 }: typeof PoolNumeralsProps.Type) {
   return (
-    <span className="mv-data flex items-baseline gap-3 leading-none" style={{ fontSize: size }}>
-      <Pool
-        label="Willpower"
-        color="var(--will)"
-        current={sheet.willpowerCurrent}
-        max={sheet.willpower}
-        pending={pendingWillpower}
-      />
-      <Pool
-        label="Mana"
-        color="var(--mana)"
-        current={sheet.manaCurrent}
-        max={sheet.maxMana}
-        pending={pendingMana}
-      />
-    </span>
+    <TooltipProvider>
+      <span className="mv-data flex items-baseline gap-3 leading-none" style={{ fontSize: size }}>
+        <Pool
+          label="Willpower"
+          color="var(--will)"
+          current={sheet.willpowerCurrent}
+          max={sheet.willpower}
+          pending={pendingWillpower}
+        />
+        <Pool
+          label="Mana"
+          color="var(--mana)"
+          current={sheet.manaCurrent}
+          max={sheet.maxMana}
+          pending={pendingMana}
+        />
+      </span>
+    </TooltipProvider>
   )
 }
 
@@ -55,15 +57,20 @@ const PoolProps = Schema.Struct({
 function Pool({ label, color, current, max, pending }: typeof PoolProps.Type) {
   // A pending spend shows what would be left, in ember — no arrow.
   const shown = Math.max(0, current - pending)
+  const name = pending > 0 ? `${label} · ${pending} pending` : label
   return (
-    <span
-      className="flex items-baseline gap-1"
-      title={pending > 0 ? `${label} — ${pending} pending, spent when it commits` : label}
-    >
-      <span style={{ color }}><Lozenge /></span>
-      <span style={{ color: pending > 0 ? "var(--ember)" : "var(--ink)" }}>{shown}</span>
-      <span style={{ color: "var(--dim)" }}>/{max}</span>
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span tabIndex={0} aria-label={name} className="flex items-baseline gap-1">
+          <span style={{ color }}><Lozenge /></span>
+          <span style={{ color: pending > 0 ? "var(--ember)" : "var(--ink)" }}>{shown}</span>
+          <span style={{ color: "var(--dim)" }}>/{max}</span>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={4}>
+        {name}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

@@ -4,11 +4,13 @@ import {
   type ArcanumName,
   type CharacterSheet as CharacterSheetData,
 } from "#/domain/character"
-import type { BoxSeverity } from "#/domain/damage"
 import type { PoolComponentInput, PoolComponentType } from "#/domain/dice"
 import {
   ArcanaGlyph,
   OrderGlyph,
+  StatGlyph,
+  ViceGlyph,
+  VirtueGlyph,
   PathGlyph,
   arcanumRealm,
   arcanumTint,
@@ -20,43 +22,17 @@ import { ArcanaSubstance, hasSubstance } from "./ArcanaSubstance"
 import { RoteBook } from "./RoteBook"
 import { TraitSky } from "./TraitSky"
 import { Separator } from "#/components/ui/separator"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
 import { DotRating } from "./DotRating"
+import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
+import { ToolSwitch } from "./ToolSwitch"
+import { PoolNumerals } from "./CastHeaderStats"
+import { woundPenalty } from "#/domain/health"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
 type DicePoolAPI = ReturnType<typeof useDicePool>
 type CastAPI = ReturnType<typeof useCast>
-
-/** One glyph per health box severity — shared with the hand-edit panel. */
-const HEALTH_BOX_GLYPHS: Record<BoxSeverity, string> = {
-  empty: "",
-  bashing: "╱",
-  lethal: "✕",
-  aggravated: "✳",
-}
-export const healthBoxGlyph = (severity: BoxSeverity): string =>
-  HEALTH_BOX_GLYPHS[severity]
-
-/** The standing tool fact's one explanation (issue #107) — spoken by the
- * masthead's toggle and the sheet's read-only line alike, so the two
- * surfaces can't drift. */
-export const MAGICAL_TOOL_TITLE =
-  "A magical tool in hand: −1 Paradox die on every vulgar cast."
-
-/**
- * The dot beneath a health box — Resistant damage (issue #41), the wound
- * Awakened magic can't heal. The slot always renders so the track's boxes
- * don't shift when a dot appears; shared with the hand-edit panel.
- */
-export function ResistantDot({ resistant }: { resistant: boolean }) {
-  return (
-    <span
-      className="size-[5px] rounded-full"
-      title={resistant ? "Resistant — heals only naturally" : undefined}
-      style={{ background: resistant ? "var(--accent)" : "transparent" }}
-    />
-  )
-}
 
 interface CharacterSheetProps {
   character: CharacterSheetData
@@ -71,7 +47,14 @@ interface CharacterSheetProps {
    * triggers. Absent on read-only sheets — Rotes render as inert rows.
    */
   cast?: CastAPI | undefined
+  /** The viewer's armed spend, weighed in the header as on their tile. */
+  pendingMana?: number | undefined
+  pendingWillpower?: number | undefined
+  /** Flips the standing tool fact (issue #107). Present only on the
+   * viewer's own sheet; a refusal speaks at the switch. */
+  onSetMagicalTool?: ((hasMagicalTool: boolean) => Promise<unknown>) | undefined
 }
+
 
 /**
  * The sheet is the dice-pool input surface (docs/component-polish.md): every
@@ -81,8 +64,11 @@ export function CharacterSheet({
   character,
   pool,
   cast,
+  pendingMana = 0,
+  pendingWillpower = 0,
+  onSetMagicalTool,
 }: CharacterSheetProps) {
-  const { healthTrack } = character
+  const penalty = woundPenalty(character.healthTrack)
   const canToggle =
     pool !== undefined && (pool.state === "idle" || pool.state === "building")
   const ruling = rulingArcanaOf(character.path)
@@ -99,36 +85,65 @@ export function CharacterSheet({
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-6">
-      {/* Header — corner-ticked: one of the two "important" surfaces. Pure
-          identity (owner call 2026-07-08): the mage name leads, the given name
-          seconds it, and the at-a-glance resource meters live in the rail's
-          ResourceStrip, not here. Gnosis stays — it's who the mage is, not a
-          meter that drains. */}
-      <div className="mv-cornered mv-panel flex items-stretch justify-between gap-6 p-4">
-        {/* Left column: who (name · description) atop the identity emblems
-            (Path | Order | ruling Arcana, hairline-divided). */}
-        <div className="flex min-w-0 flex-col justify-between gap-4">
-          <div className="grid gap-1.5">
+      {/* Header — corner-ticked: one of the two "important" surfaces (MAG-52,
+          owner 2026-10-24, from a rig audition). Who and what they carry: the
+          mage name, and beneath it Will · Mana and the whole health track;
+          opposite, Gnosis with the combat ratings beneath it. Then what kind
+          of mage: Path | Order | ruling Arcana | Virtue | Vice, one emblem
+          grammar, with the standing tool fact at the corner. The given name
+          and concept line is gone (owner: players know who they are). */}
+      <div className="mv-cornered mv-panel grid gap-4 p-4">
+        <div className="flex items-start justify-between gap-6">
+          <div className="grid gap-3">
             <h2 className="mv-h text-[30px] leading-none">
               {character.shadowName ?? character.name}
             </h2>
-            <p className="text-[13px]" style={{ color: "var(--dim)" }}>
-              {character.shadowName ? (
-                <>
-                  {character.name} &middot; {character.concept}
-                </>
-              ) : (
-                character.concept
-              )}
-            </p>
+            <div className="mv-data flex flex-wrap items-center gap-x-5 gap-y-2 whitespace-nowrap">
+              {/* the depletables: Will · Mana (a pending spend shows what
+                  would be left, in ember), then the health track and its
+                  penalty */}
+              <span className="flex items-center" style={{ height: 20 }}>
+                <PoolNumerals
+                  sheet={character}
+                  pendingMana={pendingMana}
+                  pendingWillpower={pendingWillpower}
+                  size={15}
+                />
+              </span>
+              <span className="flex items-center gap-2">
+                <span title="Health" className="flex">
+                  <HealthTrack track={character.healthTrack} />
+                </span>
+                {penalty < 0 && (
+                  <span
+                    className="text-[13px] leading-none font-bold"
+                    style={{ color: "var(--bad)" }}
+                    title="Wound penalty — it rides every roll"
+                  >
+                    {penalty}
+                  </span>
+                )}
+              </span>
+            </div>
           </div>
-          <span className="mv-data flex items-center gap-2">
-            <span className="text-[12px]" style={{ color: "var(--dim)" }}>
-              HEALTH
+          <div className="mv-data grid shrink-0 justify-items-end gap-3 text-right">
+            <span className="flex items-baseline gap-2 leading-none">
+              <span className="text-[15px]" style={{ color: "var(--dim)" }}>GNOSIS</span>
+              <span className="mv-accent text-[32px] font-semibold">{character.gnosis}</span>
             </span>
-            <HealthTrack track={healthTrack} />
-          </span>
-          <div className="flex items-stretch gap-4">
+            {/* the combat ratings in the depletables' grammar: a glyph for
+                the label, the numeral beside it (a tooltip names each) */}
+            <TooltipProvider>
+              <div className="flex items-center gap-4 leading-none" style={{ fontSize: 15, height: 20 }}>
+                <Rating label="Defense" stat="defense" value={character.defense} />
+                <Rating label="Initiative" stat="initiative" value={character.initiative} />
+                <Rating label="Speed" stat="speed" value={character.speed} />
+              </div>
+            </TooltipProvider>
+          </div>
+        </div>
+        <div className="flex items-end justify-between gap-6">
+          <div className="flex flex-wrap items-stretch gap-x-4 gap-y-3">
             <EmblemGroup label="Path">
               <Emblem
                 glyph={
@@ -164,50 +179,41 @@ export function CharacterSheet({
                 />
               ))}
             </EmblemGroup>
+            <Separator orientation="vertical" className="!h-auto self-stretch" />
+            <EmblemGroup label="Virtue">
+              <Emblem
+                glyph={
+                  <span className="inline-flex" style={{ color: "var(--accent)" }}>
+                    <VirtueGlyph virtue={character.virtue} size={22} />
+                  </span>
+                }
+                name={character.virtue}
+              />
+            </EmblemGroup>
+            <Separator orientation="vertical" className="!h-auto self-stretch" />
+            <EmblemGroup label="Vice">
+              <Emblem
+                glyph={
+                  <span
+                    className="inline-flex"
+                    style={{ color: "color-mix(in srgb, var(--bad) 70%, var(--dim))" }}
+                  >
+                    <ViceGlyph vice={character.vice} size={22} />
+                  </span>
+                }
+                name={character.vice}
+              />
+            </EmblemGroup>
           </div>
-        </div>
-
-        {/* Right column: the numbers — Gnosis (the level, dominant), then the
-            ceilings and the body's ratings snug together, and the soul's poles
-            alone at the container's foot (vitals folded in, owner call
-            2026-07-17). Live currents tick in the rail's ResourceStrip. */}
-        <div className="mv-data flex shrink-0 flex-col items-end justify-between gap-2 text-right">
-          <span className="flex items-baseline gap-2 leading-none">
-            <span className="text-[15px]" style={{ color: "var(--dim)" }}>GNOSIS</span>
-            <span className="mv-accent text-[32px] font-semibold">{character.gnosis}</span>
+          {/* the standing tool fact (issue #107) at the corner: the viewer's
+              own sheet flips it; anyone else's states it when it holds */}
+          <span className="mv-data flex shrink-0 items-center" style={{ height: 22 }}>
+            {onSetMagicalTool !== undefined ? (
+              <ToolSwitch magicalTool={character.magicalTool} onSetMagicalTool={onSetMagicalTool} />
+            ) : (
+              character.magicalTool && <ToolSwitch magicalTool />
+            )}
           </span>
-          <span className="grid justify-items-end gap-2">
-            {/* No MANA · WILL numerals here (pass 3, note 10): the masthead's
-                pips carry the counts — the header keeps only what the HUD
-                doesn't. */}
-            <span className="text-[12px]">
-              <span style={{ color: "var(--dim)" }}>DEFENSE </span>
-              <span style={{ color: "var(--ink)" }}>{character.defense}</span>
-              <span style={{ color: "var(--dim)" }}> · INITIATIVE </span>
-              <span style={{ color: "var(--ink)" }}>{character.initiative}</span>
-              <span style={{ color: "var(--dim)" }}> · SPEED </span>
-              <span style={{ color: "var(--ink)" }}>{character.speed}</span>
-            </span>
-          </span>
-          <span className="text-[12px]">
-            <span style={{ color: "var(--dim)" }}>VIRTUE </span>
-            <span style={{ color: "var(--ink)" }}>{character.virtue}</span>
-            <span style={{ color: "var(--dim)" }}> · VICE </span>
-            <span style={{ color: "var(--ink)" }}>{character.vice}</span>
-          </span>
-          {/* The standing tool fact (issue #107) moved to the masthead for
-              the seat's own mage (pass 3, note 10) — the sheet still states
-              it on OTHER mages' sheets, where no masthead speaks for them.
-              `cast` present = this is the viewer's own controller sheet. */}
-          {cast === undefined && character.magicalTool && (
-            <span
-              className="text-[12px]"
-              style={{ color: "var(--dim)" }}
-              title={MAGICAL_TOOL_TITLE}
-            >
-              TOOL <span style={{ color: "var(--ink)" }}>in hand</span>
-            </span>
-          )}
         </div>
       </div>
 
@@ -287,6 +293,34 @@ function Section({ title, children }: { title: ReactNode; children: ReactNode })
       </div>
       {children}
     </section>
+  )
+}
+
+/** A combat rating in the numerals' grammar: its glyph, its number, and a
+ * tooltip naming it on hover or focus (ADR-0021's focus ring). */
+function Rating({
+  label,
+  stat,
+  value,
+}: {
+  label: string
+  stat: "defense" | "initiative" | "speed"
+  value: number
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span tabIndex={0} className="flex items-center gap-1.5">
+          <span className="inline-flex" style={{ color: "var(--dim)" }}>
+            <StatGlyph stat={stat} size={16} />
+          </span>
+          <span style={{ color: "var(--ink)" }}>{value}</span>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={4}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

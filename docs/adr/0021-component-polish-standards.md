@@ -1,5 +1,19 @@
 # Component polish runs shared-first, on Motion, against an amended identity
 
+> **Amended** (2026-10-24, MAG-51/52): **the depletables leave the rail
+> foot.** The ResourceStrip is gone; its stats have two homes. Every
+> player's video tile wears their Will · Mana and whole health track inside
+> it, on every seat (`VideoRail`), and the sheet's header carries them for
+> the sheet's owner, reversing 2026-07-08's "resources out of the header":
+> the mage name, with Will · Mana and the health track beneath it; Gnosis
+> opposite, with Defense · Initiative · Speed beneath it as glyph-and-
+> numeral ratings; then Path | Order | ruling Arcana | Virtue | Vice in one
+> emblem grammar, with the standing tool fact (a wand and its Switch) at
+> the corner. The given-name-and-concept line is gone (owner: players know
+> who they are). Virtue, Vice, the three ratings and the wand join the
+> glyph sets (`ArcanaGlyph`), drawn and optically normalized like the rest.
+> Every numeral and rating names itself in a focusable tooltip.
+>
 > **Amended** (2026-10-24, MAG-48): **one owner per edge.** The shell's
 > lines doubled everywhere because `.mv-panel`'s border was unlayered and
 > beat every Tailwind side override (`border-x-0`, `border-t-0`…): the
