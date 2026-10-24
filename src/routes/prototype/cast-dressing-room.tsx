@@ -46,7 +46,9 @@ import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { ChatInput } from "#/components/game/ChatInput"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { ResourceStrip } from "#/components/game/ResourceStrip"
-import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
+import { VideoRail } from "#/components/game/VideoRail"
+import type { CharacterSheet as Sheet } from "#/domain/character"
+import type { VideoSeat } from "#/domain/video-rail"
 import type { Id } from "../../../convex/_generated/dataModel"
 
 // ── The knobs ────────────────────────────────────────────────────────────────
@@ -117,6 +119,58 @@ const arctusSheet = decodeSheet({
   ...arctusData,
   ...initialCurrentState(arctusData),
 })
+
+// The video rail's table (MAG-51): the Storyteller and five players in five
+// states, so the tiles are judged on the hard cases as well as the easy one:
+// Arctus fresh, then hurt into the wound penalty, Resistant damage and
+// nearly dry, out of Willpower, a long track.
+type BoxKey = "empty" | "bashing" | "lethal" | "aggravated"
+const box = (severity: BoxKey, resistant = false) => ({ severity, resistant })
+const track = (filled: ReadonlyArray<ReturnType<typeof box>>, length: number) => [
+  ...filled,
+  ...Array.from({ length: length - filled.length }, () => box("empty")),
+]
+
+const player = (
+  name: string,
+  overrides: Record<string, unknown>,
+): Sheet | null =>
+  decodeSheet({
+    id: `proto-${name}`,
+    sessionId: "proto-dressing-room",
+    userId: `dev:proto-${name}`,
+    sessionMemberId: `proto-member-${name}`,
+    ...arctusData,
+    ...initialCurrentState(arctusData),
+    name,
+    ...overrides,
+  })
+
+const RIG_PLAYERS: ReadonlyArray<Sheet | null> = [
+  arctusSheet,
+  player("Corvin Ashe", {
+    gnosis: 2,
+    healthTrack: track([box("lethal"), box("lethal"), box("bashing"), box("bashing"), box("bashing")], 7),
+    willpowerCurrent: 3,
+    manaCurrent: 6,
+  }),
+  player("Mirela Voss", {
+    gnosis: 3,
+    healthTrack: track([box("aggravated", true), box("lethal", true)], 7),
+    willpowerCurrent: 5,
+    manaCurrent: 1,
+  }),
+  player("Tobias Wren", { willpowerCurrent: 0, manaCurrent: 4 }),
+  player("Sable", { healthTrack: track([box("bashing")], 9) }),
+]
+
+const RIG_SEATS: ReadonlyArray<VideoSeat> = [
+  { memberId: "proto-st", displayName: "Morrigan", role: "storyteller", sheet: null },
+  ...RIG_PLAYERS.flatMap((sheet) =>
+    sheet ? [{ memberId: `seat-${sheet.id}`, displayName: sheet.name, role: "player" as const, sheet }] : [],
+  ),
+]
+
 
 // One Cast document per rung, built cumulatively — each beat's fields land
 // and stay, exactly as the ladder mutations stamp them.
@@ -385,7 +439,7 @@ function DressingRoom() {
       <SessionLayout
         sessionName="The Dressing Room"
         inviteCode="PROTO-96"
-        videoRail={<VideoRailPlaceholder />}
+        videoRail={<VideoRail seats={RIG_SEATS} pending={null} />}
         characterSheet={
           arctusSheet ? (
             <CharacterSheet character={arctusSheet} />

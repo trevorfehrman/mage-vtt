@@ -28,13 +28,14 @@ import { Roster } from "#/components/game/Roster"
 import { HandEditForm } from "#/components/game/HandEditForm"
 import { SceneStrip } from "#/components/game/SceneStrip"
 import { CombatTracker } from "#/components/game/CombatTracker"
-import { VideoRailPlaceholder } from "#/components/game/VideoRailPlaceholder"
+import { VideoRail } from "#/components/game/VideoRail"
 import { PresenceIndicator } from "#/components/game/PresenceIndicator"
 import { SecondSeatControl } from "#/components/game/SecondSeatControl"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { isOnStage, stripTides } from "#/domain/cast"
 import type { CharacterSheet as CharacterSheetData } from "#/domain/character"
 import { decodeSheetDoc } from "#/lib/sheet-doc"
+import { videoSeats } from "#/domain/video-rail"
 import { arctusData } from "#/domain/fixtures/arctus"
 import type { Id } from "../../../convex/_generated/dataModel"
 
@@ -212,6 +213,13 @@ function SessionPage() {
     [character],
   )
 
+  // Every sheet at the table, decoded once: the video rail wears each
+  // player's depletables on their tile (MAG-51), live on every seat.
+  const rosterSheets = useMemo(
+    () => (roster ?? []).flatMap((doc) => decodeSheetDoc(doc) ?? []),
+    [roster],
+  )
+
   // The watched cockpit's sheet (2026-07-19 polish, note 14): the ST's zone
   // card renders the CASTER's health track, decoded off the roster.
   const casterSheetOf = (characterId: string) => {
@@ -358,11 +366,36 @@ function SessionPage() {
     </>
   )
 
+  // The viewer's armed spend, weighed wherever their depletables show — the
+  // masthead strip and their own video tile. The ghost means "armed on the
+  // felt, spent on the roll/cast": whichever posture holds the felt. Mana is
+  // what the declaring felt has armed (auto + rider, issue #107). A live
+  // cast holds the whole zone and its header weighs its own spend (MAG-48).
+  const pendingWillpower =
+    rawCast.state === "idle" ? pool.context.spendWillpower : rawCast.context.spendWillpower
+  const pendingMana =
+    rawCast.state !== "idle" && mySheet
+      ? (armedPreview(rawCast.context, mySheet)?.manaCost ?? 0)
+      : 0
+
   return (
     <SessionLayout
       sessionName={session.name}
       inviteCode={session.inviteCode}
-      videoRail={<VideoRailPlaceholder />}
+      videoRail={
+        <VideoRail
+          seats={videoSeats(session.members, rosterSheets)}
+          pending={
+            mySheet
+              ? {
+                  characterId: mySheet.id,
+                  mana: pendingMana,
+                  willpower: pendingWillpower ? 1 : 0,
+                }
+              : null
+          }
+        />
+      }
       presence={
         <PresenceIndicator
           presenceState={presenceState}
@@ -442,24 +475,9 @@ function SessionPage() {
           {mySheet && (
             <ResourceStrip
               character={mySheet}
-              // The ghost means "armed on the felt, spent on the roll/cast" —
-              // whichever posture holds the felt, the masthead weighs its
-              // spend.
-              pendingWillpower={
-                rawCast.state === "idle"
-                  ? pool.context.spendWillpower
-                  : rawCast.context.spendWillpower
-              }
-              // Mana armed on the declaring felt (auto + rider), ghosted at
-              // the resource it will spend from (issue #107). The rider's
-              // controls are felt fittings now (owner call 2026-07-19) —
-              // the masthead only weighs. A live cast holds the whole zone
-              // and its header weighs its own spend (MAG-48).
-              pendingMana={
-                rawCast.state !== "idle"
-                  ? (armedPreview(rawCast.context, mySheet)?.manaCost ?? 0)
-                  : 0
-              }
+              // the viewer's armed spend, weighed here and on their tile
+              pendingWillpower={pendingWillpower}
+              pendingMana={pendingMana}
               // The standing tool fact (issue #107; masthead-seated by pass
               // 3, note 10): the seat's own to maintain — the refusal speaks
               // at the toggle.
