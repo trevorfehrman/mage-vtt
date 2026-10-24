@@ -75,6 +75,60 @@ const ORDERS: Record<string, GlyphDef> = {
   "free council": { box: [4.2, 3.3, 17.5, 16.5], node: <><circle cx="11.5" cy="12.5" r="7.3" /><circle cx="11.5" cy="12.5" r="2.9" /><path d="M11.5 5.2 V7.4 M11.5 17.6 V19.8 M4.2 12.5 H6.4 M16.6 12.5 H18.8 M6.3 7.3 L7.9 8.9 M15.1 16.1 L16.7 17.7 M6.3 17.7 L7.9 16.1 M15.1 8.9 L16.7 7.3" /><circle cx="20.3" cy="4.7" r="1.4" fill="currentColor" stroke="none" /></> },
 }
 
+// The soul's poles (MAG-52): the seven Virtues by their classical attributes
+// (christianiconography.info), widened past the Christian ones (owner: Faith's
+// cross is too Christian) — Justice takes her sword and Temperance the
+// balance; the seven Vices by the plainest emblem each — the sins have no
+// settled iconography, so legibility chose (owner-judged, 2026-10-24).
+const VIRTUES: Record<string, GlyphDef> = {
+  // caritas — the heart, its bindi the warmth it gives
+  charity: { box: [4.22, 5.56, 15.56, 14.44], node: <><path d="M12 20 C5 15 3.5 11 4.5 8 C5.5 5 9.5 4.5 12 8 C14.5 4.5 18.5 5 19.5 8 C20.5 11 19 15 12 20 Z" /><circle cx="12" cy="12.2" r="1.3" fill="currentColor" stroke="none" /></> },
+  // the vigil candle, its flame kept lit
+  faith: { box: [8, 3.6, 8, 15.9], node: <><path d="M9.5 10 H14.5 V19.5 H9.5 Z" /><path d="M8 19.5 H16 M12 10 V8.8" /><path d="M12 3.6 C14 5.8 14 7.7 12 8.8 C10 7.7 10 5.8 12 3.6 Z" /><path d="M14.5 11.6 C13.8 12.6 13.8 13.6 14.4 14.2" /></> },
+  // the column — capital, fluted shaft, plinth
+  fortitude: { box: [7, 4.5, 10, 15.5], node: <><path d="M7 4.5 H17 M8 6.5 H16 M9 6.5 V18 M15 6.5 V18 M12 8 V16.5 M8 18 H16 M7 20 H17" /></> },
+  // the sun breaking the horizon, its reflection below
+  hope: { box: [3, 6, 18, 13.5], node: <><path d="M3 16.5 H21" /><path d="M7 16.5 A5 5 0 0 1 17 16.5" /><path d="M12 6 V8.6 M5.4 9.2 L7.1 10.9 M18.6 9.2 L16.9 10.9 M3.4 13.2 H5.4 M18.6 13.2 H20.6" /><path d="M8 19.5 H16" /><circle cx="12" cy="14.4" r="1.1" fill="currentColor" stroke="none" /></> },
+  // the sword of Justice, point up, a bindi pommel
+  justice: { box: [7.5, 3, 9, 18.8], node: <><path d="M12 3 L13.4 6 V15.5 H10.6 V6 Z" /><path d="M7.5 15.5 H16.5 M12 15.5 V19.4" /><circle cx="12" cy="20.6" r="1.2" fill="currentColor" stroke="none" /></> },
+  // the serpent of wisdom in a slow coil, forked tongue barbed
+  prudence: { box: [5, 4.03, 13.94, 16.52], node: <><path d="M5 20.5 C9 21 10 17.5 8 15.5 C6 13.5 7 10 10.5 10.5 C14 11 15.5 13.5 18 11.5 C19.6 10.2 19 7.6 17.4 6.6" /><path d="M17.4 6.6 C16 7.2 14.6 6.4 14.8 5.2 C15 4 16.8 3.6 17.8 4.6 C18.4 5.3 18.2 6.2 17.4 6.6 Z" /><circle cx="16.7" cy="5.1" r="0.7" fill="currentColor" stroke="none" /><path d="M14.8 5.4 L13.2 5.6 M13.2 5.6 L12.3 4.9 M13.2 5.6 L12.4 6.5" /></> },
+  // the balance — measure in all things
+  temperance: { box: [2.8, 2.5, 18.4, 17], node: <><circle cx="12" cy="3.6" r="1.1" fill="currentColor" stroke="none" /><path d="M12 5.2 V19.5 M8.5 19.5 H15.5 M5 7 H19" /><path d="M5 7 L3 12.5 M5 7 L7 12.5 M19 7 L17 12.5 M19 7 L21 12.5" /><path d="M2.8 12.5 H7.2 C6.8 14.6 3.2 14.6 2.8 12.5 Z" /><path d="M16.8 12.5 H21.2 C20.8 14.6 17.2 14.6 16.8 12.5 Z" /></> },
+}
+
+const VICES: Record<string, GlyphDef> = {
+  // invidia, "to look upon" — the watching eye
+  envy: { box: [3.5, 7.88, 17, 8.25], node: <><path d="M3.5 12 C7 6.5 17 6.5 20.5 12 C17 17.5 7 17.5 3.5 12 Z" /><circle cx="12" cy="12" r="3" /><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" /></> },
+  // the cup filled past its brim, a drop running over
+  gluttony: { box: [6.5, 4.2, 12.6, 15.4], node: <><path d="M6.5 6 H17.5 C17.5 11 15 13.2 12 13.2 C9 13.2 6.5 11 6.5 6 Z" /><path d="M6.5 6 C7.8 3.6 16.2 3.6 17.5 6" /><path d="M12 13.2 V18.6 M8.5 19.6 C9.5 18.6 14.5 18.6 15.5 19.6" /><path d="M17.5 6 C18.4 7 18.5 8 18.2 8.8" /><circle cx="18.1" cy="10.6" r="1" fill="currentColor" stroke="none" /></> },
+  // the hoard — a column of coins, one face struck
+  greed: { box: [6, 4.82, 12, 14.35], node: <><path d="M6 7 C6 4.1 18 4.1 18 7 C18 9.9 6 9.9 6 7 Z" /><path d="M6 7 V17 M18 7 V17 M6 17 C6 19.9 18 19.9 18 17 M6 10.4 C6 13.3 18 13.3 18 10.4 M6 13.7 C6 16.6 18 16.6 18 13.7" /><circle cx="12" cy="7" r="1" fill="currentColor" stroke="none" /></> },
+  // the goat's horns, ringed, sweeping back from the brow
+  lust: { box: [4.48, 4.83, 15.04, 13.87], node: <><path d="M10.5 15 C8 13 5 11 4.5 7 C4.3 5.4 5.6 4.2 6.6 5.2 C6 8.6 8.6 11 11.5 12.6 Z" /><path d="M13.5 15 C16 13 19 11 19.5 7 C19.7 5.4 18.4 4.2 17.4 5.2 C18 8.6 15.4 11 12.5 12.6 Z" /><path d="M5.4 9.4 L7 8.6 M7.6 11.6 L8.8 10.4 M18.6 9.4 L17 8.6 M16.4 11.6 L15.2 10.4" /><circle cx="12" cy="17.6" r="1.1" fill="currentColor" stroke="none" /></> },
+  // the peacock's eye-feather, barbs along the quill
+  pride: { box: [9, 3, 6, 18], node: <><path d="M12 3 C8 6 8 10.5 12 12.8 C16 10.5 16 6 12 3 Z" /><circle cx="12" cy="8.4" r="1.1" fill="currentColor" stroke="none" /><path d="M12 12.8 V21 M12 15.6 L9.6 14.2 M12 15.6 L14.4 14.2 M12 18.4 L9.9 17.1 M12 18.4 L14.1 17.1" /></> },
+  // the flame, a coal at its root
+  wrath: { box: [6.99, 3, 10.21, 17], node: <><path d="M12 3 C15 7 18 10 17 15 C16.4 18.4 14 20 12 20 C9 20 6.8 17.8 7 14.6 C7.2 11.8 9 10.5 9.5 8 C11 9.5 11.2 11 11 12.5 C13 11 13.4 7 12 3 Z" /><circle cx="12" cy="16.4" r="1.2" fill="currentColor" stroke="none" /></> },
+  // the snail — the spiral itself, feelers barely raised
+  sloth: { box: [3.8, 6.8, 17.8, 11.8], node: <><path d="M14 17.4 C9 17.4 7 14.4 7 11.8 C7 8.8 9.5 6.8 12 6.8 C15 6.8 16.5 9 16.5 11.2 C16.5 13.2 15 14.6 13 14.6 C11.4 14.6 10.4 13.4 10.4 12 C10.4 10.8 11.3 10 12.3 10" /><path d="M3.8 18.6 H18.4 C19.8 18.6 20.4 17.4 19.6 16.4 L20.6 13" /><circle cx="20.7" cy="12.2" r="0.9" fill="currentColor" stroke="none" /></> },
+}
+
+// The body's ratings (MAG-52): what a mage brings to a fight, by the plainest
+// emblem each, unadorned (owner: let the flag be a flag and the chevrons be
+// chevrons). Initiative flies a pennant, not a bolt — a bolt would echo
+// the Thyrsus antler-bolt.
+const STATS: Record<string, GlyphDef> = {
+  // the shield, a bindi at its boss
+  defense: { box: [5, 3.5, 14, 17], node: <><path d="M12 3.5 L19 6 V11.5 C19 15.8 16 18.8 12 20.5 C8 18.8 5 15.8 5 11.5 V6 Z" /><circle cx="12" cy="11.5" r="1.2" fill="currentColor" stroke="none" /></> },
+  // the pennant — first to move
+  initiative: { box: [7, 3.5, 11, 17], node: <><path d="M7 3.5 V20.5 M7 4.5 L18 8 L7 11.5" /></> },
+  // the magical tool — a wand, a four-pointed glint at its tip
+  wand: { box: [4.5, 2.8, 15.9, 16.7], node: <><path d="M4.5 19.5 L14 10" /><path d="M17 2.8 L17.9 5.3 L20.4 6.2 L17.9 7.1 L17 9.6 L16.1 7.1 L13.6 6.2 L16.1 5.3 Z" /></> },
+  // two chevrons running forward
+  speed: { box: [4.5, 7, 11, 10], node: <><path d="M4.5 7 L9.5 12 L4.5 17 M10.5 7 L15.5 12 L10.5 17" /></> },
+}
+
 export type GlyphVariant = "line" | "seal"
 
 /**
@@ -232,4 +286,44 @@ export function OrderGlyph({
   className?: string
 }) {
   return <Glyph def={ORDERS[order.toLowerCase()]} size={size} className={className} />
+}
+
+/** A Virtue's glyph (MAG-52). */
+export function VirtueGlyph({
+  virtue,
+  size = 14,
+  className = "",
+}: {
+  virtue: string
+  size?: number
+  className?: string
+}) {
+  return <Glyph def={VIRTUES[virtue.toLowerCase()]} size={size} className={className} />
+}
+
+/** A Vice's glyph (MAG-52). */
+export function ViceGlyph({
+  vice,
+  size = 14,
+  className = "",
+}: {
+  vice: string
+  size?: number
+  className?: string
+}) {
+  return <Glyph def={VICES[vice.toLowerCase()]} size={size} className={className} />
+}
+
+/** A rating's glyph — Defense, Initiative, Speed — or the magical tool's
+ * wand (MAG-52). */
+export function StatGlyph({
+  stat,
+  size = 14,
+  className = "",
+}: {
+  stat: "defense" | "initiative" | "speed" | "wand"
+  size?: number
+  className?: string
+}) {
+  return <Glyph def={STATS[stat]} size={size} className={className} />
 }

@@ -15,16 +15,16 @@ afterEach(cleanup)
 describe("the Cast header's stats", () => {
   it("shows Will and Mana as current/max at rest", () => {
     render(createElement(PoolNumerals, { sheet: makeAldousSheet(), pendingMana: 0, pendingWillpower: 0 }))
-    expect(screen.getByTitle("Willpower").textContent).toBe("6/6")
-    expect(screen.getByTitle("Mana").textContent).toBe("10/10")
+    expect(screen.getByLabelText("Willpower").textContent).toBe("6/6")
+    expect(screen.getByLabelText("Mana").textContent).toBe("10/10")
   })
 
   it("shows a pending spend as what would be left, in ember", () => {
     render(createElement(PoolNumerals, { sheet: makeAldousSheet(), pendingMana: 3, pendingWillpower: 1 }))
-    const mana = screen.getByTitle(/^Mana — 3 pending/)
+    const mana = screen.getByLabelText("Mana · 3 pending")
     expect(mana.textContent).toBe("7/10")
     expect(screen.getByText("7").style.color).toBe("var(--ember)")
-    expect(screen.getByTitle(/^Willpower — 1 pending/).textContent).toBe("5/6")
+    expect(screen.getByLabelText("Willpower · 1 pending").textContent).toBe("5/6")
   })
 
   it("ghosts the first empty boxes a backlash bet would fill", () => {
