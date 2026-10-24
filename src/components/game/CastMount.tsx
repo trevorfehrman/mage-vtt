@@ -1,13 +1,13 @@
 import type { ReactNode } from "react"
 
 /**
- * Where a Cast card stands outside the feed (MAG-46): the caster's and the
- * Storyteller's roll zone, and the pinned slot above every other seat's
- * tray. One frame for all three, so the rig and the session can't drift.
+ * Where a live Cast stands in the live zone (MAG-48), on every seat. One
+ * frame for every mount, so the rig and the session can't drift; stacked
+ * casts are parted by one line.
  */
 export function CastMount({ children }: { children: ReactNode }) {
   return (
-    <div className="border-t p-2" style={{ borderColor: "var(--line)" }}>
+    <div className="border-t first:border-t-0" style={{ borderColor: "var(--line)" }}>
       {children}
     </div>
   )

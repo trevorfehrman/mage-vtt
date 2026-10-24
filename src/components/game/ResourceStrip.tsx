@@ -4,6 +4,7 @@ import { woundPenalty } from "#/domain/health"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { Switch } from "#/components/ui/switch"
 import { healthBoxGlyph, MAGICAL_TOOL_TITLE, ResistantDot } from "./CharacterSheet"
+import { Lozenge } from "./Lozenge"
 
 /**
  * The console's masthead (owner call 2026-07-19, superseding #104's caption
@@ -229,7 +230,7 @@ function PipMeter({
                   : undefined
               }
             >
-              {isGhost ? "◇" : "◈"}
+              <Lozenge hollow={isGhost} />
             </span>
           )
         })}

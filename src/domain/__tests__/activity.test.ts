@@ -8,7 +8,7 @@ import {
   chronicleFor,
   liveCastsFor,
   mergeFeed,
-  pinnedLiveCasts,
+  othersLiveCasts,
   visibleEntries,
   type CastEntry,
   type MessageEntry,
@@ -277,7 +277,7 @@ describe("visibleEntries: the Tides wait for the fix (owner, 2026-10-23)", () =>
   })
 })
 
-describe("pinnedLiveCasts: a live cast holds still (MAG-46)", () => {
+describe("othersLiveCasts: every other caster's live cast, in a fixed order (MAG-46, MAG-48)", () => {
   const live = (id: string, casterUserId: string, startedAt: number, status = "price") =>
     ({ _tag: "cast", _id: id, timestamp: 9000 - startedAt, startedAt, casterUserId, status }) as unknown as CastEntry
   const resolved = { ...live("c_done", "user_b", 50), status: "resolved" } as CastEntry
@@ -286,27 +286,27 @@ describe("pinnedLiveCasts: a live cast holds still (MAG-46)", () => {
   const older = live("c_older", "user_c", 100, "draft")
   const feed: ReadonlyArray<ActivityEntry> = [message(), theirs, mine, resolved, older]
 
-  it("pins every other caster's live cast for a spectator, oldest first, whatever the feed's order", () => {
-    expect(pinnedLiveCasts({ userId: "user_z", role: "player" }, feed).map((c) => c._id)).toEqual([
+  it("serves every other caster's live cast to a spectator, oldest first, whatever the feed's order", () => {
+    expect(othersLiveCasts({ userId: "user_z", role: "player" }, feed).map((c) => c._id)).toEqual([
       "c_older",
       "c_theirs",
       "c_mine",
     ])
   })
 
-  it("leaves the caster's own live cast to their roll zone", () => {
-    expect(pinnedLiveCasts({ userId: "user_a", role: "player" }, feed).map((c) => c._id)).toEqual([
+  it("leaves the caster's own live cast to its own read", () => {
+    expect(othersLiveCasts({ userId: "user_a", role: "player" }, feed).map((c) => c._id)).toEqual([
       "c_older",
       "c_theirs",
     ])
   })
 
-  it("pins nothing for the Storyteller, who holds the live cast on stage in their roll zone and counts the rest in the wings", () => {
-    expect(pinnedLiveCasts({ userId: "user_st", role: "storyteller" }, feed)).toEqual([])
+  it("serves nothing to the Storyteller, who holds the live cast on stage in their zone and counts the rest in the wings", () => {
+    expect(othersLiveCasts({ userId: "user_st", role: "storyteller" }, feed)).toEqual([])
   })
 
-  it("never pins a resolved record — that belongs to the Chronicle", () => {
-    expect(pinnedLiveCasts({ userId: "user_z", role: "player" }, feed).map((c) => c._id)).not.toContain(
+  it("never serves a resolved record — that belongs to the Chronicle", () => {
+    expect(othersLiveCasts({ userId: "user_z", role: "player" }, feed).map((c) => c._id)).not.toContain(
       "c_done",
     )
   })

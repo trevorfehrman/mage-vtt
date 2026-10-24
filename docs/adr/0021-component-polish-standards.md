@@ -1,5 +1,19 @@
 # Component polish runs shared-first, on Motion, against an amended identity
 
+> **Amended** (2026-10-24, MAG-48): **one owner per edge.** The shell's
+> lines doubled everywhere because `.mv-panel`'s border was unlayered and
+> beat every Tailwind side override (`border-x-0`, `border-t-0`…): the
+> header, the combat band and both rails drew all four sides, and every
+> rail seam drew twice beside the resize handle. `.mv-panel` now lives in
+> the components layer, so a panel's own utilities decide its sides; the
+> resize handles draw the vertical seams and the panels beside them draw
+> none. Where a framed surface meets a neighbor's line, the neighbor's line
+> yields beside it (the live zone, ADR-0022). **The lozenge** (◈, Mana's
+> and Willpower's mark and the chance die's) is drawn, not typed
+> (`Lozenge`): the font's glyph sat off the text's center line by a
+> different amount in every face; the drawn one is measured onto the
+> middle of the capitals and numerals beside it.
+
 > **Amended** (2026-10-23, MAG-47, the owner's call: "much of the time i do
 > not need all these controls"): the dice tray has **two forms**, the
 > viewer's choice. The **shrunk** strip is one line on the tall tray's own

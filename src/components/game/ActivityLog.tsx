@@ -138,7 +138,7 @@ export function ActivityLog({
               Match.tag("roll", (roll) => <RollItem key={roll._id} roll={roll} />),
               // Records only: a live Cast is never a Chronicle entry (MAG-46)
               // — the server's chronicleFor leaves it out; it has its own
-              // read for the roll zones and the pinned slot. The resolved
+              // read for the live zone (MAG-48). The resolved
               // record lands here for everyone, at its timestamp.
               Match.tag("cast", (cast) => (
                 <CastCard

@@ -16,6 +16,7 @@ import {
 } from "#/domain/cast"
 import type { CharacterSheet } from "#/domain/character"
 import type { HealthTrack } from "#/domain/damage"
+import { emptyOrdinals } from "#/domain/health"
 import {
   calculateParadoxPool,
   resolveParadox,
@@ -28,7 +29,6 @@ import { TidesBox, type Weather } from "./TidesBox"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
-import { ArcanaGlyph, arcanumTint, isGrossArcanum } from "./ArcanaGlyph"
 import { healthBoxGlyph, ResistantDot } from "./CharacterSheet"
 import { BurstFaces } from "./BurstFaces"
 import { UnifiedDie } from "./UnifiedDie"
@@ -37,17 +37,18 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/comp
 import { PriorRollsGlyph, SleeperGlyph, TidesGlyph, ToolGlyph } from "./TideGlyphs"
 import { ParadoxGlyph } from "./ParadoxGlyph"
 import { Felt } from "./Felt"
+import { CastMark, HealthLine, PoolNumerals } from "./CastHeaderStats"
+import { Lozenge } from "./Lozenge"
 import { api } from "../../../convex/_generated/api"
 import type { Id } from "../../../convex/_generated/dataModel"
 
 /**
  * The live Cast card (issue #43, ADR-0016; the card takeover, owner ruling
  * 2026-07-19): a projection of the Cast document — one artifact rendered by
- * seat. While the cast is live it IS the caster's and the Storyteller's roll
- * zones (the vulgar UI is the card, standing where the dice roller was, with
- * every control the seat needs — engage/decline included); every other seat
- * sees it pinned above their own tray (MAG-46), and the Activity feed carries
- * only the record, once it resolves. The XState machine mirrors the subscribed
+ * seat. While the cast is live it takes the working zone over on every seat,
+ * in place of the tray (MAG-48, the live zone), with every control the seat
+ * needs — engage/decline included; the Activity feed carries only the
+ * record, once it resolves. The XState machine mirrors the subscribed
  * document (rehydrating mid-ladder on reload is just "render the snapshot");
  * every button is a Convex mutation whose refusal surfaces inline in table
  * language (ADR-0010).
@@ -89,7 +90,6 @@ export function CastCard({
   mySheet,
   casterSheet = null,
   moreWaiting = 0,
-  onPendingMana,
   adjust,
 }: {
   cast: CastEntry
@@ -104,10 +104,6 @@ export function CastCard({
   casterSheet?: CharacterSheet | null
   /** Drafts queued behind this one — the ST zone's wings note. */
   moreWaiting?: number
-  /** The masthead's Mana ghost (2026-07-19 pass 2, note 1): reports the
-   * spell's cost from the first on-stage phase, plus the selected mitigation
-   * while the commit decision is live; 0 once committed (truly spent). */
-  onPendingMana?: ((mana: number) => void) | undefined
   /** The dressing room's door (MAG-45): its cast is a fixture the server
    * would refuse, so the rig keeps the ST's adjustments in local state and
    * hands this in. The live route leaves it undefined and the Convex
@@ -124,8 +120,9 @@ export function CastCard({
 
   const isCaster = cast.casterUserId === viewerUserId
   // The full vocabulary, engage/decline included (card takeover, 2026-07-19):
-  // the card is the ST's roll zone now, so the offer's decision lives on it —
-  // and no feed carries a live card (MAG-46), so it never doubles.
+  // the live cast holds the ST's working zone (MAG-48), so the offer's
+  // decision lives on it — and no feed carries a live card (MAG-46), so it
+  // never doubles.
   const controls = ladderControls(cast, { isStoryteller, isCaster })
 
   const engage = useMutation(api.casts.engage)
@@ -142,6 +139,9 @@ export function CastCard({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mitigation, setMitigation] = useState(0)
+  // The live cast's shrunk form (MAG-48): the viewer's own choice, like the
+  // tray's (MAG-47). Each cast opens tall — it is new news at the table.
+  const [shrunk, setShrunk] = useState(false)
   // Containment selection is local until the Cast click (#113): the server
   // first hears the sacrifice when the release commits it.
   const [contained, setContained] = useState(0)
@@ -289,6 +289,9 @@ export function CastCard({
 
   const waiting = waitingOn(cast)
   const terminal = waiting === null
+  // Whose move it is, from this seat: the shrunk line and the footer agree.
+  const isMyMove =
+    (waiting === "caster" && isCaster) || (waiting === "storyteller" && isStoryteller)
 
   // The declared pool as physical dice (card takeover, 2026-07-19): the felt
   // grammar, never the sentence "declared pool 3" — Willpower's precommitted
@@ -567,74 +570,128 @@ export function CastCard({
     Match.exhaustive,
   )
 
-  // The masthead's Mana ghost (pass 2, note 1): the spell's cost ghosts from
-  // the moment the cast is on stage ("phase 1" read as the first on-stage
-  // phase — a waiting draft doesn't ghost), the selected mitigation joining
-  // while the commit decision is live. After the commit the Mana is truly
-  // spent and the masthead's real count carries it.
+  // The header's pending spends (pass 2, note 1; MAG-48): the spell's cost
+  // ghosts from the moment the cast is on stage ("phase 1" read as the first
+  // on-stage phase — a waiting draft doesn't ghost), the selected mitigation
+  // joining while the commit decision is live, and a precommitted Willpower
+  // point with it. After the commit they're truly spent and the real counts
+  // carry them.
   const pendingManaNow = status === "price" ? cast.spellManaCost + mitigated : 0
-  useEffect(() => {
-    if (onPendingMana === undefined) return
-    onPendingMana(pendingManaNow)
-    return () => onPendingMana(0)
-  }, [onPendingMana, pendingManaNow])
+  const pendingWillpowerNow = status === "price" && (cast.spendWillpower ?? false) ? 1 : 0
+  // The header's stats are the CASTER's, on every seat — live only.
+  const statsSheet = terminal ? null : cockpitSheet
 
   return (
     <div
-      className="mv-cornered mv-panel mv-vulgar-floor rounded-[3px] p-2.5"
-      style={terminal && status !== "resolved" ? { opacity: 0.65 } : undefined}
+      // MAG-48: a live cast is no card — it stands full width where it is
+      // mounted, on the panel's own ground; it becomes a card when it ends
+      // and joins the Chronicle (resolved, cancelled or voided).
+      className={
+        terminal
+          ? "mv-cornered mv-panel mv-vulgar-floor rounded-[3px] p-2.5"
+          : "mv-vulgar-floor relative px-3 py-2.5"
+      }
+      style={
+        terminal
+          ? status !== "resolved"
+            ? { opacity: 0.65 }
+            : undefined
+          : { background: "var(--panel)" }
+      }
     >
-      {/* the loud header (card takeover, 2026-07-19): the cast names itself
-          in your face — VULGAR PRIME 1 — the caster beneath.
-          The old "Vulgar Cast" badge died with it: the headline IS the word. */}
-      <div className="flex items-start justify-between gap-2">
-        <span
-          className="mv-h min-w-0 truncate text-[18px] uppercase tracking-[0.06em]"
-          style={{ color: "var(--ink)" }}
+      {!terminal && (
+        <button
+          onClick={() => setShrunk((v) => !v)}
+          className="mv-grip"
+          style={{ top: -6 }}
+          title={shrunk ? "Open the cast" : "Shrink the cast to one line"}
+          aria-label={shrunk ? "Open the cast" : "Shrink the cast to one line"}
+          aria-expanded={!shrunk}
         >
-          Vulgar {cast.arcanum} {cast.level}
-        </span>
-        <div className="flex items-center gap-1.5 pt-0.5">
-          {status === "voided" && cast.override && (
-            <span
-              className="mv-data rounded-[2px] px-1 py-0.5 text-[12px] uppercase tracking-wide"
-              title={`Invoked by ${cast.override.invokedByName}`}
-              style={{ border: "1px solid var(--bad)", color: "var(--bad)" }}
-            >
-              Voided · Repair
+          <span className="mv-grip-bar" />
+        </button>
+      )}
+      {!terminal && shrunk ? (
+        // The shrunk line: whose cast, what it is, and whose move it is.
+        <TooltipProvider>
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate text-[13px] font-medium" style={{ color: "var(--ink)" }}>
+                {cast.casterName}
+              </span>
+              <CastMark arcanum={cast.arcanum} level={cast.level} />
+            </span>
+            <span className="mv-data shrink-0 text-[12px] uppercase tracking-wide" style={{ color: "var(--dim)" }}>
+              <span style={{ color: "var(--accent)" }}>
+                {RUNGS[Math.min(rungIndex(status), RUNGS.length - 1)]?.label}
+              </span>
+              {/* whose move, in a word — the name already leads the line */}
+              {waiting !== null && (
+                <>
+                  {" · "}
+                  {isMyMove
+                    ? "your move"
+                    : waiting === "storyteller"
+                      ? "Storyteller"
+                      : "caster"}
+                </>
+              )}
+            </span>
+          </div>
+        </TooltipProvider>
+      ) : (
+      <>
+      {/* The header (MAG-48, owner 2026-10-24): the caster's name tops the
+          cast as it tops every record of theirs; the cast's mark (the
+          Arcanum's glyph standing for its name, the level in verdigris as
+          intense as the level is high) beneath it. While the cast is live
+          the caster's depletables ride the right: the whole health track
+          beside the name, Will · Mana beside the mark — the caster's, on
+          every seat, so the masthead strip steps aside. A record carries no
+          stats: they'd be today's numbers, not the cast's. */}
+      <TooltipProvider>
+        <div className="flex items-start justify-between gap-2">
+          <p className="min-w-0 truncate text-[13px]" style={{ color: "var(--ink)" }}>
+            <span className="font-medium">{cast.casterName}</span>
+            {cast.roteName && (
+              <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }} title={cast.roteName}>
+                {" "}
+                · Rote &ldquo;{cast.roteName}&rdquo;
+              </span>
+            )}
+          </p>
+          {statsSheet !== null && (
+            <span className="shrink-0 pt-[3px]">
+              <HealthLine track={statsSheet.healthTrack} ghosts={cockpitContained} />
             </span>
           )}
-          {status === "cancelled" && (
-            <span
-              className="mv-data rounded-[2px] px-1 py-0.5 text-[12px] uppercase tracking-wide"
-              style={{ border: "1px solid var(--dim)", color: "var(--dim)" }}
-            >
-              Cancelled
-            </span>
-          )}
-          {/* The Arcanum's glyph in its own Realm metal, top-right, so the
-              headline's text sits flush left (owner, 2026-10-22 evening). */}
-          <span style={{ color: arcanumTint(cast.arcanum) }}>
-            <ArcanaGlyph
-              arcanum={cast.arcanum}
-              size={18}
-              className="shrink-0"
-              variant={isGrossArcanum(cast.arcanum) ? "seal" : "line"}
-            />
-          </span>
         </div>
-      </div>
-
-      <p className="mt-0.5 text-[13px]" style={{ color: "var(--ink)" }}>
-        <span className="font-medium">{cast.casterName}</span>
-        {cast.roteName && (
-          <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
-            {" "}
-            · Rote &ldquo;{cast.roteName}&rdquo;
-          </span>
-        )}
-      </p>
-
+        <div className="mt-0.5 flex items-center justify-between gap-2">
+          <CastMark arcanum={cast.arcanum} level={cast.level} />
+          <div className="flex items-center gap-1.5">
+            {status === "voided" && cast.override && (
+              <span
+                className="mv-data rounded-[2px] px-1 py-0.5 text-[12px] uppercase tracking-wide"
+                title={`Invoked by ${cast.override.invokedByName}`}
+                style={{ border: "1px solid var(--bad)", color: "var(--bad)" }}
+              >
+                Voided · Repair
+              </span>
+            )}
+            {status === "cancelled" && (
+              <span
+                className="mv-data rounded-[2px] px-1 py-0.5 text-[12px] uppercase tracking-wide"
+                style={{ border: "1px solid var(--dim)", color: "var(--dim)" }}
+              >
+                Cancelled
+              </span>
+            )}
+            {statsSheet !== null && (
+              <PoolNumerals sheet={statsSheet} pendingMana={pendingManaNow} pendingWillpower={pendingWillpowerNow} />
+            )}
+          </div>
+        </div>
+      </TooltipProvider>
 
       {/* the ladder — the same rungs on every screen */}
       {status !== "cancelled" && status !== "voided" && (
@@ -978,7 +1035,7 @@ export function CastCard({
                   className="mv-data leading-none"
                   title="The Mana this commit spends — spell cost plus the selected mitigation"
                 >
-                  {pendingManaNow} ◈
+                  {pendingManaNow} <Lozenge />
                 </b>
               )}
               {cast.spendWillpower && (
@@ -986,7 +1043,7 @@ export function CastCard({
                   className="mv-data leading-none"
                   title="The precommitted Willpower point — it spends at the commit"
                 >
-                  1 ◈
+                  1 <Lozenge />
                 </b>
               )}
             </button>
@@ -1053,11 +1110,12 @@ export function CastCard({
             }}
           />{" "}
           waiting on {waiting === "storyteller" ? "the Storyteller" : cast.casterName}
-          {(waiting === "caster" && isCaster) ||
-          (waiting === "storyteller" && isStoryteller)
+          {isMyMove
             ? " — you"
             : ""}
         </p>
+      )}
+      </>
       )}
     </div>
   )
@@ -1171,7 +1229,7 @@ const OddsCellsProps = Schema.Struct({ ...OddsRowProps.fields, here: Schema.Bool
 function OddsCells({ spend, dice, paradox, success, dramaticFailure, here }: typeof OddsCellsProps.Type) {
   return (
     <>
-      <span style={{ color: here ? "var(--mana)" : undefined }}>◈ {spend}</span>
+      <span style={{ color: here ? "var(--mana)" : undefined }}><Lozenge /> {spend}</span>
       <span style={{ color: here ? "var(--ink)" : undefined }}>{diceLabel(dice)}</span>
       <span className="inline-flex items-center gap-1">
         <ParadoxGlyph size={12} />
@@ -1328,11 +1386,7 @@ function ParadoxCockpit({
   const severity = resolveParadox(outlook.uncontained).severity
   // Bashing fills leftmost empty boxes first (applyDamage), so the bet
   // ghosts the first `contained` empties; each box knows its empty ordinal.
-  const emptyOrdinals = track.map((box, i) =>
-    box.severity === "empty"
-      ? track.slice(0, i).filter((b) => b.severity === "empty").length
-      : null,
-  )
+  const ordinals = emptyOrdinals(track)
   // The bet can fill the last box: the martyr slot pre-reserves its height.
   const martyrReachable =
     interactive && cap >= track.filter((b) => b.severity === "empty").length
@@ -1370,7 +1424,7 @@ function ParadoxCockpit({
       </div>
       <div className="flex flex-wrap justify-center gap-[5px]">
         {track.map((box, i) => {
-          const ordinal = emptyOrdinals[i] ?? null
+          const ordinal = ordinals[i] ?? null
           const ghosted = ordinal !== null && ordinal < contained
           const reachable = ordinal !== null && ordinal < cap
           const title =

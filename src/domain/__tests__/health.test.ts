@@ -11,6 +11,7 @@ import {
   createHealthTrack,
   applyDamage,
   woundPenalty,
+  emptyOrdinals,
   healDamage,
   healResistantBashing,
   isIncapacitated,
@@ -284,5 +285,22 @@ describe("Health Track", () => {
   it("normalization returns the same track untouched when nothing is orphaned", () => {
     const track = [healthBox("bashing", true), healthBox("empty")]
     expect(normalizeHealthTrack(track)).toBe(track)
+  })
+})
+
+describe("emptyOrdinals: each box's place among the empties (MAG-48)", () => {
+  it("counts the empty boxes left to right and marks the filled ones null", () => {
+    const track = [
+      healthBox("bashing"),
+      healthBox("empty"),
+      healthBox("lethal"),
+      healthBox("empty"),
+      healthBox("empty"),
+    ]
+    expect(emptyOrdinals(track)).toEqual([null, 0, null, 1, 2])
+  })
+
+  it("is all null for a full track", () => {
+    expect(emptyOrdinals([healthBox("lethal"), healthBox("aggravated")])).toEqual([null, null])
   })
 })
