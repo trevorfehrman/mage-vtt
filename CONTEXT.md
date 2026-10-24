@@ -253,11 +253,21 @@ The single chronological feed showing all Activity (Messages and Rolls
 interleaved by time), with visibility filtering applied server-side.
 _Avoid_: Chat log, Roll history (those were the two separate panes this replaced).
 
-**Pinned cast**:
-Another caster's live Cast card, held in a fixed slot between the Activity Log
-and the viewer's own tray until it resolves (ADR-0022, MAG-46). A live Cast is
-never an Activity Log entry; its resolved record is.
-_Avoid_: Live feed card (the feed never carries a live Cast).
+**Live zone**:
+The foot of the right rail while a Cast is live: the Cast takes the working
+zone over on every seat, in place of the tray, full width, framed in the
+Paradox red (MAG-48, ADR-0022). The table reads it as "pause — something that
+touches everyone is happening", and every seat stays usable. A live Cast is
+never an Activity Log entry; its resolved record is. The chat input sits at
+the Activity Log's foot, above it.
+_Avoid_: Pinned cast (the MAG-46 slot above a bystander's tray, retired),
+live feed card (the feed never carries a live Cast).
+
+**Cast mark**:
+How a Cast names itself in its header: the Arcanum's glyph standing for its
+name, then the level in verdigris that intensifies with the level (MAG-48).
+No "Vulgar" — the Cast card only exists for a vulgar cast.
+_Avoid_: Headline (the old VULGAR PRIME 1 line it replaced).
 
 **Message**:
 A chat Activity — public, a Whisper, or a system notice.

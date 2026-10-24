@@ -71,7 +71,7 @@ export const castEntry = (c: Doc<"casts">) => {
     _tag: "cast" as const,
     _id,
     timestamp: c.updatedAt,
-    // The live cast's pinned order (MAG-46): creation, which no update moves.
+    // The live zone's order (MAG-46, MAG-48): creation, which no update moves.
     startedAt: _creationTime,
     ...fields,
     // Healed to parented structs like the roll entry's `explosions` (#126),

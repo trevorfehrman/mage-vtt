@@ -151,6 +151,17 @@ export const healResistantBashing = (
 export const isIncapacitated = (track: HealthTrack): boolean =>
   track.every((b) => b.severity !== "empty")
 
+/**
+ * Each box's place among the empty boxes, left to right (MAG-48): 0 for the
+ * first empty box, 1 for the next; null for a filled one. Bashing fills the
+ * leftmost empties first (applyDamage), so a bet of n boxes lands on the
+ * empties whose ordinal is below n — the boxes a backlash bet ghosts.
+ */
+export const emptyOrdinals = (track: HealthTrack): ReadonlyArray<number | null> =>
+  Arr.mapAccum(track, 0, (n, box): [number, number | null] =>
+    box.severity === "empty" ? [n + 1, n] : [n, null],
+  )[1]
+
 export const woundPenalty = (track: HealthTrack): number => {
   const filled = track.filter((b) => b.severity !== "empty").length
   const total = track.length

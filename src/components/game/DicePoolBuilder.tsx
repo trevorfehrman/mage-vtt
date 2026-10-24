@@ -10,6 +10,7 @@ import { pooledDice } from "#/machines/dice-pool";
 import type { useDicePool } from "#/hooks/use-dice-pool";
 import { useTrayForm } from "#/hooks/use-tray-form";
 import { OPTION_WORDS, flipTrayForm, trayOptionWords } from "./tray-form";
+import { Lozenge } from "./Lozenge";
 
 type DicePoolAPI = ReturnType<typeof useDicePool>;
 
@@ -213,7 +214,7 @@ export function DicePoolBuilder({
               className="mv-roll h-8 shrink-0 rounded-[3px] text-[12px] disabled:opacity-40"
               style={{ minWidth: 76, padding: "0 10px" }}
             >
-              {rolling ? "Rolling…" : total === 0 ? "◈ Roll" : "Roll"}
+              {rolling ? "Rolling…" : total === 0 ? <><Lozenge /> Roll</> : "Roll"}
             </button>
           </div>
           {rail("feed", "h-8")}
@@ -360,7 +361,7 @@ export function DicePoolBuilder({
               {rolling
                 ? "Rolling…"
                 : total === 0
-                  ? "◈ Roll"
+                  ? <><Lozenge /> Roll</>
                   : `Roll ${diceLabel(total)}`}
             </button>
           </div>

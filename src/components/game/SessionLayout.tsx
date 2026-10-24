@@ -41,7 +41,8 @@ interface SessionLayoutProps {
   sheetSky?: ReactNode
   characterSheet?: ReactNode
   activityLog: ReactNode
-  /** Other casters' live casts, pinned between the Chronicle and the tray (MAG-46). */
+  /** Every live cast at the table: present, it takes the working zone over
+   * on every seat, in place of the tray (MAG-48). */
   liveCasts?: ReactNode
   dicePoolBuilder: ReactNode
   chatInput: ReactNode
@@ -103,7 +104,7 @@ export function SessionLayout({
     : ""
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="mv-shell flex h-screen flex-col">
       {/* Header */}
       <header className="mv-panel flex items-center justify-between border-x-0 border-t-0 px-4 py-2">
         <div className="flex items-center gap-3">
@@ -160,6 +161,10 @@ export function SessionLayout({
           realloc that zoomed the stars and tanked the fps). */}
       <div className="relative min-h-0 flex-1">
       {sheetSky}
+      {/* One owner per edge: the resize handles draw the vertical seams,
+          so the panels draw no border of their own on either side. While a
+          live cast is framed, the lines beside its frame hand over to it
+          (styles.css, the live zone). */}
       <ResizablePanelGroup
         orientation="horizontal"
         defaultLayout={mainLayout.defaultLayout}
@@ -175,7 +180,7 @@ export function SessionLayout({
               minSize={9}
               collapsedSize={0}
               collapsible
-              className="mv-panel border-y-0 border-l-0"
+              className="mv-panel mv-floor border-0"
             >
               <div className="h-full overflow-y-auto">{videoRail}</div>
             </ResizablePanel>
@@ -183,7 +188,7 @@ export function SessionLayout({
           </>
         )}
 
-        <ResizablePanel id="center" defaultSize={57} minSize={40}>
+        <ResizablePanel id="center" defaultSize={57} minSize={40} className="mv-floor">
           <div className="h-full overflow-y-auto p-4">
             {characterSheet ?? (
               <div className="flex h-full items-center justify-center" style={{ color: "var(--dim)" }}>
@@ -193,7 +198,8 @@ export function SessionLayout({
           </div>
         </ResizablePanel>
 
-        <ResizableHandle />
+        {/* the rail's seam — it yields to a live cast's frame (styles.css) */}
+        <ResizableHandle className="mv-rail-seam" />
 
         <ResizablePanel
           id="right"
@@ -202,28 +208,31 @@ export function SessionLayout({
           minSize={20}
           collapsedSize={0}
           collapsible
-          className="mv-panel border-y-0 border-r-0"
+          className="mv-panel border-0"
         >
           <div className="flex h-full flex-col">
-            {/* Activity log — fills available space */}
-            <div className="min-h-0 flex-1 overflow-hidden">{activityLog}</div>
-            {/* A live cast holds still (MAG-46): pinned below the Chronicle's
-                chat and rolls, above the viewer's own tray — a fixed slot,
-                never a feed entry. Empty when no one else is casting. */}
-            {liveCasts && (
-              // capped so a stack of casts never squeezes the Chronicle out;
-              // inline, so the cap holds under a running dev server
-              <div className="shrink-0 overflow-y-auto" style={{ maxHeight: "60%" }}>
+            {/* The feed and its chat — one thing (MAG-48), the working zone
+                below another. */}
+            <div className="mv-rail-feed flex min-h-0 flex-1 flex-col">
+              {/* Activity log — fills available space */}
+              <div className="min-h-0 flex-1 overflow-hidden">{activityLog}</div>
+              <div className="shrink-0">{chatInput}</div>
+            </div>
+            {/* The working zone, the foot of the rail. A live cast takes it
+                over on every seat, in place of the tray (MAG-48): full width,
+                framed whole in the live zone's red, so the table reads "pause
+                — something that touches everyone is happening"; capped so
+                a stack of casts never squeezes the Chronicle out (inline, so
+                the cap holds under a running dev server). Otherwise the
+                memory/judgment boundary (styles.css): the zone stands on the
+                void, postures wear the mv-stage frame. */}
+            {liveCasts ? (
+              <div className="mv-live-zone shrink-0 overflow-y-auto" style={{ maxHeight: "70%" }}>
                 {liveCasts}
               </div>
+            ) : (
+              <div className="mv-stage-ground shrink-0">{dicePoolBuilder}</div>
             )}
-            {/* Dice pool — foot of the rail, above chat. The memory/judgment
-                boundary (styles.css): the panel ends with the Chronicle and
-                the working zone stands on the void — postures wear the
-                mv-stage frame, the strip re-grounds itself below. */}
-            <div className="mv-stage-ground shrink-0">{dicePoolBuilder}</div>
-            {/* Chat input — pinned to bottom */}
-            <div className="shrink-0">{chatInput}</div>
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>

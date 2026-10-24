@@ -23,6 +23,7 @@ import { ParadoxGlyph } from "./ParadoxGlyph"
 import { SealedTrigger } from "./SealedTrigger"
 import { UnifiedDie } from "./UnifiedDie"
 import { Felt } from "./Felt"
+import { Lozenge } from "./Lozenge"
 import type { useCast } from "#/hooks/use-cast"
 
 type CastAPI = ReturnType<typeof useCast>
@@ -183,7 +184,7 @@ export function DeclarationFelt({
       : null
   const draftGate =
     castGate ?? (hasPendingCast ? "This character already has an unresolved Cast." : null)
-  const manaWords = manaCost > 0 ? ` · ◈${manaCost}` : ""
+  const manaWords = manaCost > 0 ? <> · <Lozenge />{manaCost}</> : null
 
   // The opened door: Cast for covert, Draft Vulgar for vulgar.
   const commit =
@@ -195,7 +196,7 @@ export function DeclarationFelt({
         className="mv-roll mv-roll-vulgar min-w-0 flex-1 rounded-[3px] px-3 text-[12px] disabled:opacity-40"
         title={draftGate ?? "Draft into the wings: the Paradox handshake plays out on the Cast card."}
       >
-        {drafting ? "Drafting…" : `Draft Vulgar${manaWords}`}
+        {drafting ? "Drafting…" : <>Draft Vulgar{manaWords}</>}
       </GateButton>
     ) : (
       <GateButton
@@ -206,7 +207,7 @@ export function DeclarationFelt({
       >
         {casting
           ? "Casting…"
-          : `${preview === null || preview.isChanceDie ? "Cast ◈" : `Cast ${preview.dice}`}${manaWords}`}
+          : <>{preview === null || preview.isChanceDie ? <>Cast <Lozenge title="chance die" /></> : `Cast ${preview.dice}`}{manaWords}</>}
       </GateButton>
     )
 
@@ -338,13 +339,13 @@ export function DeclarationFelt({
                     style={{ color: manaShort ? "var(--bad)" : "var(--mana)" }}
                     title="Mana armed on this cast — auto cost plus rider; it spends when the cast commits"
                   >
-                    ◈{manaCost}
+                    <Lozenge />{manaCost}
                   </b>
                   {" · "}
                 </>
               )}
               <b className="text-[12px]" style={{ color: "var(--ink)" }}>
-                {live === 0 ? "◈" : live}
+                {live === 0 ? <Lozenge title="chance die" /> : live}
               </b>{" "}
               {live === 0 ? "chance" : `dice · ${pct(odds.success)}`}
             </span>
@@ -390,7 +391,7 @@ export function DeclarationFelt({
             style={{ color: "var(--mana)" }}
             title="Take back a rider Mana"
           >
-            ◈−
+            <Lozenge />−
           </button>
           <button
             onClick={() => cast.setExtraMana(extraMana + 1)}
@@ -407,7 +408,7 @@ export function DeclarationFelt({
             }
             title="Rider Mana — the spell text asks more; it spends with the cast"
           >
-            ◈+
+            <Lozenge />+
           </button>
         </span>
       </div>

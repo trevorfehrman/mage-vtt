@@ -51,8 +51,8 @@ export type RollEntry = typeof RollEntry.Type
  * Cast document — the card is a *live* feed item that climbs the ladder in
  * place, unlike the immutable beats accruing around it. `timestamp` is the
  * document's `updatedAt`, where the resolved record lands in the feed;
- * `startedAt` is its creation time, which orders the live casts pinned above
- * a spectator's tray (MAG-46) — a live cast never rides the feed.
+ * `startedAt` is its creation time, which orders the live casts in the live
+ * zone (MAG-46, MAG-48) — a live cast never rides the feed.
  */
 export const CastEntry = Schema.TaggedStruct("cast", {
   _id: ConvexId("casts"),
@@ -157,13 +157,13 @@ export const isLiveCast = (entry: ActivityEntry): boolean =>
 const byStart = Order.mapInput(Order.Number, (c: CastEntry) => c.startedAt)
 
 /**
- * The live casts pinned above a viewer's tray (MAG-46, owner 2026-10-23: an
- * in-progress cast never moves around anyone's Chronicle). The Storyteller's
- * and the caster's own live cast stand in their roll zone instead, so the
- * slot holds every OTHER caster's live cast — none for the Storyteller —
+ * Every OTHER caster's live cast, for a viewer's live zone (MAG-46, MAG-48;
+ * owner 2026-10-23: an in-progress cast never moves around anyone's
+ * Chronicle). The Storyteller's zone cast and the caster's own come first
+ * by their own reads, so this holds the rest — none for the Storyteller —
  * oldest first, in a fixed order that no update reshuffles.
  */
-export const pinnedLiveCasts = (reader: NonNullable<Reader>, entries: ReadonlyArray<ActivityEntry>): Array<CastEntry> =>
+export const othersLiveCasts = (reader: NonNullable<Reader>, entries: ReadonlyArray<ActivityEntry>): Array<CastEntry> =>
   reader.role === "storyteller"
     ? []
     : Arr.sort(
@@ -199,7 +199,7 @@ export const chronicleFor = <E extends ActivityEntry>(reader: Reader, entries: R
  * The live casts a Reader reads (MAG-46): every unresolved Cast at the table,
  * oldest first, through the same policy as the feed — so the fluid Tides stay
  * the Storyteller's — and with no feed cap, so a quiet cast behind a busy
- * table can never fall out of the pinned slot or a roll zone.
+ * table can never fall out of the live zone.
  */
 export const liveCastsFor = <E extends CastEntry>(reader: Reader, casts: ReadonlyArray<E>): Array<E> =>
   Arr.sort(visibleEntries(reader, casts.filter(isLiveCast)), byStart)

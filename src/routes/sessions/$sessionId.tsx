@@ -6,7 +6,7 @@ import { api } from "../../../convex/_generated/api"
 import type { PoolComponentInput } from "#/domain/dice"
 import { pooledDice } from "#/machines/dice-pool"
 import { useLiveCasts } from "#/hooks/use-live-casts"
-import { pinnedLiveCasts } from "#/domain/activity"
+import { othersLiveCasts } from "#/domain/activity"
 import { useCast } from "#/hooks/use-cast"
 import { useScene } from "#/hooks/use-scene"
 import { useDicePool } from "#/hooks/use-dice-pool"
@@ -148,9 +148,9 @@ function SessionPage() {
 
   const setMagicalTool = useMutation(api.characters.setMagicalTool)
 
-  // The live cast occupies the ST's roll zone (the card takeover, owner
-  // ruling 2026-07-19, superseding #110's postures): the engaged cast holds
-  // the zone through the entire ladder; with the stage free, the oldest
+  // The live cast holds the ST's working zone (the card takeover, owner
+  // ruling 2026-07-19, superseding #110's postures; the live zone, MAG-48):
+  // the engaged cast holds it through the entire ladder; with the stage free, the oldest
   // waiting draft stands as the offer (FIFO through the wings) — read off the
   // table's live casts, never the Chronicle (MAG-46). No StageOccupied
   // mirror travels with the offer: it only surfaces when the stage is free,
@@ -219,12 +219,6 @@ function SessionPage() {
     return doc ? decodeSheetDoc(doc) : null
   }
 
-  // The masthead's Mana ghost while the caster's own live card holds the
-  // zone (2026-07-19 polish, note 8): the card reports spell cost + selected
-  // mitigation during the commit decision; the declaring felt keeps its own
-  // armedPreview path.
-  const [castPendingMana, setCastPendingMana] = useState(0)
-
   // Lazy seed: if no character exists, seed Arctus once. Never while seated —
   // a characterless seat must read as empty, not conjure a sheet for the
   // Dev's own membership.
@@ -259,10 +253,10 @@ function SessionPage() {
   // (issues #15, #19).
   const isStoryteller = effectiveMember?.role === "storyteller"
 
-  // The caster's occupied roll zone (the card takeover; was #110's posture):
-  // the viewer's own pending vulgar cast, read off the same live casts as the
-  // offer. While it stands, their roll zone IS the cast — honest, since the
-  // seam refuses their every other roll (issue #109).
+  // The caster's own live cast (the card takeover; was #110's posture): the
+  // viewer's pending vulgar cast, read off the same live casts as the offer.
+  // While it stands it holds their working zone — honest, since the seam
+  // refuses their every other roll (issue #109; MAG-50 revisits).
   const viewerUserId = effectiveMember?.userId ?? user._id
   const myPendingCast = live?.find((c) => c.casterUserId === viewerUserId) ?? null
 
@@ -271,13 +265,20 @@ function SessionPage() {
   // roller — else the oldest waiting offer.
   const stZoneCast = isStoryteller ? (stageCast ?? pendingOffer) : null
 
-  // Every other caster's live cast, pinned above this seat's tray (MAG-46):
-  // a fixed slot, oldest first, so an in-progress cast never moves around
-  // the Chronicle. The Storyteller's zone holds theirs, so none pin for them.
-  const pinned = pinnedLiveCasts(
+  // Every other caster's live cast, for this seat's live zone (MAG-46,
+  // MAG-48): oldest first, so an in-progress cast never moves around. The
+  // Storyteller's zone cast is read above, so none come here for them.
+  const others = othersLiveCasts(
     { userId: viewerUserId, role: isStoryteller ? "storyteller" : "player" },
     live ?? [],
   )
+  // The live zone's casts, in its order (MAG-48): the ST's, the caster's
+  // own, then every other caster's. Present, they take the zone over.
+  const zoneCasts = [
+    ...(stZoneCast ? [stZoneCast] : []),
+    ...(myPendingCast ? [myPendingCast] : []),
+    ...others,
+  ]
 
   // Build character sheet content
   let sheetContent: React.ReactNode = undefined
@@ -410,17 +411,21 @@ function SessionPage() {
         />
       }
       liveCasts={
-        pinned.length > 0 &&
-        pinned.map((c) => (
-          <CastMount key={`pinned-${c._id}`}>
+        // A live cast takes the working zone over on every seat (MAG-48),
+        // in place of the tray: the Storyteller's engaged cast or oldest
+        // offer, the caster's own, and every other caster's, oldest first.
+        // Each watches the CASTER's track (note 14).
+        zoneCasts.length > 0 &&
+        zoneCasts.map((c) => (
+          <CastMount key={c._id}>
             <CastCard
               cast={c}
               sessionId={sessionId}
               isStoryteller={isStoryteller}
               viewerUserId={viewerUserId}
               mySheet={mySheet}
-              // the watched cockpit (note 14) reads the CASTER's track
-              casterSheet={casterSheetOf(c.characterId)}
+              casterSheet={c === myPendingCast ? mySheet : casterSheetOf(c.characterId)}
+              moreWaiting={c === stZoneCast ? moreWaiting : 0}
             />
           </CastMount>
         ))
@@ -430,8 +435,9 @@ function SessionPage() {
         // the masthead first — the depletables are the constant plate above
         // an instrument that shifts forms — then the posture. Arming a cast
         // puts the felt in its declaring posture (issue #107) — same
-        // instrument, same slot. For the Storyteller a waiting vulgar draft
-        // takes the slot outright: answer the offer before any rolling.
+        // instrument, same slot. A live cast takes the whole zone over
+        // instead (MAG-48, liveCasts above), its header carrying the
+        // caster's stats, so none of this renders while one is up.
         <>
           {mySheet && (
             <ResourceStrip
@@ -447,12 +453,12 @@ function SessionPage() {
               // Mana armed on the declaring felt (auto + rider), ghosted at
               // the resource it will spend from (issue #107). The rider's
               // controls are felt fittings now (owner call 2026-07-19) —
-              // the masthead only weighs. With the live card holding the
-              // zone, the card's commit decision reports instead (note 8).
+              // the masthead only weighs. A live cast holds the whole zone
+              // and its header weighs its own spend (MAG-48).
               pendingMana={
                 rawCast.state !== "idle"
                   ? (armedPreview(rawCast.context, mySheet)?.manaCost ?? 0)
-                  : castPendingMana
+                  : 0
               }
               // The standing tool fact (issue #107; masthead-seated by pass
               // 3, note 10): the seat's own to maintain — the refusal speaks
@@ -471,45 +477,8 @@ function SessionPage() {
           )}
           {/* Each posture keyed so a change remounts through the assembly
               beat (.mv-assemble): the zone doesn't swap, it re-marshals
-              beneath the masthead, which never remounts — the constant
-              presence that makes the boundary read (styles.css). */}
-          {stZoneCast ? (
-            // The card takeover (owner ruling 2026-07-19): the live cast IS
-            // the ST's roll zone — the offer's engage/decline, the Tides,
-            // Paradox, Void, all on the one card the feed hides from them.
-            // Keyed by cast so a new occupant re-assembles; rung climbs
-            // render in place.
-            <div key={`cast-${stZoneCast._id}`} className="mv-assemble mv-stage">
-              <CastMount>
-                <CastCard
-                  cast={stZoneCast}
-                  sessionId={sessionId}
-                  isStoryteller={isStoryteller}
-                  viewerUserId={viewerUserId}
-                  mySheet={mySheet}
-                  casterSheet={casterSheetOf(stZoneCast.characterId)}
-                  moreWaiting={moreWaiting}
-                />
-              </CastMount>
-            </div>
-          ) : myPendingCast ? (
-            // The caster's own live cast holds their zone the same way, from
-            // draft clear through resolution — controls as their beats come,
-            // the felt-dice declared pool standing where the roller was.
-            <div key={`cast-${myPendingCast._id}`} className="mv-assemble mv-stage">
-              <CastMount>
-                <CastCard
-                  cast={myPendingCast}
-                  sessionId={sessionId}
-                  isStoryteller={isStoryteller}
-                  viewerUserId={viewerUserId}
-                  mySheet={mySheet}
-                  casterSheet={mySheet}
-                  onPendingMana={setCastPendingMana}
-                />
-              </CastMount>
-            </div>
-          ) : rawCast.state !== "idle" && mySheet ? (
+              beneath the masthead (styles.css). */}
+          {rawCast.state !== "idle" && mySheet ? (
             <div key="declaring" className="mv-assemble mv-stage">
               <DeclarationFelt
                 cast={cast}

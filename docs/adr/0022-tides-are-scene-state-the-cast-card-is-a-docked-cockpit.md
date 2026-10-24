@@ -1,5 +1,29 @@
 # Tides are scene state; the cast card is a docked cockpit
 
+> **Amended** (2026-10-24, MAG-48, the owner's calls: the vulgar flow and
+> the activity stream "are not the same thing anymore"; it must declare
+> "pause, something important is going on and it affects everyone" while
+> every seat stays usable). The MAG-46 pin is withdrawn: a live Cast takes
+> the **working zone** over on **every** seat, in place of the tray, full
+> width — the **live zone**, framed whole in the Paradox red with a slow
+> breathing wash (still under reduced motion). While live it is no card
+> (no corner ticks, border or rounding — it stands on the panel's ground);
+> it becomes a card when it ends and lands in the Chronicle. Several live
+> Casts stack in the zone, oldest first, capped at 70% of the rail. The
+> chat input moves up to the Chronicle's foot. A grip (the tray's,
+> MAG-47) shrinks a live Cast to one line — the caster, the cast mark, the
+> rung, whose move — and each Cast opens tall. **The header** puts the
+> caster's name top left, as on every record of theirs; the **cast mark**
+> beneath it (the Arcanum's glyph for its name, the level in verdigris as
+> intense as the level is high — no "Vulgar", the card is only vulgar);
+> and, while live, the caster's depletables on the right on every seat:
+> the whole health track beside the name, Will · Mana as `◈ current/max`
+> beside the mark, a pending spend showing what would be left in ember.
+> The masthead strip steps aside while a Cast holds the zone. Trays during
+> a live Cast (the Storyteller's hidden spot rolls, the caster's spot
+> checks) are MAG-50's; the chat input and the tray sharing one slot,
+> MAG-53's.
+
 > **Amended** (2026-10-23, MAG-32, the owner's call: the caster must choose
 > covert or vulgar on purpose, where the Roll button lives, with no added
 > height). Covert/vulgar is a property of the declaration, held by the cast
@@ -26,7 +50,7 @@
 > pop around the activity feed of anyone). It stays the caster's and the
 > Storyteller's roll zone, and every other seat sees each other caster's
 > live cast **pinned** between the Chronicle and their own tray — a fixed
-> slot, oldest first by the Cast's creation (`pinnedLiveCasts`), which no
+> slot, oldest first by the Cast's creation (`pinnedLiveCasts`, now `othersLiveCasts`), which no
 > update reshuffles. Live casts have their own read (`casts.live`, through
 > `liveCastsFor`: the feed's policy, no cap), so the Chronicle's 100-entry
 > window can never decide whether a live cast exists on screen; the feed

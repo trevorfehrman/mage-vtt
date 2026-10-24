@@ -16,9 +16,9 @@
 // The REAL app shell (SessionLayout), the REAL feed neighbors (MessageItem /
 // RollItem), and the REAL CastCard — fed hand-built fake Cast documents via
 // URL knobs (?rung=…&seat=…), reload-stable and shareable. Each seat mounts
-// the card where the session does (MAG-46): the caster's and Storyteller's
-// roll zone while live, pinned above the bystander's tray, the feed once
-// it is a record.
+// the card where the session does (MAG-48): while live it takes the working
+// zone over on every seat, in place of the tray; the feed once it is a
+// record.
 //
 // Unlike the census-era prototypes in this directory, this rig imports app
 // code ON PURPOSE — that is its whole job (map #95 reaffirmed ADR-0021's
@@ -30,7 +30,7 @@
 // DELETE when map #95 clears.
 import { useEffect, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
-import { pinnedLiveCasts, withheldFrom, type CastEntry, type MessageEntry, type RollEntry } from "#/domain/activity"
+import { withheldFrom, type CastEntry, type MessageEntry, type RollEntry } from "#/domain/activity"
 import type { ParadoxPoolModifier } from "#/domain/paradox"
 import { decodeSheet } from "#/domain/character"
 import { initialCurrentState } from "#/domain/character"
@@ -290,10 +290,6 @@ function DressingRoom() {
   const { rung, seat, grammar } = Route.useSearch()
   const navigate = Route.useNavigate()
   const pool = useDicePool(SESSION_ID)
-  // The card's commit decision ghosts the Mana it would spend on the tracker
-  // (the session route's wiring; owner, 2026-10-22: "as I select the table
-  // we should ghost out the cost in the mana tracker").
-  const [castPendingMana, setCastPendingMana] = useState(0)
 
   // The ST's adjustments live here, per rung (MAG-45): the fixture cast has
   // no server document, so the card's adjust door writes local state and
@@ -353,19 +349,14 @@ function DressingRoom() {
       // Every seat watches the caster's cockpit (note 14) — the rig hands
       // all three the same Arctus track.
       casterSheet={arctusSheet}
-      onPendingMana={setCastPendingMana}
       adjust={adjust}
     />
   )
-  // Each seat mounts the card where the session does (MAG-46): a live cast
-  // IS the caster's and the Storyteller's roll zone (no tray), and pins
-  // above a bystander's tray; never in the feed. The record (resolved,
-  // cancelled, voided) lands in the feed for everyone.
+  // Each seat mounts the card where the session does (MAG-48): a live cast
+  // takes the working zone over on every seat, in place of the tray; never
+  // in the feed. The record
+  // (resolved, cancelled, voided) lands in the feed for everyone.
   const live = isUnresolved(cast.status)
-  // the session's own policy decides the pin; the rest of a live cast's
-  // seats hold it as their roll zone
-  const pinnedHere = pinnedLiveCasts(reader, [cast]).length > 0
-  const inZone = live && !pinnedHere
 
   const feed = (
     <div className="flex h-full flex-col">
@@ -405,17 +396,11 @@ function DressingRoom() {
           )
         }
         activityLog={feed}
-        liveCasts={pinnedHere && <CastMount>{card}</CastMount>}
+        liveCasts={live && <CastMount>{card}</CastMount>}
         dicePoolBuilder={
           <>
-            {mySheet && <ResourceStrip character={mySheet} pendingMana={castPendingMana} />}
-            {inZone ? (
-              <div className="mv-assemble mv-stage">
-                <CastMount>{card}</CastMount>
-              </div>
-            ) : (
-              <DicePoolBuilder pool={pool} />
-            )}
+            {mySheet && <ResourceStrip character={mySheet} />}
+            <DicePoolBuilder pool={pool} />
           </>
         }
         chatInput={
@@ -431,7 +416,7 @@ function DressingRoom() {
 
       {/* The knobs — deliberately foreign to the mv language so nobody
           mistakes them for the design under audition. */}
-      <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full bg-zinc-100 px-4 py-2 text-zinc-900 shadow-lg">
+      <div className="fixed top-1.5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full bg-zinc-100 px-4 py-2 text-zinc-900 shadow-lg">
         <div className="flex items-center gap-1">
           {GRAMMAR_ORDER.map((g) => (
             <button
