@@ -363,10 +363,23 @@ export function CastCard({
       // the intrinsic group (and anything else the cast row never draws)
       Match.orElse((k) => (sheetTerms.length > 0 ? sheetTerms : `Sheet ${groupCount(k)}`)),
     )
+  // The eaten dice have two causes (MAG-49): each loose Paradox success
+  // (p. 129) and the wound penalty the track carries (WoD p. 172). They ghost
+  // apart, from the row's end — Paradox's in its own red, the wounds' in the
+  // die's own ink — so containing visibly turns a red ghost into a die, or,
+  // when the bet's damage brings a new penalty, into a wound ghost (owner,
+  // 2026-10-25: "shouldn't the ghost dice be coming back?").
+  const eatenByParadox = outlook !== null ? Math.min(eaten, Math.max(0, outlook.uncontained)) : 0
   const feltDice = feltKinds.map((kind, i) => {
-    const ghosted = i >= feltKinds.length - eaten
+    const fromEnd = feltKinds.length - 1 - i
+    const ghosted = fromEnd < eaten
+    const byParadox = fromEnd < eatenByParadox
     const arcanum = feltSpecs[i]?.arcanum
-    const says = ghosted ? "Eaten by Paradox" : groupSays(kind, arcanum)
+    const says = !ghosted
+      ? groupSays(kind, arcanum)
+      : byParadox
+        ? "Eaten by Paradox — contain it to win this die back"
+        : `Lost to wounds (${outlook?.penaltyAfter ?? 0})`
     return (
       <Tooltip key={`${kind}:${i}`}>
         <TooltipTrigger asChild>
@@ -378,8 +391,8 @@ export function CastCard({
           >
             <UnifiedDie
               mode="pool"
-              kind={kind}
-              arcanum={arcanum}
+              kind={byParadox ? "paradox" : kind}
+              arcanum={byParadox ? undefined : arcanum}
               reduced={reduced}
               glide={false}
               ghost={ghosted}
