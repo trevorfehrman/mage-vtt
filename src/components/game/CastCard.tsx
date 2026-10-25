@@ -31,7 +31,6 @@ import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
 import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { BurstFaces } from "./BurstFaces"
-import { BacklashTrack, type BacklashProps, type BacklashVariant } from "./BacklashAudition"
 import { UnifiedDie } from "./UnifiedDie"
 import { settleOpacity, type PoolKind } from "./die-look"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
@@ -83,6 +82,10 @@ const rungIndex = (status: CastStatus): number => {
 const PARADOX_GRACE =
   "dramatic failure — Paradox relents, and the Scene forgives its next accumulation"
 
+/** The contained mark (MAG-49): every Paradox success taken on the body —
+ * the caster bore it. One word, in the lore slot's own voice. */
+const CONTAINED_MARK = "Borne"
+
 export function CastCard({
   cast,
   sessionId,
@@ -92,7 +95,6 @@ export function CastCard({
   casterSheet = null,
   moreWaiting = 0,
   adjust,
-  backlash = "now",
 }: {
   cast: CastEntry
   sessionId: Id<"sessions">
@@ -111,9 +113,6 @@ export function CastCard({
    * hands this in. The live route leaves it undefined and the Convex
    * mutation runs. */
   adjust?: ((adjustments: ReadonlyArray<ParadoxPoolModifier>) => Promise<unknown>) | undefined
-  /** MAG-49's audition: the dressing room's `?backlash=` knob. The live
-   * route leaves it on today's track. */
-  backlash?: BacklashVariant
 }) {
   // The machine is a projection of the document (ADR-0016): input rehydrates
   // mid-ladder, SYNC tracks every realtime update, and the card renders from
@@ -291,22 +290,6 @@ export function CastCard({
           contained: cockpitContained,
         })
       : null
-
-  // MAG-49's audition: the same bet, drawn by the knob's variant.
-  const backlashProps: BacklashProps | null =
-    outlook !== null && cockpitSheet !== null
-      ? {
-          track: cockpitSheet.healthTrack,
-          declaredPool: cast.declaredPool,
-          paradoxSuccesses: cast.paradoxSuccesses ?? 0,
-          successFaces: (cast.paradoxRolls ?? []).filter((v) => v >= 8),
-          cap: containCap,
-          contained: cockpitContained,
-          onChange: controls.includes("contain") ? setContained : undefined,
-          disabled: busy,
-        }
-      : null
-  const backlashStage = backlashProps !== null && backlash !== "now"
 
   const waiting = waitingOn(cast)
   const terminal = waiting === null
@@ -745,17 +728,14 @@ export function CastCard({
         </div>
       )}
 
-      {/* the Tides are settled by the backlash step: it stands down (MAG-49) */}
-      {!backlashStage && (
-        <TidesBox
-          weather={weather}
-          canAdjust={controls.includes("adjust")}
-          busy={busy}
-          draft={draft}
-          onDraft={setDraft}
-          onAdd={() => void addTide()}
-        />
-      )}
+      <TidesBox
+        weather={weather}
+        canAdjust={controls.includes("adjust")}
+        busy={busy}
+        draft={draft}
+        onDraft={setDraft}
+        onAdd={() => void addTide()}
+      />
 
       {/* Provenance ABOVE the felt (2026-07-20): the pool's lineage and the
           declared terms sit above the dice; the felt itself holds only the
@@ -767,14 +747,8 @@ export function CastCard({
         {/* Felt audition (2026-10-22): the component tags are gone — each die
             carries its provenance (Gnosis star, Arcanum glyph, High Speech
             rune, Willpower amethyst) and its title names it on hover. */}
-        <span className="whitespace-nowrap">{backlashStage ? "" : declaredTerms.join(" · ")}</span>
+        <span className="whitespace-nowrap">{declaredTerms.join(" · ")}</span>
       </div>
-      {/* MAG-49's audition: at the backlash step the variant stands where
-          the felt and the odds row stood — Paradox against health alone. */}
-      {backlashStage && backlashProps !== null ? (
-        <BacklashTrack {...backlashProps} />
-      ) : (
-        <>
       <Felt className="mt-1.5">
         {paradoxArea && (
         <FeltSection
@@ -912,8 +886,6 @@ export function CastCard({
       {/* the odds row — directly beneath the felt (note 16), in the table's
           own grid (MAG-45): one register on every rung */}
       {oddsRow !== null && <OddsRow {...oddsRow} />}
-        </>
-      )}
 
       {/* No "⟐ N rolled" numbers-line (pass 2, note 8): the cockpit's glyph
           column IS the count during the bet, and the Resolution carries the
@@ -948,7 +920,7 @@ export function CastCard({
           decodable caster sheet — the cockpit's whole precondition. Zero
           Paradox renders the same column (pass 2, note 8): no glyphs, the
           quiet word in the lore slot — the dead "⟐ 0 rolled" line's job. */}
-      {outlook !== null && cockpitSheet !== null && !backlashStage && (
+      {outlook !== null && cockpitSheet !== null && (
         <ParadoxCockpit
           track={cockpitSheet.healthTrack}
           paradoxSuccesses={cast.paradoxSuccesses ?? 0}
@@ -1104,27 +1076,7 @@ export function CastCard({
               that are their own cancel. Ember-as-submit was auditioned and
               rescinded (#102, owner walk 2026-07-18) — it read as aimless
               against the hot Paradox family. */}
-          {controls.includes("release") && backlashStage && outlook !== null ? (
-            // MAG-49's audition: with the felt stood down, the pool the
-            // spell will roll rides the trigger and its odds stand above it,
-            // both moving with the bet (owner, 2026-10-25).
-            <div className="ml-auto flex flex-col items-end gap-1">
-              <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
-                success{" "}
-                <b style={{ color: "var(--rail-success)" }}>{pct(rollOdds(outlook.castPool).success)}</b>
-              </span>
-              <button
-                onClick={() =>
-                  run(() => release({ ...step, containedSuccesses: contained }))
-                }
-                disabled={busy}
-                className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
-                title="One commitment: the containment lands as Resistant bashing and the dice fly."
-              >
-                Cast {diceLabel(outlook.castPool)}
-              </button>
-            </div>
-          ) : controls.includes("release") ? (
+          {controls.includes("release") && (
             <button
               onClick={() =>
                 run(() => release({ ...step, containedSuccesses: contained }))
@@ -1133,11 +1085,12 @@ export function CastCard({
               className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
               title="One commitment: the containment lands as Resistant bashing and the dice fly."
             >
-              {/* One word, one width (pass 2, notes 6/9): the tracker shows
-                  the bet — the button never restates or resizes with it. */}
-              Cast
+              {/* The pool the spell will roll rides the trigger once the
+                  Paradox is in (owner, 2026-10-25, MAG-49): "at a glance i
+                  wanna be like okay i'm gonna roll 9" — it moves with the bet. */}
+              {outlook !== null ? `Cast ${diceLabel(outlook.castPool)}` : "Cast"}
             </button>
-          ) : null}
+          )}
         </div>
       )}
 
@@ -1462,16 +1415,26 @@ function ParadoxCockpit({
             {severity}
           </span>
         ) : (
-          <span
-            className="mv-data text-[12px]"
-            style={{ color: "var(--rail-success)" }}
-          >
-            {paradoxSuccesses === 0
-              ? dramaticFailure
-                ? PARADOX_GRACE
-                : "no Paradox — the way to the cast is clear"
-              : "all contained — reality lets it pass"}
-          </span>
+          paradoxSuccesses === 0 ? (
+            // nothing to bear; only the chance-die grace has news (note 5)
+            dramaticFailure && (
+              <span className="mv-data text-[12px]" style={{ color: "var(--rail-success)" }}>
+                {PARADOX_GRACE}
+              </span>
+            )
+          ) : (
+            // every success taken on the body: the terse mark (MAG-49)
+            <span
+              className="mv-h text-[22px] uppercase leading-none tracking-[0.14em]"
+              style={{
+                color: "var(--ember)",
+                textShadow: "0 0 14px color-mix(in srgb, var(--ember) 45%, transparent)",
+              }}
+              title="Every Paradox success taken on the body as Resistant bashing"
+            >
+              {CONTAINED_MARK}
+            </span>
+          )
         )}
       </div>
       <div className="flex flex-wrap justify-center gap-[5px]">
@@ -1502,24 +1465,33 @@ function ParadoxCockpit({
           const penaltyLabel = fromEnd <= 3 ? fromEnd - 4 : null
           const penaltyLive =
             penaltyLabel !== null && outlook.penaltyAfter === penaltyLabel
+          // MAG-49: on the caster's own card a box the bet can take says so
+          // (a red dashed "+", the Paradox it would absorb), and an empty box
+          // past the bet stands down — the click has one place to go.
+          const target = interactive && !ghosted && reachable
+          const stood = interactive && ordinal !== null && !ghosted && !reachable
           const boxMark = (
             <span
               className="mv-data grid size-6 place-items-center rounded-[2px] border text-[12px] font-bold"
               style={{
                 borderColor: ghosted
                   ? "var(--ember)"
-                  : box.severity === "empty"
-                    ? "var(--line)"
-                    : "var(--accent)",
-                borderStyle: ghosted ? "dashed" : "solid",
-                background:
-                  box.severity === "empty" || box.severity === "bashing"
+                  : target
+                    ? "var(--paradox)"
+                    : box.severity === "empty"
+                      ? "var(--line)"
+                      : "var(--accent)",
+                borderStyle: ghosted || target ? "dashed" : "solid",
+                background: target
+                  ? "color-mix(in srgb, var(--paradox) 10%, transparent)"
+                  : box.severity === "empty" || box.severity === "bashing"
                     ? "transparent"
                     : "var(--glow)",
-                color: ghosted ? "var(--ember)" : "var(--accent)",
+                color: ghosted ? "var(--ember)" : target ? "var(--paradox)" : "var(--accent)",
+                opacity: stood ? 0.35 : 1,
               }}
             >
-              {ghosted ? "╱" : healthBoxGlyph(box.severity)}
+              {ghosted ? "╱" : target ? "+" : healthBoxGlyph(box.severity)}
             </span>
           )
           return (
@@ -1581,12 +1553,11 @@ function ParadoxCockpit({
           click can make one appear. */}
       {(martyrReachable || outlook.martyr) && (
         <p
-          className={`${martyrReachable ? "min-h-[30px] " : ""}text-center text-[12px] italic`}
+          className={`${martyrReachable ? "min-h-[18px] " : ""}mv-data text-center text-[12px]`}
           style={{ color: "var(--bad)" }}
+          title={outlook.martyr ? "The last health box takes bashing: unconscious (p. 126; the Storyteller adjudicates). The cast still completes." : undefined}
         >
-          {outlook.martyr
-            ? "This fills your last health box with bashing — the book calls that unconsciousness (Storyteller adjudicates). The cast still completes."
-            : ""}
+          {outlook.martyr ? "unconscious" : ""}
         </p>
       )}
     </div>

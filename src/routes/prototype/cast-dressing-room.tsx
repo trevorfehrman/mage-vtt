@@ -53,7 +53,6 @@ import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { VideoRail } from "#/components/game/VideoRail"
 import type { CharacterSheet as Sheet } from "#/domain/character"
 import type { VideoSeat } from "#/domain/video-rail"
-import type { BacklashVariant } from "#/components/game/BacklashAudition"
 import type { Id } from "../../../convex/_generated/dataModel"
 
 // ── The knobs ────────────────────────────────────────────────────────────────
@@ -89,15 +88,6 @@ const GRAMMARS: Record<
   mint: { label: "C · mint", vars: { "--rail-success": "#93e6bf" } },
 }
 
-// MAG-49's audition: the backlash step's four drawings.
-const BACKLASH_ORDER = ["now", "track"] as const
-const BACKLASH_LABEL: Record<BacklashVariant, string> = {
-  now: "now",
-  track: "A · felt",
-}
-const isBacklash = (v: unknown): v is BacklashVariant =>
-  typeof v === "string" && (BACKLASH_ORDER as ReadonlyArray<string>).includes(v)
-
 const isRung = (v: unknown): v is RigRung =>
   typeof v === "string" && (RUNG_ORDER as ReadonlyArray<string>).includes(v)
 const isSeat = (v: unknown): v is RigSeat =>
@@ -110,7 +100,6 @@ export const Route = createFileRoute("/prototype/cast-dressing-room")({
     rung: isRung(search.rung) ? search.rung : ("draft" as RigRung),
     seat: isSeat(search.seat) ? search.seat : ("caster" as RigSeat),
     grammar: isGrammar(search.grammar) ? search.grammar : ("merge" as RigGrammar),
-    backlash: isBacklash(search.backlash) ? search.backlash : ("now" as BacklashVariant),
     hurt: search.hurt === true || search.hurt === "true",
   }),
   component: DressingRoom,
@@ -369,7 +358,7 @@ const SEAT_VIEW: Record<
 // ── The rig ──────────────────────────────────────────────────────────────────
 
 function DressingRoom() {
-  const { rung, seat, grammar, backlash, hurt } = Route.useSearch()
+  const { rung, seat, grammar, hurt } = Route.useSearch()
   const casterNow = hurt ? hurtArctusSheet : arctusSheet
   // MAG-52: the sheet's tool switch flips a local copy (no server here).
   const [toolInHand, setToolInHand] = useState(false)
@@ -487,7 +476,6 @@ function DressingRoom() {
       // all three the same Arctus track.
       casterSheet={casterNow}
       adjust={adjust}
-      backlash={backlash}
     />
   )
   // Each seat mounts the card where the session does (MAG-48): a live cast
@@ -596,39 +584,20 @@ function DressingRoom() {
           </button>
         </div>
         <span className="h-4 w-px bg-zinc-400" />
-        <div className="flex items-center gap-1">
-          {BACKLASH_ORDER.map((b) => (
-            <button
-              key={b}
-              onClick={() =>
-                void navigate({
-                  search: (prev) => ({ ...prev, backlash: b }),
-                  replace: true,
-                })
-              }
-              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                b === backlash ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
-              }`}
-              title="MAG-49: the backlash step as Paradox against health (rung paradoxRolled)"
-            >
-              {BACKLASH_LABEL[b]}
-            </button>
-          ))}
-          <button
-            onClick={() =>
-              void navigate({
-                search: (prev) => ({ ...prev, hurt: !hurt }),
-                replace: true,
-              })
-            }
-            className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-              hurt ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
-            }`}
-            title="The caster with two boxes left: containing both fills the track"
-          >
-            hurt
-          </button>
-        </div>
+        <button
+          onClick={() =>
+            void navigate({
+              search: (prev) => ({ ...prev, hurt: !hurt }),
+              replace: true,
+            })
+          }
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+            hurt ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
+          }`}
+          title="MAG-49: the caster with two boxes left — containing both fills the track"
+        >
+          hurt
+        </button>
         <span className="h-4 w-px bg-zinc-400" />
         <div className="flex items-center gap-1">
           {GRAMMAR_ORDER.map((g) => (
