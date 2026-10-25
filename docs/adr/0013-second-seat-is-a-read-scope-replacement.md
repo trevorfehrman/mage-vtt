@@ -1,5 +1,16 @@
 # Second Seat is a read-scope replacement, never impersonation
 
+> **Amended** (2026-10-25, the owner's call: "announce every seat"). Once
+> Whispers became private to their people, the Storyteller included
+> (ADR-0003 amendment), sight stopped being ordered by role: every member's
+> seat shows Whispers no one else sees. So taking *any* member's seat but
+> your own emits the system Activity entry naming the Dev; there is no
+> silent narrower seat any more. The "Losing sight is the point" consequence
+> still holds — a seated Storyteller-Dev loses Hidden rolls — it just no
+> longer buys silence. A Whisper the seated Dev sends is still their own
+> write and does not show in the seated Chronicle unless the seat member is
+> its sender or a target: replacement, never a union.
+
 A Dev can read a Session from any member's seat (the **Second Seat**,
 CONTEXT.md): identity-sensitive queries accept an optional, Dev-gated `seat`
 argument that swaps the caller's *entire* read scope for the target member's —

@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from "react"
 import {
-  DEFAULT_TRAY_FORM,
-  readTrayForm,
-  type TrayForm,
-} from "#/components/game/tray-form"
+  DEFAULT_INSTRUMENT_FORM,
+  readInstrumentForm,
+  type InstrumentForm,
+} from "#/components/game/instrument-form"
 
 /**
  * The viewer's chosen form for the rail's two instruments, remembered in
@@ -21,18 +21,18 @@ export const MESSAGE_FORM_KEY = "mage-vtt:message-form"
 
 const rememberedForm = (key: string) => {
   const listeners = new Set<() => void>()
-  let fallback: TrayForm = DEFAULT_TRAY_FORM
+  let fallback: InstrumentForm = DEFAULT_INSTRUMENT_FORM
 
-  const read = (): TrayForm => {
+  const read = (): InstrumentForm => {
     try {
       const stored = window.localStorage.getItem(key)
-      return stored === null ? fallback : readTrayForm(stored)
+      return stored === null ? fallback : readInstrumentForm(stored)
     } catch {
       return fallback
     }
   }
 
-  const write = (form: TrayForm) => {
+  const write = (form: InstrumentForm) => {
     fallback = form
     try {
       window.localStorage.setItem(key, form)
@@ -51,9 +51,9 @@ const rememberedForm = (key: string) => {
     }
   }
 
-  return (): readonly [TrayForm, (form: TrayForm) => void] => {
+  return (): readonly [InstrumentForm, (form: InstrumentForm) => void] => {
     // the server renders the default; the stored choice lands on hydration
-    const form = useSyncExternalStore(subscribe, read, () => DEFAULT_TRAY_FORM)
+    const form = useSyncExternalStore(subscribe, read, () => DEFAULT_INSTRUMENT_FORM)
     return [form, write] as const
   }
 }

@@ -176,8 +176,8 @@ export const handEditSheet = Effect.fn("Flows.handEdit.handEditSheet")(function*
   // stamps the recorded Override structurally (ADR-0006).
   return yield* store.insertMessage({
     sessionId: sheet.sessionId,
-    sender: { userId: editor.userId, displayName: editor.displayName },
-    text: `${editor.displayName} hand-edited ${sheet.name}: ${changes}`,
+    sender: { userId: editor.userId, displayName: editor.tableName },
+    text: `${editor.tableName} hand-edited ${sheet.name}: ${changes}`,
     visibility: "system",
   })
 })

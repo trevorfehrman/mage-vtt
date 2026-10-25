@@ -102,9 +102,9 @@ function SessionPage() {
   const takeSeat = (id: Id<"sessionMembers"> | null) => {
     setSeatId(id)
     if (id) {
-      // Every sit-down is reported; the server announces only widening seats
-      // (ADR-0013) and stays silent for narrower ones. If the announcement
-      // can't be recorded, stand back up — no unlogged widened reading.
+      // Every sit-down is announced (ADR-0013 amendment): each seat holds
+      // that member's private Whispers. If the announcement can't be
+      // recorded, stand back up — no unlogged secret-seeing.
       announceSeat({
         sessionId,
         target: id,
@@ -281,8 +281,9 @@ function SessionPage() {
 
   // The caster's own live cast (the card takeover; was #110's posture): the
   // viewer's pending vulgar cast, read off the same live casts as the offer.
-  // It stands in the working zone above the slot (MAG-53); the seam still
-  // refuses the caster's every other roll (issue #109; MAG-50 revisits).
+  // It stands in the working zone above the slot (MAG-53); the tray below
+  // it rolls plain pools mid-cast, and the seam refuses any other cast
+  // (MAG-50, loosening issue #109).
   const viewerUserId = effectiveMember?.userId ?? user._id
   const myPendingCast = live?.find((c) => c.casterUserId === viewerUserId) ?? null
 
@@ -431,7 +432,7 @@ function SessionPage() {
               : null
           }
           // click a face to whisper them (MAG-53); the sender is the user
-          whisper={{ selected: slot.targets, self: user._id, onToggle: slot.toggleTarget }}
+          whisper={{ choice: slot.whisper, self: user._id }}
         />
       }
       presence={
@@ -543,9 +544,7 @@ function SessionPage() {
           message={
             <MessageBox
               people={people}
-              targets={slot.targets}
-              onToggle={slot.toggleTarget}
-              onClear={slot.clearTargets}
+              whisper={slot.whisper}
               onSend={(text, targets) =>
                 sendMessage({
                   sessionId,

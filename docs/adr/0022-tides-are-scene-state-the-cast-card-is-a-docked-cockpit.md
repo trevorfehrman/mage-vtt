@@ -1,5 +1,12 @@
 # Tides are scene state; the cast card is a docked cockpit
 
+> **Amended** (2026-10-25, MAG-50): the pending-cast lock no longer holds
+> plain pool rolls. The caster rolls a spot check from the tray mid-cast
+> (the owner: "who knows if the ST will want the player to roll
+> something"), and the Storyteller rolls (hidden, if they like) while an
+> offer waits or the Tides are unset. Every casting door and initiative stay
+> locked, so the caster still cannot start another spell.
+
 > **Amended** (2026-10-24, MAG-53): the live zone no longer replaces the
 > tray. It stands above the **working slot** (the message box and the tray,
 > toggled), which stays on every seat during a live Cast, capping the zone

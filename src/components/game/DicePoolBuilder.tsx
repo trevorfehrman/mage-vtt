@@ -9,8 +9,9 @@ import { DieRows, DieStack } from "./DieStack";
 import type { PoolKind } from "./die-look";
 import { pooledDice } from "#/machines/dice-pool";
 import type { useDicePool } from "#/hooks/use-dice-pool";
-import { useTrayForm } from "#/hooks/use-tray-form";
-import { OPTION_WORDS, flipTrayForm, trayOptionWords } from "./tray-form";
+import { useTrayForm } from "#/hooks/use-instrument-form";
+import { flipInstrumentForm } from "./instrument-form";
+import { OPTION_WORDS, trayOptionWords } from "./tray-form";
 
 type DicePoolAPI = ReturnType<typeof useDicePool>;
 
@@ -32,7 +33,7 @@ const diceLabel = (n: number): string => (n === 1 ? "1 die" : `${n} dice`);
  * holds a fixed two-row height with its lineage in the tray's own gutter,
  * no layout shift as dice or provenance arrive. The grip on the top edge
  * flips between them, in the same place in both; the choice is remembered
- * per viewer (`use-tray-form`) and nothing flips it on its own. The roll
+ * per viewer (`use-instrument-form`) and nothing flips it on its own. The roll
  * zone is still one instrument: replaced in place when a dice system takes
  * the stage, nothing else shares the slot.
  */
@@ -175,7 +176,7 @@ export function DicePoolBuilder({
       {/* the grip: a drawer handle on the tray's top edge, the same place in
           both forms */}
       <button
-        onClick={() => setForm(flipTrayForm(form))}
+        onClick={() => setForm(flipInstrumentForm(form))}
         className="mv-grip"
         title={grip}
         aria-label={grip}

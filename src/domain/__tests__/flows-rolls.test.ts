@@ -31,6 +31,24 @@ const components = [
 
 
 describe("Flows.rolls.create (enforcement seam tracer bullet)", () => {
+  it.effect("a member with a sheet is named by its headline (owner, 2026-10-25)", () =>
+    Effect.gen(function* () {
+      const store = makeInMemory({
+        members: [member],
+        actor: { userId: PLAYER, isDev: false },
+        sheets: [makeSheet({ name: "Yelena Voss", shadowName: "Tessellate" })],
+      })
+
+      yield* createRoll({ sessionId: SESSION, components }).pipe(
+        Effect.provide(store.layer),
+        Random.withSeed("table-name"),
+      )
+
+      expect(store.rolls[0]!.displayName).toBe("Tessellate")
+      expect(store.rolls[0]!.summary).toMatch(/^Tessellate rolled/)
+    }),
+  )
+
   it.effect("a member's public roll produces one atomic Activity entry", () =>
     Effect.gen(function* () {
       const store = seed()

@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import type { useDicePool } from "#/hooks/use-dice-pool"
-import { TRAY_FORM_KEY as KEY } from "#/hooks/use-tray-form"
+import { TRAY_FORM_KEY as KEY } from "#/hooks/use-instrument-form"
 
 /**
  * MAG-47: the tray's two forms. It starts shrunk, the grip flips it, and the

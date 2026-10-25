@@ -1,5 +1,3 @@
-import type { SessionRole } from "./roles"
-
 /**
  * The Second Seat (ADR-0013): a Dev reading a Session from another member's
  * seat. Read-scope **replacement**, never impersonation — these leaves decide
@@ -13,20 +11,18 @@ import type { SessionRole } from "./roles"
  */
 
 /**
- * Does sitting in `seatRole` grant more sight than `ownRole` has?
+ * Must taking this seat be announced in the Activity Log?
  *
- * Sight is ordered: non-member (null) < player < storyteller. Only a widening
- * seat is announced in the Activity Log (secret-seeing is "explicit, opt-in,
- * logged" — CONTEXT.md's god-mode clause); a narrower or same-sight seat is
- * silent, because losing sight is the point.
+ * Every member's seat holds something no one else sees — their Whispers are
+ * private to their people, the Storyteller's included (ADR-0003 amendment) —
+ * so sitting in anyone's seat but your own is secret-seeing, and
+ * secret-seeing is "explicit, opt-in, logged" (CONTEXT.md's god-mode clause).
+ * Sight is no longer ordered by role, so there is no silent narrower seat.
  */
-export const seatWidensReads = (
-  ownRole: SessionRole | null,
-  seatRole: SessionRole,
-): boolean => sightRank(seatRole) > sightRank(ownRole)
-
-const sightRank = (role: SessionRole | null): number =>
-  role === "storyteller" ? 2 : role === "player" ? 1 : 0
+export const seatIsAnnounced = (
+  own: { readonly userId: string } | null,
+  seat: { readonly userId: string },
+): boolean => own?.userId !== seat.userId
 
 export type SeatDecision<M> =
   /** No seat requested — read as yourself (null when not a member). */

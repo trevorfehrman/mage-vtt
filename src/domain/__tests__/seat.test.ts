@@ -1,23 +1,24 @@
 import { describe, expect, it } from "@effect/vitest"
-import { resolveSeat, seatWidensReads } from "../seat"
+import { resolveSeat, seatIsAnnounced } from "../seat"
 
-describe("seatWidensReads", () => {
-  it("a player sitting in the Storyteller's seat widens", () => {
-    expect(seatWidensReads("player", "storyteller")).toBe(true)
+describe("seatIsAnnounced", () => {
+  const storyteller = { userId: "dev-1" }
+  const player = { userId: "dev:phantom" }
+
+  it("sitting in a player's seat is announced — whispers are private to their people", () => {
+    expect(seatIsAnnounced(storyteller, player)).toBe(true)
   })
 
-  it("a Storyteller sitting in a player's seat narrows — silent", () => {
-    expect(seatWidensReads("storyteller", "player")).toBe(false)
+  it("sitting in the Storyteller's seat is announced", () => {
+    expect(seatIsAnnounced(player, storyteller)).toBe(true)
   })
 
-  it("a same-sight seat is silent", () => {
-    expect(seatWidensReads("player", "player")).toBe(false)
-    expect(seatWidensReads("storyteller", "storyteller")).toBe(false)
+  it("a non-member Dev's seat is announced", () => {
+    expect(seatIsAnnounced(null, player)).toBe(true)
   })
 
-  it("a non-member Dev gains sight from any seat", () => {
-    expect(seatWidensReads(null, "player")).toBe(true)
-    expect(seatWidensReads(null, "storyteller")).toBe(true)
+  it("your own seat is silent — it shows nothing you don't already see", () => {
+    expect(seatIsAnnounced(player, { userId: "dev:phantom" })).toBe(false)
   })
 })
 

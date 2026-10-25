@@ -269,7 +269,7 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
     components,
     result,
     summary: castSummary({
-      displayName: member.displayName,
+      displayName: member.tableName,
       arcanum: declaration.arcanum,
       level: declaration.level,
       factors: [

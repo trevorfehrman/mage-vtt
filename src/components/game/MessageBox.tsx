@@ -1,8 +1,9 @@
 import { useState, type RefObject } from "react"
 import { ConvexError } from "convex/values"
-import { useMessageForm } from "#/hooks/use-tray-form"
+import { useMessageForm } from "#/hooks/use-instrument-form"
 import { GateButton } from "#/components/ui/gate-button"
 import type { WhisperPerson } from "#/domain/video-rail"
+import type { WhisperChoice } from "#/hooks/use-working-slot"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { Felt } from "./Felt"
 
@@ -30,22 +31,20 @@ const refusal = (e: unknown): string =>
 interface MessageBoxProps {
   /** everyone the viewer could whisper */
   readonly people: ReadonlyArray<WhisperPerson>
-  /** who the line is whispered to, by user id; empty is the table */
-  readonly targets: ReadonlyArray<string>
-  readonly onToggle: (id: string) => void
-  readonly onClear: () => void
+  /** who the line is whispered to, and the chips' way to change it */
+  readonly whisper: WhisperChoice
   readonly onSend: (text: string, targets: ReadonlyArray<string>) => Promise<unknown>
   /** Escape in the line: back to the tray */
   readonly onEscape: () => void
   readonly inputRef: RefObject<HTMLInputElement | null>
 }
 
-export function MessageBox({ people, targets, onToggle, onClear, onSend, onEscape, inputRef }: MessageBoxProps) {
+export function MessageBox({ people, whisper: choice, onSend, onEscape, inputRef }: MessageBoxProps) {
   const [form, setForm] = useMessageForm()
   const [draft, setDraft] = useState("")
   const [error, setError] = useState<string | null>(null)
   const tall = form === "tall"
-  const chosen = people.filter((p) => targets.includes(p.id))
+  const chosen = people.filter((p) => choice.targets.includes(p.id))
   const whisper = chosen.length > 0
   const words = draft.trim()
   const send = () => {
@@ -73,7 +72,7 @@ export function MessageBox({ people, targets, onToggle, onClear, onSend, onEscap
         // the people, one row: toggle any of them; Table clears them
         <div className="mx-3 mt-2 flex flex-wrap items-center gap-1.5">
           <button
-            onClick={onClear}
+            onClick={choice.clear}
             aria-pressed={!whisper}
             className={`mv-mini grow whitespace-nowrap ${!whisper ? "mv-mini-on" : ""}`}
           >
@@ -81,11 +80,11 @@ export function MessageBox({ people, targets, onToggle, onClear, onSend, onEscap
           </button>
           <span className="h-4 w-px" style={{ background: "var(--line)" }} />
           {people.map((p) => {
-            const on = targets.includes(p.id)
+            const on = choice.targets.includes(p.id)
             return (
               <button
                 key={p.id}
-                onClick={() => onToggle(p.id)}
+                onClick={() => choice.toggle(p.id)}
                 aria-pressed={on}
                 className={`mv-mini grow whitespace-nowrap ${on ? "mv-mini-on" : ""}`}
               >
@@ -109,7 +108,7 @@ export function MessageBox({ people, targets, onToggle, onClear, onSend, onEscap
                   {chosen.length > 1 && ` +${chosen.length - 1}`}
                 </span>
                 <button
-                  onClick={onClear}
+                  onClick={choice.clear}
                   className="mv-btn grid size-4 shrink-0 place-items-center rounded-[3px] border-0 text-[12px] leading-none"
                   style={{ color: "var(--dim)" }}
                   title="Back to the table"

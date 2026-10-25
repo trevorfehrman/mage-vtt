@@ -2,6 +2,7 @@ import { Schema } from "effect"
 import { Feather } from "lucide-react"
 import { CharacterSheet } from "#/domain/character"
 import { VideoSeat, seatName } from "#/domain/video-rail"
+import type { WhisperChoice } from "#/hooks/use-working-slot"
 import { HealthLine, PoolNumerals } from "./CastHeaderStats"
 
 /**
@@ -37,13 +38,10 @@ const SCRIM = "rgba(4,6,8,0.78)"
 /** MAG-53: the tiles are the whisper roster — click a face to whisper
  * them, click more to add them. Absent, the tiles are plain frames. */
 interface WhisperDoor {
-  /** who is being whispered to, by user id */
-  readonly selected: ReadonlyArray<string>
+  /** who is being whispered to, and how a tile changes it */
+  readonly choice: WhisperChoice
   /** the viewer's own user id: their own tile can't be whispered */
   readonly self: string
-  /** `caret`: a pointer chose them, so the message line takes the caret; a
-   * keyboard keeps focus on the tiles to go on choosing */
-  readonly onToggle: (userId: string, caret: boolean) => void
 }
 
 export function VideoRail({
@@ -62,9 +60,11 @@ export function VideoRail({
             whisper === undefined || seat.userId === whisper.self
               ? null
               : {
-                  on: whisper.selected.includes(seat.userId),
+                  on: whisper.choice.targets.includes(seat.userId),
                   name: seatName(seat),
-                  toggle: (caret: boolean) => whisper.onToggle(seat.userId, caret),
+                  // `caret`: a pointer chose them, so the message line takes the
+                  // caret; a keyboard keeps focus on the tiles to go on choosing
+                  toggle: (caret: boolean) => whisper.choice.toggle(seat.userId, caret),
                 }
           }
         >

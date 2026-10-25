@@ -147,7 +147,7 @@ const settleNextActor = Effect.fn("Flows.combat.settleNextActor")(function* (
   if (next.value.flip !== undefined) {
     yield* store.insertMessage({
       sessionId,
-      sender: { userId: actor.userId, displayName: actor.displayName },
+      sender: { userId: actor.userId, displayName: actor.tableName },
       text: flipNarration(participants, next.value.flip),
       visibility: "system",
     })
@@ -195,8 +195,8 @@ export const startCombat = Effect.fn("Flows.combat.startCombat")(function* (
 
   yield* store.insertMessage({
     sessionId,
-    sender: { userId: storyteller.userId, displayName: storyteller.displayName },
-    text: `${storyteller.displayName} sounds the clash — Combat begins in "${scene.name}".`,
+    sender: { userId: storyteller.userId, displayName: storyteller.tableName },
+    text: `${storyteller.tableName} sounds the clash — Combat begins in "${scene.name}".`,
     visibility: "system",
   })
 
@@ -219,8 +219,8 @@ export const endCombat = Effect.fn("Flows.combat.endCombat")(function* (
 
   yield* store.insertMessage({
     sessionId,
-    sender: { userId: storyteller.userId, displayName: storyteller.displayName },
-    text: `${storyteller.displayName} calls it — Combat ends.`,
+    sender: { userId: storyteller.userId, displayName: storyteller.tableName },
+    text: `${storyteller.tableName} calls it — Combat ends.`,
     visibility: "system",
   })
 

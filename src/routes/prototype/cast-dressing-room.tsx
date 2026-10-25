@@ -510,7 +510,7 @@ function DressingRoom() {
           <VideoRail
             seats={RIG_SEATS}
             pending={null}
-            whisper={{ selected: slot.targets, self: view.viewerUserId, onToggle: slot.toggleTarget }}
+            whisper={{ choice: slot.whisper, self: view.viewerUserId }}
           />
         }
         characterSheet={
@@ -540,9 +540,7 @@ function DressingRoom() {
             message={
               <MessageBox
                 people={people}
-                targets={slot.targets}
-                onToggle={slot.toggleTarget}
-                onClear={slot.clearTargets}
+                whisper={slot.whisper}
                 onSend={(text, targets) => {
                   setArrived((prev) => [...prev, line(me, text, targets)])
                   return Promise.resolve()

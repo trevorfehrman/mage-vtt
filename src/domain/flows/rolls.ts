@@ -10,7 +10,6 @@ import {
 import { CharacterId, SessionId } from "../ids"
 import { GameStore } from "../ports/game-store"
 import { spendWillpower, WILLPOWER_BONUS_DICE } from "../willpower-economy"
-import { requireRollFreedom } from "./pending-lock"
 import type { Willpower } from "../quantities"
 
 /**
@@ -76,9 +75,10 @@ export const createRoll = Effect.fn("Flows.rolls.create")(function* (
     member = yield* requireMember(sessionId)
   }
 
-  // The pending-cast lock (issue #109): a pending vulgar Cast freezes the
-  // member's other rolls; an unanswered offer holds the Storyteller's.
-  yield* requireRollFreedom(member)
+  // No pending-cast lock here (MAG-50, loosening issue #109): a plain pool
+  // roll is never held by a live Cast — the Storyteller's hidden spot roll
+  // before the Tides, the spot check they call from the caster mid-Paradox.
+  // The lock still holds every casting door and initiative.
 
   // A declared Willpower spend: resolve the funding sheet, walk the authority
   // ladder, and check the pool before anything rolls or writes.
@@ -119,6 +119,6 @@ export const createRoll = Effect.fn("Flows.rolls.create")(function* (
     member,
     components,
     result,
-    summary: rollSummary(member.displayName, result),
+    summary: rollSummary(member.tableName, result),
   })
 })

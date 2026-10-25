@@ -2,25 +2,9 @@ import { Array as Arr, Option, Schema } from "effect"
 import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy"
 
 /**
- * The dice tray's two forms (MAG-47), the pure half: the **shrunk** strip
- * (one line — the count, the options a throw carries, Roll) and the **tall**
- * tray (every control). The viewer chooses with the grip and the choice is
- * theirs, remembered by `use-tray-form`; nothing switches it on its own.
+ * The dice tray's strip words (MAG-47), the pure half: what the shrunk strip
+ * says about the options a throw carries, in the tall tray's own words.
  */
-export const TrayForm = Schema.Literals(["shrunk", "tall"])
-export type TrayForm = typeof TrayForm.Type
-
-/** Owner, 2026-10-23: "much of the time i do not need all these controls". */
-export const DEFAULT_TRAY_FORM: TrayForm = "shrunk"
-
-const decodeTrayForm = Schema.decodeUnknownOption(TrayForm)
-
-/** A stored choice may be missing or stale: anything else reads as the default. */
-export const readTrayForm = (raw: unknown): TrayForm =>
-  Option.getOrElse(decodeTrayForm(raw), () => DEFAULT_TRAY_FORM)
-
-export const flipTrayForm = (form: TrayForm): TrayForm =>
-  form === "shrunk" ? "tall" : "shrunk"
 
 /** The options' own words: the tall tray's buttons and the strip both read
  * them here, so the two forms can't name an option differently. */

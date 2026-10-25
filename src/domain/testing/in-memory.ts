@@ -13,7 +13,7 @@ import {
   type CharacterId,
   type SessionId,
 } from "../ids"
-import type { Membership } from "../membership"
+import { Membership, headlineName } from "../membership"
 import type { ParadoxPoolModifier } from "../paradox"
 import { NotAMember } from "../authz"
 import { OverrideMarker, OverrideStamp, makeOverrideStamp } from "../override"
@@ -216,9 +216,17 @@ export const makeInMemory = (seed: {
       const member = seed.members.find(
         (m) => m.sessionId === sessionId && m.userId === userId,
       )
-      return member
-        ? Effect.succeed(member)
-        : Effect.fail(new NotAMember({ sessionId, userId }))
+      if (!member) return Effect.fail(new NotAMember({ sessionId, userId }))
+      // As the Convex adapter does: the sheet this membership plays here
+      // names them at the table (Membership.tableName).
+      const sheet = [...sheets.values()].find(
+        (sh) => sh.sessionId === sessionId && sh.userId === userId,
+      )
+      return Effect.succeed(
+        sheet === undefined
+          ? member
+          : new Membership({ ...member, sheetName: headlineName(sheet) }),
+      )
     },
 
     getSheet: (characterId) => {
@@ -273,7 +281,7 @@ export const makeInMemory = (seed: {
           id,
           sessionId: draft.sessionId,
           userId: draft.member.userId,
-          displayName: draft.member.displayName,
+          displayName: draft.member.tableName,
           components: draft.components,
           result: draft.result,
           summary: draft.summary,
