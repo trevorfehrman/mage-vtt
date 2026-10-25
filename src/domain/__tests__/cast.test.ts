@@ -363,6 +363,20 @@ describe("containmentOutlook (issue #45: the informed bet, double shrink and all
     expect(outlook.martyr).toBe(false)
   })
 
+  it("containing nothing lays no wound, even a box short of a penalty (MAG-49)", () => {
+    // 4 of 7 filled: one more box would be the −1. Containing nothing must
+    // leave the track — and the pool — as they stand.
+    const outlook = containmentOutlook({
+      track: track(3, 4),
+      declaredPool: 5,
+      paradoxSuccesses: 2,
+      contained: 0,
+    })
+    expect(outlook.penaltyAfter).toBe(0)
+    expect(outlook.newPenalty).toBe(0)
+    expect(outlook.castPool).toBe(3)
+  })
+
   it("eaten counts the felt's ghosts and never exceeds the pool", () => {
     // Uncontained 3 + new penalty −1 eats 4 of 5 declared dice.
     const shrunkTwice = containmentOutlook({
