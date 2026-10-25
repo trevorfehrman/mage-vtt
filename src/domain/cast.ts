@@ -449,11 +449,14 @@ export const containmentOutlook = (input: {
   paradoxSuccesses: number
   contained: number
 }): ContainmentOutlook => {
-  const after = Arr.reduce(
-    Arr.makeBy(input.contained, (i) => i),
-    input.track,
-    (track) => applyDamage(track, "bashing", { resistant: true }),
-  )
+  // makeBy normalizes its count to >= 1, so an empty bet is guarded by hand
+  // (it once laid a phantom box: MAG-49).
+  const after =
+    input.contained > 0
+      ? Arr.reduce(Arr.makeBy(input.contained, (i) => i), input.track, (track) =>
+          applyDamage(track, "bashing", { resistant: true }),
+        )
+      : input.track
   const penaltyBefore = woundPenalty(input.track)
   const penaltyAfter = woundPenalty(after)
   const uncontained = input.paradoxSuccesses - input.contained
