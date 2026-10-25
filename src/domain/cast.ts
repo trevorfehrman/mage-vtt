@@ -444,8 +444,8 @@ export const ContainmentOutlook = Schema.Struct({
   /** Dice the bet eats off the declared pool (uncontained Paradox plus the
    * new wound penalty), clamped to the pool — the felt ghosts exactly these. */
   eaten: Schema.Number,
-  /** `eaten` by cause (MAG-49): loose Paradox's dice (p. 129), then the
-   * wound penalty's (WoD p. 172) — the felt ghosts each in its cause's ink. */
+  /** `eaten` by cause (MAG-49): loose Paradox's dice (p. 124), then the
+   * wound penalty's (WoD p. 171) — the felt ghosts each in its cause's ink. */
   eatenByParadox: Schema.Number,
   eatenByWounds: Schema.Number,
   /** The stop fills the last box: the full-track unconsciousness rule looms. */
