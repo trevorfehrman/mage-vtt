@@ -89,12 +89,10 @@ const CONTAINED_MARK = "Borne"
 /** A ghost wears the ink of the REASON it isn't there (MAG-49, owner
  * 2026-10-25): a cast die lost to Paradox the Paradox red, one lost to
  * wounds the penalty numbers' own ink; a Paradox success contained on the
- * body the ember the contained boxes wear, a Paradox die Mana bought off
- * the caster's green. */
+ * body the ember the contained boxes wear. */
 const PARADOX_INK = "var(--paradox)"
 const WOUND_INK = "var(--bad)"
 const CONTAINED_INK = "var(--ember)"
-const SPARED_INK = "var(--accent)"
 
 export function CastCard({
   cast,
@@ -162,9 +160,10 @@ export function CastCard({
   // The ST's draft tide (issue #44; MAG-45): one shore's skeleton pill
   // opened for typing — local until Enter lands it on the document.
   const [draft, setDraft] = useState<TideDraft | null>(null)
-  /** The cast-die group under the pointer (the badges work): its dice glow, the rest settle. */
-  const [litKind, setLitKind] = useState<PoolKind | null>(null)
-  const settle = (kind: PoolKind) => settleOpacity(litKind, kind)
+  /** The die group under the pointer (the badges work): its dice glow, the
+   * rest settle. A group is a die's kind, or a ghost's cause (MAG-49). */
+  const [litGroup, setLitGroup] = useState<string | null>(null)
+  const settle = (group: string) => settleOpacity(litGroup, group)
 
   // A stale refusal clears whenever the document moves (the SceneStrip idiom).
   const liveKey = `${cast._id}:${cast.status}:${cast.updatedAt}`
@@ -271,8 +270,8 @@ export function CastCard({
   const mitigated = controls.includes("commit") ? Math.min(mitigation, mitigateCap) : 0
   // After the commit the stamped mitigation keeps its ghosts (owner,
   // 2026-10-23, the MAG-17 tour's second call): the dice the Mana bought off
-  // stay on the Paradox row, dashed, so the price still reads on the felt —
-  // before the roll at the row's end, and on the record trailing the faces.
+  // stay on the Paradox row, dashed, so the price still reads on the felt
+  // until the roll; the rolled faces carry none (owner, 2026-10-25).
   const boughtOff =
     pool !== null && cast.manaMitigation !== undefined
       ? Math.max(0, poolBeforeMitigation - pool.totalDice)
@@ -399,15 +398,22 @@ export function CastCard({
     const ghosted = fromEnd < eaten
     const byParadox = fromEnd < eatenByParadox
     const arcanum = feltSpecs[i]?.arcanum
-    const says = !ghosted ? groupSays(kind, arcanum) : byParadox ? "Lost to Paradox" : "Lost to wounds"
+    // A ghost's group is its cause (owner, 2026-10-25): hover one and every
+    // die lost to the same thing comes forward, one tooltip for the group.
+    const group = !ghosted ? kind : byParadox ? "lost:paradox" : "lost:wounds"
+    const says = !ghosted
+      ? groupSays(kind, arcanum)
+      : byParadox
+        ? `Lost to Paradox −${eatenByParadox}`
+        : `Lost to wounds −${eatenByWounds}`
     return (
       <Tooltip key={`${kind}:${i}`}>
         <TooltipTrigger asChild>
           <span
             className="grid size-[20px] place-items-center transition-opacity duration-150"
-            style={{ opacity: settle(kind) }}
-            onPointerEnter={() => setLitKind(kind)}
-            onPointerLeave={() => setLitKind(null)}
+            style={{ opacity: settle(group) }}
+            onPointerEnter={() => setLitGroup(group)}
+            onPointerLeave={() => setLitGroup(null)}
           >
             <UnifiedDie
               mode="pool"
@@ -417,7 +423,7 @@ export function CastCard({
               glide={false}
               ghost={ghosted}
               ghostInk={byParadox ? PARADOX_INK : WOUND_INK}
-              lit={litKind === kind}
+              lit={litGroup === group}
             />
           </span>
         </TooltipTrigger>
@@ -807,12 +813,10 @@ export function CastCard({
             reduced={reduced}
             rolledAt={cast.timestamp}
             contained={containedNow}
-            eaten={boughtOff}
-            // A Paradox die that never landed wears what paid for it (owner,
-            // 2026-10-25): the body's ember, or the Mana's green.
-            eatenSays="Mitigated"
-            eatenInk={SPARED_INK}
-            ghostSays="Contained"
+            // No Mana ghosts once reality has rolled (owner, 2026-10-25: "it
+            // didn't get rolled, that belonged to the previous step"); a
+            // contained success wears the body's ember.
+            ghostSays={`Contained ${containedNow}`}
             ghostInk={CONTAINED_INK}
           />
         )}
@@ -823,14 +827,15 @@ export function CastCard({
               {Array.from({ length: paradoxDiceCount }, (_, i) => {
                 const kind: PoolKind = i < paradoxBaseCount ? "paradoxBase" : "paradox"
                 const ghosted = i >= paradoxDiceCount - paradoxGhosts
+                const group = ghosted ? "mitigated" : kind
                 return (
                   <Tooltip key={`paradox:${i}`}>
                     <TooltipTrigger asChild>
                       <span
                         className="grid size-[20px] place-items-center transition-opacity duration-150"
-                        style={{ opacity: settle(kind) }}
-                        onPointerEnter={() => setLitKind(kind)}
-                        onPointerLeave={() => setLitKind(null)}
+                        style={{ opacity: settle(group) }}
+                        onPointerEnter={() => setLitGroup(group)}
+                        onPointerLeave={() => setLitGroup(null)}
                       >
                         <UnifiedDie
                           mode="pool"
@@ -838,7 +843,7 @@ export function CastCard({
                           reduced={reduced}
                           glide={false}
                           ghost={ghosted}
-                          lit={litKind === kind}
+                          lit={litGroup === group}
                         />
                       </span>
                     </TooltipTrigger>

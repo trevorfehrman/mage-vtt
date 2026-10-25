@@ -90,6 +90,9 @@ export function BurstFaces({
 }: BurstFacesProps) {
   const plan = burstPlan({ rolls, roteRerolls, explosions, eaten, contained, chance })
   const fresh = useFresh(rolledAt)
+  // Ghosts light by group under the pointer, like the felt's pool dice
+  // (owner, 2026-10-25): the contained ones together, the eaten together.
+  const [litGhosts, setLitGhosts] = useState<"contained" | "eaten" | null>(null)
   const live = (burning ?? fresh) && reduced !== true
   const pad = platePad(size)
   return (
@@ -114,9 +117,16 @@ export function BurstFaces({
               // A ghost says why it isn't there, in a real tooltip (MAG-49).
               const says = !die.ghost ? undefined : eatenDie ? eatenSays : ghostSays
               const ink = !die.ghost ? undefined : eatenDie ? eatenInk : ghostInk
+              const ghostGroup = eatenDie ? "eaten" : "contained"
               const face = (
                 <motion.span
                   key={die.index}
+                  {...(says !== undefined
+                    ? {
+                        onPointerEnter: () => setLitGhosts(ghostGroup),
+                        onPointerLeave: () => setLitGhosts(null),
+                      }
+                    : {})}
                   data-generation={die.generation}
                   style={{ display: "inline-grid", position: "relative" }}
                   initial={entrance.initial}
@@ -133,6 +143,7 @@ export function BurstFaces({
                     {...(tone !== undefined ? { tone } : {})}
                     {...(die.ring !== undefined ? { ring: die.ring } : {})}
                     {...(ink !== undefined ? { ghostInk: ink } : {})}
+                    lit={die.ghost && litGhosts === ghostGroup}
                     {...(says !== undefined ? { title: "" } : {})}
                   />
                 </motion.span>
