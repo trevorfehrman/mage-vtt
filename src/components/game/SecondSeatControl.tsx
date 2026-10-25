@@ -6,15 +6,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "#/components/ui/select"
-import type { SessionMemberRow } from "#/domain/session"
+import { seatName, type VideoSeat } from "#/domain/video-rail"
 import type { Id } from "../../../convex/_generated/dataModel"
 
 /** Sentinel Select value for "your own seat" — a member `_id` never collides. */
 const OWN_SEAT = "own-seat"
 
 interface SecondSeatControlProps {
-  /** Decoded at the seam (issue #49): one shared row mirror, typed role. */
-  members: ReadonlyArray<SessionMemberRow>
+  /** The table's seats, named as their tiles name them (owner, 2026-10-25). */
+  seats: ReadonlyArray<VideoSeat>
   ownUserId: string
   seatId: Id<"sessionMembers"> | null
   onSeat: (seatId: Id<"sessionMembers"> | null) => void
@@ -27,15 +27,15 @@ interface SecondSeatControlProps {
  * whole page below reads as that member, so the frame must say so.
  */
 export function SecondSeatControl({
-  members,
+  seats,
   ownUserId,
   seatId,
   onSeat,
 }: SecondSeatControlProps) {
-  const targets = members.filter((m) => m.userId !== ownUserId)
+  const targets = seats.filter((m) => m.userId !== ownUserId)
   if (targets.length === 0) return null
 
-  const seated = seatId ? members.find((m) => m._id === seatId) : undefined
+  const seated = seatId ? seats.find((m) => m.memberId === seatId) : undefined
 
   return (
     <div className="flex items-center gap-2">
@@ -49,7 +49,7 @@ export function SecondSeatControl({
           }}
         >
           <Armchair className="size-3" />
-          Second Seat: {seated.displayName}
+          Second Seat: {seatName(seated)}
         </span>
       )}
       <Select
@@ -69,8 +69,8 @@ export function SecondSeatControl({
         <SelectContent>
           <SelectItem value={OWN_SEAT}>Your own seat</SelectItem>
           {targets.map((m) => (
-            <SelectItem key={m._id} value={m._id}>
-              {m.displayName}
+            <SelectItem key={m.memberId} value={m.memberId}>
+              {seatName(m)}
               {m.role === "storyteller" ? " (ST)" : ""}
             </SelectItem>
           ))}

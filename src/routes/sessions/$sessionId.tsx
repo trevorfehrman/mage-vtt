@@ -444,7 +444,7 @@ function SessionPage() {
       secondSeat={
         user.isDev ? (
           <SecondSeatControl
-            members={session.members}
+            seats={seats}
             ownUserId={user._id}
             seatId={seatMember?._id ?? null}
             onSeat={takeSeat}
