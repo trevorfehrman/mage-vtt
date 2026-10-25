@@ -31,6 +31,7 @@ import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
 import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { BurstFaces } from "./BurstFaces"
+import { BacklashBeside, BacklashLedger, BacklashPairs, type BacklashProps, type BacklashVariant } from "./BacklashAudition"
 import { UnifiedDie } from "./UnifiedDie"
 import { settleOpacity, type PoolKind } from "./die-look"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
@@ -91,6 +92,7 @@ export function CastCard({
   casterSheet = null,
   moreWaiting = 0,
   adjust,
+  backlash = "track",
 }: {
   cast: CastEntry
   sessionId: Id<"sessions">
@@ -109,6 +111,9 @@ export function CastCard({
    * hands this in. The live route leaves it undefined and the Convex
    * mutation runs. */
   adjust?: ((adjustments: ReadonlyArray<ParadoxPoolModifier>) => Promise<unknown>) | undefined
+  /** MAG-49's audition: the dressing room's `?backlash=` knob. The live
+   * route leaves it on today's track. */
+  backlash?: BacklashVariant
 }) {
   // The machine is a projection of the document (ADR-0016): input rehydrates
   // mid-ladder, SYNC tracks every realtime update, and the card renders from
@@ -285,6 +290,21 @@ export function CastCard({
           paradoxSuccesses: cast.paradoxSuccesses,
           contained: cockpitContained,
         })
+      : null
+
+  // MAG-49's audition: the same bet, drawn by the knob's variant.
+  const backlashProps: BacklashProps | null =
+    outlook !== null && cockpitSheet !== null
+      ? {
+          track: cockpitSheet.healthTrack,
+          declaredPool: cast.declaredPool,
+          paradoxSuccesses: cast.paradoxSuccesses ?? 0,
+          successFaces: (cast.paradoxRolls ?? []).filter((v) => v >= 8),
+          cap: containCap,
+          contained: cockpitContained,
+          onChange: controls.includes("contain") ? setContained : undefined,
+          disabled: busy,
+        }
       : null
 
   const waiting = waitingOn(cast)
@@ -789,6 +809,8 @@ export function CastCard({
             ghostTitle="Contained — this Paradox success lands as Resistant bashing instead of manifesting"
           />
         )}
+        {backlashProps !== null && backlash === "beside" && <BacklashBeside {...backlashProps} />}
+        {backlashProps !== null && backlash === "pairs" && <BacklashPairs {...backlashProps} />}
         {paradoxDiceCount !== null && (
           <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-2.5 pb-4">
             <TooltipProvider>
@@ -916,7 +938,8 @@ export function CastCard({
           decodable caster sheet — the cockpit's whole precondition. Zero
           Paradox renders the same column (pass 2, note 8): no glyphs, the
           quiet word in the lore slot — the dead "⟐ 0 rolled" line's job. */}
-      {outlook !== null && cockpitSheet !== null && (
+      {backlashProps !== null && backlash === "ledger" && <BacklashLedger {...backlashProps} />}
+      {outlook !== null && cockpitSheet !== null && backlash === "track" && (
         <ParadoxCockpit
           track={cockpitSheet.healthTrack}
           paradoxSuccesses={cast.paradoxSuccesses ?? 0}
