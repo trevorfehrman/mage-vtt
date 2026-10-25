@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import { motion } from "motion/react"
 import { Explosion } from "#/domain/dice"
 import { burstEntrance, burstPlan, freshLeft, platePad } from "./burst-look"
-import { DieSize, FaceTone, ringInk } from "./die-look"
+import { DieSize, FaceTone, GhostInk, ringInk } from "./die-look"
 import { UnifiedDie } from "./UnifiedDie"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
 
@@ -17,6 +17,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/comp
  * domain's (`burstClusters`); legacy casts with no recorded parent get the
  * inline render they always had, never plated.
  */
+/** What a ghost says under the pointer, and the ink of its cause (MAG-49). */
+const GhostMark = Schema.Struct({ says: Schema.String, ink: Schema.optional(GhostInk) })
+
 const BurstFacesProps = Schema.Struct({
   rolls: Schema.Array(Schema.Number),
   roteRerolls: Schema.Array(Schema.Number),
@@ -31,13 +34,11 @@ const BurstFacesProps = Schema.Struct({
   /** Successes the containment bet absorbs: ghosted from the row's end. */
   contained: Schema.optional(Schema.Number),
   /** The contained ghosts' tooltip and cause ink (MAG-49). */
-  ghostSays: Schema.optional(Schema.String),
-  ghostInk: Schema.optional(Schema.String),
+  ghostMark: Schema.optional(GhostMark),
   /** Declared dice the containment bet ate: empty ghosts trailing the row. */
   eaten: Schema.optional(Schema.Number),
-  /** What ate them, when it wasn't the containment bet (the Paradox row's Mana). */
-  eatenSays: Schema.optional(Schema.String),
-  eatenInk: Schema.optional(Schema.String),
+  /** The eaten ghosts' tooltip and cause ink. */
+  eatenMark: Schema.optional(GhostMark),
   /** The row's gap in px — the felt's spacing, which the plate keeps and a child springs across. */
   gap: Schema.optional(Schema.Number),
   /** The row's margin and padding — the caller's felt sets them. */
@@ -77,11 +78,9 @@ export function BurstFaces({
   size = "sm",
   reduced,
   contained = 0,
-  ghostSays,
-  ghostInk,
+  ghostMark,
   eaten = 0,
-  eatenSays,
-  eatenInk,
+  eatenMark,
   gap = 12,
   className,
   plated = true,
@@ -115,16 +114,20 @@ export function BurstFaces({
               const entrance = burstEntrance(die.generation, size, gap, reduced)
               const eatenDie = die.kind === "eaten"
               // A ghost says why it isn't there, in a real tooltip (MAG-49).
-              const says = !die.ghost ? undefined : eatenDie ? eatenSays : ghostSays
-              const ink = !die.ghost ? undefined : eatenDie ? eatenInk : ghostInk
+              const mark = !die.ghost ? undefined : eatenDie ? eatenMark : ghostMark
+              const says = mark?.says
+              const ink = mark?.ink
               const ghostGroup = eatenDie ? "eaten" : "contained"
               const face = (
                 <motion.span
                   key={die.index}
                   {...(says !== undefined
                     ? {
+                        tabIndex: 0,
                         onPointerEnter: () => setLitGhosts(ghostGroup),
                         onPointerLeave: () => setLitGhosts(null),
+                        onFocus: () => setLitGhosts(ghostGroup),
+                        onBlur: () => setLitGhosts(null),
                       }
                     : {})}
                   data-generation={die.generation}
@@ -144,7 +147,6 @@ export function BurstFaces({
                     {...(die.ring !== undefined ? { ring: die.ring } : {})}
                     {...(ink !== undefined ? { ghostInk: ink } : {})}
                     lit={die.ghost && litGhosts === ghostGroup}
-                    {...(says !== undefined ? { title: "" } : {})}
                   />
                 </motion.span>
               )

@@ -32,7 +32,7 @@ import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-l
 import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { BurstFaces } from "./BurstFaces"
 import { UnifiedDie } from "./UnifiedDie"
-import { settleOpacity, type PoolKind } from "./die-look"
+import { settleOpacity, type DieGroup, type GhostInk, type PoolKind } from "./die-look"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
 import { PriorRollsGlyph, SleeperGlyph, TidesGlyph, ToolGlyph } from "./TideGlyphs"
 import { ParadoxGlyph } from "./ParadoxGlyph"
@@ -87,12 +87,16 @@ const PARADOX_GRACE =
 const CONTAINED_MARK = "Borne"
 
 /** A ghost wears the ink of the REASON it isn't there (MAG-49, owner
- * 2026-10-25): a cast die lost to Paradox the Paradox red, one lost to
- * wounds the penalty numbers' own ink; a Paradox success contained on the
- * body the ember the contained boxes wear. */
-const PARADOX_INK = "var(--paradox)"
-const WOUND_INK = "var(--bad)"
-const CONTAINED_INK = "var(--ember)"
+ * 2026-10-25). A cast die is lost to one of two causes, each with its hover
+ * group, ink and word: loose Paradox in its red, wounds in the penalty
+ * numbers' own ink. The felt's ghosts and its legend read this one table. */
+const LOST_TO = {
+  paradox: { group: "lostToParadox", ink: "var(--paradox)", says: "Lost to Paradox" },
+  wounds: { group: "lostToWounds", ink: "var(--bad)", says: "Lost to wounds" },
+} as const satisfies Record<string, { group: DieGroup; ink: GhostInk; says: string }>
+
+/** A Paradox success contained on the body: the ember the contained boxes wear. */
+const CONTAINED_INK: GhostInk = "var(--ember)"
 
 export function CastCard({
   cast,
@@ -162,8 +166,8 @@ export function CastCard({
   const [draft, setDraft] = useState<TideDraft | null>(null)
   /** The die group under the pointer (the badges work): its dice glow, the
    * rest settle. A group is a die's kind, or a ghost's cause (MAG-49). */
-  const [litGroup, setLitGroup] = useState<string | null>(null)
-  const settle = (group: string) => settleOpacity(litGroup, group)
+  const [litGroup, setLitGroup] = useState<DieGroup | null>(null)
+  const settle = (group: DieGroup) => settleOpacity(litGroup, group)
 
   // A stale refusal clears whenever the document moves (the SceneStrip idiom).
   const liveKey = `${cast._id}:${cast.status}:${cast.updatedAt}`
@@ -391,29 +395,28 @@ export function CastCard({
   // ghost into a die, or, when the bet's damage brings a new penalty, into a
   // wound ghost (owner, 2026-10-25: "the ghost cast dice should be the color
   // of the reason they aren't there").
-  const eatenByParadox = outlook !== null ? Math.min(eaten, Math.max(0, outlook.uncontained)) : 0
-  const eatenByWounds = eaten - eatenByParadox
+  const lost = { paradox: outlook?.eatenByParadox ?? 0, wounds: outlook?.eatenByWounds ?? 0 }
   const feltDice = feltKinds.map((kind, i) => {
     const fromEnd = feltKinds.length - 1 - i
-    const ghosted = fromEnd < eaten
-    const byParadox = fromEnd < eatenByParadox
     const arcanum = feltSpecs[i]?.arcanum
-    // A ghost's group is its cause (owner, 2026-10-25): hover one and every
-    // die lost to the same thing comes forward, one tooltip for the group.
-    const group = !ghosted ? kind : byParadox ? "lost:paradox" : "lost:wounds"
-    const says = !ghosted
-      ? groupSays(kind, arcanum)
-      : byParadox
-        ? `Lost to Paradox −${eatenByParadox}`
-        : `Lost to wounds −${eatenByWounds}`
+    // A ghost's group is its cause (owner, 2026-10-25): hover or focus one
+    // and every die lost to the same thing comes forward, one tooltip for
+    // the group. Paradox's ghosts stand at the row's end, the wounds' before.
+    const cause = fromEnd < lost.paradox ? "paradox" : fromEnd < eaten ? "wounds" : null
+    const lostTo = cause === null ? null : LOST_TO[cause]
+    const group: DieGroup = lostTo?.group ?? kind
+    const says = cause === null || lostTo === null ? groupSays(kind, arcanum) : `${lostTo.says} −${lost[cause]}`
     return (
       <Tooltip key={`${kind}:${i}`}>
         <TooltipTrigger asChild>
           <span
             className="grid size-[20px] place-items-center transition-opacity duration-150"
             style={{ opacity: settle(group) }}
+            {...(lostTo !== null ? { tabIndex: 0 } : {})}
             onPointerEnter={() => setLitGroup(group)}
             onPointerLeave={() => setLitGroup(null)}
+            onFocus={() => setLitGroup(group)}
+            onBlur={() => setLitGroup(null)}
           >
             <UnifiedDie
               mode="pool"
@@ -421,8 +424,8 @@ export function CastCard({
               arcanum={arcanum}
               reduced={reduced}
               glide={false}
-              ghost={ghosted}
-              ghostInk={byParadox ? PARADOX_INK : WOUND_INK}
+              ghost={lostTo !== null}
+              ghostInk={lostTo?.ink}
               lit={litGroup === group}
             />
           </span>
@@ -816,8 +819,7 @@ export function CastCard({
             // No Mana ghosts once reality has rolled (owner, 2026-10-25: "it
             // didn't get rolled, that belonged to the previous step"); a
             // contained success wears the body's ember.
-            ghostSays={`Contained ${containedNow}`}
-            ghostInk={CONTAINED_INK}
+            ghostMark={{ says: `Contained ${containedNow}`, ink: CONTAINED_INK }}
           />
         )}
         {paradoxDiceCount !== null && (
@@ -827,15 +829,18 @@ export function CastCard({
               {Array.from({ length: paradoxDiceCount }, (_, i) => {
                 const kind: PoolKind = i < paradoxBaseCount ? "paradoxBase" : "paradox"
                 const ghosted = i >= paradoxDiceCount - paradoxGhosts
-                const group = ghosted ? "mitigated" : kind
+                const group: DieGroup = ghosted ? "mitigated" : kind
                 return (
                   <Tooltip key={`paradox:${i}`}>
                     <TooltipTrigger asChild>
                       <span
                         className="grid size-[20px] place-items-center transition-opacity duration-150"
                         style={{ opacity: settle(group) }}
+                        {...(ghosted ? { tabIndex: 0 } : {})}
                         onPointerEnter={() => setLitGroup(group)}
                         onPointerLeave={() => setLitGroup(null)}
+                        onFocus={() => setLitGroup(group)}
+                        onBlur={() => setLitGroup(null)}
                       >
                         <UnifiedDie
                           mode="pool"
@@ -882,7 +887,7 @@ export function CastCard({
           label="cast"
           labelAt="bottom"
           divided={paradoxArea}
-          aside={outlook !== null && <LostLegend paradox={eatenByParadox} wounds={eatenByWounds} />}
+          aside={outlook !== null && <LostLegend paradox={lost.paradox} wounds={lost.wounds} />}
         >
         {status === "resolved" && cast.castRolls !== undefined ? (
           // The cast roll on ONE row (2026-07-20), in the burst order
@@ -900,6 +905,7 @@ export function CastCard({
             size="md"
             reduced={reduced}
             eaten={Math.max(0, cast.declaredPool - cast.castRolls.length)}
+            eatenMark={{ says: "Lost" }}
             rolledAt={cast.timestamp}
           />
         ) : (
@@ -1015,7 +1021,7 @@ export function CastCard({
               disabled={busy}
               className="mv-btn rounded-[3px] px-2 py-1 text-[12px]"
               style={{ borderColor: "var(--bad)", color: "var(--bad)" }}
-              title="Refunds Mana and Willpower"
+              title="Override: refunds Mana and Willpower, no trace"
             >
               Void
             </button>
@@ -1057,6 +1063,7 @@ export function CastCard({
               }
               disabled={busy}
               className="mv-roll inline-flex items-center gap-1.5 rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
+              title="No going back"
             >
               Commit
               {/* The spend, bare (owner, 2026-10-22): "Commit 2 ◈" — the
@@ -1110,13 +1117,20 @@ export function CastCard({
             // The success % stands above the trigger, moving with the bet.
             <span className="flex flex-col items-end gap-1">
               {castOdds !== null && (
-                <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
-                  success{" "}
-                  <b style={{ color: "var(--rail-success)" }}>{pct(castOdds.success)}</b>
-                  {castOdds.isChanceDie && castOdds.dramaticFailure >= DRAMATIC_FAILURE_WARN_FLOOR && (
-                    <span style={{ color: "var(--bad)" }}> · dramatic failure {pct(castOdds.dramaticFailure)}</span>
-                  )}
-                </span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span tabIndex={0} className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
+                        success{" "}
+                        <b style={{ color: "var(--rail-success)" }}>{pct(castOdds.success)}</b>
+                        {castOdds.isChanceDie && castOdds.dramaticFailure >= DRAMATIC_FAILURE_WARN_FLOOR && (
+                          <span style={{ color: "var(--bad)" }}> · dramatic failure {pct(castOdds.dramaticFailure)}</span>
+                        )}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={4}>The spell's odds</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
               <button
                 onClick={() =>
@@ -1440,19 +1454,27 @@ function ParadoxCockpit({
       <div className="flex h-[24px] items-center justify-center">
         {outlook.uncontained > 0 ? (
           // "2 ⟐ BEDLAM" (owner, 2026-10-25): the loose successes and what
-          // they become, on one line.
-          <span
-            className="mv-h inline-flex items-center gap-2 text-[22px] uppercase leading-none tracking-[0.1em]"
-            style={{
-              color: "var(--paradox)",
-              textShadow:
-                "0 0 14px color-mix(in srgb, var(--paradox) 55%, transparent)",
-            }}
-          >
-            <span>{outlook.uncontained}</span>
-            <ParadoxGlyph size={18} />
-            <span>{severity}</span>
-          </span>
+          // they become, on one line; the numeral names itself (ADR-0021).
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  tabIndex={0}
+                  className="mv-h inline-flex items-center gap-2 text-[22px] uppercase leading-none tracking-[0.1em]"
+                  style={{
+                    color: "var(--paradox)",
+                    textShadow:
+                      "0 0 14px color-mix(in srgb, var(--paradox) 55%, transparent)",
+                  }}
+                >
+                  <span>{outlook.uncontained}</span>
+                  <ParadoxGlyph size={18} />
+                  <span>{severity}</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={4}>Loose Paradox</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         ) : (
           paradoxSuccesses === 0 ? (
             // nothing to bear; only the chance-die grace has news (note 5)
@@ -1554,7 +1576,7 @@ function ParadoxCockpit({
                   onClick={() => onChange(ghosted ? ordinal : ordinal + 1)}
                   disabled={disabled}
                   title={title}
-                  className="cursor-pointer disabled:opacity-40"
+                  className="mv-track-box cursor-pointer rounded-[2px] disabled:opacity-40"
                 >
                   {boxMark}
                 </button>
@@ -1681,48 +1703,6 @@ function ResolutionTag({
  * dice and reality's read as two areas with two jobs — the hand he throws
  * and the roll that is made against it first — not one overflowing row.
  */
-/** The wound's mark: a health box struck through, in the penalty's ink. */
-function WoundGlyph({ size = 13 }: { size?: number }) {
-  return (
-    <span
-      aria-hidden
-      className="mv-data grid place-items-center rounded-[2px] border font-bold leading-none"
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.7), borderColor: "currentColor" }}
-    >
-      ╱
-    </span>
-  )
-}
-
-/**
- * The cast felt's legend (MAG-49, owner 2026-10-25), bottom right, mirroring
- * the Paradox area's instruments top right: the dice lost to each cause, a
- * number and a symbol each, in the cause's ink — dim at zero.
- */
-function LostLegend({ paradox, wounds }: { paradox: number; wounds: number }) {
-  const entries = [
-    { key: "paradox", glyph: <ParadoxGlyph size={13} ink={paradox > 0 ? PARADOX_INK : "var(--dim)"} />, lost: paradox, ink: PARADOX_INK, says: "Lost to Paradox" },
-    { key: "wounds", glyph: <WoundGlyph />, lost: wounds, ink: WOUND_INK, says: "Lost to wounds" },
-  ]
-  return (
-    <TooltipProvider>
-      <span className="flex items-center justify-end gap-x-3 normal-case tracking-normal">
-        {entries.map((e) => (
-          <Tooltip key={e.key}>
-            <TooltipTrigger asChild>
-              <span className="inline-flex items-center gap-1" style={{ color: e.lost > 0 ? e.ink : "var(--dim)" }}>
-                {e.glyph}
-                <span>{e.lost > 0 ? `−${e.lost}` : "0"}</span>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={4}>{e.says}</TooltipContent>
-          </Tooltip>
-        ))}
-      </span>
-    </TooltipProvider>
-  )
-}
-
 function FeltSection({
   label,
   labelAt,
@@ -1759,5 +1739,61 @@ function FeltSection({
       {children}
       {labelAt === "bottom" && name}
     </div>
+  )
+}
+
+/** The wound's mark: a health box struck through, in the penalty's ink. */
+const WoundGlyphProps = Schema.Struct({ size: Schema.optional(Schema.Number) })
+
+function WoundGlyph({ size = 13 }: typeof WoundGlyphProps.Type) {
+  return (
+    <span
+      aria-hidden
+      className="mv-data grid place-items-center rounded-[2px] border font-bold leading-none"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.7), borderColor: "currentColor" }}
+    >
+      ╱
+    </span>
+  )
+}
+
+/**
+ * The cast felt's legend (MAG-49, owner 2026-10-25), bottom right, mirroring
+ * the Paradox area's instruments top right: the dice lost to each cause, a
+ * number and a symbol each, in the cause's ink — dim at zero. Each numeral
+ * names itself in a focusable tooltip (ADR-0021).
+ */
+const LostLegendProps = Schema.Struct({ paradox: Schema.Number, wounds: Schema.Number })
+
+function LostLegend({ paradox, wounds }: typeof LostLegendProps.Type) {
+  const entries = [
+    {
+      ...LOST_TO.paradox,
+      glyph: <ParadoxGlyph size={13} ink={paradox > 0 ? LOST_TO.paradox.ink : "var(--dim)"} />,
+      lost: paradox,
+    },
+    { ...LOST_TO.wounds, glyph: <WoundGlyph />, lost: wounds },
+  ]
+  return (
+    <TooltipProvider>
+      <span className="flex items-center justify-end gap-x-3 normal-case tracking-normal">
+        {entries.map((e) => (
+          <Tooltip key={e.group}>
+            <TooltipTrigger asChild>
+              <span
+                tabIndex={0}
+                aria-label={`${e.says} ${e.lost}`}
+                className="inline-flex items-center gap-1"
+                style={{ color: e.lost > 0 ? e.ink : "var(--dim)" }}
+              >
+                {e.glyph}
+                <span>{e.lost > 0 ? `−${e.lost}` : "0"}</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={4}>{e.says}</TooltipContent>
+          </Tooltip>
+        ))}
+      </span>
+    </TooltipProvider>
   )
 }

@@ -64,18 +64,24 @@ export type DieLook = typeof DieLook.Type
 /** The one ghost recipe (#102's pending grammar). Lit, a ghost's group
  * comes forward like any die's (owner, 2026-10-25): full strength, its
  * cause's ring and bloom outside the dashes. */
-const ghostLook = (ink: string, lit = false): DieLook =>
-  lit
-    ? {
-        border: `1px dashed ${ink}`,
-        background: "transparent",
-        boxShadow: `0 0 0 1px ${dilute(ink, 50)}, 0 0 8px 1px ${dilute(ink, 70)}`,
-      }
-    : {
-        border: `1px dashed ${ink}`,
-        background: "transparent",
-        opacity: GHOST_OPACITY,
-      }
+const ghostLook = (ink: string, lit = false): DieLook => ({
+  border: `1px dashed ${ink}`,
+  background: "transparent",
+  ...(lit
+    ? { boxShadow: `0 0 0 1px ${dilute(ink, 50)}, 0 0 8px 1px ${dilute(ink, 70)}` }
+    : { opacity: GHOST_OPACITY }),
+})
+
+/** A ghost's cause, as the ink it wears (MAG-49, owner 2026-10-25: "the
+ * color of the reason they aren't there") — identity tokens only. */
+export const GhostInk = Schema.Literals([
+  "var(--paradox)",
+  "var(--bad)",
+  "var(--ember)",
+  "var(--accent)",
+  "var(--mana)",
+])
+export type GhostInk = typeof GhostInk.Type
 
 // --- Pool mode (the FeltDie job) ---
 
@@ -160,10 +166,14 @@ const litHalo = (ink: string): string => `0 0 0 1px ${ink}, 0 0 8px 1px ${dilute
 /** How far the other groups settle back while one is lit — a step, not a fade. */
 const SETTLE_OPACITY = 0.4
 
+/** A hover group: a die's kind, or a ghost's cause (MAG-49) — the dice
+ * lost to Paradox, to wounds, or bought off with Mana. */
+export const DieGroup = Schema.Union([PoolKind, Schema.Literals(["lostToParadox", "lostToWounds", "mitigated"])])
+export type DieGroup = typeof DieGroup.Type
+
 /** The group hover's other half: while a group is lit (its dice glow,
- * `litHalo`), every other group's dice settle back a step. A group is a
- * die's kind, or a ghost's cause (MAG-49). */
-export const settleOpacity = (lit: string | null, group: string): number =>
+ * `litHalo`), every other group's dice settle back a step. */
+export const settleOpacity = (lit: DieGroup | null, group: DieGroup): number =>
   lit !== null && lit !== group ? SETTLE_OPACITY : 1
 
 export const PoolInput = Schema.Struct({
@@ -173,9 +183,8 @@ export const PoolInput = Schema.Struct({
   /** The die's group is under the pointer (the Cast card's group hover). A
    * ghost's group is its cause; it lights like any other (MAG-49). */
   lit: Schema.Boolean,
-  /** The ghost's ink when it isn't the die's own: the CAUSE of its absence
-   * (MAG-49, owner 2026-10-25: "the color of the reason they aren't there"). */
-  ghostInk: Schema.optional(Schema.String),
+  /** The ghost's ink when it isn't the die's own: the CAUSE of its absence. */
+  ghostInk: Schema.optional(GhostInk),
   /** For `kind: "arcanum"`: which Arcanum's realm metal the die wears. */
   arcanum: Schema.optional(Schema.String),
 })
@@ -242,7 +251,7 @@ export const FaceInput = Schema.Struct({
   ring: Schema.optional(FaceRing),
   ghost: Schema.Boolean,
   /** As the pool die's: the ghost wears its cause's ink (MAG-49). */
-  ghostInk: Schema.optional(Schema.String),
+  ghostInk: Schema.optional(GhostInk),
   /** A ghost's group is under the pointer: it comes forward (MAG-49). */
   lit: Schema.optional(Schema.Boolean),
 })

@@ -1,7 +1,7 @@
 import { Array as Arr, Match, Option, Order, Schema } from "effect"
 import type { HealthTrack } from "./damage"
 import { Explosion } from "./dice"
-import { applyDamage, isIncapacitated, woundPenalty } from "./health"
+import { containOnTrack, isIncapacitated, woundPenalty } from "./health"
 import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "./ids"
 import type { GnosisRank } from "./mana-economy"
 import { ParadoxPoolModifier, ParadoxSeverity } from "./paradox"
@@ -438,6 +438,10 @@ export const ContainmentOutlook = Schema.Struct({
   /** Dice the bet eats off the declared pool (uncontained Paradox plus the
    * new wound penalty), clamped to the pool — the felt ghosts exactly these. */
   eaten: Schema.Number,
+  /** `eaten` by cause (MAG-49): loose Paradox's dice (p. 129), then the
+   * wound penalty's (WoD p. 172) — the felt ghosts each in its cause's ink. */
+  eatenByParadox: Schema.Number,
+  eatenByWounds: Schema.Number,
   /** The stop fills the last box: the full-track unconsciousness rule looms. */
   martyr: Schema.Boolean,
 })
@@ -449,14 +453,7 @@ export const containmentOutlook = (input: {
   paradoxSuccesses: number
   contained: number
 }): ContainmentOutlook => {
-  // makeBy normalizes its count to >= 1, so an empty bet is guarded by hand
-  // (it once laid a phantom box: MAG-49).
-  const after =
-    input.contained > 0
-      ? Arr.reduce(Arr.makeBy(input.contained, (i) => i), input.track, (track) =>
-          applyDamage(track, "bashing", { resistant: true }),
-        )
-      : input.track
+  const after = containOnTrack(input.track, input.contained)
   const penaltyBefore = woundPenalty(input.track)
   const penaltyAfter = woundPenalty(after)
   const uncontained = input.paradoxSuccesses - input.contained
@@ -466,6 +463,7 @@ export const containmentOutlook = (input: {
     contained: input.contained,
     woundPenalty: penaltyAfter,
   })
+  const eaten = eatenDice(input.declaredPool, castPool)
   return {
     damage: input.contained,
     uncontained,
@@ -473,7 +471,11 @@ export const containmentOutlook = (input: {
     penaltyAfter,
     newPenalty: penaltyAfter - penaltyBefore,
     castPool,
-    eaten: eatenDice(input.declaredPool, castPool),
+    eaten,
+    // Paradox's share first; the rest is the penalty's — eaten is at most
+    // uncontained + |penaltyAfter|, so the remainder is never a stray.
+    eatenByParadox: Math.min(eaten, uncontained),
+    eatenByWounds: eaten - Math.min(eaten, uncontained),
     martyr: input.contained > 0 && isIncapacitated(after),
   }
 }

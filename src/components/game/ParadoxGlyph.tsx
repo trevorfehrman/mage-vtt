@@ -1,3 +1,5 @@
+import { Schema } from "effect"
+
 /**
  * The Paradox glyph (#114; recommissioned by the 2026-07-19 polish pass —
  * the all-barbs burst was rejected as not arcane enough): the torn ritual
@@ -9,17 +11,19 @@
  * yelling itself — beside it the word "Paradox" is redundant and the
  * no-doubling rule (#114) drops it.
  */
+const ParadoxGlyphProps = Schema.Struct({
+  size: Schema.optional(Schema.Number),
+  /** Its own red by default; grey where no Paradox is in play (MAG-49). */
+  ink: Schema.optional(Schema.String),
+  /** Accessible name; the glyph replaces the word, so it must speak it. */
+  title: Schema.optional(Schema.String),
+})
+
 export function ParadoxGlyph({
   size = 14,
   title = "Paradox",
   ink = "var(--paradox)",
-}: {
-  size?: number
-  /** Its own red by default; grey where no Paradox is in play (MAG-49). */
-  ink?: string
-  /** Accessible name; the glyph replaces the word, so it must speak it. */
-  title?: string
-}) {
+}: typeof ParadoxGlyphProps.Type) {
   return (
     <svg
       width={size}

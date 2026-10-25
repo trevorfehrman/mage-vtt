@@ -430,6 +430,21 @@ describe("containmentOutlook (issue #45: the informed bet, double shrink and all
     expect(outlook.martyr).toBe(true)
   })
 
+  it("splits the eaten dice by cause: Paradox first, the wounds the rest (MAG-49)", () => {
+    // Hurt to 5 of 7 (−1): 2 loose successes + the −1 eat 3 of 11.
+    const hurt = containmentOutlook({ track: track(2, 5), declaredPool: 11, paradoxSuccesses: 2, contained: 0 })
+    expect([hurt.eatenByParadox, hurt.eatenByWounds]).toEqual([2, 1])
+    // One contained: its box brings the −2, so the die it won back is lost to wounds.
+    const one = containmentOutlook({ track: track(2, 5), declaredPool: 11, paradoxSuccesses: 2, contained: 1 })
+    expect([one.eatenByParadox, one.eatenByWounds]).toEqual([1, 2])
+    // A pool eaten to the floor: the split still sums to the clamp, and the
+    // remainder past the Paradox share is the penalty's, never a stray.
+    const floored = containmentOutlook({ track: track(2, 5), declaredPool: 2, paradoxSuccesses: 1, contained: 0 })
+    expect([floored.eatenByParadox, floored.eatenByWounds]).toEqual([1, 1])
+    const paradoxOnly = containmentOutlook({ track: track(7, 0), declaredPool: 2, paradoxSuccesses: 4, contained: 0 })
+    expect([paradoxOnly.eatenByParadox, paradoxOnly.eatenByWounds]).toEqual([2, 0])
+  })
+
   it("the martyr play: filling the last box flags the unconsciousness rule", () => {
     const outlook = containmentOutlook({
       track: track(1, 6),

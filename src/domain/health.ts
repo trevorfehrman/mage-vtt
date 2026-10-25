@@ -157,6 +157,20 @@ export const isIncapacitated = (track: HealthTrack): boolean =>
  * leftmost empties first (applyDamage), so a bet of n boxes lands on the
  * empties whose ordinal is below n — the boxes a backlash bet ghosts.
  */
+/**
+ * The containment bet laid on the track (MAG-49): one Resistant bashing per
+ * contained success (p. 126), leftmost empties first. `makeBy` normalizes
+ * its count to >= 1, so an empty bet is guarded by hand — it once laid a
+ * phantom box. The cast card's outlook and its header both read the track
+ * through this one leaf.
+ */
+export const containOnTrack = (track: HealthTrack, contained: number): HealthTrack =>
+  contained > 0
+    ? Arr.reduce(Arr.makeBy(contained, (i) => i), track, (t) =>
+        applyDamage(t, "bashing", { resistant: true }),
+      )
+    : track
+
 export const emptyOrdinals = (track: HealthTrack): ReadonlyArray<number | null> =>
   Arr.mapAccum(track, 0, (n, box): [number, number | null] =>
     box.severity === "empty" ? [n + 1, n] : [n, null],
