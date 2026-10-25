@@ -218,21 +218,18 @@ export function SessionLayout({
               {/* Activity log — fills available space */}
               <div className="min-h-0 flex-1 overflow-hidden">{activityLog}</div>
             </div>
-            {/* The working zone, the foot of the rail. A live cast stands
-                in it on every seat (MAG-48): full width, framed whole in the
-                live zone's red, so the table reads "pause — something that
-                touches everyone is happening"; capped so a stack of casts
-                never squeezes the Chronicle out (inline, so the cap holds
-                under a running dev server). Below it, always, the working
-                slot (MAG-53): the memory/judgment boundary (styles.css) —
-                the slot stands on the void, postures wear the mv-stage
-                frame. */}
-            {liveCasts && (
-              <div className="mv-live-zone shrink-0 overflow-y-auto" style={{ maxHeight: "60%" }}>
-                {liveCasts}
-              </div>
-            )}
+            {/* The working slot (MAG-53) — the message box and the dice
+                tray — stands above a live cast on every seat (owner,
+                2026-10-25): the memory/judgment boundary (styles.css), the
+                slot on the void, postures in the mv-stage frame. */}
             <div className="mv-stage-ground shrink-0">{workingSlot}</div>
+            {/* The live zone, the foot of the rail. A live cast stands in it
+                on every seat (MAG-48): full width, framed whole in the live
+                zone's red, so the table reads "pause — something that touches
+                everyone is happening". It takes the height it needs and never
+                scrolls inside itself (owner, 2026-10-25): the Chronicle above
+                is what shrinks. */}
+            {liveCasts && <div className="mv-live-zone shrink-0">{liveCasts}</div>}
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>

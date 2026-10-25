@@ -317,8 +317,8 @@ pre code {
   }
 }
 /* One line per edge, even framed: the lines beside the frame hand over to
- * it. The rail's seam goes quiet and the feed above draws that stretch of
- * it; when the combat band stands below, its top line goes quiet and the
+ * it. The rail's seam goes quiet and the feed and the working slot above
+ * draw that stretch of it; when the combat band stands below, its top line goes quiet and the
  * sheet and the video rail draw their own stretch of it. */
 .mv-shell:has(.mv-live-zone) .mv-rail-seam {
   background: transparent;
@@ -326,7 +326,8 @@ pre code {
 .mv-shell:has(.mv-live-zone) .mv-rail-seam:hover {
   background: color-mix(in srgb, var(--lagoon) 40%, transparent);
 }
-.mv-shell:has(.mv-live-zone) .mv-rail-feed {
+.mv-shell:has(.mv-live-zone) .mv-rail-feed,
+.mv-shell:has(.mv-live-zone) .mv-rail-feed ~ .mv-stage-ground {
   box-shadow: inset 1px 0 0 var(--line);
 }
 .mv-shell:has(.mv-live-zone) [data-slot="combat-tracker"] {

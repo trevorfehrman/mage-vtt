@@ -9,8 +9,8 @@
 > (tabs on the slot's edge, a door at the line's head, the Chronicle's
 > header). Each hidden side carries its news — the dice waiting, the lines
 > unread, a whisper to you counted apart and filled. Both stay mounted, so
-> a draft and a pool survive a flip; the slot stands below a live cast on
-> every seat. **The message box** wears the tray's grammar (a felt, its own
+> a draft and a pool survive a flip; the slot stands above a live cast on
+> every seat (reordered 2026-10-25, see ADR-0022). **The message box** wears the tray's grammar (a felt, its own
 > grip, Send at the far right, its form remembered per browser like the
 > tray's) and carries no "Table" label: a whisper's people are named inside
 > the felt with a × back to the table, and its tall form adds only a row of
