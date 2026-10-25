@@ -1180,8 +1180,11 @@ export function CastCard({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span tabIndex={0} className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
-                        success{" "}
+                        {/* the odds breakdown's own foot (owner, 2026-10-25) */}
+                        ≥1 success{" "}
                         <b style={{ color: "var(--rail-success)" }}>{pct(castOdds.success)}</b>
+                        {" · avg "}
+                        <span style={{ color: "var(--ink)" }}>{castOdds.expected.toFixed(1)}</span>
                         {castOdds.isChanceDie && castOdds.dramaticFailure >= DRAMATIC_FAILURE_WARN_FLOOR && (
                           <span style={{ color: "var(--bad)" }}> · dramatic failure {pct(castOdds.dramaticFailure)}</span>
                         )}
