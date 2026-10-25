@@ -1104,7 +1104,27 @@ export function CastCard({
               that are their own cancel. Ember-as-submit was auditioned and
               rescinded (#102, owner walk 2026-07-18) — it read as aimless
               against the hot Paradox family. */}
-          {controls.includes("release") && (
+          {controls.includes("release") && backlashStage && outlook !== null ? (
+            // MAG-49's audition: with the felt stood down, the pool the
+            // spell will roll rides the trigger and its odds stand above it,
+            // both moving with the bet (owner, 2026-10-25).
+            <div className="ml-auto flex flex-col items-end gap-1">
+              <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
+                success{" "}
+                <b style={{ color: "var(--rail-success)" }}>{pct(rollOdds(outlook.castPool).success)}</b>
+              </span>
+              <button
+                onClick={() =>
+                  run(() => release({ ...step, containedSuccesses: contained }))
+                }
+                disabled={busy}
+                className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
+                title="One commitment: the containment lands as Resistant bashing and the dice fly."
+              >
+                Cast {diceLabel(outlook.castPool)}
+              </button>
+            </div>
+          ) : controls.includes("release") ? (
             <button
               onClick={() =>
                 run(() => release({ ...step, containedSuccesses: contained }))
@@ -1117,7 +1137,7 @@ export function CastCard({
                   the bet — the button never restates or resizes with it. */}
               Cast
             </button>
-          )}
+          ) : null}
         </div>
       )}
 
