@@ -7,7 +7,8 @@
 > amendment below: the caster's Mana pick (after the fix) and each
 > contained Paradox (after the roll) are drafts on the Cast document
 > (`draftMitigation`, `draftContainedSuccesses`), written through cheap
-> seam-checked doors (the caster's own character, the right phase, a row
+> seam-checked doors (the caster alone — the Storyteller's chair is no door
+> to them, a Dev's playtest is — the right phase, a row
 > the pool holds and the purse can pay, boxes in range). Every seat renders
 > them: the table with the pick marked, the ghosted Paradox dice, the
 > header's pending Mana, the track, the severity and the cast dice. #113's
