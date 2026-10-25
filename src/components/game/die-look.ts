@@ -61,12 +61,21 @@ export const DieLook = Schema.Struct({
 })
 export type DieLook = typeof DieLook.Type
 
-/** The one ghost recipe (#102's pending grammar). */
-const ghostLook = (ink: string): DieLook => ({
-  border: `1px dashed ${ink}`,
-  background: "transparent",
-  opacity: GHOST_OPACITY,
-})
+/** The one ghost recipe (#102's pending grammar). Lit, a ghost's group
+ * comes forward like any die's (owner, 2026-10-25): full strength, its
+ * cause's ring and bloom outside the dashes. */
+const ghostLook = (ink: string, lit = false): DieLook =>
+  lit
+    ? {
+        border: `1px dashed ${ink}`,
+        background: "transparent",
+        boxShadow: `0 0 0 1px ${dilute(ink, 50)}, 0 0 8px 1px ${dilute(ink, 70)}`,
+      }
+    : {
+        border: `1px dashed ${ink}`,
+        background: "transparent",
+        opacity: GHOST_OPACITY,
+      }
 
 // --- Pool mode (the FeltDie job) ---
 
@@ -152,16 +161,17 @@ const litHalo = (ink: string): string => `0 0 0 1px ${ink}, 0 0 8px 1px ${dilute
 const SETTLE_OPACITY = 0.4
 
 /** The group hover's other half: while a group is lit (its dice glow,
- * `litHalo`), every other group's dice settle back a step. */
-export const settleOpacity = (lit: PoolKind | null, kind: PoolKind): number =>
-  lit !== null && lit !== kind ? SETTLE_OPACITY : 1
+ * `litHalo`), every other group's dice settle back a step. A group is a
+ * die's kind, or a ghost's cause (MAG-49). */
+export const settleOpacity = (lit: string | null, group: string): number =>
+  lit !== null && lit !== group ? SETTLE_OPACITY : 1
 
 export const PoolInput = Schema.Struct({
   kind: PoolKind,
   /** The one ghost recipe: a price being weighed, or a die eaten before the throw. */
   ghost: Schema.Boolean,
   /** The die's group is under the pointer (the Cast card's group hover). A
-   * ghost never lights — what is not (yet) real has nothing to come forward. */
+   * ghost's group is its cause; it lights like any other (MAG-49). */
   lit: Schema.Boolean,
   /** The ghost's ink when it isn't the die's own: the CAUSE of its absence
    * (MAG-49, owner 2026-10-25: "the color of the reason they aren't there"). */
@@ -173,7 +183,7 @@ export type PoolInput = typeof PoolInput.Type
 
 export const poolLook = ({ kind, ghost, lit, arcanum, ghostInk }: PoolInput): DieLook => {
   const ink = kind === "arcanum" && arcanum !== undefined ? realmInk(arcanum) : POOL_INK[kind]
-  if (ghost) return ghostLook(ghostInk ?? ink.border)
+  if (ghost) return ghostLook(ghostInk ?? ink.border, lit)
   const solid: DieLook = { border: `1px solid ${ink.border}`, background: ink.background }
   return Match.value(kind).pipe(
     // A hole keeps its scorch when lit — the ring and bloom join the burn outside it.
@@ -233,6 +243,8 @@ export const FaceInput = Schema.Struct({
   ghost: Schema.Boolean,
   /** As the pool die's: the ghost wears its cause's ink (MAG-49). */
   ghostInk: Schema.optional(Schema.String),
+  /** A ghost's group is under the pointer: it comes forward (MAG-49). */
+  lit: Schema.optional(Schema.Boolean),
 })
 export type FaceInput = typeof FaceInput.Type
 
@@ -263,9 +275,9 @@ export const ringInk = (tone: FaceTone | undefined): string => faceInks(tone).ri
  * burns --bad, successes fill, misses keep a faint outline so the row reads
  * as every die thrown, and explosive faces ring outside the box.
  */
-export const faceLook = ({ v, again, chance, tone, ring, ghost, ghostInk }: FaceInput): DieLook => {
+export const faceLook = ({ v, again, chance, tone, ring, ghost, ghostInk, lit }: FaceInput): DieLook => {
   const inks = faceInks(tone)
-  if (ghost) return ghostLook(ghostInk ?? inks.ring)
+  if (ghost) return ghostLook(ghostInk ?? inks.ring, lit ?? false)
   const body = Match.value(v).pipe(
     Match.when(
       (x: number) => isDieDramaticFailure(x, chance),

@@ -77,6 +77,8 @@ const FaceModeProps = Schema.Struct({
   ghost: Schema.optional(Schema.Boolean),
   /** The ghost's cause ink, when it isn't the ring's (MAG-49). */
   ghostInk: Schema.optional(Schema.String),
+  /** A ghost's group is under the pointer (MAG-49). */
+  lit: Schema.optional(Schema.Boolean),
   title: Schema.optional(Schema.String),
 })
 type FaceModeProps = typeof FaceModeProps.Type
@@ -158,9 +160,10 @@ function FaceDie({
   size = "sm",
   ghost = false,
   ghostInk,
+  lit = false,
   title,
 }: FaceModeProps) {
-  const look = faceLook({ v, again, chance, tone, ring, ghost, ...(ghostInk !== undefined ? { ghostInk } : {}) })
+  const look = faceLook({ v, again, chance, tone, ring, ghost, lit, ...(ghostInk !== undefined ? { ghostInk } : {}) })
   const shape = shapeClass(size)
   if (ghost) {
     // A ghost with a value is a face that rolled and was then absorbed (a

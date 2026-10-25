@@ -111,9 +111,13 @@ describe("pool mode (an unrolled die on the felt)", () => {
     expect(pool("paradoxBase", { lit: true }).background).toBe("var(--scorch)")
   })
 
-  it("a ghost does not light — a price being weighed stays still and faint under the pointer", () => {
-    expect(pool("sheet", { ghost: true, lit: true })).toEqual(ghostOf("sheet"))
-    expect(pool("paradox", { ghost: true, lit: true })).toEqual(ghostOf("paradox"))
+  it("a lit ghost comes forward in its cause's ink: full strength, dashed, the bloom outside (MAG-49)", () => {
+    const lit = pool("sheet", { ghost: true, lit: true, ghostInk: "var(--bad)" })
+    expect(lit.border).toBe("1px dashed var(--bad)")
+    expect(lit.background).toBe("transparent")
+    expect(lit.opacity).toBeUndefined()
+    expect(lit.boxShadow).toContain("var(--bad)")
+    expect(pool("sheet", { ghost: true, lit: false, ghostInk: "var(--bad)" }).opacity).toBe(0.45)
   })
 
   it("a lit hole holds its breath: the glow is the attention, the breathing stops", () => {

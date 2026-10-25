@@ -332,12 +332,18 @@ pre code {
 /* The window's corner (owner, 2026-10-25): Chrome on macOS rounds its own
  * bottom corners, and a square frame there lost its colour to the curve.
  * When the live zone stands in the app's bottom-right corner (no combat band
- * below it) its frame rounds to the window's radius. */
+ * below it) its frame rounds to the window's radius, and stands 1px in from
+ * the window's bottom and right edges: macOS strokes its windows' outermost
+ * pixel dark, which muddied the frame's red there and nowhere else. */
 :root {
   --window-corner: 16px;
 }
 .mv-shell:not(:has([data-slot="combat-tracker"])) .mv-live-zone {
   border-bottom-right-radius: var(--window-corner);
+}
+.mv-shell:not(:has([data-slot="combat-tracker"])) .mv-live-zone::after {
+  right: 1px;
+  bottom: 1px;
 }
 /* One line per edge, even framed: the lines beside the frame hand over to
  * it. The rail's seam goes quiet and the feed and the working slot above
