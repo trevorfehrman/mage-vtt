@@ -128,6 +128,12 @@ The caster spending Mana (1 per die) to shrink the Paradox pool *before* it
 is rolled — blind insurance against a roll whose outcome nobody knows yet.
 Compare Backlash, which is chosen *after* seeing the roll.
 
+**Live bet**:
+The caster's Mitigation pick and Backlash boxes while they are still being
+weighed: drafts on the Cast that every seat watches move, with nothing spent
+or wounded until Commit or Cast. The Storyteller's adjustments are never
+live bets; they stay private until the fix. (MAG-34)
+
 **Point of no return**:
 The caster committing (mitigation and any precommitted Willpower included)
 against the frozen price. Before it, either party may cancel freely

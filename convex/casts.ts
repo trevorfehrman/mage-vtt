@@ -18,6 +18,8 @@ import {
   lockPrice as lockPriceFlow,
   releaseCast as releaseCastFlow,
   rollParadox as rollParadoxFlow,
+  setDraftContainment as setDraftContainmentFlow,
+  setDraftMitigation as setDraftMitigationFlow,
   voidCast as voidCastFlow,
 } from "../src/domain/flows/vulgar-cast"
 
@@ -75,6 +77,13 @@ export const adjustPrice = enforcedMutation({
 // THE FIX (ADR-0022): the Tides seed stamps; the ST goes hands-off.
 export const lockPrice = enforcedMutation({ args: step, flow: lockPriceFlow })
 
+// The caster's live bets (MAG-34): broadcast drafts, no rules consequence
+// until Commit and Cast — every seat watches them through the same reactivity.
+export const setDraftMitigation = enforcedMutation({
+  args: { ...step, draftMitigation: v.number() },
+  flow: setDraftMitigationFlow,
+})
+
 export const commit = enforcedMutation({
   args: { ...step, manaMitigation: v.number() },
   flow: commitCastFlow,
@@ -83,6 +92,11 @@ export const commit = enforcedMutation({
 export const cancel = enforcedMutation({ args: step, flow: cancelCastFlow })
 
 export const rollParadox = enforcedMutation({ args: step, flow: rollParadoxFlow })
+
+export const setDraftContainment = enforcedMutation({
+  args: { ...step, draftContainedSuccesses: v.number() },
+  flow: setDraftContainmentFlow,
+})
 
 // The one Cast click (ADR-0022): containment lands and the dice fly as a
 // single commitment.

@@ -1,4 +1,4 @@
-import { Array as Arr, Effect, Option, Schema } from "effect"
+import { Effect, Option, Schema } from "effect"
 import { tableName } from "../membership"
 import {
   requireMember,
@@ -15,6 +15,7 @@ import {
   isPriceFixed,
   isRoteCast,
   isUnresolved,
+  mitigationCap,
   sceneTides,
   toGnosisRank,
   type Cast,
@@ -22,7 +23,7 @@ import {
 } from "../cast"
 import { ArcanumName } from "../character"
 import { buildPool, rollPool, type RawPoolComponent } from "../dice"
-import { applyDamage, isIncapacitated, woundPenalty } from "../health"
+import { containOnTrack, isIncapacitated, woundPenalty } from "../health"
 import { CastId, CharacterId, SessionId } from "../ids"
 import { improvisedManaCost, spendMana } from "../mana-economy"
 import {
@@ -57,14 +58,16 @@ import { requireKnownRote } from "./rote-cast"
  * status, and phase, and refusing on the ADR-0010 taxonomy — the first mutual
  * contract under ADR-0015's second regime. The Cast document is the single
  * source of truth; commitments land atomic Activity entries (ADR-0009).
- * Containment drafting is client-local until the Cast click (#113 reversed
- * ADR-0022's broadcast draft — per-click mutations made the cockpit sluggish).
+ * The caster's bets are broadcast drafts on the document (MAG-34, reviving
+ * the draft #113 withdrew): every seat watches the Mana pick and each
+ * contained Paradox move. The card writes them in the background and never
+ * waits on them — #113's sluggishness was the click waiting on the server.
  *
  *   draftCast → engageCast (ST; the stage) → [adjustPrice*] → lockPrice (ST;
- *   THE FIX — Tides stamped, irrevocably hands-off) → commitCast (caster;
- *   Mana + precommitted Willpower spent; POINT OF NO RETURN) → rollParadox
- *   (ST's own button; chance die at zero dice) →
- *   releaseCast (caster's one Cast click: containment lands and the dice fly
+ *   THE FIX — Tides stamped, irrevocably hands-off) → [setDraftMitigation*]
+ *   → commitCast (caster; Mana + precommitted Willpower spent; POINT OF NO
+ *   RETURN) → rollParadox (ST's own button; chance die at zero dice) →
+ *   [setDraftContainment*] → releaseCast (caster's one Cast click: containment lands and the dice fly
  *   in one commitment) → resolved
  *
  * Exits: killDraft (owner) / declineDraft (ST) → cancelled; cancelCast
@@ -787,6 +790,66 @@ export const lockPrice = Effect.fn("Flows.vulgarCast.lockPrice")(function* (
   return castId
 })
 
+/**
+ * The one mitigation rule both doors enforce: a whole number of Mana, no
+ * more than the fixed pool holds. Returns the pool for the caller's checks.
+ */
+const requireMitigable = Effect.fn("Flows.vulgarCast.requireMitigable")(function* (
+  cast: Cast,
+  mitigation: number,
+) {
+  if (!Schema.is(WholeCount)(mitigation)) {
+    return yield* new InvalidMitigation({
+      message: `Mitigation must be a whole number of Mana, got ${mitigation}.`,
+    })
+  }
+  const pool = calculateParadoxPool(yield* paradoxInputs(cast))
+  if (mitigation > pool.totalDice) {
+    return yield* new InvalidMitigation({
+      message: `The Paradox pool holds ${pool.totalDice} dice; ${mitigation} Mana would buy off more than exists.`,
+    })
+  }
+  return pool
+})
+
+export const SetDraftMitigationArgs = Schema.Struct({
+  ...CastStepArgs.fields,
+  /** The mitigation row the caster has selected, broadcast live (MAG-34). */
+  draftMitigation: Schema.Number,
+})
+export type SetDraftMitigationArgs = typeof SetDraftMitigationArgs.Type
+
+/**
+ * The commit beat's drafting door (MAG-34): each mitigation-row click writes
+ * broadcast working state on the Cast document — cheap, seam-checked (the
+ * caster's own character, the fixed Tides, a row the pool holds and the
+ * purse can pay after the spell's cost), no spend until the commit. Every
+ * seat watches the table, the ghosted Paradox dice and the Mana move; a
+ * reconnecting caster drops back into their pick. No Activity entry.
+ */
+export const setDraftMitigation = Effect.fn("Flows.vulgarCast.setDraftMitigation")(
+  function* (args: SetDraftMitigationArgs) {
+    const sessionId = SessionId.make(args.sessionId)
+    const castId = CastId.make(args.castId)
+    const store = yield* GameStore
+
+    const cast = yield* requireCast(sessionId, castId)
+    const sheet = yield* requireSessionCharacter(sessionId, cast.characterId)
+    yield* requirePricePhase(cast, "fixed")
+    const pool = yield* requireMitigable(cast, args.draftMitigation)
+    const affordable = mitigationCap(pool.totalDice, sheet.manaCurrent, cast.spellManaCost)
+    if (args.draftMitigation > affordable) {
+      return yield* new InvalidMitigation({
+        message: `${args.draftMitigation} Mana of mitigation needs more than the ${affordable} free after the spell's cost.`,
+      })
+    }
+
+    yield* store.patchCast(castId, { draftMitigation: args.draftMitigation })
+
+    return castId
+  },
+)
+
 export const CommitCastArgs = Schema.Struct({
   ...CastStepArgs.fields,
   /** Mana spent shrinking the Paradox pool, 1 per die — blind insurance. */
@@ -812,17 +875,7 @@ export const commitCast = Effect.fn("Flows.vulgarCast.commitCast")(function* (
   yield* requirePricePhase(cast, "fixed")
 
   const mitigation = args.manaMitigation
-  if (!Schema.is(WholeCount)(mitigation)) {
-    return yield* new InvalidMitigation({
-      message: `Mitigation must be a whole number of Mana, got ${mitigation}.`,
-    })
-  }
-  const pool = calculateParadoxPool(yield* paradoxInputs(cast))
-  if (mitigation > pool.totalDice) {
-    return yield* new InvalidMitigation({
-      message: `The Paradox pool holds ${pool.totalDice} dice; ${mitigation} Mana would buy off more than exists.`,
-    })
-  }
+  yield* requireMitigable(cast, mitigation)
 
   // The commit is atomic with the status step: spendMana and spendWillpower
   // refuse before any write, and the Convex transaction carries the rest.
@@ -937,6 +990,41 @@ export const rollParadox = Effect.fn("Flows.vulgarCast.rollParadox")(function* (
   return castId
 })
 
+export const SetDraftContainmentArgs = Schema.Struct({
+  ...CastStepArgs.fields,
+  /** The half-built sacrifice: box clicks, broadcast live (MAG-34). */
+  draftContainedSuccesses: Schema.Number,
+})
+export type SetDraftContainmentArgs = typeof SetDraftContainmentArgs.Type
+
+/**
+ * The cockpit's drafting door (MAG-34, reviving ADR-0022's broadcast draft
+ * that #113 withdrew): box clicks write broadcast working state on the Cast
+ * document — cheap, seam-checked (the caster's own character, the rolled
+ * cockpit, boxes in range), no wound until the release finalizes. Every
+ * seat watches the boxes, the Paradox dice and the cast dice move; a
+ * reconnecting caster drops back into their half-built sacrifice.
+ * Deliberately public, un-clicks included — no poker face. No Activity entry.
+ */
+export const setDraftContainment = Effect.fn("Flows.vulgarCast.setDraftContainment")(
+  function* (args: SetDraftContainmentArgs) {
+    const sessionId = SessionId.make(args.sessionId)
+    const castId = CastId.make(args.castId)
+    const store = yield* GameStore
+
+    const cast = yield* requireCast(sessionId, castId)
+    const sheet = yield* requireSessionCharacter(sessionId, cast.characterId)
+    yield* requireParadoxPhase(cast, "rolled")
+    yield* requireContainable(cast, sheet, args.draftContainedSuccesses)
+
+    yield* store.patchCast(castId, {
+      draftContainedSuccesses: args.draftContainedSuccesses,
+    })
+
+    return castId
+  },
+)
+
 export const ReleaseCastArgs = Schema.Struct({
   ...CastStepArgs.fields,
   /** Paradox successes absorbed as Resistant bashing, one wound per success. */
@@ -977,12 +1065,7 @@ export const releaseCast = Effect.fn("Flows.vulgarCast.releaseCast")(function* (
 
   // The sacrifice lands first: the track the dice pay wound penalties on is
   // the track as containment leaves it.
-  const track =
-    contained === 0
-      ? sheet.healthTrack
-      : Arr.reduce(Arr.makeBy(contained, (i) => i), sheet.healthTrack, (t) =>
-          applyDamage(t, "bashing", { resistant: true }),
-        )
+  const track = containOnTrack(sheet.healthTrack, contained)
   if (contained > 0) {
     yield* store.patchSheet(sheet.id, { healthTrack: track })
   }

@@ -1,5 +1,21 @@
 # Tides are scene state; the cast card is a docked cockpit
 
+> **Amended** (2026-10-25, MAG-34, the owner's call of 2026-10-23: "all
+> the stuff the player does should be updated as they do it to all seats.
+> the ST is the one we should be mindful of keeping certain things private
+> until they commit"). Broadcast drafting returns, withdrawing #113's
+> amendment below: the caster's Mana pick (after the fix) and each
+> contained Paradox (after the roll) are drafts on the Cast document
+> (`draftMitigation`, `draftContainedSuccesses`), written through cheap
+> seam-checked doors (the caster's own character, the right phase, a row
+> the pool holds and the purse can pay, boxes in range). Every seat renders
+> them: the table with the pick marked, the ghosted Paradox dice, the
+> header's pending Mana, the track, the severity and the cast dice. #113's
+> cause was the click waiting on the server, so the card answers each click
+> locally and writes the draft in the background; a refusal still surfaces
+> inline. Commit and Cast stay the only commitments and carry their own
+> values. The Storyteller's adjustments stay private until the fix.
+
 > **Amended** (2026-10-25, the owner's call: the message box and the dice
 > tray "are supposed to be above the vulgar flow component for all seats,
 > and the vulgar flow component should absolutely not have y-scroll inside
@@ -186,7 +202,7 @@
 > pre-commitment — nothing is spent yet); the seam still honors either
 > party's cancel, same posture as #114's fixed-price strip.
 >
-> **Amended** (2026-07-19, #112 audit → #113): containment drafting is no
+> **Amended** (2026-07-19, #112 audit → #113; *withdrawn by MAG-34, above*): containment drafting is no
 > longer broadcast working state — the per-click `setDraftContainment`
 > mutation made the cockpit sluggish, and the owner reversed it. Containment
 > selection is client-local; the Cast click is the first the server (and so
@@ -340,7 +356,9 @@ Paradox as any other die.
 
 **Drafting lives on the Cast document.** *(Amended 2026-07-19, #113: it
 doesn't anymore — this whole section is withdrawn; containment selection is
-client-local and the Cast click is its first server contact.)* Box clicks and the Willpower
+client-local and the Cast click is its first server contact. Restored
+2026-10-25 by MAG-34 — see the header — for the Mana pick and the
+containment boxes, the clicks answering locally first.)* Box clicks and the Willpower
 toggle write draft fields via cheap seam-checked mutations (actor is
 caster, status is the Paradox phase, boxes in range — no rules consequence
 until commit); the Cast click finalizes them. Spectators watch through the

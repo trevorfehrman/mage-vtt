@@ -385,9 +385,25 @@ function DressingRoom() {
     userId: view.viewerUserId,
     role: view.isStoryteller ? ("storyteller" as const) : ("player" as const),
   }
-  const cast: CastEntry = withheldFrom(reader)(adjustments === undefined ? CASTS[rung] : { ...CASTS[rung], adjustments })
+  // The caster's live bets (MAG-34) live here too, per rung: the card's
+  // drafts door writes them, and every seat's card reads them back — flip
+  // the seat to watch the pick or the sacrifice from the other chairs.
+  const [drafted, setDrafted] = useState<
+    Partial<Record<RigRung, { draftMitigation?: number; draftContainedSuccesses?: number }>>
+  >({})
+  const cast: CastEntry = withheldFrom(reader)({
+    ...CASTS[rung],
+    ...(adjustments !== undefined ? { adjustments } : {}),
+    ...drafted[rung],
+  })
   const adjust = async (next: ReadonlyArray<ParadoxPoolModifier>) =>
     setAdjusted((prev) => ({ ...prev, [rung]: next }))
+  const drafts = {
+    mitigation: async (draftMitigation: number) =>
+      setDrafted((prev) => ({ ...prev, [rung]: { ...prev[rung], draftMitigation } })),
+    containment: async (draftContainedSuccesses: number) =>
+      setDrafted((prev) => ({ ...prev, [rung]: { ...prev[rung], draftContainedSuccesses } })),
+  }
   const mySheet = seat === "caster" ? casterNow : null
 
   const PEOPLE = [
@@ -476,6 +492,7 @@ function DressingRoom() {
       // all three the same Arctus track.
       casterSheet={casterNow}
       adjust={adjust}
+      drafts={drafts}
     />
   )
   // Each seat mounts the card where the session does (MAG-48): a live cast

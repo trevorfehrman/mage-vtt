@@ -436,6 +436,12 @@ export const convexLive = (
             ...(patch.manaMitigation !== undefined
               ? { manaMitigation: patch.manaMitigation }
               : {}),
+            ...(patch.draftMitigation !== undefined
+              ? { draftMitigation: patch.draftMitigation }
+              : {}),
+            ...(patch.draftContainedSuccesses !== undefined
+              ? { draftContainedSuccesses: patch.draftContainedSuccesses }
+              : {}),
             ...(patch.paradoxSuccesses !== undefined
               ? { paradoxSuccesses: patch.paradoxSuccesses }
               : {}),

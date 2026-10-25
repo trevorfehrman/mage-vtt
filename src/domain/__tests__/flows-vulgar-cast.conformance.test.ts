@@ -12,6 +12,8 @@ import {
   lockPrice,
   releaseCast,
   rollParadox,
+  setDraftContainment,
+  setDraftMitigation,
   voidCast,
 } from "../flows/vulgar-cast"
 import { CastId, PlayerId, SessionId } from "../ids"
@@ -200,6 +202,11 @@ const runHandshake = (
     yield* lockPrice({ sessionId: SESSION, castId }).pipe(
       Effect.provide(layerFor(ST_USER)),
     )
+    // The caster's live bets (MAG-34) ride the same patch through both
+    // adapters: drafted, then committed and cast as drafted.
+    yield* setDraftMitigation({ sessionId: SESSION, castId, draftMitigation: 0 }).pipe(
+      Effect.provide(layerFor(PLAYER)),
+    )
     yield* commitCast({ sessionId: SESSION, castId, manaMitigation: 0 }).pipe(
       Effect.provide(layerFor(PLAYER)),
     )
@@ -208,6 +215,9 @@ const runHandshake = (
     )
     // Seed "docks" rolls a 9 on the single Paradox die: one success — the
     // one Cast click contains it and releases the spell (ADR-0022).
+    yield* setDraftContainment({ sessionId: SESSION, castId, draftContainedSuccesses: 1 }).pipe(
+      Effect.provide(layerFor(PLAYER)),
+    )
     yield* releaseCast({ sessionId: SESSION, castId, containedSuccesses: 1 }).pipe(
       Effect.provide(layerFor(PLAYER)),
     )
@@ -229,6 +239,8 @@ const observedCast = (row: Record<string, unknown>) => ({
   adjustments: row.adjustments,
   tides: row.tides,
   manaMitigation: row.manaMitigation,
+  draftMitigation: row.draftMitigation ?? null,
+  draftContainedSuccesses: row.draftContainedSuccesses ?? null,
   paradoxSuccesses: row.paradoxSuccesses,
   paradoxIsDramaticFailure: row.paradoxIsDramaticFailure,
   // The stamped faces and their parented explosions (issue #122): both

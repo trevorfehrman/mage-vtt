@@ -324,6 +324,12 @@ export const CastDoc = Schema.Struct({
   tides: Schema.optionalKey(TidesSnapshot),
   // Commitment (the caster's point of no return)
   manaMitigation: Schema.optionalKey(Schema.Number),
+  // The caster's live bets (MAG-34, reviving ADR-0022's broadcast draft):
+  // the Mana pick after the fix and the boxes contained after the Paradox
+  // roll, server-held so every seat watches them move. No rules consequence
+  // until Commit and Cast stamp the real fields.
+  draftMitigation: Schema.optionalKey(Schema.Number),
+  draftContainedSuccesses: Schema.optionalKey(Schema.Number),
   // The Paradox roll — stamped mid-rung; its presence flips the phase. The
   // roll's faces ride the document too (the 2026-07-19 polish, note 5: the
   // same resolution-merge treatment as the release), so the table sees the
