@@ -135,6 +135,9 @@ export const CastPatch = Schema.Struct({
   adjustments: Schema.optionalKey(Schema.Array(ParadoxPoolModifier)),
   tides: Schema.optionalKey(TidesSnapshot),
   manaMitigation: Schema.optionalKey(Schema.Number),
+  /** The caster's live bets (MAG-34): broadcast drafts, no rules consequence. */
+  draftMitigation: Schema.optionalKey(Schema.Number),
+  draftContainedSuccesses: Schema.optionalKey(Schema.Number),
   /** The Paradox roll's faces (the 2026-07-19 polish, note 5): the roll
    * stamps onto the document like the release's — one card, no roll entry. */
   paradoxSuccesses: Schema.optionalKey(Schema.Number),

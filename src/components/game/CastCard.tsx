@@ -107,6 +107,7 @@ export function CastCard({
   casterSheet = null,
   moreWaiting = 0,
   adjust,
+  drafts,
 }: {
   cast: CastEntry
   sessionId: Id<"sessions">
@@ -125,6 +126,14 @@ export function CastCard({
    * hands this in. The live route leaves it undefined and the Convex
    * mutation runs. */
   adjust?: ((adjustments: ReadonlyArray<ParadoxPoolModifier>) => Promise<unknown>) | undefined
+  /** The dressing room's door for the caster's live bets (MAG-34), as
+   * `adjust` is for the ST's: the rig keeps the drafts in local state. */
+  drafts?:
+    | {
+        mitigation: (draftMitigation: number) => Promise<unknown>
+        containment: (draftContainedSuccesses: number) => Promise<unknown>
+      }
+    | undefined
 }) {
   // The machine is a projection of the document (ADR-0016): input rehydrates
   // mid-ladder, SYNC tracks every realtime update, and the card renders from
@@ -151,16 +160,20 @@ export function CastCard({
   const rollParadox = useMutation(api.casts.rollParadox)
   const release = useMutation(api.casts.release)
   const voidCast = useMutation(api.casts.voidCast)
+  const setDraftMitigation = useMutation(api.casts.setDraftMitigation)
+  const setDraftContainment = useMutation(api.casts.setDraftContainment)
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [mitigation, setMitigation] = useState(0)
+  // The caster's two bets (MAG-34): local first, so a click answers at once,
+  // and broadcast in the background (`broadcast` below) so every seat
+  // watches them move. They open from the server's draft: a reconnecting
+  // caster drops back into the pick and the half-built sacrifice.
+  const [mitigation, setMitigation] = useState(cast.draftMitigation ?? 0)
   // The live cast's shrunk form (MAG-48): the viewer's own choice, like the
   // tray's (MAG-47). Each cast opens tall — it is new news at the table.
   const [shrunk, setShrunk] = useState(false)
-  // Containment selection is local until the Cast click (#113): the server
-  // first hears the sacrifice when the release commits it.
-  const [contained, setContained] = useState(0)
+  const [contained, setContained] = useState(cast.draftContainedSuccesses ?? 0)
   // The ST's draft tide (issue #44; MAG-45): one shore's skeleton pill
   // opened for typing — local until Enter lands it on the document.
   const [draft, setDraft] = useState<TideDraft | null>(null)
@@ -190,6 +203,34 @@ export function CastCard({
   }
 
   const step = { sessionId, castId: cast._id }
+
+  // A live bet's write never holds the card (MAG-34): #113 withdrew the first
+  // broadcast draft because each click waited on the server. The click
+  // answers locally; the draft follows, and a refusal still surfaces.
+  const broadcast = (write: () => Promise<unknown>) => {
+    write().catch((err: unknown) => setError(seamErrorMessage(err)))
+  }
+  const pickMitigation = (value: number) => {
+    setMitigation(value)
+    broadcast(() =>
+      drafts !== undefined
+        ? drafts.mitigation(value)
+        : setDraftMitigation({ ...step, draftMitigation: value }),
+    )
+  }
+  const pickContained = (value: number) => {
+    setContained(value)
+    broadcast(() =>
+      drafts !== undefined
+        ? drafts.containment(value)
+        : setDraftContainment({ ...step, draftContainedSuccesses: value }),
+    )
+  }
+  // What every seat renders: the caster's own clicks, everyone else the
+  // server's draft of them.
+  const liveMitigation = isCaster ? mitigation : (cast.draftMitigation ?? 0)
+  const liveContained = isCaster ? contained : (cast.draftContainedSuccesses ?? 0)
+
   // Every change to the ST's adjustments goes through one door.
   const applyAdjustments = (adjustments: ReadonlyArray<ParadoxPoolModifier>) =>
     adjust !== undefined
@@ -264,14 +305,21 @@ export function CastCard({
   const poolBeforeMitigation = poolInputs
     ? calculateParadoxPool(poolInputs).totalDice
     : 0
-  const mitigateCap = mySheet
-    ? mitigationCap(poolBeforeMitigation, mySheet.manaCurrent, cast.spellManaCost)
+  // The cockpit's sheet: the CASTER's track and purse, whichever seat is
+  // watching — the caster's own when they hold the card, the passed-in
+  // caster sheet on every other seat (the 2026-07-19 polish, note 14).
+  const cockpitSheet = isCaster ? mySheet : casterSheet
+  const mitigateCap = cockpitSheet
+    ? mitigationCap(poolBeforeMitigation, cockpitSheet.manaCurrent, cast.spellManaCost)
     : 0
-  // Dice the selected mitigation row buys off — live only while the commit
-  // decision is; they ghost from the Paradox row's end (the cockpit's own
-  // doctrine for eaten cast dice), which is where the scene's red dice sit,
-  // so Mana erases the weather first and only then reaches into Gnosis.
-  const mitigated = controls.includes("commit") ? Math.min(mitigation, mitigateCap) : 0
+  // The commit decision is live: the Tides are fixed and nothing is spent.
+  const deciding = status === "price" && cast.tides !== undefined
+  // Dice the selected mitigation row buys off — live while the commit
+  // decision is, on every seat (MAG-34); they ghost from the Paradox row's
+  // end (the cockpit's own doctrine for eaten cast dice), which is where the
+  // scene's red dice sit, so Mana erases the weather first and only then
+  // reaches into Gnosis.
+  const mitigated = deciding ? Math.min(liveMitigation, mitigateCap) : 0
   // After the commit the stamped mitigation keeps its ghosts (owner,
   // 2026-10-23, the MAG-17 tour's second call): the dice the Mana bought off
   // stay on the Paradox row, dashed, so the price still reads on the felt
@@ -282,16 +330,14 @@ export function CastCard({
       : 0
   const paradoxGhosts = mitigated + boughtOff
 
-  // The cockpit's sheet: the CASTER's track, whichever seat is watching —
-  // the caster's own when they hold the card, the passed-in caster sheet on
-  // every other seat (the 2026-07-19 polish, note 14).
-  const cockpitSheet = isCaster ? mySheet : casterSheet
   const containCap = cockpitSheet
     ? containmentCap(cockpitSheet.healthTrack, cast.paradoxSuccesses ?? 0)
     : (cast.paradoxSuccesses ?? 0)
-  const cockpitContained = controls.includes("contain")
-    ? Math.min(contained, containCap)
-    : 0
+  // The containment bet, on every seat (MAG-34).
+  const cockpitContained =
+    status === "paradox" && cast.paradoxSuccesses !== undefined
+      ? Math.min(liveContained, containCap)
+      : 0
   const outlook =
     status === "paradox" &&
     cast.paradoxSuccesses !== undefined &&
@@ -555,14 +601,15 @@ export function CastCard({
     ...(cast.targets !== undefined ? [`×${cast.targets} targets`] : []),
   ]
 
-  // The mitigation table (issue #45; note 7) is the caster's on the commit
-  // beat — and the Storyteller's, read-only, while the Tides are still
-  // fluid (MAG-45, owner 2026-10-23): the ST sees what each ruling does to
-  // the player's choices before fixing them, off the same provisional pool
-  // the felt shows. Only the ST sees it then — the other seats do not watch
-  // the ST's thoughts in progress — and the affordable rows read from the
-  // CASTER's Mana, whichever seat holds the card.
-  const tableInputs = controls.includes("commit")
+  // The mitigation table (issue #45; note 7) stands on the commit beat on
+  // every seat (MAG-34): the caster's to click, everyone else's to watch the
+  // pick move. Before the fix it is the Storyteller's, read-only (MAG-45,
+  // owner 2026-10-23): the ST sees what each ruling does to the player's
+  // choices before fixing them, off the same provisional pool the felt
+  // shows. Only the ST sees it then — the other seats do not watch the ST's
+  // thoughts in progress — and the affordable rows read from the CASTER's
+  // Mana, whichever seat holds the card.
+  const tableInputs = deciding
     ? poolInputs
     : controls.includes("adjust")
       ? provisionalInputs
@@ -943,9 +990,10 @@ export function CastCard({
           poolInputs={tableInputs}
           declaredPool={cast.declaredPool}
           affordable={tableAffordable}
-          selected={mitigation}
+          // No pick exists before the fix: the ST's reading marks no row.
+          selected={deciding ? liveMitigation : null}
           // The ST's fluid-rung table is a reading, not a control (MAG-45).
-          onSelect={controls.includes("commit") ? setMitigation : undefined}
+          onSelect={controls.includes("commit") ? pickMitigation : undefined}
           disabled={busy}
         />
       )}
@@ -967,7 +1015,7 @@ export function CastCard({
           cap={containCap}
           contained={cockpitContained}
           outlook={outlook}
-          onChange={controls.includes("contain") ? setContained : undefined}
+          onChange={controls.includes("contain") ? pickContained : undefined}
           disabled={busy}
         />
       )}
@@ -1103,7 +1151,7 @@ export function CastCard({
               label="contain"
               value={contained}
               cap={containCap}
-              onChange={setContained}
+              onChange={pickContained}
               disabled={busy}
             />
           )}
@@ -1342,7 +1390,8 @@ function MitigationPreview({
   poolInputs: Omit<Parameters<typeof calculateParadoxPool>[0], "manaMitigation">
   declaredPool: number
   affordable: number
-  selected: number
+  /** The caster's pick — clicked here, or watched live (MAG-34); null before the fix. */
+  selected: number | null
   onSelect?: ((spend: number) => void) | undefined
   disabled: boolean
 }) {
@@ -1358,11 +1407,11 @@ function MitigationPreview({
           ember before). */}
       {rows.map((row) => {
         const locked = row.spend > affordable
-        const here = onSelect !== undefined && !locked && row.spend === Math.min(selected, affordable)
+        const here = selected !== null && !locked && row.spend === Math.min(selected, affordable)
         // A locked row is a mark, not a disabled control (the pool die's idiom):
         // its title stays reachable and nothing pretends it could be clicked.
-        // The ST's read-only table draws every row as a mark, unlocked ones
-        // on a clear border.
+        // A read-only table draws every row as a mark, unlocked ones on a
+        // clear border — the caster's live pick on the verdigris one (MAG-34).
         return locked || onSelect === undefined ? (
           <span
             key={row.spend}
@@ -1370,13 +1419,16 @@ function MitigationPreview({
             style={
               locked
                 ? { border: "1px dashed var(--line)", color: "var(--dim)", opacity: 0.5 }
-                : { border: "1px solid transparent", color: "var(--dim)" }
+                : {
+                    border: here ? "1px solid var(--accent)" : "1px solid transparent",
+                    color: here ? "var(--ink)" : "var(--dim)",
+                  }
             }
             {...(locked
               ? { title: `${affordable} Mana free` }
               : {})}
           >
-            <OddsCells {...row} here={false} />
+            <OddsCells {...row} here={here} />
           </span>
         ) : (
           <button

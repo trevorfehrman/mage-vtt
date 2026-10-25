@@ -17,6 +17,8 @@ import {
   lockPrice,
   releaseCast,
   rollParadox,
+  setDraftContainment,
+  setDraftMitigation,
   voidCast,
 } from "../flows/vulgar-cast"
 import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "../ids"
@@ -839,6 +841,96 @@ describe("Flows.vulgarCast — The Price (ADR-0022)", () => {
     }),
   )
 
+})
+
+describe("Flows.vulgarCast — the caster's live bets (MAG-34)", () => {
+  const fixed = () => castAt("price", { tides: NO_TIDES })
+  const rolled = () => castAt("paradox", { paradoxSuccesses: 2, paradoxIsDramaticFailure: false })
+  const castId = CastId.make("cast-prior")
+
+  it.effect("the Mana pick is broadcast working state after the fix: no spend, no message", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [fixed()] })
+
+      yield* setDraftMitigation({ sessionId: SESSION, castId, draftMitigation: 1 }).pipe(
+        as(PLAYER), Effect.provide(store.layer))
+      expect(store.casts[0]!.draftMitigation).toBe(1)
+
+      // Un-clicks too: the table watches the pick move both ways.
+      yield* setDraftMitigation({ sessionId: SESSION, castId, draftMitigation: 0 }).pipe(
+        as(PLAYER), Effect.provide(store.layer))
+      expect(store.casts[0]!.draftMitigation).toBe(0)
+
+      expect(store.messages).toHaveLength(0)
+      expect(store.sheetPatches).toHaveLength(0)
+      expect(store.casts[0]!.status).toBe("price")
+      expect(store.casts[0]!.manaMitigation).toBeUndefined()
+    }),
+  )
+
+  it.effect("the Mana pick refuses before the fix, past the pool, past the purse, and from anyone but the caster", () =>
+    Effect.gen(function* () {
+      const fluid = seed({ casts: [castAt("price")] })
+      const early = yield* setDraftMitigation({ sessionId: SESSION, castId, draftMitigation: 0 }).pipe(
+        as(PLAYER), Effect.provide(fluid.layer), Effect.exit)
+      expect(failureTag(early)).toBe("CastStatusConflict")
+
+      // Gnosis 1, quiet Tides: a one-die pool.
+      const store = seed({ casts: [fixed()] })
+      const pastPool = yield* setDraftMitigation({ sessionId: SESSION, castId, draftMitigation: 2 }).pipe(
+        as(PLAYER), Effect.provide(store.layer), Effect.exit)
+      const fractional = yield* setDraftMitigation({ sessionId: SESSION, castId, draftMitigation: 0.5 }).pipe(
+        as(PLAYER), Effect.provide(store.layer), Effect.exit)
+      const stranger = yield* setDraftMitigation({ sessionId: SESSION, castId, draftMitigation: 1 }).pipe(
+        as(OTHER_PLAYER), Effect.provide(store.layer), Effect.exit)
+      expect(failureTag(pastPool)).toBe("InvalidMitigation")
+      expect(failureTag(fractional)).toBe("InvalidMitigation")
+      expect(failureTag(stranger)).toBe("NotYourCharacter")
+
+      const broke = seed({ sheet: makeSheet({ manaCurrent: 0 }), casts: [fixed()] })
+      const pastPurse = yield* setDraftMitigation({ sessionId: SESSION, castId, draftMitigation: 1 }).pipe(
+        as(PLAYER), Effect.provide(broke.layer), Effect.exit)
+      expect(failureTag(pastPurse)).toBe("InvalidMitigation")
+
+      expect(store.casts[0]!.draftMitigation).toBeUndefined()
+    }),
+  )
+
+  it.effect("each contained Paradox is broadcast working state in the cockpit: no wound until the Cast", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [rolled()] })
+
+      yield* setDraftContainment({ sessionId: SESSION, castId, draftContainedSuccesses: 2 }).pipe(
+        as(PLAYER), Effect.provide(store.layer))
+      expect(store.casts[0]!.draftContainedSuccesses).toBe(2)
+
+      yield* setDraftContainment({ sessionId: SESSION, castId, draftContainedSuccesses: 0 }).pipe(
+        as(PLAYER), Effect.provide(store.layer))
+      expect(store.casts[0]!.draftContainedSuccesses).toBe(0)
+
+      expect(store.messages).toHaveLength(0)
+      expect(store.sheetPatches).toHaveLength(0)
+      expect(store.casts[0]!.status).toBe("paradox")
+    }),
+  )
+
+  it.effect("containment drafts refuse before the roll, past the cap, and from anyone but the caster", () =>
+    Effect.gen(function* () {
+      const unrolled = seed({ casts: [castAt("paradox")] })
+      const early = yield* setDraftContainment({ sessionId: SESSION, castId, draftContainedSuccesses: 0 }).pipe(
+        as(PLAYER), Effect.provide(unrolled.layer), Effect.exit)
+      expect(failureTag(early)).toBe("CastStatusConflict")
+
+      const store = seed({ casts: [rolled()] })
+      const pastCap = yield* setDraftContainment({ sessionId: SESSION, castId, draftContainedSuccesses: 3 }).pipe(
+        as(PLAYER), Effect.provide(store.layer), Effect.exit)
+      const stranger = yield* setDraftContainment({ sessionId: SESSION, castId, draftContainedSuccesses: 1 }).pipe(
+        as(OTHER_PLAYER), Effect.provide(store.layer), Effect.exit)
+      expect(failureTag(pastCap)).toBe("InvalidContainment")
+      expect(failureTag(stranger)).toBe("NotYourCharacter")
+      expect(store.casts[0]!.draftContainedSuccesses).toBeUndefined()
+    }),
+  )
 })
 
 describe("Flows.vulgarCast — the wings and free exits", () => {

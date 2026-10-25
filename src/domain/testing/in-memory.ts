@@ -115,6 +115,8 @@ export interface StoredCast {
   readonly adjustments?: ReadonlyArray<ParadoxPoolModifier>
   readonly tides?: TidesSnapshot
   readonly manaMitigation?: number
+  readonly draftMitigation?: number
+  readonly draftContainedSuccesses?: number
   readonly paradoxSuccesses?: number
   readonly paradoxRolls?: ReadonlyArray<number>
   readonly paradoxExplosions?: ReadonlyArray<Explosion>
