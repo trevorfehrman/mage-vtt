@@ -274,9 +274,10 @@ _Avoid_: Chat log, Roll history (those were the two separate panes this replaced
 **Live zone**:
 The foot of the right rail while a Cast is live: the Cast takes the working
 zone over on every seat, full width, framed in the Paradox red (MAG-48,
-ADR-0022), with the Working slot below it (MAG-53). The table reads it as
-"pause — something that touches everyone is happening", and every seat stays
-usable. A live Cast is never an Activity Log entry; its resolved record is.
+ADR-0022), with the Working slot above it (owner, 2026-10-25). It takes the
+height it needs and never scrolls inside itself; the Chronicle shrinks to make
+room. The table reads it as "pause — something that touches everyone is
+happening", and every seat stays usable. A live Cast is never an Activity Log entry; its resolved record is.
 _Avoid_: Pinned cast (the MAG-46 slot above a bystander's tray, retired),
 live feed card (the feed never carries a live Cast).
 
@@ -286,8 +287,8 @@ share (MAG-53): in a video-call game chat is a niche tool, so it gets no
 permanent place of its own. The viewer flips between them at the Chronicle's
 header (Dice | Message), where each hidden side carries its news: the dice
 waiting on the felt, the lines unread (a whisper to you counted apart). Both
-stay mounted, so a flip never loses a draft or a pool. It stands below a live
-Cast on every seat. Building a pool from the sheet or arming a cast brings the
+stay mounted, so a flip never loses a draft or a pool. It stands above a live
+Cast on every seat (owner, 2026-10-25). Building a pool from the sheet or arming a cast brings the
 tray back; Enter outside any field, or clicking a Video tile, brings the Message
 box.
 _Avoid_: Chat input (the line that sat under the Chronicle until MAG-53).

@@ -1,5 +1,14 @@
 # Tides are scene state; the cast card is a docked cockpit
 
+> **Amended** (2026-10-25, the owner's call: the message box and the dice
+> tray "are supposed to be above the vulgar flow component for all seats,
+> and the vulgar flow component should absolutely not have y-scroll inside
+> of it"; "the chronicle has to shrink"). The working slot now stands above
+> the live zone, and the live zone takes the height it needs: no 60% cap,
+> no scroll inside a live cast. The Chronicle, the rail's only flexible
+> part, gives up the room. This supersedes the MAG-53 amendment's order
+> below.
+
 > **Amended** (2026-10-25, MAG-50): the pending-cast lock no longer holds
 > plain pool rolls. The caster rolls a spot check from the tray mid-cast
 > (the owner: "who knows if the ST will want the player to roll

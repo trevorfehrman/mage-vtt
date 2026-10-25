@@ -281,9 +281,9 @@ function SessionPage() {
 
   // The caster's own live cast (the card takeover; was #110's posture): the
   // viewer's pending vulgar cast, read off the same live casts as the offer.
-  // It stands in the working zone above the slot (MAG-53); the tray below
-  // it rolls plain pools mid-cast, and the seam refuses any other cast
-  // (MAG-50, loosening issue #109).
+  // It stands in the live zone below the slot (owner, 2026-10-25); the tray
+  // above it rolls plain pools mid-cast, and the seam refuses any other
+  // cast (MAG-50, loosening issue #109).
   const viewerUserId = effectiveMember?.userId ?? user._id
   const myPendingCast = live?.find((c) => c.casterUserId === viewerUserId) ?? null
 
@@ -518,9 +518,9 @@ function SessionPage() {
             // The console: the posture alone now (MAG-52) — the depletables
             // left the masthead for the sheet's header and each video tile.
             // Arming a cast puts the felt in its declaring posture (issue #107)
-            // — same instrument, same slot. A live cast stands above the slot
-            // now (MAG-53), so every seat keeps a tray during one; the seam
-            // still refuses the caster's own rolls until MAG-50 loosens it.
+            // — same instrument, same slot. The slot stands above a live cast
+            // (owner, 2026-10-25), so every seat keeps a tray during one, and
+            // plain pool rolls are free mid-cast (MAG-50).
             <>
               {/* Each posture keyed so a change remounts through the assembly
                   beat (.mv-assemble): the zone doesn't swap, it re-marshals
