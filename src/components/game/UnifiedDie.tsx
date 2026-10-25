@@ -13,6 +13,7 @@ import {
   DieSize,
   FaceRing,
   FaceTone,
+  GhostInk,
   type PoolKind,
 } from "./die-look"
 import { ArcanaGlyph } from "./ArcanaGlyph"
@@ -48,7 +49,7 @@ interface PoolModeProps {
   size?: DieSize
   ghost?: boolean
   /** The ghost's cause ink, when it isn't the die's own (MAG-49). */
-  ghostInk?: string | undefined
+  ghostInk?: GhostInk | undefined
   /** The `layout` reflow glide — on for composing felts, off where the
    * surrounding frame snaps (the live Cast card, pass 3 note 8). */
   glide?: boolean
@@ -76,7 +77,7 @@ const FaceModeProps = Schema.Struct({
   /** A declared die that never rolled — eaten before the throw. */
   ghost: Schema.optional(Schema.Boolean),
   /** The ghost's cause ink, when it isn't the ring's (MAG-49). */
-  ghostInk: Schema.optional(Schema.String),
+  ghostInk: Schema.optional(GhostInk),
   /** A ghost's group is under the pointer (MAG-49). */
   lit: Schema.optional(Schema.Boolean),
   title: Schema.optional(Schema.String),
@@ -183,7 +184,7 @@ function FaceDie({
       <span
         data-face
         aria-hidden
-        title={title ?? "Lost"}
+        title={title}
         className={shape}
         style={{ ...look, ...DIAMOND_STANCE }}
       />

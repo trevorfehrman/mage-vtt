@@ -15,6 +15,7 @@ import {
   healDamage,
   healResistantBashing,
   isIncapacitated,
+  containOnTrack,
 } from "../health"
 
 // Track creation is the module's one effectful door (it can fail on a bad
@@ -302,5 +303,22 @@ describe("emptyOrdinals: each box's place among the empties (MAG-48)", () => {
 
   it("is all null for a full track", () => {
     expect(emptyOrdinals([healthBox("lethal"), healthBox("aggravated")])).toEqual([null, null])
+  })
+})
+
+describe("containOnTrack (MAG-49: the containment bet laid on the track)", () => {
+  it("lays one Resistant bashing per contained success, leftmost empties first", () => {
+    const after = containOnTrack(freshTrack(4), 2)
+    expect(severities(after)).toEqual(["bashing", "bashing", "empty", "empty"])
+    expect(after.map((b) => b.resistant)).toEqual([true, true, false, false])
+  })
+
+  it("containing nothing leaves the track as it stands — no phantom box", () => {
+    const track = freshTrack(4)
+    expect(containOnTrack(track, 0)).toEqual(track)
+  })
+
+  it("prices the wound penalty the bet brings", () => {
+    expect(woundPenalty(containOnTrack(freshTrack(4), 3))).toBe(-2)
   })
 })

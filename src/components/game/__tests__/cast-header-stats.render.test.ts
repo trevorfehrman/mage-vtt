@@ -41,4 +41,23 @@ describe("the Cast header's stats", () => {
     )
     expect(dashed).toHaveLength(2)
   })
+
+  it("prices the wound penalty on the bet: -1, -2, -3 as the boxes are taken (MAG-49)", () => {
+    const penaltyWith = (ghosts: number) => {
+      cleanup()
+      render(
+        createElement(HealthLine, {
+          track: makeAldousSheet({
+            healthTrack: ["bashing", "bashing", "bashing", "bashing", "empty", "empty", "empty"],
+          }).healthTrack,
+          ghosts,
+        }),
+      )
+      return screen.queryByTitle("Wound penalty")?.textContent ?? null
+    }
+    expect(penaltyWith(0)).toBeNull()
+    expect(penaltyWith(1)).toBe("-1")
+    expect(penaltyWith(2)).toBe("-2")
+    expect(penaltyWith(3)).toBe("-3")
+  })
 })

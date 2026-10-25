@@ -833,6 +833,7 @@ pre code {
 .mv-felt:focus-visible,
 .mv-trait:focus-visible,
 .mv-arcana:focus-visible,
+.mv-track-box:focus-visible,
 [data-slot="button"]:focus-visible,
 [data-slot="select-trigger"]:focus-visible,
 [data-slot="dialog-close"]:focus-visible,
