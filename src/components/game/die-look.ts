@@ -163,14 +163,17 @@ export const PoolInput = Schema.Struct({
   /** The die's group is under the pointer (the Cast card's group hover). A
    * ghost never lights — what is not (yet) real has nothing to come forward. */
   lit: Schema.Boolean,
+  /** The ghost's ink when it isn't the die's own: the CAUSE of its absence
+   * (MAG-49, owner 2026-10-25: "the color of the reason they aren't there"). */
+  ghostInk: Schema.optional(Schema.String),
   /** For `kind: "arcanum"`: which Arcanum's realm metal the die wears. */
   arcanum: Schema.optional(Schema.String),
 })
 export type PoolInput = typeof PoolInput.Type
 
-export const poolLook = ({ kind, ghost, lit, arcanum }: PoolInput): DieLook => {
+export const poolLook = ({ kind, ghost, lit, arcanum, ghostInk }: PoolInput): DieLook => {
   const ink = kind === "arcanum" && arcanum !== undefined ? realmInk(arcanum) : POOL_INK[kind]
-  if (ghost) return ghostLook(ink.border)
+  if (ghost) return ghostLook(ghostInk ?? ink.border)
   const solid: DieLook = { border: `1px solid ${ink.border}`, background: ink.background }
   return Match.value(kind).pipe(
     // A hole keeps its scorch when lit — the ring and bloom join the burn outside it.
@@ -228,6 +231,8 @@ export const FaceInput = Schema.Struct({
   tone: Schema.optional(FaceTone),
   ring: Schema.optional(FaceRing),
   ghost: Schema.Boolean,
+  /** As the pool die's: the ghost wears its cause's ink (MAG-49). */
+  ghostInk: Schema.optional(Schema.String),
 })
 export type FaceInput = typeof FaceInput.Type
 
@@ -258,9 +263,9 @@ export const ringInk = (tone: FaceTone | undefined): string => faceInks(tone).ri
  * burns --bad, successes fill, misses keep a faint outline so the row reads
  * as every die thrown, and explosive faces ring outside the box.
  */
-export const faceLook = ({ v, again, chance, tone, ring, ghost }: FaceInput): DieLook => {
+export const faceLook = ({ v, again, chance, tone, ring, ghost, ghostInk }: FaceInput): DieLook => {
   const inks = faceInks(tone)
-  if (ghost) return ghostLook(inks.ring)
+  if (ghost) return ghostLook(ghostInk ?? inks.ring)
   const body = Match.value(v).pipe(
     Match.when(
       (x: number) => isDieDramaticFailure(x, chance),

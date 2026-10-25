@@ -5,6 +5,7 @@ import { Explosion } from "#/domain/dice"
 import { burstEntrance, burstPlan, freshLeft, platePad } from "./burst-look"
 import { DieSize, FaceTone, ringInk } from "./die-look"
 import { UnifiedDie } from "./UnifiedDie"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
 
 /**
  * A rolled row drawn in the burst order (MAG-18): every explosion stands
@@ -29,11 +30,14 @@ const BurstFacesProps = Schema.Struct({
   reduced: Schema.NullOr(Schema.Boolean),
   /** Successes the containment bet absorbs: ghosted from the row's end. */
   contained: Schema.optional(Schema.Number),
-  ghostTitle: Schema.optional(Schema.String),
+  /** The contained ghosts' tooltip and cause ink (MAG-49). */
+  ghostSays: Schema.optional(Schema.String),
+  ghostInk: Schema.optional(Schema.String),
   /** Declared dice the containment bet ate: empty ghosts trailing the row. */
   eaten: Schema.optional(Schema.Number),
   /** What ate them, when it wasn't the containment bet (the Paradox row's Mana). */
-  eatenTitle: Schema.optional(Schema.String),
+  eatenSays: Schema.optional(Schema.String),
+  eatenInk: Schema.optional(Schema.String),
   /** The row's gap in px — the felt's spacing, which the plate keeps and a child springs across. */
   gap: Schema.optional(Schema.Number),
   /** The row's margin and padding — the caller's felt sets them. */
@@ -73,9 +77,11 @@ export function BurstFaces({
   size = "sm",
   reduced,
   contained = 0,
-  ghostTitle,
+  ghostSays,
+  ghostInk,
   eaten = 0,
-  eatenTitle,
+  eatenSays,
+  eatenInk,
   gap = 12,
   className,
   plated = true,
@@ -87,6 +93,7 @@ export function BurstFaces({
   const live = (burning ?? fresh) && reduced !== true
   const pad = platePad(size)
   return (
+    <TooltipProvider>
     <div className={`flex flex-wrap items-center content-start ${className ?? ""}`.trimEnd()} style={{ gap }}>
       {plan.map((cluster) => {
         const chain = cluster.length > 1
@@ -103,7 +110,11 @@ export function BurstFaces({
             {onPlate && <span aria-hidden data-fog className={`mv-plate-fog${live ? "" : " mv-plate-fog-still"}`} />}
             {cluster.map((die) => {
               const entrance = burstEntrance(die.generation, size, gap, reduced)
-              return (
+              const eatenDie = die.kind === "eaten"
+              // A ghost says why it isn't there, in a real tooltip (MAG-49).
+              const says = !die.ghost ? undefined : eatenDie ? eatenSays : ghostSays
+              const ink = !die.ghost ? undefined : eatenDie ? eatenInk : ghostInk
+              const face = (
                 <motion.span
                   key={die.index}
                   data-generation={die.generation}
@@ -121,15 +132,24 @@ export function BurstFaces({
                     ghost={die.ghost}
                     {...(tone !== undefined ? { tone } : {})}
                     {...(die.ring !== undefined ? { ring: die.ring } : {})}
-                    {...(die.ghost && die.kind !== "eaten" && ghostTitle !== undefined ? { title: ghostTitle } : {})}
-                    {...(die.kind === "eaten" && eatenTitle !== undefined ? { title: eatenTitle } : {})}
+                    {...(ink !== undefined ? { ghostInk: ink } : {})}
+                    {...(says !== undefined ? { title: "" } : {})}
                   />
                 </motion.span>
+              )
+              return says === undefined ? (
+                face
+              ) : (
+                <Tooltip key={die.index}>
+                  <TooltipTrigger asChild>{face}</TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={4}>{says}</TooltipContent>
+                </Tooltip>
               )
             })}
           </span>
         )
       })}
     </div>
+    </TooltipProvider>
   )
 }

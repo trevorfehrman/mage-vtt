@@ -73,7 +73,7 @@ describe("UnifiedDie", () => {
       createElement(UnifiedDie, { mode: "face", v: 0, again: 10, ghost: true }),
     ).container.firstElementChild as HTMLElement
     expect(ghost.textContent).toBe("")
-    expect(ghost.title).toContain("never rolled")
+    expect(ghost.title).toBe("Lost")
     expect(ghost.style.transform).toBe("rotate(45deg)")
   })
 })
