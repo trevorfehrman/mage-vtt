@@ -1,6 +1,7 @@
 import { Effect, Option, Schema } from "effect"
 import { tableName } from "../membership"
 import {
+  NotYourCharacter,
   requireMember,
   requireRepairAuthority,
   requireSessionCharacter,
@@ -32,6 +33,7 @@ import {
   ParadoxPoolModifier,
   resolveParadox,
 } from "../paradox"
+import { CurrentActor } from "../ports/current-actor"
 import { GameStore } from "../ports/game-store"
 import { DocumentNotFound } from "../ports/errors"
 import { Mana, Willpower } from "../quantities"
@@ -791,6 +793,23 @@ export const lockPrice = Effect.fn("Flows.vulgarCast.lockPrice")(function* (
 })
 
 /**
+ * A live bet is the caster's alone (MAG-34): the Storyteller's chair, which
+ * may commit or cast for a player under an Override stamp, is no door to the
+ * caster's working thoughts. A Dev passes — solo playtesting plays the
+ * caster's seat (ADR-0013) — and is stamped like any Dev bypass.
+ */
+const requireBettor = Effect.fn("Flows.vulgarCast.requireBettor")(function* (
+  sessionId: SessionId,
+  cast: Cast,
+) {
+  const actor = yield* CurrentActor
+  if (actor.userId !== cast.casterUserId && !actor.isDev) {
+    return yield* new NotYourCharacter({ characterId: cast.characterId, userId: actor.userId })
+  }
+  return yield* requireSessionCharacter(sessionId, cast.characterId)
+})
+
+/**
  * The one mitigation rule both doors enforce: a whole number of Mana, no
  * more than the fixed pool holds. Returns the pool for the caller's checks.
  */
@@ -822,7 +841,7 @@ export type SetDraftMitigationArgs = typeof SetDraftMitigationArgs.Type
 /**
  * The commit beat's drafting door (MAG-34): each mitigation-row click writes
  * broadcast working state on the Cast document — cheap, seam-checked (the
- * caster's own character, the fixed Tides, a row the pool holds and the
+ * caster alone, never the Storyteller's chair, the fixed Tides, a row the pool holds and the
  * purse can pay after the spell's cost), no spend until the commit. Every
  * seat watches the table, the ghosted Paradox dice and the Mana move; a
  * reconnecting caster drops back into their pick. No Activity entry.
@@ -834,7 +853,7 @@ export const setDraftMitigation = Effect.fn("Flows.vulgarCast.setDraftMitigation
     const store = yield* GameStore
 
     const cast = yield* requireCast(sessionId, castId)
-    const sheet = yield* requireSessionCharacter(sessionId, cast.characterId)
+    const sheet = yield* requireBettor(sessionId, cast)
     yield* requirePricePhase(cast, "fixed")
     const pool = yield* requireMitigable(cast, args.draftMitigation)
     const affordable = mitigationCap(pool.totalDice, sheet.manaCurrent, cast.spellManaCost)
@@ -1000,8 +1019,8 @@ export type SetDraftContainmentArgs = typeof SetDraftContainmentArgs.Type
 /**
  * The cockpit's drafting door (MAG-34, reviving ADR-0022's broadcast draft
  * that #113 withdrew): box clicks write broadcast working state on the Cast
- * document — cheap, seam-checked (the caster's own character, the rolled
- * cockpit, boxes in range), no wound until the release finalizes. Every
+ * document — cheap, seam-checked (the caster alone, the rolled cockpit,
+ * boxes in range), no wound until the release finalizes. Every
  * seat watches the boxes, the Paradox dice and the cast dice move; a
  * reconnecting caster drops back into their half-built sacrifice.
  * Deliberately public, un-clicks included — no poker face. No Activity entry.
@@ -1013,7 +1032,7 @@ export const setDraftContainment = Effect.fn("Flows.vulgarCast.setDraftContainme
     const store = yield* GameStore
 
     const cast = yield* requireCast(sessionId, castId)
-    const sheet = yield* requireSessionCharacter(sessionId, cast.characterId)
+    const sheet = yield* requireBettor(sessionId, cast)
     yield* requireParadoxPhase(cast, "rolled")
     yield* requireContainable(cast, sheet, args.draftContainedSuccesses)
 

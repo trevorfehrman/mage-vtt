@@ -931,6 +931,26 @@ describe("Flows.vulgarCast — the caster's live bets (MAG-34)", () => {
       expect(store.casts[0]!.draftContainedSuccesses).toBeUndefined()
     }),
   )
+
+  it.effect("the bets are the caster's alone: the Storyteller's chair is no door to them, a Dev's playtest is", () =>
+    Effect.gen(function* () {
+      const pricing = seed({ casts: [fixed()] })
+      const stMitigation = yield* setDraftMitigation({ sessionId: SESSION, castId, draftMitigation: 1 }).pipe(
+        as(ST_USER), Effect.provide(pricing.layer), Effect.exit)
+      expect(failureTag(stMitigation)).toBe("NotYourCharacter")
+
+      const cockpit = seed({ casts: [rolled()] })
+      const stContainment = yield* setDraftContainment({ sessionId: SESSION, castId, draftContainedSuccesses: 1 }).pipe(
+        as(ST_USER), Effect.provide(cockpit.layer), Effect.exit)
+      expect(failureTag(stContainment)).toBe("NotYourCharacter")
+      expect(cockpit.casts[0]!.draftContainedSuccesses).toBeUndefined()
+
+      // A Dev playing the caster's seat (solo playtesting) bets for them.
+      yield* setDraftContainment({ sessionId: SESSION, castId, draftContainedSuccesses: 1 }).pipe(
+        as(OTHER_PLAYER, true), Effect.provide(cockpit.layer))
+      expect(cockpit.casts[0]!.draftContainedSuccesses).toBe(1)
+    }),
+  )
 })
 
 describe("Flows.vulgarCast — the wings and free exits", () => {

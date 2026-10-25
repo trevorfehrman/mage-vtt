@@ -9,6 +9,7 @@ import {
   containmentCap,
   containmentOutlook,
   mitigationCap,
+  isPriceFixed,
   isRoteCast,
   toGnosisRank,
   waitingOn,
@@ -206,24 +207,34 @@ export function CastCard({
 
   // A live bet's write never holds the card (MAG-34): #113 withdrew the first
   // broadcast draft because each click waited on the server. The click
-  // answers locally; the draft follows, and a refusal still surfaces.
-  const broadcast = (write: () => Promise<unknown>) => {
-    write().catch((err: unknown) => setError(seamErrorMessage(err)))
+  // answers locally; the draft follows. A refusal surfaces and steps the
+  // pick back, so the caster's seat never shows a bet the table can't see.
+  const broadcast = (write: () => Promise<unknown>, stepBack: () => void) => {
+    write().catch((err: unknown) => {
+      stepBack()
+      setError(seamErrorMessage(err))
+    })
   }
   const pickMitigation = (value: number) => {
+    const before = mitigation
     setMitigation(value)
-    broadcast(() =>
-      drafts !== undefined
-        ? drafts.mitigation(value)
-        : setDraftMitigation({ ...step, draftMitigation: value }),
+    broadcast(
+      () =>
+        drafts !== undefined
+          ? drafts.mitigation(value)
+          : setDraftMitigation({ ...step, draftMitigation: value }),
+      () => setMitigation(before),
     )
   }
   const pickContained = (value: number) => {
+    const before = contained
     setContained(value)
-    broadcast(() =>
-      drafts !== undefined
-        ? drafts.containment(value)
-        : setDraftContainment({ ...step, draftContainedSuccesses: value }),
+    broadcast(
+      () =>
+        drafts !== undefined
+          ? drafts.containment(value)
+          : setDraftContainment({ ...step, draftContainedSuccesses: value }),
+      () => setContained(before),
     )
   }
   // What every seat renders: the caster's own clicks, everyone else the
@@ -313,7 +324,7 @@ export function CastCard({
     ? mitigationCap(poolBeforeMitigation, cockpitSheet.manaCurrent, cast.spellManaCost)
     : 0
   // The commit decision is live: the Tides are fixed and nothing is spent.
-  const deciding = status === "price" && cast.tides !== undefined
+  const deciding = status === "price" && isPriceFixed(cast)
   // Dice the selected mitigation row buys off — live while the commit
   // decision is, on every seat (MAG-34); they ghost from the Paradox row's
   // end (the cockpit's own doctrine for eaten cast dice), which is where the

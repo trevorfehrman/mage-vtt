@@ -389,7 +389,7 @@ function DressingRoom() {
   // drafts door writes them, and every seat's card reads them back — flip
   // the seat to watch the pick or the sacrifice from the other chairs.
   const [drafted, setDrafted] = useState<
-    Partial<Record<RigRung, { draftMitigation?: number; draftContainedSuccesses?: number }>>
+    Partial<Record<RigRung, Pick<CastEntry, "draftMitigation" | "draftContainedSuccesses">>>
   >({})
   const cast: CastEntry = withheldFrom(reader)({
     ...CASTS[rung],
