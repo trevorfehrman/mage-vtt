@@ -932,7 +932,7 @@ export function CastCard({
                       <UnifiedDie mode="pool" kind="paradox" ghost reduced={reduced} glide={false} />
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={4}>No pool: chance die</TooltipContent>
+                  <TooltipContent side="top" sideOffset={4}>No pool: chance</TooltipContent>
                 </Tooltip>
               )}
             </AnimatePresence>
@@ -973,7 +973,7 @@ export function CastCard({
             </TooltipProvider>
             {cast.declaredPool === 0 && (
               <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
-                no pool — a chance die waits
+                chance
               </span>
             )}
           </div>
@@ -1301,7 +1301,7 @@ const pct = (p: number): string => {
 const DRAMATIC_FAILURE_WARN_FLOOR = 0.001
 
 const diceLabel = (dice: number): string =>
-  dice <= 0 ? "chance die" : dice === 1 ? "1 die" : `${dice} dice`
+  dice <= 0 ? "chance" : dice === 1 ? "1 die" : `${dice} dice`
 
 
 /** The one grid every odds row stands in: Mana · dice · Paradox · success. */
@@ -1380,18 +1380,74 @@ function SeverityBar({ severities }: typeof SeverityBarProps.Type) {
   )
 }
 
-/** The row's numbers, for its title: each severity with a real chance. */
-const severitySays = (severities: ReadonlyArray<number>): string => {
-  const shown = SEVERITY_STEPS.flatMap((step, i) => {
-    const p = severities[i] ?? 0
-    return p < 0.0005 ? [] : [`${step.name} ${pct(p)}`]
-  })
-  return shown.length === 0 ? "No Paradox" : shown.join(" · ")
+/**
+ * A row's breakdown (MAG-54, owner 2026-10-25: the bar only if its tooltip
+ * shows the breakdown attractively): reality's roll severity by severity —
+ * none first on the neutral track, then Havoc to Manifestation, each its bar
+ * share in its own red — and the spell's odds and strength beneath. The
+ * whole row is the trigger, so the eye can sweep down the table and the
+ * breakdown follows.
+ */
+const OddsBreakdownProps = Schema.Struct({
+  row: OddsRowProps,
+  /** Why a locked row can't be picked, in its own line. */
+  note: Schema.optional(Schema.String),
+})
+
+function OddsBreakdown({ row, note }: typeof OddsBreakdownProps.Type) {
+  const none = Math.max(0, 1 - row.severities.reduce((a, b) => a + b, 0))
+  const lines = [
+    { name: "None", p: none, ink: "var(--dim)", fill: "color-mix(in srgb, var(--ink) 22%, transparent)" },
+    ...SEVERITY_STEPS.map((step, i) => ({
+      name: step.name,
+      p: row.severities[i] ?? 0,
+      ink: `color-mix(in srgb, var(--paradox) ${Math.max(step.depth, 70)}%, var(--ink))`,
+      fill: `color-mix(in srgb, var(--paradox) ${step.depth}%, transparent)`,
+    })),
+  ]
+  return (
+    <div className="mv-data grid gap-1.5 text-[11px]">
+      <div className="flex items-center gap-1.5" style={{ color: "var(--paradox)" }}>
+        <ParadoxGlyph size={12} />
+        <span>{diceLabel(row.dice)}</span>
+      </div>
+      <div className="grid grid-cols-[auto_6rem_auto] items-center gap-x-2 gap-y-1">
+        {lines.map((line) => (
+          <div key={line.name} className="contents" style={{ opacity: line.p < 0.0005 ? 0.4 : 1 }}>
+            <span style={{ color: line.ink }}>{line.name}</span>
+            <span className="h-[6px] w-full rounded-[2px]" style={{ background: "color-mix(in srgb, var(--ink) 6%, transparent)" }}>
+              <span
+                className="block h-full rounded-[2px]"
+                style={{ width: `${line.p * 100}%`, background: line.fill }}
+              />
+            </span>
+            <span className="text-right" style={{ color: "var(--ink)" }}>{pct(line.p)}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-baseline gap-2 border-t pt-1.5" style={{ borderColor: "var(--line)", color: "var(--dim)" }}>
+        <span>spell</span>
+        <b style={{ color: "var(--rail-success)" }}>{pct(row.success)}</b>
+        <span>lands</span>
+        <span style={{ color: "var(--ink)" }}>≈{row.expected.toFixed(1)}</span>
+        <span>successes</span>
+      </div>
+      {note !== undefined && <div style={{ color: "var(--dim)" }}>{note}</div>}
+    </div>
+  )
 }
 
-/** A row's title: the bar's numbers, then what ≈ means. */
-const rowSays = (row: OddsRowProps): string =>
-  `${severitySays(row.severities)} · ≈${row.expected.toFixed(1)} successes`
+/** One odds row wrapped in its breakdown, beside the card where the stage has room. */
+function withBreakdown(row: OddsRowProps, trigger: ReactNode, note?: string) {
+  return (
+    <Tooltip key={row.spend}>
+      <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+      <TooltipContent side="left" sideOffset={10} className="max-w-none px-3 py-2.5">
+        <OddsBreakdown row={row} {...(note !== undefined ? { note } : {})} />
+      </TooltipContent>
+    </Tooltip>
+  )
+}
 
 const OddsCellsProps = Schema.Struct({ ...OddsRowProps.fields, here: Schema.Boolean })
 
@@ -1411,13 +1467,10 @@ function OddsCells({ spend, dice, severities, success, expected, dramaticFailure
         <ParadoxGlyph size={12} />
         <SeverityBar severities={severities} />
       </span>
-      <span className="inline-flex flex-wrap items-center gap-x-1.5">
-        <span>
-          success{" "}
-          <b className="text-[12px]" style={{ color: "var(--rail-success)" }}>
-            {pct(success)}
-          </b>
-        </span>
+      <span className="inline-flex flex-wrap items-center gap-x-2">
+        <b className="text-[12px]" style={{ color: "var(--rail-success)" }}>
+          {pct(success)}
+        </b>
         <span style={{ color: here ? "var(--ink)" : undefined }}>≈{expected.toFixed(1)}</span>
         {dramaticFailure >= DRAMATIC_FAILURE_WARN_FLOOR && (
           <span style={{ color: "var(--bad)" }}>dramatic failure {pct(dramaticFailure)}</span>
@@ -1430,9 +1483,14 @@ function OddsCells({ spend, dice, severities, success, expected, dramaticFailure
 /** The odds row alone beneath the felt — the table's grid, no table. */
 function OddsRow(props: OddsRowProps) {
   return (
-    <div className={`mv-data mt-1.5 ${ROW_GRID}`} style={{ color: "var(--dim)" }} title={rowSays(props)}>
-      <OddsCells {...props} here={false} />
-    </div>
+    <TooltipProvider disableHoverableContent>
+      {withBreakdown(
+        props,
+        <div tabIndex={0} className={`mv-data mt-1.5 ${ROW_GRID}`} style={{ color: "var(--dim)" }}>
+          <OddsCells {...props} here={false} />
+        </div>,
+      )}
+    </TooltipProvider>
   )
 }
 
@@ -1471,6 +1529,9 @@ function MitigationPreview({
   return (
     // No explainer eyebrow, no dotted frame (#114): the table is the phase's
     // whole job and its columns speak the rule — Mana in, Paradox dice out.
+    // The breakdown is read, never hovered: no grace area to hold it open
+    // while the pointer sweeps on to the next row.
+    <TooltipProvider disableHoverableContent>
     <div className="mt-2 grid gap-1 py-1">
       {/* The selected row's box is verdigris (owner, 2026-10-22; it burned
           ember before). */}
@@ -1481,9 +1542,10 @@ function MitigationPreview({
         // its title stays reachable and nothing pretends it could be clicked.
         // A read-only table draws every row as a mark, unlocked ones on a
         // clear border — the caster's live pick on the verdigris one (MAG-34).
-        return locked || onSelect === undefined ? (
+        return locked || onSelect === undefined ? withBreakdown(
+          row,
           <span
-            key={row.spend}
+            tabIndex={0}
             className={`mv-data ${ROW_GRID}`}
             style={
               locked
@@ -1493,16 +1555,15 @@ function MitigationPreview({
                     color: here ? "var(--ink)" : "var(--dim)",
                   }
             }
-            title={locked ? `${affordable} Mana free` : rowSays(row)}
           >
             <OddsCells {...row} here={here} />
-          </span>
-        ) : (
+          </span>,
+          locked ? `${affordable} Mana free` : undefined,
+        ) : withBreakdown(
+          row,
           <button
-            key={row.spend}
             onClick={() => onSelect(row.spend)}
             disabled={disabled}
-            title={rowSays(row)}
             className={`mv-data ${ROW_GRID} disabled:opacity-40`}
             style={{
               border: here ? "1px solid var(--accent)" : "1px solid transparent",
@@ -1510,10 +1571,11 @@ function MitigationPreview({
             }}
           >
             <OddsCells {...row} here={here} />
-          </button>
+          </button>,
         )
       })}
     </div>
+    </TooltipProvider>
   )
 }
 
