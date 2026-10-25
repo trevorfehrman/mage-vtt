@@ -23,7 +23,13 @@
 > one row that stacks as it crowds (a removed die leaves at once so a run
 > of skims never crushes the row). **The tall tray** keeps its two rows
 > and shows "+N" in the last place past them. The ◈ is off the empty Roll
-> (it read as Mana); the tall one says "Roll a chance die".
+> (it read as Mana); the tall one says "Roll a chance die". After the
+> review (2026-10-25): a whisper names its people in the Chronicle ("(whisper
+> to Cairn, Wick)"); a tile chosen by keyboard keeps focus on the tiles (a
+> pointer hands the caret to the line), and Escape hands focus back to the
+> switch; Send explains itself while there's nothing to send; a whisper is
+> the user's own write even from a Second Seat, so their own tile is the one
+> that can't be chosen.
 
 > **Amended** (2026-10-24, MAG-51/52): **the depletables leave the rail
 > foot.** The ResourceStrip is gone; its stats have two homes. Every

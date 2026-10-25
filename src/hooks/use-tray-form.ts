@@ -19,7 +19,7 @@ import {
 export const TRAY_FORM_KEY = "mage-vtt:tray-form"
 export const MESSAGE_FORM_KEY = "mage-vtt:message-form"
 
-const formStore = (key: string) => {
+const rememberedForm = (key: string) => {
   const listeners = new Set<() => void>()
   let fallback: TrayForm = DEFAULT_TRAY_FORM
 
@@ -58,5 +58,5 @@ const formStore = (key: string) => {
   }
 }
 
-export const useTrayForm = formStore(TRAY_FORM_KEY)
-export const useMessageForm = formStore(MESSAGE_FORM_KEY)
+export const useTrayForm = rememberedForm(TRAY_FORM_KEY)
+export const useMessageForm = rememberedForm(MESSAGE_FORM_KEY)

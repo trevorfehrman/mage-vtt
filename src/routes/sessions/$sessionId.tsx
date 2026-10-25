@@ -35,7 +35,7 @@ import { seamErrorMessage } from "#/lib/seam-errors"
 import { isOnStage, stripTides } from "#/domain/cast"
 import type { CharacterSheet as CharacterSheetData } from "#/domain/character"
 import { decodeSheetDoc } from "#/lib/sheet-doc"
-import { seatName, videoSeats } from "#/domain/video-rail"
+import { videoSeats, whisperable } from "#/domain/video-rail"
 import { useActivity } from "#/hooks/use-activity"
 import { useWorkingSlot } from "#/hooks/use-working-slot"
 import { arctusData } from "#/domain/fixtures/arctus"
@@ -252,12 +252,12 @@ function SessionPage() {
   // Building a pool from the sheet or arming a cast is the tray's business:
   // either brings the tray back if the message box was showing.
   const pooledNow = pooledDice(pool.context)
-  const trayCue = useRef({ pooled: pooledNow, casting: rawCast.state !== "idle" })
+  const rollIntent = useRef({ pooled: pooledNow, casting: rawCast.state !== "idle" })
   useEffect(() => {
     const casting = rawCast.state !== "idle"
-    const prev = trayCue.current
+    const prev = rollIntent.current
     if (pooledNow > prev.pooled || (casting && !prev.casting)) slot.setMode("dice")
-    trayCue.current = { pooled: pooledNow, casting }
+    rollIntent.current = { pooled: pooledNow, casting }
   })
 
   if (!session || !user) {
@@ -408,11 +408,11 @@ function SessionPage() {
   )
 
   // The table, seat by seat: the video tiles, and the people a whisper can
-  // reach (everyone but the viewer's own seat), named as their tiles are.
+  // reach. A whisper is always the signed-in user's own write — the server
+  // sends it as them, seated or not (ADR-0013: the seat replaces what you
+  // read, not who you are) — so "you" here is the user, not the seat.
   const seats = videoSeats(session.members, rosterSheets)
-  const whisperable = seats
-    .filter((s) => s.userId !== viewerUserId)
-    .map((s) => ({ id: s.userId, name: seatName(s) }))
+  const people = whisperable(seats, user._id)
 
   return (
     <SessionLayout
@@ -430,8 +430,8 @@ function SessionPage() {
                 }
               : null
           }
-          // click a face to whisper them (MAG-53); chrome follows the seat
-          whisper={{ selected: slot.targets, self: viewerUserId, onToggle: slot.toggleTarget }}
+          // click a face to whisper them (MAG-53); the sender is the user
+          whisper={{ selected: slot.targets, self: user._id, onToggle: slot.toggleTarget }}
         />
       }
       presence={
@@ -485,6 +485,7 @@ function SessionPage() {
               setMode={slot.setMode}
               unread={slot.unread}
               pooled={pooledNow}
+              diceRef={slot.switchRef}
             />
           }
         />
@@ -541,7 +542,7 @@ function SessionPage() {
           }
           message={
             <MessageBox
-              people={whisperable}
+              people={people}
               targets={slot.targets}
               onToggle={slot.toggleTarget}
               onClear={slot.clearTargets}
@@ -552,10 +553,7 @@ function SessionPage() {
                   ...(targets.length > 0 && { whisperTargetIds: [...targets] }),
                 })
               }
-              onEscape={() => {
-                slot.setMode("dice")
-                slot.inputRef.current?.blur()
-              }}
+              onEscape={slot.escape}
               inputRef={slot.inputRef}
             />
           }

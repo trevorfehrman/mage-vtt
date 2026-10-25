@@ -10,6 +10,7 @@ import {
   mergeFeed,
   othersLiveCasts,
   visibleEntries,
+  whisperTargets,
   type CastEntry,
   type MessageEntry,
   type Reader,
@@ -214,8 +215,15 @@ describe("visibleEntries: the Reader × visibility matrix", () => {
       sees: [publicMessage, systemMessage, publicRoll, hiddenRoll],
     },
     {
-      who: "the Storyteller sees everything",
+      // Owner, 2026-10-25: "the ST should absolutely not be able to see every
+      // whisper at the table, only whispers to them" (MAG-53).
+      who: "the Storyteller sees everything but a whisper between others",
       reader: { userId: "user_st", role: "storyteller" },
+      sees: [publicMessage, systemMessage, publicRoll, hiddenRoll],
+    },
+    {
+      who: "the Storyteller sees a whisper sent to them",
+      reader: { userId: "user_b", role: "storyteller" },
       sees: feed,
     },
   ]
@@ -226,7 +234,7 @@ describe("visibleEntries: the Reader × visibility matrix", () => {
     })
   }
 
-  it("a group Whisper (MAG-53) reaches its sender, each of its targets and the Storyteller — no one else", () => {
+  it("a group Whisper (MAG-53) reaches its sender and each of its targets — no one else, the Storyteller included", () => {
     const group = message({
       _id: "m_group",
       visibilityType: "whisper",
@@ -237,7 +245,7 @@ describe("visibleEntries: the Reader × visibility matrix", () => {
     expect(sees({ userId: "user_a", role: "player" })).toBe(true)
     expect(sees({ userId: "user_b", role: "player" })).toBe(true)
     expect(sees({ userId: "user_c", role: "player" })).toBe(true)
-    expect(sees({ userId: "user_st", role: "storyteller" })).toBe(true)
+    expect(sees({ userId: "user_st", role: "storyteller" })).toBe(false)
     expect(sees({ userId: "user_z", role: "player" })).toBe(false)
   })
 
@@ -407,5 +415,32 @@ describe("mergeFeed", () => {
     const input = [a, b]
     mergeFeed(input)
     expect(input).toEqual([a, b])
+  })
+})
+
+// --- Who a whisper reaches (MAG-53) ---
+
+describe("whisperTargets: the members a whisper reaches", () => {
+  const table = [
+    { userId: "user_a", displayName: "Ana" },
+    { userId: "user_b", displayName: "Bo" },
+    { userId: "user_c", displayName: "Cy" },
+  ]
+
+  it("keeps each named member once, in the order named", () => {
+    expect(whisperTargets(["user_c", "user_b", "user_c"], "user_a", table)).toEqual([
+      { userId: "user_c", displayName: "Cy" },
+      { userId: "user_b", displayName: "Bo" },
+    ])
+  })
+
+  it("drops the sender and anyone who isn't at the table", () => {
+    expect(whisperTargets(["user_a", "user_z", "user_b"], "user_a", table)).toEqual([
+      { userId: "user_b", displayName: "Bo" },
+    ])
+  })
+
+  it("is empty when no one named can be reached", () => {
+    expect(whisperTargets(["user_a", "user_z"], "user_a", table)).toEqual([])
   })
 })

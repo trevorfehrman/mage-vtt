@@ -1,7 +1,6 @@
-import type { ReactNode } from "react"
+import type { ReactNode, RefObject } from "react"
 import { Dices, Feather } from "lucide-react"
-import type { SlotMode } from "#/hooks/use-working-slot"
-import type { Unread } from "#/domain/working-slot"
+import type { SlotMode, Unread } from "#/domain/working-slot"
 
 /**
  * The working slot (MAG-53, owner's pick from a three-way audition,
@@ -28,16 +27,7 @@ function UnreadMark({ unread }: { unread: Unread }) {
   if (unread.chat + unread.whisper === 0) return null
   const whisper = unread.whisper > 0
   return (
-    <span
-      className="mv-data rounded-[3px] px-1 whitespace-nowrap"
-      style={{
-        fontSize: 9,
-        lineHeight: "14px",
-        ...(whisper
-          ? { background: "var(--accent)", color: "#0a0a0c" }
-          : { border: "1px solid var(--accent)", color: "var(--accent)" }),
-      }}
-    >
+    <span className={`mv-unread ${whisper ? "mv-unread-whisper" : ""}`}>
       {whisper ? `@${unread.whisper}${unread.chat > 0 ? ` +${unread.chat}` : ""}` : unread.chat}
     </span>
   )
@@ -50,16 +40,20 @@ export function ChronicleSwitch({
   setMode,
   unread,
   pooled,
+  diceRef,
 }: {
   mode: SlotMode
   setMode: (m: SlotMode) => void
   unread: Unread
   /** dice composed on the felt */
   pooled: number
+  /** where Escape in the message line hands focus back */
+  diceRef?: RefObject<HTMLButtonElement | null>
 }) {
   return (
     <div role="group" aria-label="Rail tool" className="ml-auto flex items-center gap-1">
       <button
+        ref={diceRef}
         type="button"
         aria-pressed={mode === "dice"}
         onClick={() => setMode("dice")}

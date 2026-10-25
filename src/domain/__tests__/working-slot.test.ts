@@ -44,11 +44,6 @@ describe("unreadFor", () => {
     expect(unreadFor(entries, "user_a", 100)).toEqual({ chat: 0, whisper: 2 })
   })
 
-  it("counts a whisper the viewer only overhears (the Storyteller's sight) as chat", () => {
-    const overheard = line({ timestamp: 110, visibilityType: "whisper", whisperTargetIds: ["user_c"] })
-    expect(unreadFor([overheard], "user_st", 100)).toEqual({ chat: 1, whisper: 0 })
-  })
-
   it("ignores system lines and everything that isn't a message", () => {
     expect(unreadFor([line({ timestamp: 110, visibilityType: "system" }), roll], "user_a", 100)).toEqual(NOTHING_UNREAD)
   })

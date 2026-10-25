@@ -41,7 +41,9 @@ interface WhisperDoor {
   readonly selected: ReadonlyArray<string>
   /** the viewer's own user id: their own tile can't be whispered */
   readonly self: string
-  readonly onToggle: (userId: string) => void
+  /** `caret`: a pointer chose them, so the message line takes the caret; a
+   * keyboard keeps focus on the tiles to go on choosing */
+  readonly onToggle: (userId: string, caret: boolean) => void
 }
 
 export function VideoRail({
@@ -62,7 +64,7 @@ export function VideoRail({
               : {
                   on: whisper.selected.includes(seat.userId),
                   name: seatName(seat),
-                  toggle: () => whisper.onToggle(seat.userId),
+                  toggle: (caret: boolean) => whisper.onToggle(seat.userId, caret),
                 }
           }
         >
@@ -93,7 +95,7 @@ function Frame({
   door,
 }: {
   children: React.ReactNode
-  door: { on: boolean; name: string; toggle: () => void } | null
+  door: { on: boolean; name: string; toggle: (caret: boolean) => void } | null
 }) {
   const Tag = door === null ? "div" : "button"
   return (
@@ -102,7 +104,8 @@ function Frame({
         ? {}
         : {
             type: "button" as const,
-            onClick: door.toggle,
+            // a keyboard press reports no clicks (detail 0)
+            onClick: (e: React.MouseEvent) => door.toggle(e.detail !== 0),
             "aria-pressed": door.on,
             title: door.on ? `Stop whispering to ${door.name}` : `Whisper to ${door.name}`,
           })}
