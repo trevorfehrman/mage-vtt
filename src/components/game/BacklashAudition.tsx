@@ -8,24 +8,23 @@ import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { UnifiedDie } from "./UnifiedDie"
 
 /**
- * MAG-49's audition: the backlash step, three ways beside today's track, on
- * the dressing room's `?backlash=` knob. The caster weighs their body against
- * the world: how much health they have, how many Paradox successes are loose,
- * and what to click to take one on. Owner, 2026-10-25: the boxes sit "very
- * far away" from the red dice, "if they click on a valid square it works but
- * if they don't just nothing happens", and the consequences want grounding
- * with the caster. Containment can fill the track to unconsciousness, never
- * past it (PRD #39 story 25; the owner kept that).
+ * MAG-49's audition: the backlash step as Paradox against health alone, on
+ * the dressing room's `?backlash=` knob. Owner, 2026-10-25: "if all we're
+ * trying to focus on here is paradox vs health then why don't we try some
+ * auditions just showing that, we don't need the felt here". So in every
+ * variant the felt and the odds row stand down at this step; what's left is
+ * the red successes, the caster's health, what to click, what the world
+ * suffers, and one line for the spell — each loose success costs it a die
+ * (p. 129), and so does any wound penalty the containment brings. Containment
+ * can fill the track to unconsciousness, never past it (p. 126).
  *
- * - **beside** — the track moves under the red dice, the boxes a click can
- *   reach marked as targets, the rest stood down.
- * - **pairs** — each loose Paradox success is its own button, its face
- *   paired with the box it would fill; the track watches beside them.
- * - **ledger** — one row per choice (take 0, 1, 2…), in the mitigation
- *   table's register: health after, wounds, cast dice, success, what the
- *   world suffers.
+ * - **track** — the red successes, the track right under them, the boxes a
+ *   click can take marked as targets and the rest stood down.
+ * - **pairs** — each red success a button joined to the box it would fill.
+ * - **scales** — the world on one side, the body on the other: a red die
+ *   clicked crosses into a box; a filled box clicked sends it back.
  */
-export const BacklashVariant = Schema.Literals(["track", "beside", "pairs", "ledger"])
+export const BacklashVariant = Schema.Literals(["now", "track", "pairs", "scales"])
 export type BacklashVariant = typeof BacklashVariant.Type
 
 /** Shared by every variant: the caster's facts, and the bet. */
@@ -33,7 +32,7 @@ export interface BacklashProps {
   readonly track: HealthTrack
   readonly declaredPool: number
   readonly paradoxSuccesses: number
-  /** the rolled success faces, for the pairs' red dice */
+  /** the rolled success faces, drawn as the red dice */
   readonly successFaces: ReadonlyArray<number>
   readonly cap: number
   readonly contained: number
@@ -41,7 +40,7 @@ export interface BacklashProps {
   readonly disabled?: boolean
 }
 
-/** What a loose severity does to the world, in a line (Mage p. 127, our words). */
+/** What a loose severity does to the world, in a line (p. 129's table; our words). */
 const SEVERITY_SAYS: Record<ParadoxSeverity, string> = {
   none: "",
   havoc: "the spell slips its leash — the Storyteller turns it",
@@ -55,7 +54,7 @@ const SEVERITY_SAYS: Record<ParadoxSeverity, string> = {
 const CONTAINED_MARK = "Borne"
 
 const pct = (p: number): string => (p <= 0 ? "0%" : p < 0.001 ? "<0.1%" : `${(p * 100).toFixed(1)}%`)
-const dice = (n: number): string => (n <= 0 ? "chance die" : n === 1 ? "1 die" : `${n} dice`)
+const dice = (n: number): string => (n <= 0 ? "a chance die" : n === 1 ? "1 die" : `${n} dice`)
 
 const outlookAt = (p: BacklashProps, contained: number) =>
   containmentOutlook({
@@ -65,10 +64,17 @@ const outlookAt = (p: BacklashProps, contained: number) =>
     contained,
   })
 
-/** The verdict line: the loose severity and what it does, or the mark. */
-function Verdict({ uncontained, taken }: { uncontained: number; taken: number }) {
-  const severity = resolveParadox(uncontained).severity
-  if (uncontained > 0) {
+/** The red successes, in rolled order; makeBy normalizes to >= 1, so none is guarded. */
+const facesOf = (p: BacklashProps): ReadonlyArray<number> =>
+  p.paradoxSuccesses > 0 ? Arr.makeBy(p.paradoxSuccesses, (i) => p.successFaces[i] ?? 10) : []
+
+const EYEBROW = { letterSpacing: "0.08em", color: "var(--dim)" } as const
+
+/** The verdict: the loose severity and what it does, or the mark. */
+function Verdict({ p }: { p: BacklashProps }) {
+  const o = outlookAt(p, p.contained)
+  const severity = resolveParadox(o.uncontained).severity
+  if (o.uncontained > 0) {
     return (
       <div className="grid justify-items-center gap-0.5 text-center">
         <span
@@ -88,52 +94,120 @@ function Verdict({ uncontained, taken }: { uncontained: number; taken: number })
       </div>
     )
   }
-  if (taken === 0) return null
+  if (p.paradoxSuccesses === 0) {
+    return (
+      <span className="mv-data text-[12px]" style={{ color: "var(--rail-success)" }}>
+        no Paradox — the way to the cast is clear
+      </span>
+    )
+  }
+  return (
+    <div className="grid justify-items-center gap-0.5 text-center">
+      <span
+        className="mv-h uppercase leading-none"
+        style={{
+          fontSize: 20,
+          letterSpacing: "0.14em",
+          color: "var(--ember)",
+          textShadow: "0 0 14px color-mix(in srgb, var(--ember) 45%, transparent)",
+        }}
+      >
+        {CONTAINED_MARK}
+      </span>
+      <span className="text-[12px] italic" style={{ color: "var(--dim)" }}>
+        {o.martyr ? "the world is spared — the caster falls unconscious" : "the world is spared — the body pays"}
+      </span>
+    </div>
+  )
+}
+
+/** The spell's side of the trade, in one line: what it will roll, and its odds. */
+function SpellLine({ p }: { p: BacklashProps }) {
+  const o = outlookAt(p, p.contained)
+  return (
+    <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
+      the spell rolls {dice(o.castPool)} ·{" "}
+      <b style={{ color: "var(--rail-success)" }}>{pct(rollOdds(o.castPool).success)}</b>
+    </span>
+  )
+}
+
+/** The caster's state after the bet: the wound penalty, or out. */
+function BodyNote({ p }: { p: BacklashProps }) {
+  const o = outlookAt(p, p.contained)
+  return (
+    <span className="mv-data whitespace-nowrap text-[11px]" style={{ color: "var(--bad)" }}>
+      {o.martyr ? "unconscious" : o.penaltyAfter < 0 ? `wounds ${o.penaltyAfter}` : ""}
+    </span>
+  )
+}
+
+/** A red success die, as the felt draws it. */
+function RedDie({ v, faded = false }: { v: number; faded?: boolean }) {
+  return (
+    <span style={{ opacity: faded ? 0.3 : 1 }}>
+      <UnifiedDie mode="face" v={v} again={10} tone="paradox" size="md" />
+    </span>
+  )
+}
+
+/** One box of the track, sized and marked by its state in the bet. */
+function Box({
+  severity,
+  taken,
+  target,
+  stood,
+  edge,
+}: {
+  severity: HealthTrack[number]["severity"]
+  taken: boolean
+  target: boolean
+  stood: boolean
+  edge: number
+}) {
   return (
     <span
-      className="mv-h uppercase leading-none"
+      className="mv-data grid place-items-center rounded-[2px] border font-bold"
       style={{
-        fontSize: 20,
-        letterSpacing: "0.14em",
-        color: "var(--ember)",
-        textShadow: "0 0 14px color-mix(in srgb, var(--ember) 45%, transparent)",
+        width: edge,
+        height: edge,
+        fontSize: Math.round(edge * 0.5),
+        borderColor: taken ? "var(--ember)" : target ? "var(--paradox)" : severity === "empty" ? "var(--line)" : "var(--accent)",
+        borderStyle: taken || target ? "dashed" : "solid",
+        background: target
+          ? "color-mix(in srgb, var(--paradox) 10%, transparent)"
+          : severity === "empty" || severity === "bashing"
+            ? "transparent"
+            : "var(--glow)",
+        color: taken ? "var(--ember)" : target ? "var(--paradox)" : "var(--accent)",
+        opacity: stood ? 0.35 : 1,
       }}
-      title="Every Paradox success taken on the caster's body as Resistant bashing"
     >
-      {CONTAINED_MARK}
+      {taken ? "╱" : target ? "+" : healthBoxGlyph(severity)}
     </span>
   )
 }
 
-/** The cost of the current bet, in one line under the boxes. */
-function CostLine({ p }: { p: BacklashProps }) {
-  const o = outlookAt(p, p.contained)
-  const odds = rollOdds(o.castPool).success
-  return (
-    <span className="mv-data text-center text-[12px]" style={{ color: "var(--dim)" }}>
-      {o.damage > 0 && (
-        <span style={{ color: "var(--ember)" }}>
-          −{o.damage} health{o.martyr ? " · unconscious" : ""}
-          {o.newPenalty < 0 ? ` · wounds ${o.penaltyAfter}` : ""}
-          {" · "}
-        </span>
-      )}
-      cast {dice(o.castPool)} · <b style={{ color: "var(--rail-success)" }}>{pct(odds)}</b>
-    </span>
-  )
-}
+const focusRing = "rounded-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
 
-// ── A · beside ──────────────────────────────────────────────────────────────
+// ── A · track ───────────────────────────────────────────────────────────────
 
-/** The track under the red dice, every box saying what it is to a click. */
-export function BacklashBeside(p: BacklashProps) {
+/** The red successes, the track right under them, targets marked. */
+export function BacklashTrack(p: BacklashProps) {
   const interactive = p.onChange !== undefined
   const ordinals = emptyOrdinals(p.track)
   const o = outlookAt(p, p.contained)
+  const faces = facesOf(p)
   return (
-    <div className="grid justify-items-center gap-2 px-3.5 pb-3">
-      {p.paradoxSuccesses > 0 && (
-        <span className="mv-data text-[11px] uppercase" style={{ letterSpacing: "0.08em", color: "var(--dim)" }}>
+    <div className="mt-2 grid justify-items-center gap-3 py-1">
+      <div className="flex flex-wrap justify-center gap-3">
+        {faces.map((v, i) => (
+          // the last ones taken fade, as the felt ghosts them from the end
+          <RedDie key={i} v={v} faded={i >= faces.length - p.contained} />
+        ))}
+      </div>
+      {faces.length > 0 && (
+        <span className="mv-data text-[11px] uppercase" style={EYEBROW}>
           {interactive ? "take them on your body" : "the caster's body"}
         </span>
       )}
@@ -144,28 +218,11 @@ export function BacklashBeside(p: BacklashProps) {
           const target = ordinal !== null && !taken && ordinal < p.cap
           const fromEnd = p.track.length - i
           const penalty = fromEnd <= 3 ? fromEnd - 4 : null
-          const lastEmpty = ordinal !== null && ordinal === ordinals.filter((x) => x !== null).length - 1
-          const mark = (
-            <span
-              className="mv-data grid place-items-center rounded-[2px] border font-bold"
-              style={{
-                width: 26,
-                height: 26,
-                fontSize: 13,
-                borderColor: taken ? "var(--ember)" : target ? "var(--paradox)" : box.severity === "empty" ? "var(--line)" : "var(--accent)",
-                borderStyle: taken || target ? "dashed" : "solid",
-                background: target ? "color-mix(in srgb, var(--paradox) 10%, transparent)" : box.severity === "empty" || box.severity === "bashing" ? "transparent" : "var(--glow)",
-                color: taken ? "var(--ember)" : target ? "var(--paradox)" : "var(--accent)",
-                opacity: ordinal !== null && !taken && !target ? 0.35 : 1,
-              }}
-            >
-              {taken ? "╱" : target ? "+" : healthBoxGlyph(box.severity)}
-            </span>
-          )
+          const mark = <Box severity={box.severity} taken={taken} target={target} stood={ordinal !== null && !taken && !target} edge={26} />
           const title = taken
-            ? "Taken — click to release it"
+            ? "Taken — click to let it loose again"
             : target
-              ? `Take one Paradox success here as Resistant bashing${lastEmpty ? " — your last box: unconscious" : ""}`
+              ? "Take one Paradox success here as Resistant bashing"
               : ordinal === null
                 ? "Already hurt"
                 : "Nothing left to take"
@@ -180,12 +237,7 @@ export function BacklashBeside(p: BacklashProps) {
                 </span>
               )}
               {interactive && (taken || target) ? (
-                <button
-                  onClick={() => p.onChange?.(taken ? ordinal : ordinal + 1)}
-                  disabled={p.disabled}
-                  title={title}
-                  className="cursor-pointer rounded-[2px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                >
+                <button onClick={() => p.onChange?.(taken ? ordinal : ordinal + 1)} disabled={p.disabled} title={title} className={`cursor-pointer ${focusRing}`}>
                   {mark}
                 </button>
               ) : (
@@ -198,54 +250,39 @@ export function BacklashBeside(p: BacklashProps) {
           )
         })}
       </div>
-      <CostLine p={p} />
-      <Verdict uncontained={o.uncontained} taken={p.contained} />
+      {o.martyr && <BodyNote p={p} />}
+      <Verdict p={p} />
+      <SpellLine p={p} />
     </div>
   )
 }
 
 // ── B · pairs ───────────────────────────────────────────────────────────────
 
-/** Each loose success a button, its face paired with the box it would fill. */
+/** Each red success a button joined to the box it would fill. */
 export function BacklashPairs(p: BacklashProps) {
   const interactive = p.onChange !== undefined
-  const o = outlookAt(p, p.contained)
-  // makeBy normalizes its count to >= 1: no successes, no pairs
-  const faces = p.paradoxSuccesses > 0 ? Arr.makeBy(p.paradoxSuccesses, (i) => p.successFaces[i] ?? 10) : []
+  const faces = facesOf(p)
   return (
-    <div className="grid justify-items-center gap-2.5 px-3.5 pb-3">
-      <div className="flex flex-wrap justify-center gap-2">
+    <div className="mt-2 grid justify-items-center gap-3 py-1">
+      <div className="flex flex-wrap justify-center gap-2.5">
         {faces.map((v, i) => {
           const taken = i < p.contained
           const room = i < p.cap
           const pair = (
             <span
-              className="flex items-center gap-1.5 rounded-[3px] border px-2 py-1"
+              className="flex items-center gap-2 rounded-[3px] border px-2.5 py-1.5"
               style={{
                 borderColor: taken ? "var(--ember)" : room ? "color-mix(in srgb, var(--paradox) 55%, transparent)" : "var(--line)",
                 borderStyle: taken ? "solid" : "dashed",
                 opacity: room || taken ? 1 : 0.4,
               }}
             >
-              <span style={{ opacity: taken ? 0.35 : 1 }}>
-                <UnifiedDie mode="face" v={v} again={10} tone="paradox" size="sm" />
-              </span>
-              <span className="mv-data text-[12px]" style={{ color: taken ? "var(--ember)" : "var(--dim)" }}>
+              <RedDie v={v} faded={taken} />
+              <span className="mv-data text-[13px]" style={{ color: taken ? "var(--ember)" : "var(--dim)" }}>
                 →
               </span>
-              <span
-                className="mv-data grid place-items-center rounded-[2px] border font-bold"
-                style={{
-                  width: 18,
-                  height: 18,
-                  fontSize: 11,
-                  borderColor: taken ? "var(--ember)" : "var(--line)",
-                  borderStyle: taken ? "solid" : "dashed",
-                  color: "var(--ember)",
-                }}
-              >
-                {taken ? "╱" : ""}
-              </span>
+              <Box severity="empty" taken={taken} target={!taken && room} stood={false} edge={22} />
             </span>
           )
           const title = taken
@@ -254,13 +291,7 @@ export function BacklashPairs(p: BacklashProps) {
               ? "Take this Paradox success on your body: one box of Resistant bashing"
               : "No room left on the track — this one runs loose"
           return interactive && (taken || room) ? (
-            <button
-              key={i}
-              onClick={() => p.onChange?.(taken ? i : i + 1)}
-              disabled={p.disabled}
-              title={title}
-              className="cursor-pointer rounded-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-            >
+            <button key={i} onClick={() => p.onChange?.(taken ? i : i + 1)} disabled={p.disabled} title={title} className={`cursor-pointer ${focusRing}`}>
               {pair}
             </button>
           ) : (
@@ -271,137 +302,95 @@ export function BacklashPairs(p: BacklashProps) {
         })}
       </div>
       <span className="flex items-center gap-2">
-        <span className="mv-data text-[11px] uppercase" style={{ letterSpacing: "0.08em", color: "var(--dim)" }}>
+        <span className="mv-data text-[11px] uppercase" style={EYEBROW}>
           body
         </span>
-        <BodyAfter track={p.track} taken={p.contained} />
-        <span className="mv-data text-[11px]" style={{ color: "var(--bad)" }}>
-          {o.martyr ? "unconscious" : o.penaltyAfter < 0 ? `${o.penaltyAfter}` : ""}
-        </span>
+        <BodyAfter track={p.track} taken={p.contained} edge={16} />
+        <BodyNote p={p} />
       </span>
-      <CostLine p={p} />
-      <Verdict uncontained={o.uncontained} taken={p.contained} />
+      <Verdict p={p} />
+      <SpellLine p={p} />
     </div>
   )
 }
 
-// ── C · ledger ──────────────────────────────────────────────────────────────
+// ── C · scales ──────────────────────────────────────────────────────────────
 
-/** The track as it would stand with `taken` more boxes of Resistant bashing —
- * no penalty of its own; the row says the penalty after. */
-function BodyAfter({ track, taken }: { track: HealthTrack; taken: number }) {
+/** The world on one side, the body on the other; a die crosses when clicked. */
+export function BacklashScales(p: BacklashProps) {
+  const interactive = p.onChange !== undefined
+  const faces = facesOf(p)
+  // the loose dice stay on the world's side; the taken ones cross over
+  const loose = faces.slice(0, faces.length - p.contained)
+  const canTake = p.contained < p.cap
+  return (
+    <div className="mt-2 grid gap-3 py-1">
+      <div className="grid items-start gap-2" style={{ gridTemplateColumns: "1fr auto 1fr" }}>
+        <div className="grid justify-items-center gap-2">
+          <span className="mv-data text-[11px] uppercase" style={EYEBROW}>
+            the world
+          </span>
+          <div className="flex flex-wrap justify-center gap-2.5" style={{ minHeight: 30 }}>
+            {loose.map((v, i) =>
+              interactive && canTake ? (
+                <button
+                  key={i}
+                  onClick={() => p.onChange?.(p.contained + 1)}
+                  disabled={p.disabled}
+                  title="Take this one on your body — one box of Resistant bashing"
+                  className={`cursor-pointer ${focusRing}`}
+                >
+                  <RedDie v={v} />
+                </button>
+              ) : (
+                <span key={i} title={canTake ? "A loose Paradox success" : "No room left on the track — this one runs loose"}>
+                  <RedDie v={v} />
+                </span>
+              ),
+            )}
+          </div>
+        </div>
+        <span className="mv-data self-center text-[15px]" style={{ color: "var(--dim)" }}>
+          ⇄
+        </span>
+        <div className="grid justify-items-center gap-2">
+          <span className="mv-data text-[11px] uppercase" style={EYEBROW}>
+            your body
+          </span>
+          {interactive && p.contained > 0 ? (
+            <button
+              onClick={() => p.onChange?.(p.contained - 1)}
+              disabled={p.disabled}
+              title="Let the last one loose again"
+              className={`cursor-pointer ${focusRing}`}
+            >
+              <BodyAfter track={p.track} taken={p.contained} edge={14} />
+            </button>
+          ) : (
+            <BodyAfter track={p.track} taken={p.contained} edge={14} />
+          )}
+          <BodyNote p={p} />
+        </div>
+      </div>
+      <div className="grid justify-items-center gap-2">
+        <Verdict p={p} />
+        <SpellLine p={p} />
+      </div>
+    </div>
+  )
+}
+
+/** The track as it would stand with `taken` more boxes of Resistant bashing. */
+function BodyAfter({ track, taken, edge }: { track: HealthTrack; taken: number; edge: number }) {
   const ordinals = emptyOrdinals(track)
   return (
     <span className="flex gap-[3px]">
       {track.map((box, i) => {
         const ordinal = ordinals[i] ?? null
-        const ghosted = ordinal !== null && ordinal < taken
         return (
-          <span
-            key={i}
-            className="mv-data grid place-items-center rounded-[2px] border font-bold"
-            style={{
-              width: 12,
-              height: 12,
-              fontSize: 8,
-              borderColor: ghosted ? "var(--ember)" : box.severity === "empty" ? "var(--line)" : "var(--accent)",
-              borderStyle: ghosted ? "dashed" : "solid",
-              background: box.severity === "empty" || box.severity === "bashing" ? "transparent" : "var(--glow)",
-              color: ghosted ? "var(--ember)" : "var(--accent)",
-            }}
-          >
-            {ghosted ? "╱" : healthBoxGlyph(box.severity)}
-          </span>
+          <Box key={i} severity={box.severity} taken={ordinal !== null && ordinal < taken} target={false} stood={false} edge={edge} />
         )
       })}
     </span>
-  )
-}
-
-const LEDGER_GRID = "grid items-center gap-2 rounded-[2px] px-1.5 py-1 text-left text-[12px]"
-// inline: a new file's arbitrary classes may not reach a running dev server
-const LEDGER_COLUMNS = { gridTemplateColumns: "2.4rem 8.4rem 4.4rem 1fr" }
-
-/** One row per choice, the mitigation table's register. */
-export function BacklashLedger(p: BacklashProps) {
-  const interactive = p.onChange !== undefined
-  const rows = Arr.makeBy(p.cap + 1, (n) => ({ n, o: outlookAt(p, n) }))
-  return (
-    <div className="mt-2 grid gap-1 py-1">
-      <span className={`mv-data ${LEDGER_GRID}`} style={{ ...LEDGER_COLUMNS, color: "var(--dim)", fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-        <span>take</span>
-        <span>your body</span>
-        <span>cast</span>
-        <span>the world</span>
-      </span>
-      {rows.map(({ n, o }) => {
-        const here = n === p.contained
-        const severity = resolveParadox(o.uncontained).severity
-        const cells = (
-          <>
-            <span style={{ color: here ? "var(--ink)" : undefined }}>{n === 0 ? "none" : n}</span>
-            <span className="flex items-center gap-1.5 whitespace-nowrap">
-              <BodyAfter track={p.track} taken={n} />
-              <span className="text-[11px]" style={{ color: "var(--bad)" }}>
-                {o.martyr ? "out" : o.penaltyAfter < 0 ? `${o.penaltyAfter}` : ""}
-              </span>
-            </span>
-            <span>
-              {dice(o.castPool)}{" "}
-              <b style={{ color: "var(--rail-success)" }}>{pct(rollOdds(o.castPool).success)}</b>
-            </span>
-            {o.uncontained > 0 ? (
-              <b className="uppercase" title={SEVERITY_SAYS[severity]} style={{ color: "var(--paradox)", letterSpacing: "0.06em" }}>
-                {severity}
-              </b>
-            ) : (
-              <b className="uppercase" style={{ color: "var(--ember)", letterSpacing: "0.1em" }}>
-                {CONTAINED_MARK}
-              </b>
-            )}
-          </>
-        )
-        return interactive ? (
-          <button
-            key={n}
-            onClick={() => p.onChange?.(n)}
-            disabled={p.disabled}
-            className={`mv-data ${LEDGER_GRID} disabled:opacity-40`}
-            style={{
-              ...LEDGER_COLUMNS,
-              border: here ? "1px solid var(--accent)" : "1px solid transparent",
-              color: here ? "var(--ink)" : "var(--dim)",
-            }}
-          >
-            {cells}
-          </button>
-        ) : (
-          <span
-            key={n}
-            className={`mv-data ${LEDGER_GRID}`}
-            style={{ ...LEDGER_COLUMNS, border: here ? "1px solid var(--line)" : "1px solid transparent", color: "var(--dim)" }}
-          >
-            {cells}
-          </span>
-        )
-      })}
-      {/* the chosen row's consequence, said once */}
-      <span className="min-h-[16px] px-1.5 text-[12px] italic" style={{ color: "var(--dim)" }}>
-        {(() => {
-          const o = outlookAt(p, p.contained)
-          const severity = resolveParadox(o.uncontained).severity
-          return o.uncontained > 0
-            ? `${severity}: ${SEVERITY_SAYS[severity]}`
-            : o.martyr
-              ? "borne — and the caster falls unconscious (the Storyteller adjudicates)"
-              : "borne — the world is spared, the body pays"
-        })()}
-      </span>
-      {p.paradoxSuccesses > p.cap && (
-        <span className="text-[12px] italic" style={{ color: "var(--dim)" }}>
-          {p.paradoxSuccesses - p.cap} more can't be taken — the track is full
-        </span>
-      )}
-    </div>
   )
 }
