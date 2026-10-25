@@ -56,6 +56,10 @@ interface PoolModeProps {
   arcanum?: string | undefined
   /** The die's group is under the pointer: it glows in its own ink (MAG-16). */
   lit?: boolean
+  /** Spring in on mount (the default). Off for a die that was already on
+   * the felt when its row first paints — a presence-free row (DieStack)
+   * has no `initial={false}` to say so. */
+  entrance?: boolean
 }
 
 /** Face props are all data, so a Schema (ADR-0017). */
@@ -92,12 +96,13 @@ function PoolDie({
   disabled = false,
   arcanum,
   lit = false,
+  entrance = true,
 }: PoolModeProps) {
   const input = { kind, ghost, lit, arcanum }
   const look = poolLook(input)
   const anim = {
     layout: !reduced && glide,
-    initial: UNSEEN,
+    initial: entrance ? UNSEEN : false,
     animate: { scale: 1, opacity: look.opacity ?? 1, rotate: DIAMOND_ROTATION },
     exit: UNSEEN,
     transition: reduced ? { duration: 0 } : entranceSpring,

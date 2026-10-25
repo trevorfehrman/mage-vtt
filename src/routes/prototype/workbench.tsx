@@ -49,6 +49,7 @@ import {
   TooltipTrigger,
 } from "#/components/ui/tooltip";
 import { MessageItem, RollItem } from "#/components/game/ActivityLog";
+import { videoSeats } from "#/domain/video-rail";
 import {
   ArcanaGlyph,
   OrderGlyph,
@@ -781,7 +782,7 @@ function SeatBench() {
       note="the seat dropdown rides the restyled select"
     >
       <SecondSeatControl
-        members={rosterFixture}
+        seats={videoSeats(rosterFixture, [])}
         ownUserId={CASTER}
         seatId={seat}
         onSeat={setSeat}

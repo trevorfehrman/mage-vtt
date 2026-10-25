@@ -1,4 +1,4 @@
-import { Children, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react"
+import { Children, cloneElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react"
 import { AnimatePresence } from "motion/react"
 import { SIZE_LADDER, type DieSize } from "./die-look"
 
@@ -18,7 +18,9 @@ interface DieStackProps {
   /** Keyed pool dice, first on top. They spring in, but leave at once: no
    * presence here, because a leaving die's slot would hold its room until
    * its exit finished, and a quick run of skims would pile those slots up
-   * and crush the row (owner, 2026-10-25). The rest glide into the gap. */
+   * and crush the row (owner, 2026-10-25). The rest glide into the gap.
+   * The dice already on the felt when the row first paints (the tray
+   * shrinking) stand there at once — only later arrivals spring in. */
   children: ReactNode
   size: DieSize
 }
@@ -30,7 +32,15 @@ export function DieStack({ children, size }: DieStackProps) {
   const px = SIZE_LADDER[size].px
   // a diamond's tips stand ~4px outside its box on every side
   const tip = Math.ceil(px * 0.21)
-  const dice = Children.toArray(children) as Array<ReactElement>
+  // presence's `initial={false}`, without presence: the first paint's
+  // dice skip their entrance (a mounted die never rereads `initial`)
+  const painted = useRef(false)
+  useEffect(() => {
+    painted.current = true
+  }, [])
+  const dice = (Children.toArray(children) as Array<ReactElement<{ entrance?: boolean }>>).map((die) =>
+    painted.current ? die : cloneElement(die, { entrance: false }),
+  )
   return (
     <span
       className="flex min-w-0 flex-1 items-center"
