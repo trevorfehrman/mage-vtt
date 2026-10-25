@@ -31,7 +31,7 @@ import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
 import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { BurstFaces } from "./BurstFaces"
-import { BacklashPairs, BacklashScales, BacklashTrack, type BacklashProps, type BacklashVariant } from "./BacklashAudition"
+import { BacklashTrack, type BacklashProps, type BacklashVariant } from "./BacklashAudition"
 import { UnifiedDie } from "./UnifiedDie"
 import { settleOpacity, type PoolKind } from "./die-look"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
@@ -745,14 +745,17 @@ export function CastCard({
         </div>
       )}
 
-      <TidesBox
-        weather={weather}
-        canAdjust={controls.includes("adjust")}
-        busy={busy}
-        draft={draft}
-        onDraft={setDraft}
-        onAdd={() => void addTide()}
-      />
+      {/* the Tides are settled by the backlash step: it stands down (MAG-49) */}
+      {!backlashStage && (
+        <TidesBox
+          weather={weather}
+          canAdjust={controls.includes("adjust")}
+          busy={busy}
+          draft={draft}
+          onDraft={setDraft}
+          onAdd={() => void addTide()}
+        />
+      )}
 
       {/* Provenance ABOVE the felt (2026-07-20): the pool's lineage and the
           declared terms sit above the dice; the felt itself holds only the
@@ -764,17 +767,12 @@ export function CastCard({
         {/* Felt audition (2026-10-22): the component tags are gone — each die
             carries its provenance (Gnosis star, Arcanum glyph, High Speech
             rune, Willpower amethyst) and its title names it on hover. */}
-        <span className="whitespace-nowrap">{declaredTerms.join(" · ")}</span>
+        <span className="whitespace-nowrap">{backlashStage ? "" : declaredTerms.join(" · ")}</span>
       </div>
       {/* MAG-49's audition: at the backlash step the variant stands where
           the felt and the odds row stood — Paradox against health alone. */}
       {backlashStage && backlashProps !== null ? (
-        Match.value(backlash).pipe(
-          Match.when("track", () => <BacklashTrack {...backlashProps} />),
-          Match.when("pairs", () => <BacklashPairs {...backlashProps} />),
-          Match.when("scales", () => <BacklashScales {...backlashProps} />),
-          Match.exhaustive,
-        )
+        <BacklashTrack {...backlashProps} />
       ) : (
         <>
       <Felt className="mt-1.5">
