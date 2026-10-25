@@ -357,6 +357,7 @@ describe("Flows.casting.castSpell authority ladder (ADR-0006)", () => {
         sheet: makeSheet({
           userId: STORYTELLER,
           sessionMemberId: SessionMemberId.make("member-morgan"),
+          name: "Ishmael",
         }),
       })
 
@@ -365,7 +366,8 @@ describe("Flows.casting.castSpell authority ladder (ADR-0006)", () => {
       const entry = store.rolls[0]!
       expect(entry.override).toBeNull()
       expect(entry.userId).toBe(STORYTELLER)
-      expect(entry.displayName).toBe("Morgan")
+      // a Storyteller with a sheet goes by it at the table, like anyone
+      expect(entry.displayName).toBe("Ishmael")
     }),
   )
 

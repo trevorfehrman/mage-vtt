@@ -1,5 +1,6 @@
 import { Array as Arr, Option, Order, Result, Schema } from "effect"
 import { CharacterSheet } from "./character"
+import { headlineName } from "./membership"
 import { SessionRole } from "./roles"
 import { SessionMemberRow } from "./session"
 
@@ -42,7 +43,7 @@ export const videoSeats = (
  * name when there is one), else the member's own. The tile wears it, and
  * the message box names a whisper's people by it (MAG-53). */
 export const seatName = (seat: VideoSeat): string =>
-  seat.sheet?.shadowName ?? seat.sheet?.name ?? seat.displayName
+  seat.sheet === null ? seat.displayName : headlineName(seat.sheet)
 
 /** Someone a whisper can reach, named as their tile is (MAG-53). */
 export const WhisperPerson = Schema.Struct({

@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values"
 import { mutation } from "./_generated/server"
 import { requireMember } from "./lib/auth"
 import { whisperTargets } from "../src/domain/activity"
+import { tableNameOf } from "../src/domain/membership"
 import { schemaToConvexValidator } from "../src/domain/schema-bridge"
 import { WhisperTargetIds } from "../src/domain/tables"
 
@@ -33,15 +34,22 @@ export const send = mutation({
       throw new ConvexError("That whisper reaches no one at this table.")
     }
 
+    // People go by their table names (owner, 2026-10-25): the sheet each
+    // plays here, as the tiles and the flows' narration name them.
+    const sheets = await ctx.db
+      .query("characters")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .collect()
+
     return await ctx.db.insert("messages", {
       sessionId: args.sessionId,
       senderId: member.userId,
-      senderName: member.displayName,
+      senderName: tableNameOf(member, sheets),
       text,
       visibilityType: targets.length > 0 ? "whisper" : "public",
       ...(targets.length > 0 && {
         whisperTargetIds: targets.map((t) => t.userId),
-        whisperTargetNames: targets.map((t) => t.displayName),
+        whisperTargetNames: targets.map((t) => tableNameOf(t, sheets)),
       }),
       timestamp: Date.now(),
     })

@@ -23,7 +23,7 @@ import {
   SessionId,
 } from "../../src/domain/ids"
 import { NotAMember } from "../../src/domain/authz"
-import { Membership } from "../../src/domain/membership"
+import { Membership, headlineName } from "../../src/domain/membership"
 import { Scene, sceneWitnessCount } from "../../src/domain/scene"
 import {
   OverrideMarker,
@@ -163,12 +163,21 @@ export const convexLive = (
         if (!row) {
           return yield* new NotAMember({ sessionId, userId })
         }
+        // The sheet this membership plays here, if any: its headline is the
+        // name the member goes by at the table (Membership.tableName).
+        const [sheet = null] = yield* Effect.promise(() =>
+          ctx.db
+            .query("characters")
+            .withIndex("by_sessionMemberId", (q) => q.eq("sessionMemberId", row._id))
+            .collect(),
+        )
         // Decode the Convex row into the domain mirror (compound-key identity).
         return new Membership({
           userId: PlayerId.make(row.userId),
           sessionId: SessionId.make(sessionId),
           role: row.role,
           displayName: row.displayName,
+          ...(sheet !== null && { sheetName: headlineName(sheet) }),
         })
       }),
 
@@ -247,7 +256,7 @@ export const convexLive = (
           ctx.db.insert("diceRolls", {
             sessionId: sessionRef(draft.sessionId),
             userId: draft.member.userId,
-            displayName: draft.member.displayName,
+            displayName: draft.member.tableName,
             components: draft.components.map((c) => ({ ...c })),
             poolSize: r.poolSize,
             rolls: [...r.rolls],

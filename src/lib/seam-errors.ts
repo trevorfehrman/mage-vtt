@@ -53,7 +53,7 @@ const describe = Match.type<SeamError>().pipe(
     CasterHasPendingCast: () =>
       "Your vulgar cast is still pending — see it through or withdraw it first.",
     OfferAwaitsAnswer: (e) =>
-      `${e.casterName}'s vulgar cast waits in the wings — engage or decline it before rolling.`,
+      `${e.casterName}'s vulgar cast waits in the wings — engage or decline it before casting or rolling initiative.`,
     StageOccupied: (e) => `The stage is taken — ${e.casterName}'s cast is still playing out.`,
     CastStatusConflict: () => "The Cast has moved on — that beat is no longer available.",
     InvalidTides: (e) => e.message,

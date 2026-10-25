@@ -2,6 +2,19 @@ import { useEffect, useRef, useState } from "react"
 import type { ActivityEntry } from "#/domain/activity"
 import { NOTHING_UNREAD, newestMessageAt, unreadFor, type SlotMode, type Unread } from "#/domain/working-slot"
 
+/** Who the next line is whispered to, and the two ways to change it — one
+ * bundle, so the message box's chips and the video tiles' doors choose from
+ * the same hand (MAG-53). */
+export interface WhisperChoice {
+  /** by user id; empty is the table */
+  readonly targets: ReadonlyArray<string>
+  /** add or drop them, and open the message box — the caret follows only
+   * when asked (a pointer on a tile), so a keyboard can go on choosing */
+  readonly toggle: (id: string, caret?: boolean) => void
+  /** back to the table */
+  readonly clear: () => void
+}
+
 /**
  * The working slot's state (MAG-53): which instrument shows, who the next
  * line is whispered to, and what arrived while the tray showed. Flipping to
@@ -64,16 +77,16 @@ export function useWorkingSlot(entries: ReadonlyArray<ActivityEntry> | undefined
     mode,
     setMode,
     unread,
-    targets,
     inputRef,
     switchRef,
-    /** a tile or a chip: add or drop them, and open the message box — the
-     * caret follows only when asked (a pointer on a tile) */
-    toggleTarget: (id: string, caret = false) => {
-      setTargets((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]))
-      setMode("message", caret)
-    },
-    clearTargets: () => setTargets([]),
+    whisper: {
+      targets,
+      toggle: (id, caret = false) => {
+        setTargets((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]))
+        setMode("message", caret)
+      },
+      clear: () => setTargets([]),
+    } satisfies WhisperChoice,
     /** Escape in the message line: back to the tray, focus to the switch */
     escape: () => {
       setMode("dice")

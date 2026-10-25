@@ -242,7 +242,7 @@ export const castRote = Effect.fn("Flows.roteCast.castRote")(function* (
     components,
     result,
     summary: roteSummary({
-      displayName: member.displayName,
+      displayName: member.tableName,
       rote,
       spell,
       factors: [

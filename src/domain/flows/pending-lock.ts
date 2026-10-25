@@ -16,7 +16,8 @@ import { GameStore } from "../ports/game-store"
 
 /**
  * Rules/precondition: the caster's own pending vulgar Cast freezes every
- * other roll of theirs — see it through or withdraw it. Keyed to the
+ * other cast of theirs, and their initiative — see it through or withdraw
+ * it. Plain pool rolls stay free (MAG-50). Keyed to the
  * member, not the sheet: the lock follows whoever the act would be
  * attributed to.
  */
@@ -27,7 +28,8 @@ export class CasterHasPendingCast extends Schema.TaggedError<CasterHasPendingCas
 
 /**
  * Rules/precondition: an unanswered draft in the wings holds the
- * Storyteller's own dice — engage or decline the offer first. Only drafts
+ * Storyteller's own casts and initiative — engage or decline the offer
+ * first. Their plain pool rolls stay free (MAG-50). Only drafts
  * lock: an engaged Cast is answered, and running the world against it may
  * need the ST's own rolls.
  */
@@ -40,14 +42,15 @@ export class OfferAwaitsAnswer extends Schema.TaggedError<OfferAwaitsAnswer>()(
 ) {}
 
 /**
- * The guard, applied by every roll-producing flow outside the ladder itself
- * (dice rolls, covert casts, new drafts — the ladder's own beats are the
- * pending Cast playing out, never locked):
+ * The guard, applied by every casting door outside the ladder itself
+ * (covert casts, Rotes, new drafts) and by initiative — the ladder's own
+ * beats are the pending Cast playing out, never locked. Plain pool rolls
+ * never meet it (MAG-50): a spot check mid-cast is the table's business.
  *
  * - A member whose vulgar Cast is pending (declared, not yet withdrawn,
- *   voided, or resolved) makes no other roll of any kind.
+ *   voided, or resolved) casts nothing else and rolls no initiative.
  * - The Storyteller answers a waiting draft — the oldest offer — before
- *   rolling anything of their own.
+ *   casting or rolling initiative of their own.
  *
  * Keyed to the attributed member (ADR-0006): an ST rolling in a locked
  * caster's stead meets the caster's lock, Override or not.

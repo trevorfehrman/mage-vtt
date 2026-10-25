@@ -1610,18 +1610,31 @@ describe("Flows.vulgarCast — the in-stead door stays visible (ADR-0015)", () =
 describe("Flows — the pending-cast lock (issue #109)", () => {
   const looseDice = [{ type: "modifier", name: "Dice", dots: 3 }]
 
-  it.effect("a caster with a drafted cast may not roll dice", () =>
+  it.effect("a caster mid-cast may still roll plain dice — the ST's spot check (MAG-50)", () =>
+    Effect.gen(function* () {
+      const store = seed({ casts: [castAt("price")] })
+
+      yield* createRoll({
+        sessionId: SESSION,
+        components: looseDice,
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      expect(store.rolls).toHaveLength(1)
+    }).pipe(Random.withSeed("lock-caster-spot")),
+  )
+
+  it.effect("a caster mid-cast may roll a pool built from their sheet (MAG-50)", () =>
     Effect.gen(function* () {
       const store = seed({ casts: [castAt("draft")] })
 
-      const exit = yield* createRoll({
+      yield* createRoll({
         sessionId: SESSION,
+        characterId: CHARACTER,
         components: looseDice,
-      }).pipe(as(PLAYER), Effect.provide(store.layer), Effect.exit)
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
 
-      expect(failureTag(exit)).toBe("CasterHasPendingCast")
-      expect(store.rolls).toHaveLength(0)
-    }),
+      expect(store.rolls).toHaveLength(1)
+    }).pipe(Random.withSeed("lock-caster-sheet")),
   )
 
   it.effect("a caster with a cast on stage may not cast covert", () =>
@@ -1711,18 +1724,19 @@ describe("Flows — the pending-cast lock (issue #109)", () => {
     }),
   )
 
-  it.effect("the Storyteller may not roll while a draft waits in the wings", () =>
+  it.effect("the Storyteller may roll plain dice while a draft waits (MAG-50)", () =>
     Effect.gen(function* () {
       const store = seed({ casts: [castAt("draft")] })
 
-      const exit = yield* createRoll({
+      yield* createRoll({
         sessionId: SESSION,
         components: looseDice,
-      }).pipe(as(ST_USER), Effect.provide(store.layer), Effect.exit)
+        visibility: "hidden",
+      }).pipe(as(ST_USER), Effect.provide(store.layer))
 
-      expect(failureTag(exit)).toBe("OfferAwaitsAnswer")
-      expect(store.rolls).toHaveLength(0)
-    }),
+      expect(store.rolls).toHaveLength(1)
+      expect(store.rolls[0]!.visibility).toBe("hidden")
+    }).pipe(Random.withSeed("lock-st-spot")),
   )
 
   it.effect("an engaged cast frees the Storyteller's own dice", () =>

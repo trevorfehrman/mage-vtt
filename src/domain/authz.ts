@@ -60,7 +60,7 @@ export const requireOwnedCharacter = Effect.fn("Authz.requireOwnedCharacter")(fu
     return yield* recordBypass(
       new OverrideMarker({
         invokedByUserId: actor.userId,
-        invokedByName: actorMembership.value.displayName,
+        invokedByName: actorMembership.value.tableName,
         kind: "storyteller-action",
       }),
     )
@@ -72,7 +72,7 @@ export const requireOwnedCharacter = Effect.fn("Authz.requireOwnedCharacter")(fu
         invokedByUserId: actor.userId,
         // A Dev may not be a member of the session at all; fall back to the id.
         invokedByName: Option.isSome(actorMembership)
-          ? actorMembership.value.displayName
+          ? actorMembership.value.tableName
           : actor.userId,
         kind: "godmode-action",
       }),
@@ -103,7 +103,7 @@ export const requireStoryteller = Effect.fn("Authz.requireStoryteller")(function
   yield* recordBypass(
     new OverrideMarker({
       invokedByUserId: actor.userId,
-      invokedByName: member.displayName,
+      invokedByName: member.tableName,
       kind: "godmode-action",
     }),
   )
@@ -138,27 +138,27 @@ export const requireRepairAuthority = Effect.fn("Authz.requireRepairAuthority")(
       .getMembership(sessionId, actor.userId)
       .pipe(Effect.option)
 
-    const editor = (displayName: string) =>
+    const editor = (tableName: string) =>
       recordBypass(
         new OverrideMarker({
           invokedByUserId: actor.userId,
-          invokedByName: displayName,
+          invokedByName: tableName,
           kind: "repair",
         }),
-      ).pipe(Effect.as({ userId: actor.userId, displayName }))
+      ).pipe(Effect.as({ userId: actor.userId, tableName }))
 
     if (
       Option.isSome(membership) &&
       membership.value.role === "storyteller"
     ) {
-      return yield* editor(membership.value.displayName)
+      return yield* editor(membership.value.tableName)
     }
 
     if (actor.isDev) {
       // A Dev may not be a member at all; fall back to the id (as the
       // god-mode rung of `requireOwnedCharacter` does).
       return yield* editor(
-        Option.isSome(membership) ? membership.value.displayName : actor.userId,
+        Option.isSome(membership) ? membership.value.tableName : actor.userId,
       )
     }
 

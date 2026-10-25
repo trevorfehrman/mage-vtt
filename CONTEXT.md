@@ -188,9 +188,9 @@ union: taking a player's seat costs a Storyteller-Dev their wider sight for as
 long as they sit there. Read-path only — actions taken while in a Second Seat
 are still the Dev's own writes (god-mode, Override-stamped); no write ever
 wears the target's name. Distinct from god-mode, which is write-path only;
-together they cover both halves of solo playtesting. Taking a seat with *more*
-sight than your own (secret-seeing) is announced in the Activity Log; taking a
-narrower seat is silent.
+together they cover both halves of solo playtesting. Taking any member's seat
+but your own is announced in the Activity Log: every seat holds that member's
+private Whispers, so every seat is secret-seeing (ADR-0013 amendment).
 _Avoid_: impersonation (identity never swaps on writes), spectating (a Second
 Seat is a specific member's scope, not a god view).
 
@@ -310,6 +310,16 @@ A chat Activity — public, a Whisper, or a system notice.
 **Roll**:
 A dice-roll Activity: who rolled, the pool, the results, the successes, and its
 visibility.
+
+**Table name**:
+The name a Session member goes by at the table: their sheet's headline there
+(the shadow name when there is one), else their account name — so usually the
+Storyteller goes by their account name (owner, 2026-10-25: the Chronicle names
+people as the Video tiles do). Every narrated line, sender, whisper's people
+and Override invoker wears it, written as the entry is (ADR-0009): an entry
+keeps the name it was written with.
+_Avoid_: display name (that is the account's own name), character name (a
+member without a sheet still has one).
 
 **Whisper**:
 A private Message from one user to one or more others (commonly Storyteller ↔
