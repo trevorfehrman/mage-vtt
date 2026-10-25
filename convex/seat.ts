@@ -1,7 +1,7 @@
 import { v } from "convex/values"
 import { mutation } from "./_generated/server"
 import { resolveSeatRequest } from "./lib/auth"
-import { tableNameOf } from "../src/domain/membership"
+import { tableNamer } from "./lib/tableNames"
 import { seatIsAnnounced } from "../src/domain/seat"
 
 /**
@@ -34,16 +34,13 @@ export const announce = mutation({
     }
 
     // Named at the table as everyone else is (owner, 2026-10-25).
-    const sheets = await ctx.db
-      .query("characters")
-      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
-      .collect()
-    const devName = own === null ? (user.name ?? user._id) : tableNameOf(own, sheets)
+    const nameOf = await tableNamer(ctx, args.sessionId)
+    const devName = own === null ? (user.name ?? user._id) : nameOf(own)
     await ctx.db.insert("messages", {
       sessionId: args.sessionId,
       senderId: user._id,
       senderName: devName,
-      text: `${devName} takes the Second Seat: reading as ${tableNameOf(target, sheets)}`,
+      text: `${devName} takes the Second Seat: reading as ${nameOf(target)}`,
       visibilityType: "system",
       timestamp: Date.now(),
     })

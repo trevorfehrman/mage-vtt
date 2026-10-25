@@ -1,4 +1,5 @@
 import { Array as Arr, Effect, Option, Schema } from "effect"
+import { tableName } from "../membership"
 import {
   requireMember,
   requireRepairAuthority,
@@ -562,7 +563,7 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
     sessionId,
     characterId: sheet.id,
     casterUserId: sheet.userId,
-    casterName: member.tableName,
+    casterName: tableName(member),
     arcanum: declaration.arcanum,
     level: declaration.level,
     ...(declaration.isRote
@@ -590,8 +591,8 @@ export const draftCast = Effect.fn("Flows.vulgarCast.draftCast")(function* (
   const willpower = withWillpower ? ", Willpower behind it" : ""
   yield* store.insertMessage({
     sessionId,
-    sender: { userId: member.userId, displayName: member.tableName },
-    text: `${member.tableName} ${declared}${willpower}. It waits in the wings.`,
+    sender: { userId: member.userId, displayName: tableName(member) },
+    text: `${tableName(member)} ${declared}${willpower}. It waits in the wings.`,
     visibility: "system",
   })
 
@@ -622,7 +623,7 @@ export const killDraft = Effect.fn("Flows.vulgarCast.killDraft")(function* (
   const member = yield* casterMembership(cast)
   yield* store.insertMessage({
     sessionId,
-    sender: { userId: member.userId, displayName: member.tableName },
+    sender: { userId: member.userId, displayName: tableName(member) },
     text: `${cast.casterName} withdraws the drafted cast.`,
     visibility: "system",
   })
@@ -646,8 +647,8 @@ export const declineDraft = Effect.fn("Flows.vulgarCast.declineDraft")(function*
 
   yield* store.insertMessage({
     sessionId,
-    sender: { userId: storyteller.userId, displayName: storyteller.tableName },
-    text: `${storyteller.tableName} declines ${cast.casterName}'s drafted cast — not now.`,
+    sender: { userId: storyteller.userId, displayName: tableName(storyteller) },
+    text: `${tableName(storyteller)} declines ${cast.casterName}'s drafted cast — not now.`,
     visibility: "system",
   })
 
@@ -694,8 +695,8 @@ export const engageCast = Effect.fn("Flows.vulgarCast.engageCast")(function* (
 
   yield* store.insertMessage({
     sessionId,
-    sender: { userId: storyteller.userId, displayName: storyteller.tableName },
-    text: `${storyteller.tableName} engages ${cast.casterName}'s vulgar cast — it takes the stage, and the Tides set its price.`,
+    sender: { userId: storyteller.userId, displayName: tableName(storyteller) },
+    text: `${tableName(storyteller)} engages ${cast.casterName}'s vulgar cast — it takes the stage, and the Tides set its price.`,
     visibility: "system",
   })
 
@@ -778,8 +779,8 @@ export const lockPrice = Effect.fn("Flows.vulgarCast.lockPrice")(function* (
   const pool = calculateParadoxPool(yield* paradoxInputs(cast, tides))
   yield* store.insertMessage({
     sessionId,
-    sender: { userId: storyteller.userId, displayName: storyteller.tableName },
-    text: `${storyteller.tableName} fixes the Tides: ${cast.casterName} faces a ${pool.totalDice}-die Paradox pool. Settled — it cannot shift now.`,
+    sender: { userId: storyteller.userId, displayName: tableName(storyteller) },
+    text: `${tableName(storyteller)} fixes the Tides: ${cast.casterName} faces a ${pool.totalDice}-die Paradox pool. Settled — it cannot shift now.`,
     visibility: "system",
   })
 
@@ -849,7 +850,7 @@ export const commitCast = Effect.fn("Flows.vulgarCast.commitCast")(function* (
   ].join(" and ")
   yield* store.insertMessage({
     sessionId,
-    sender: { userId: member.userId, displayName: member.tableName },
+    sender: { userId: member.userId, displayName: tableName(member) },
     text: `${cast.casterName} commits, spending ${spent}. The point of no return.`,
     visibility: "system",
   })
@@ -884,8 +885,8 @@ export const cancelCast = Effect.fn("Flows.vulgarCast.cancelCast")(function* (
 
   yield* store.insertMessage({
     sessionId,
-    sender: { userId: member.userId, displayName: member.tableName },
-    text: `${member.tableName} waves the cast off — ${cast.casterName}'s magic disperses unspent.`,
+    sender: { userId: member.userId, displayName: tableName(member) },
+    text: `${tableName(member)} waves the cast off — ${cast.casterName}'s magic disperses unspent.`,
     visibility: "system",
   })
 
@@ -1030,7 +1031,7 @@ export const releaseCast = Effect.fn("Flows.vulgarCast.releaseCast")(function* (
   if (contained > 0 && isIncapacitated(track)) {
     yield* store.insertMessage({
       sessionId,
-      sender: { userId: member.userId, displayName: member.tableName },
+      sender: { userId: member.userId, displayName: tableName(member) },
       text: `${cast.casterName}'s health track is full, the last box bashing — the book calls that unconsciousness. The spell is already loose; the Storyteller adjudicates what the body does next.`,
       visibility: "system",
     })

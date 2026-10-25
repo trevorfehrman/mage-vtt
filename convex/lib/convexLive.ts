@@ -23,7 +23,7 @@ import {
   SessionId,
 } from "../../src/domain/ids"
 import { NotAMember } from "../../src/domain/authz"
-import { Membership, headlineName } from "../../src/domain/membership"
+import { Membership, headlineName, tableName } from "../../src/domain/membership"
 import { Scene, sceneWitnessCount } from "../../src/domain/scene"
 import {
   OverrideMarker,
@@ -164,7 +164,7 @@ export const convexLive = (
           return yield* new NotAMember({ sessionId, userId })
         }
         // The sheet this membership plays here, if any: its headline is the
-        // name the member goes by at the table (Membership.tableName).
+        // name the member goes by at the table (`tableName`).
         const [sheet = null] = yield* Effect.promise(() =>
           ctx.db
             .query("characters")
@@ -256,7 +256,7 @@ export const convexLive = (
           ctx.db.insert("diceRolls", {
             sessionId: sessionRef(draft.sessionId),
             userId: draft.member.userId,
-            displayName: draft.member.tableName,
+            displayName: tableName(draft.member),
             components: draft.components.map((c) => ({ ...c })),
             poolSize: r.poolSize,
             rolls: [...r.rolls],

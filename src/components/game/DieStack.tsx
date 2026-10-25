@@ -32,15 +32,11 @@ export function DieStack({ children, size }: DieStackProps) {
   const px = SIZE_LADDER[size].px
   // a diamond's tips stand ~4px outside its box on every side
   const tip = Math.ceil(px * 0.21)
-  // presence's `initial={false}`, without presence: the first paint's
-  // dice skip their entrance (a mounted die never rereads `initial`)
-  const painted = useRef(false)
-  useEffect(() => {
-    painted.current = true
-  }, [])
-  const dice = (Children.toArray(children) as Array<ReactElement<{ entrance?: boolean }>>).map((die) =>
-    painted.current ? die : cloneElement(die, { entrance: false }),
-  )
+  // presence's `initial={false}`, without presence: the dice of the first
+  // paint skip their entrance (a mounted die never rereads `initial`)
+  const pool = Children.toArray(children) as Array<ReactElement<{ entrance?: boolean }>>
+  const [standing] = useState(() => pool.map((die) => die.key))
+  const dice = pool.map((die) => (standing.includes(die.key) ? cloneElement(die, { entrance: false }) : die))
   return (
     <span
       className="flex min-w-0 flex-1 items-center"

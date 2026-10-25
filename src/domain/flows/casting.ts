@@ -1,4 +1,5 @@
 import { Array as Arr, Effect, Schema } from "effect"
+import { tableName } from "../membership"
 import { requireSessionCharacter } from "../authz"
 import { ArcanumName } from "../character"
 import { buildPool, RollVisibility, rollPool, type RawPoolComponent } from "../dice"
@@ -269,7 +270,7 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
     components,
     result,
     summary: castSummary({
-      displayName: member.tableName,
+      displayName: tableName(member),
       arcanum: declaration.arcanum,
       level: declaration.level,
       factors: [

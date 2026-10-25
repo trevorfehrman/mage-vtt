@@ -39,13 +39,13 @@ interface MessageBoxProps {
   readonly inputRef: RefObject<HTMLInputElement | null>
 }
 
-export function MessageBox({ people, whisper: choice, onSend, onEscape, inputRef }: MessageBoxProps) {
+export function MessageBox({ people, whisper, onSend, onEscape, inputRef }: MessageBoxProps) {
   const [form, setForm] = useMessageForm()
   const [draft, setDraft] = useState("")
   const [error, setError] = useState<string | null>(null)
   const tall = form === "tall"
-  const chosen = people.filter((p) => choice.targets.includes(p.id))
-  const whisper = chosen.length > 0
+  const chosen = people.filter((p) => whisper.targets.includes(p.id))
+  const whispering = chosen.length > 0
   const words = draft.trim()
   const send = () => {
     if (!words) return
@@ -72,19 +72,19 @@ export function MessageBox({ people, whisper: choice, onSend, onEscape, inputRef
         // the people, one row: toggle any of them; Table clears them
         <div className="mx-3 mt-2 flex flex-wrap items-center gap-1.5">
           <button
-            onClick={choice.clear}
-            aria-pressed={!whisper}
-            className={`mv-mini grow whitespace-nowrap ${!whisper ? "mv-mini-on" : ""}`}
+            onClick={whisper.clear}
+            aria-pressed={!whispering}
+            className={`mv-mini grow whitespace-nowrap ${!whispering ? "mv-mini-on" : ""}`}
           >
             Table
           </button>
           <span className="h-4 w-px" style={{ background: "var(--line)" }} />
           {people.map((p) => {
-            const on = choice.targets.includes(p.id)
+            const on = whisper.targets.includes(p.id)
             return (
               <button
                 key={p.id}
-                onClick={() => choice.toggle(p.id)}
+                onClick={() => whisper.toggle(p.id)}
                 aria-pressed={on}
                 className={`mv-mini grow whitespace-nowrap ${on ? "mv-mini-on" : ""}`}
               >
@@ -96,7 +96,7 @@ export function MessageBox({ people, whisper: choice, onSend, onEscape, inputRef
       )}
       <div className="mx-3 flex items-center gap-1.5 py-2">
         <Felt className="flex h-8 min-w-0 flex-1 items-center">
-          {whisper && (
+          {whispering && (
             <>
               <span className="flex min-w-0 shrink items-center gap-1 pl-2.5" style={{ maxWidth: "55%" }}>
                 <span
@@ -108,7 +108,7 @@ export function MessageBox({ people, whisper: choice, onSend, onEscape, inputRef
                   {chosen.length > 1 && ` +${chosen.length - 1}`}
                 </span>
                 <button
-                  onClick={choice.clear}
+                  onClick={whisper.clear}
                   className="mv-btn grid size-4 shrink-0 place-items-center rounded-[3px] border-0 text-[12px] leading-none"
                   style={{ color: "var(--dim)" }}
                   title="Back to the table"
@@ -122,8 +122,8 @@ export function MessageBox({ people, whisper: choice, onSend, onEscape, inputRef
           )}
           <input
             ref={inputRef}
-            aria-label={whisper ? "Whisper" : "Message the table"}
-            placeholder={whisper ? "Whisper…" : "Message the table…"}
+            aria-label={whispering ? "Whisper" : "Message the table"}
+            placeholder={whispering ? "Whisper…" : "Message the table…"}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
@@ -134,18 +134,18 @@ export function MessageBox({ people, whisper: choice, onSend, onEscape, inputRef
                 onEscape()
               }
             }}
-            className={`h-8 min-w-0 flex-1 bg-transparent pr-2.5 text-[13px] outline-none ${whisper ? "" : "pl-2.5"}`}
+            className={`h-8 min-w-0 flex-1 bg-transparent pr-2.5 text-[13px] outline-none ${whispering ? "" : "pl-2.5"}`}
             style={{ color: "var(--ink)" }}
           />
         </Felt>
         {/* the gate speaks at the control that refuses (ADR-0021) */}
         <GateButton
-          gate={words ? null : whisper ? "Write the whisper first." : "Write a message first."}
+          gate={words ? null : whispering ? "Write the whisper first." : "Write a message first."}
           onClick={send}
           className="mv-roll h-8 shrink-0 rounded-[3px] text-[12px]"
           style={{ minWidth: 76, padding: "0 10px" }}
         >
-          {whisper ? "Whisper" : "Send"}
+          {whispering ? "Whisper" : "Send"}
         </GateButton>
       </div>
       {/* the seam's refusal, spoken under the line as the tray speaks its own */}

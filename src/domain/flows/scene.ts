@@ -1,4 +1,5 @@
 import { Effect, Option, Schema } from "effect"
+import { tableName } from "../membership"
 import { requireStoryteller } from "../authz"
 import { isOnStage } from "../cast"
 import { CastId, SessionId } from "../ids"
@@ -100,8 +101,8 @@ export const openScene = Effect.fn("Flows.scene.openScene")(function* (
 
   yield* store.insertMessage({
     sessionId,
-    sender: { userId: storyteller.userId, displayName: storyteller.tableName },
-    text: `${storyteller.tableName} opened the Scene "${name}".`,
+    sender: { userId: storyteller.userId, displayName: tableName(storyteller) },
+    text: `${tableName(storyteller)} opened the Scene "${name}".`,
     visibility: "system",
   })
 
@@ -159,8 +160,8 @@ export const closeScene = Effect.fn("Flows.scene.closeScene")(function* (
   const clash = Option.isSome(combat) ? " The Combat still raging ended with it." : ""
   yield* store.insertMessage({
     sessionId,
-    sender: { userId: storyteller.userId, displayName: storyteller.tableName },
-    text: `${storyteller.tableName} closed the Scene "${scene.name}".${wings}${clash}`,
+    sender: { userId: storyteller.userId, displayName: tableName(storyteller) },
+    text: `${tableName(storyteller)} closed the Scene "${scene.name}".${wings}${clash}`,
     visibility: "system",
   })
 
