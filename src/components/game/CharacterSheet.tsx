@@ -87,7 +87,7 @@ export function CharacterSheet({
     <div className="mx-auto grid w-full max-w-3xl gap-6">
       {/* Header — corner-ticked: one of the two "important" surfaces (MAG-52,
           owner 2026-10-24, from a rig audition). Who and what they carry: the
-          mage name, and beneath it Will · Mana and the whole health track;
+          mage name, and beneath it the whole health track and Will · Mana;
           opposite, Gnosis with the combat ratings beneath it. Then what kind
           of mage: Path | Order | ruling Arcana | Virtue | Vice, one emblem
           grammar, with the standing tool fact at the corner. The given name
@@ -99,17 +99,8 @@ export function CharacterSheet({
               {character.shadowName ?? character.name}
             </h2>
             <div className="mv-data flex flex-wrap items-center gap-x-5 gap-y-2 whitespace-nowrap">
-              {/* the depletables: Will · Mana (a pending spend shows what
-                  would be left, in ember), then the health track and its
-                  penalty */}
-              <span className="flex items-center" style={{ height: 20 }}>
-                <PoolNumerals
-                  sheet={character}
-                  pendingMana={pendingMana}
-                  pendingWillpower={pendingWillpower}
-                  size={15}
-                />
-              </span>
+              {/* the depletables: the health track and its penalty first,
+                  then Will · Mana */}
               <span className="flex items-center gap-2">
                 <span title="Health" className="flex">
                   <HealthTrack track={character.healthTrack} />
@@ -123,6 +114,16 @@ export function CharacterSheet({
                     {penalty}
                   </span>
                 )}
+              </span>
+              {/* Will · Mana: a pending spend shows what would be left,
+                  in ember */}
+              <span className="flex items-center" style={{ height: 20 }}>
+                <PoolNumerals
+                  sheet={character}
+                  pendingMana={pendingMana}
+                  pendingWillpower={pendingWillpower}
+                  size={15}
+                />
               </span>
             </div>
           </div>
