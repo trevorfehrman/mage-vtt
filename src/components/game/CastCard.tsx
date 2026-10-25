@@ -88,10 +88,12 @@ const CONTAINED_MARK = "Borne"
 
 /** A ghost wears the ink of the REASON it isn't there (MAG-49, owner
  * 2026-10-25): a cast die lost to Paradox the Paradox red, one lost to
- * wounds the penalty numbers' own ink, a Paradox die that never landed the
- * caster's green. */
+ * wounds the penalty numbers' own ink; a Paradox success contained on the
+ * body the ember the contained boxes wear, a Paradox die Mana bought off
+ * the caster's green. */
 const PARADOX_INK = "var(--paradox)"
 const WOUND_INK = "var(--bad)"
+const CONTAINED_INK = "var(--ember)"
 const SPARED_INK = "var(--accent)"
 
 export function CastCard({
@@ -806,12 +808,12 @@ export function CastCard({
             rolledAt={cast.timestamp}
             contained={containedNow}
             eaten={boughtOff}
-            // A Paradox die that never landed is the caster's win: green
-            // (owner, 2026-10-25), whether the body or the Mana paid for it.
+            // A Paradox die that never landed wears what paid for it (owner,
+            // 2026-10-25): the body's ember, or the Mana's green.
             eatenSays="Mitigated"
             eatenInk={SPARED_INK}
             ghostSays="Contained"
-            ghostInk={SPARED_INK}
+            ghostInk={CONTAINED_INK}
           />
         )}
         {paradoxDiceCount !== null && (
@@ -1694,7 +1696,7 @@ function WoundGlyph({ size = 13 }: { size?: number }) {
  */
 function LostLegend({ paradox, wounds }: { paradox: number; wounds: number }) {
   const entries = [
-    { key: "paradox", glyph: <ParadoxGlyph size={13} />, lost: paradox, ink: PARADOX_INK, says: "Lost to Paradox" },
+    { key: "paradox", glyph: <ParadoxGlyph size={13} ink={paradox > 0 ? PARADOX_INK : "var(--dim)"} />, lost: paradox, ink: PARADOX_INK, says: "Lost to Paradox" },
     { key: "wounds", glyph: <WoundGlyph />, lost: wounds, ink: WOUND_INK, says: "Lost to wounds" },
   ]
   return (

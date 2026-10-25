@@ -12,8 +12,11 @@
 export function ParadoxGlyph({
   size = 14,
   title = "Paradox",
+  ink = "var(--paradox)",
 }: {
   size?: number
+  /** Its own red by default; grey where no Paradox is in play (MAG-49). */
+  ink?: string
   /** Accessible name; the glyph replaces the word, so it must speak it. */
   title?: string
 }) {
@@ -29,7 +32,7 @@ export function ParadoxGlyph({
       strokeLinejoin="round"
       role="img"
       aria-label={title}
-      style={{ color: "var(--paradox)" }}
+      style={{ color: ink }}
     >
       <title>{title}</title>
       {/* the ritual circle, broken where the rift tears through it */}
