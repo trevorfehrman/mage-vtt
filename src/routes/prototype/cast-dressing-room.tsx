@@ -90,12 +90,10 @@ const GRAMMARS: Record<
 }
 
 // MAG-49's audition: the backlash step's four drawings.
-const BACKLASH_ORDER = ["now", "track", "pairs", "scales"] as const
+const BACKLASH_ORDER = ["now", "track"] as const
 const BACKLASH_LABEL: Record<BacklashVariant, string> = {
   now: "now",
-  track: "A · track",
-  pairs: "B · pairs",
-  scales: "C · scales",
+  track: "A · felt",
 }
 const isBacklash = (v: unknown): v is BacklashVariant =>
   typeof v === "string" && (BACKLASH_ORDER as ReadonlyArray<string>).includes(v)
