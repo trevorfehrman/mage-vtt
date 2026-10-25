@@ -90,12 +90,12 @@ const GRAMMARS: Record<
 }
 
 // MAG-49's audition: the backlash step's four drawings.
-const BACKLASH_ORDER = ["track", "beside", "pairs", "ledger"] as const
+const BACKLASH_ORDER = ["now", "track", "pairs", "scales"] as const
 const BACKLASH_LABEL: Record<BacklashVariant, string> = {
-  track: "now",
-  beside: "A · beside",
+  now: "now",
+  track: "A · track",
   pairs: "B · pairs",
-  ledger: "C · ledger",
+  scales: "C · scales",
 }
 const isBacklash = (v: unknown): v is BacklashVariant =>
   typeof v === "string" && (BACKLASH_ORDER as ReadonlyArray<string>).includes(v)
@@ -112,7 +112,7 @@ export const Route = createFileRoute("/prototype/cast-dressing-room")({
     rung: isRung(search.rung) ? search.rung : ("draft" as RigRung),
     seat: isSeat(search.seat) ? search.seat : ("caster" as RigSeat),
     grammar: isGrammar(search.grammar) ? search.grammar : ("merge" as RigGrammar),
-    backlash: isBacklash(search.backlash) ? search.backlash : ("track" as BacklashVariant),
+    backlash: isBacklash(search.backlash) ? search.backlash : ("now" as BacklashVariant),
     hurt: search.hurt === true || search.hurt === "true",
   }),
   component: DressingRoom,
@@ -611,7 +611,7 @@ function DressingRoom() {
               className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
                 b === backlash ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
               }`}
-              title="MAG-49: the backlash step, drawn four ways (rung paradoxRolled)"
+              title="MAG-49: the backlash step as Paradox against health (rung paradoxRolled)"
             >
               {BACKLASH_LABEL[b]}
             </button>

@@ -31,7 +31,7 @@ import { WILLPOWER_COMPONENT_NAME } from "#/domain/willpower-economy"
 import { castLadderMachine, ladderControls, ladderRung } from "#/machines/cast-ladder"
 import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { BurstFaces } from "./BurstFaces"
-import { BacklashBeside, BacklashLedger, BacklashPairs, type BacklashProps, type BacklashVariant } from "./BacklashAudition"
+import { BacklashPairs, BacklashScales, BacklashTrack, type BacklashProps, type BacklashVariant } from "./BacklashAudition"
 import { UnifiedDie } from "./UnifiedDie"
 import { settleOpacity, type PoolKind } from "./die-look"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
@@ -92,7 +92,7 @@ export function CastCard({
   casterSheet = null,
   moreWaiting = 0,
   adjust,
-  backlash = "track",
+  backlash = "now",
 }: {
   cast: CastEntry
   sessionId: Id<"sessions">
@@ -306,6 +306,7 @@ export function CastCard({
           disabled: busy,
         }
       : null
+  const backlashStage = backlashProps !== null && backlash !== "now"
 
   const waiting = waitingOn(cast)
   const terminal = waiting === null
@@ -765,6 +766,17 @@ export function CastCard({
             rune, Willpower amethyst) and its title names it on hover. */}
         <span className="whitespace-nowrap">{declaredTerms.join(" · ")}</span>
       </div>
+      {/* MAG-49's audition: at the backlash step the variant stands where
+          the felt and the odds row stood — Paradox against health alone. */}
+      {backlashStage && backlashProps !== null ? (
+        Match.value(backlash).pipe(
+          Match.when("track", () => <BacklashTrack {...backlashProps} />),
+          Match.when("pairs", () => <BacklashPairs {...backlashProps} />),
+          Match.when("scales", () => <BacklashScales {...backlashProps} />),
+          Match.exhaustive,
+        )
+      ) : (
+        <>
       <Felt className="mt-1.5">
         {paradoxArea && (
         <FeltSection
@@ -809,8 +821,6 @@ export function CastCard({
             ghostTitle="Contained — this Paradox success lands as Resistant bashing instead of manifesting"
           />
         )}
-        {backlashProps !== null && backlash === "beside" && <BacklashBeside {...backlashProps} />}
-        {backlashProps !== null && backlash === "pairs" && <BacklashPairs {...backlashProps} />}
         {paradoxDiceCount !== null && (
           <div className="flex flex-wrap content-start gap-3.5 px-3.5 pt-2.5 pb-4">
             <TooltipProvider>
@@ -904,6 +914,8 @@ export function CastCard({
       {/* the odds row — directly beneath the felt (note 16), in the table's
           own grid (MAG-45): one register on every rung */}
       {oddsRow !== null && <OddsRow {...oddsRow} />}
+        </>
+      )}
 
       {/* No "⟐ N rolled" numbers-line (pass 2, note 8): the cockpit's glyph
           column IS the count during the bet, and the Resolution carries the
@@ -938,8 +950,7 @@ export function CastCard({
           decodable caster sheet — the cockpit's whole precondition. Zero
           Paradox renders the same column (pass 2, note 8): no glyphs, the
           quiet word in the lore slot — the dead "⟐ 0 rolled" line's job. */}
-      {backlashProps !== null && backlash === "ledger" && <BacklashLedger {...backlashProps} />}
-      {outlook !== null && cockpitSheet !== null && backlash === "track" && (
+      {outlook !== null && cockpitSheet !== null && !backlashStage && (
         <ParadoxCockpit
           track={cockpitSheet.healthTrack}
           paradoxSuccesses={cast.paradoxSuccesses ?? 0}
