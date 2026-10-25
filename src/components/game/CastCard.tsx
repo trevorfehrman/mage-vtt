@@ -1383,8 +1383,8 @@ function SeverityBar({ severities }: typeof SeverityBarProps.Type) {
 /**
  * A row's breakdown (MAG-54, owner 2026-10-25: the bar only if its tooltip
  * shows the breakdown attractively): reality's roll severity by severity —
- * none first on the neutral track, then Havoc to Manifestation, each its bar
- * share in its own red — and the spell's odds and strength beneath. The
+ * none first in verdigris, then Havoc to Manifestation, each its bar share
+ * in its own red — and the spell's odds and strength beneath. The
  * whole row is the trigger, so the eye can sweep down the table and the
  * breakdown follows.
  */
@@ -1397,7 +1397,8 @@ const OddsBreakdownProps = Schema.Struct({
 function OddsBreakdown({ row, note }: typeof OddsBreakdownProps.Type) {
   const none = Math.max(0, 1 - row.severities.reduce((a, b) => a + b, 0))
   const lines = [
-    { name: "None", p: none, ink: "var(--dim)", fill: "color-mix(in srgb, var(--ink) 22%, transparent)" },
+    // No Paradox is the caster's win: verdigris (owner, 2026-10-25).
+    { name: "None", p: none, ink: "var(--accent)", fill: "color-mix(in srgb, var(--accent) 70%, transparent)" },
     ...SEVERITY_STEPS.map((step, i) => ({
       name: step.name,
       p: row.severities[i] ?? 0,
@@ -1426,11 +1427,13 @@ function OddsBreakdown({ row, note }: typeof OddsBreakdownProps.Type) {
         ))}
       </div>
       <div className="flex items-baseline gap-2 border-t pt-1.5" style={{ borderColor: "var(--line)", color: "var(--dim)" }}>
-        <span>spell</span>
+        {/* the fewest words that say it (owner, 2026-10-25): at least one
+            success, and the average past it */}
+        <span>≥1 success</span>
         <b style={{ color: "var(--rail-success)" }}>{pct(row.success)}</b>
-        <span>lands</span>
-        <span style={{ color: "var(--ink)" }}>≈{row.expected.toFixed(1)}</span>
-        <span>successes</span>
+        <span>·</span>
+        <span>avg</span>
+        <span style={{ color: "var(--ink)" }}>{row.expected.toFixed(1)}</span>
       </div>
       {note !== undefined && <div style={{ color: "var(--dim)" }}>{note}</div>}
     </div>
