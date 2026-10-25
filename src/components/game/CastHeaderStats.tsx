@@ -1,7 +1,7 @@
-import { Schema } from "effect"
+import { Array as Arr, Schema } from "effect"
 import { CharacterSheet } from "#/domain/character"
 import { HealthTrack } from "#/domain/damage"
-import { emptyOrdinals, woundPenalty } from "#/domain/health"
+import { applyDamage, emptyOrdinals, woundPenalty } from "#/domain/health"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
 import { ArcanaGlyph, arcanumTint, isGrossArcanum } from "./ArcanaGlyph"
 import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
@@ -84,7 +84,14 @@ const HealthLineProps = Schema.Struct({
 
 export function HealthLine({ track, ghosts, box: edge = 14 }: typeof HealthLineProps.Type) {
   const ordinals = emptyOrdinals(track)
-  const penalty = woundPenalty(track)
+  // The penalty follows the bet (owner, 2026-10-25): the ghosted boxes take
+  // Resistant bashing on the Cast, so the number reads as it will be.
+  // makeBy normalizes its count to >= 1, so zero is guarded by hand.
+  const penalty = woundPenalty(
+    ghosts > 0
+      ? Arr.reduce(Arr.makeBy(ghosts, (i) => i), track, (t) => applyDamage(t, "bashing", { resistant: true }))
+      : track,
+  )
   return (
     <span className="flex items-center gap-1.5" title="Health">
       <span className="flex gap-[3px]" style={{ paddingBottom: 6 }}>

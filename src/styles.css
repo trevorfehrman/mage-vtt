@@ -296,25 +296,48 @@ pre code {
  * seat, full width, framed whole in the Paradox family. It tells the table
  * "pause — something that touches everyone is happening" while every seat
  * stays usable: the frame on all four sides, a wash glowing in from it that
- * breathes slowly (still under reduced motion). */
+ * breathes slowly (still under reduced motion). The frame and the wash are
+ * one overlay ABOVE the card (owner, 2026-10-25): drawn on the zone itself,
+ * the card's own ground hid the wash everywhere but a thick band at the top,
+ * and the frame mixed into the green line read orange. Pure Paradox red,
+ * thinned toward transparent, on every side alike. */
 .mv-live-zone {
-  border: 1px solid color-mix(in srgb, var(--paradox) 60%, var(--line));
+  position: relative;
   background: var(--panel);
-  box-shadow: inset 0 0 18px -6px
-    color-mix(in srgb, var(--paradox) 40%, transparent);
   padding-top: 6px;
 }
+.mv-live-zone::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  border: 1px solid color-mix(in srgb, var(--paradox) 55%, transparent);
+  border-radius: inherit;
+  box-shadow: inset 0 0 18px -8px
+    color-mix(in srgb, var(--paradox) 40%, transparent);
+}
 @media (prefers-reduced-motion: no-preference) {
-  .mv-live-zone {
+  .mv-live-zone::after {
     animation: mv-live-breathe 3.2s ease-in-out infinite;
   }
 }
 @keyframes mv-live-breathe {
   50% {
-    border-color: color-mix(in srgb, var(--paradox) 85%, var(--line));
-    box-shadow: inset 0 0 24px -6px
+    border-color: color-mix(in srgb, var(--paradox) 85%, transparent);
+    box-shadow: inset 0 0 22px -8px
       color-mix(in srgb, var(--paradox) 60%, transparent);
   }
+}
+/* The window's corner (owner, 2026-10-25): Chrome on macOS rounds its own
+ * bottom corners, and a square frame there lost its colour to the curve.
+ * When the live zone stands in the app's bottom-right corner (no combat band
+ * below it) its frame rounds to the window's radius. */
+:root {
+  --window-corner: 16px;
+}
+.mv-shell:not(:has([data-slot="combat-tracker"])) .mv-live-zone {
+  border-bottom-right-radius: var(--window-corner);
 }
 /* One line per edge, even framed: the lines beside the frame hand over to
  * it. The rail's seam goes quiet and the feed and the working slot above
