@@ -1,4 +1,4 @@
-import { Clock, Effect, Layer, Option } from "effect"
+import { Array as Arr, Clock, Effect, Layer, Option } from "effect"
 import { Cast, type TidesSnapshot } from "../cast"
 import { CharacterSheet } from "../character"
 import { Combat, type CombatParticipant, type CombatStatus } from "../combat-tracker"
@@ -13,7 +13,7 @@ import {
   type CharacterId,
   type SessionId,
 } from "../ids"
-import { Membership, headlineName } from "../membership"
+import { Membership, headlineName, tableName } from "../membership"
 import type { ParadoxPoolModifier } from "../paradox"
 import { NotAMember } from "../authz"
 import { OverrideMarker, OverrideStamp, makeOverrideStamp } from "../override"
@@ -218,14 +218,16 @@ export const makeInMemory = (seed: {
       )
       if (!member) return Effect.fail(new NotAMember({ sessionId, userId }))
       // As the Convex adapter does: the sheet this membership plays here
-      // names them at the table (Membership.tableName).
-      const sheet = [...sheets.values()].find(
-        (sh) => sh.sessionId === sessionId && sh.userId === userId,
-      )
+      // names them at the table (`tableName`). Keyed by the membership's own
+      // (userId, sessionId) — the seed carries no member row id to match
+      // the adapter's `sessionMemberId` lookup, and the two keys agree.
       return Effect.succeed(
-        sheet === undefined
-          ? member
-          : new Membership({ ...member, sheetName: headlineName(sheet) }),
+        Arr.findFirst(sheets.values(), (sh) => sh.sessionId === sessionId && sh.userId === userId).pipe(
+          Option.match({
+            onNone: () => member,
+            onSome: (sheet) => new Membership({ ...member, sheetName: headlineName(sheet) }),
+          }),
+        ),
       )
     },
 
@@ -281,7 +283,7 @@ export const makeInMemory = (seed: {
           id,
           sessionId: draft.sessionId,
           userId: draft.member.userId,
-          displayName: draft.member.tableName,
+          displayName: tableName(draft.member),
           components: draft.components,
           result: draft.result,
           summary: draft.summary,

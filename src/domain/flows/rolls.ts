@@ -1,4 +1,5 @@
 import { Effect, Schema } from "effect"
+import { tableName } from "../membership"
 import { requireMember, requireSessionCharacter } from "../authz"
 import {
   buildPool,
@@ -119,6 +120,6 @@ export const createRoll = Effect.fn("Flows.rolls.create")(function* (
     member,
     components,
     result,
-    summary: rollSummary(member.tableName, result),
+    summary: rollSummary(tableName(member), result),
   })
 })

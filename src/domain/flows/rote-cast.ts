@@ -1,4 +1,5 @@
 import { Effect, Schema } from "effect"
+import { tableName } from "../membership"
 import { requireSessionCharacter } from "../authz"
 import { buildPool, RollVisibility, rollPool, type RawPoolComponent } from "../dice"
 import { CharacterId, SessionId } from "../ids"
@@ -242,7 +243,7 @@ export const castRote = Effect.fn("Flows.roteCast.castRote")(function* (
     components,
     result,
     summary: roteSummary({
-      displayName: member.tableName,
+      displayName: tableName(member),
       rote,
       spell,
       factors: [

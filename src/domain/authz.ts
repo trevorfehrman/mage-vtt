@@ -1,7 +1,7 @@
 import { Effect, Option, Schema } from "effect"
 import type { CharacterSheet } from "./character"
 import { CharacterId, PlayerId, SessionId } from "./ids"
-import { Membership } from "./membership"
+import { Membership, tableName } from "./membership"
 import { OverrideMarker, OverrideStamp } from "./override"
 import { CurrentActor } from "./ports/current-actor"
 import { DocumentNotFound } from "./ports/errors"
@@ -60,7 +60,7 @@ export const requireOwnedCharacter = Effect.fn("Authz.requireOwnedCharacter")(fu
     return yield* recordBypass(
       new OverrideMarker({
         invokedByUserId: actor.userId,
-        invokedByName: actorMembership.value.tableName,
+        invokedByName: tableName(actorMembership.value),
         kind: "storyteller-action",
       }),
     )
@@ -72,7 +72,7 @@ export const requireOwnedCharacter = Effect.fn("Authz.requireOwnedCharacter")(fu
         invokedByUserId: actor.userId,
         // A Dev may not be a member of the session at all; fall back to the id.
         invokedByName: Option.isSome(actorMembership)
-          ? actorMembership.value.tableName
+          ? tableName(actorMembership.value)
           : actor.userId,
         kind: "godmode-action",
       }),
@@ -103,7 +103,7 @@ export const requireStoryteller = Effect.fn("Authz.requireStoryteller")(function
   yield* recordBypass(
     new OverrideMarker({
       invokedByUserId: actor.userId,
-      invokedByName: member.tableName,
+      invokedByName: tableName(member),
       kind: "godmode-action",
     }),
   )
@@ -151,14 +151,14 @@ export const requireRepairAuthority = Effect.fn("Authz.requireRepairAuthority")(
       Option.isSome(membership) &&
       membership.value.role === "storyteller"
     ) {
-      return yield* editor(membership.value.tableName)
+      return yield* editor(tableName(membership.value))
     }
 
     if (actor.isDev) {
       // A Dev may not be a member at all; fall back to the id (as the
       // god-mode rung of `requireOwnedCharacter` does).
       return yield* editor(
-        Option.isSome(membership) ? membership.value.tableName : actor.userId,
+        Option.isSome(membership) ? tableName(membership.value) : actor.userId,
       )
     }
 

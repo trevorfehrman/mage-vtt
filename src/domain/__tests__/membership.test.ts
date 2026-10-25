@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect/vitest"
 import { PlayerId, SessionId } from "../ids"
-import { Membership, headlineName, tableNameOf } from "../membership"
+import type { Id } from "../../../convex/_generated/dataModel"
+import { Membership, headlineName, tableName, tableNameOf } from "../membership"
 
 /**
  * The name a member goes by at the table (owner, 2026-10-25: the Chronicle
@@ -18,11 +19,11 @@ const member = (sheetName?: string) =>
 
 describe("a member's table name", () => {
   it("is their sheet's name when they have one", () => {
-    expect(member("Tessellate").tableName).toBe("Tessellate")
+    expect(tableName(member("Tessellate"))).toBe("Tessellate")
   })
 
   it("is their account name without a sheet — a Storyteller, a fresh seat", () => {
-    expect(member().tableName).toBe("Trevor Fehrman")
+    expect(tableName(member())).toBe("Trevor Fehrman")
   })
 })
 
@@ -37,13 +38,15 @@ describe("a sheet's headline name", () => {
 })
 
 describe("a roster row's table name", () => {
-  const sheets = [{ sessionMemberId: "m-1", name: "Yelena Voss", shadowName: "Tessellate" }]
+  const m1 = "m-1" as Id<"sessionMembers">
+  const m2 = "m-2" as Id<"sessionMembers">
+  const sheets = [{ sessionMemberId: m1, name: "Yelena Voss", shadowName: "Tessellate" }]
 
   it("reads the headline off the sheet the member plays", () => {
-    expect(tableNameOf({ _id: "m-1", displayName: "Trevor Fehrman" }, sheets)).toBe("Tessellate")
+    expect(tableNameOf({ _id: m1, displayName: "Trevor Fehrman" }, sheets)).toBe("Tessellate")
   })
 
   it("keeps the account name for a member with no sheet", () => {
-    expect(tableNameOf({ _id: "m-2", displayName: "Morgan" }, sheets)).toBe("Morgan")
+    expect(tableNameOf({ _id: m2, displayName: "Morgan" }, sheets)).toBe("Morgan")
   })
 })
