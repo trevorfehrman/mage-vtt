@@ -133,6 +133,10 @@ export const CastOddsUnderParadox = Schema.Struct({
   chanceDie: Schema.Number,
   /** P(the chance-die dramatic failure): one face in ten of `chanceDie`. */
   dramaticFailure: Schema.Number,
+  /** The cast's expected successes once Paradox has eaten its dice (MAG-54):
+   * past the first, every success is the spell's strength — its primary
+   * factor, Potency for most spells (Mage p. 118) — which `success` hides. */
+  expected: Schema.Number,
 })
 export type CastOddsUnderParadox = typeof CastOddsUnderParadox.Type
 
@@ -148,7 +152,27 @@ export const castOddsUnderParadox = (
         chanceDie: odds.chanceDie + (isChanceDiePool(survivors) ? p : 0),
         dramaticFailure:
           odds.dramaticFailure + p * probabilityOfDramaticFailure(survivors),
+        expected: odds.expected + p * expectedSuccesses(survivors),
       }
     },
-    { success: 0, chanceDie: 0, dramaticFailure: 0 },
+    { success: 0, chanceDie: 0, dramaticFailure: 0, expected: 0 },
   )
+
+/** How many Paradox successes each severity takes: 1 Havoc, 2 Bedlam, 3
+ * Anomaly, 4 Branding, 5+ Manifestation (Mage p. 124). */
+const SEVERITY_STEPS = 5
+
+/**
+ * The Paradox roll by severity (MAG-54): P(Havoc), P(Bedlam), P(Anomaly),
+ * P(Branding), P(Manifestation) — the last the whole tail from five up. Each
+ * step is a worse outcome, a cast die eaten and a box to contain it, so the
+ * chance of "any Paradox" alone hides the shape of the risk.
+ */
+export const severityOdds = (dice: number): ReadonlyArray<number> => {
+  const dist = successDistribution(dice)
+  return Arr.makeBy(SEVERITY_STEPS, (i) =>
+    i < SEVERITY_STEPS - 1
+      ? (dist[i + 1] ?? 0)
+      : Arr.reduce(dist.slice(SEVERITY_STEPS), 0, (a, b) => a + b),
+  )
+}

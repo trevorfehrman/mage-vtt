@@ -23,7 +23,7 @@ import {
   resolveParadox,
   type ParadoxPoolModifier,
 } from "#/domain/paradox"
-import { castOddsUnderParadox, rollOdds } from "#/domain/probability"
+import { castOddsUnderParadox, rollOdds, severityOdds } from "#/domain/probability"
 import { Mana, PoolSize } from "#/domain/quantities"
 import { signedDice, tideDraftDice, tidesNetInk, tidesWeight, type TideDraft } from "./tides-ground"
 import { TidesBox, type Weather } from "./TidesBox"
@@ -446,7 +446,7 @@ export function CastCard({
       Match.orElse((k) => (sheetTerms.length > 0 ? sheetTerms : `Sheet ${groupCount(k)}`)),
     )
   // The eaten dice have two causes (MAG-49): each loose Paradox success
-  // (p. 129) and the wound penalty the track carries (WoD p. 172). They ghost
+  // (p. 124) and the wound penalty the track carries (WoD p. 171). They ghost
   // apart, from the row's end, each in its CAUSE's ink — Paradox's red, the
   // wounds' the penalty numbers' own — so containing visibly turns a red
   // ghost into a die, or, when the bet's damage brings a new penalty, into a
@@ -1305,7 +1305,7 @@ const diceLabel = (dice: number): string =>
 
 
 /** The one grid every odds row stands in: Mana · dice · Paradox · success. */
-const ROW_GRID = "grid grid-cols-[3.5rem_5.5rem_4.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px]"
+const ROW_GRID = "grid grid-cols-[2.75rem_4.75rem_5.5rem_1fr] items-center gap-2 rounded-[2px] px-1.5 py-0.5 text-left text-[12px]"
 
 /**
  * One odds row's facts (MAG-45): the Mana spent, the red dice, reality's
@@ -1315,9 +1315,11 @@ const ROW_GRID = "grid grid-cols-[3.5rem_5.5rem_4.5rem_1fr] items-center gap-2 r
 const OddsRowProps = Schema.Struct({
   spend: Mana,
   dice: PoolSize,
-  /** Reality's success odds before its roll. */
-  paradox: Schema.Number,
+  /** Reality's roll by severity, Havoc to Manifestation (MAG-54). */
+  severities: Schema.Array(Schema.Number),
   success: Schema.Number,
+  /** The cast's expected successes: its strength, past merely working. */
+  expected: Schema.Number,
   dramaticFailure: Schema.Number,
 })
 type OddsRowProps = typeof OddsRowProps.Type
@@ -1328,11 +1330,68 @@ const pricedRow = (spend: Mana, dice: PoolSize, declaredPool: number): OddsRowPr
   return {
     spend,
     dice,
-    paradox: rollOdds(dice).success,
+    severities: severityOdds(dice),
     success: cast.success,
+    expected: cast.expected,
     dramaticFailure: cast.dramaticFailure,
   }
 }
+
+/** The severities in order, each a step deeper into the Paradox red. */
+const SEVERITY_STEPS = [
+  { name: "Havoc", depth: 45 },
+  { name: "Bedlam", depth: 65 },
+  { name: "Anomaly", depth: 80 },
+  { name: "Branding", depth: 90 },
+  { name: "Manifestation", depth: 100 },
+] as const
+
+/**
+ * Reality's roll as a bar (MAG-54): the full width is certainty, each
+ * severity a segment as wide as its chance and as bright a red as it is
+ * bad, the neutral track the chance of no Paradox at all. Every success is a worse
+ * outcome, a cast die eaten and a box to contain it (Mage p. 124), so the
+ * bar shows the shape of the risk a single "any Paradox" % hides.
+ */
+const SeverityBarProps = Schema.Struct({ severities: Schema.Array(Schema.Number) })
+
+function SeverityBar({ severities }: typeof SeverityBarProps.Type) {
+  return (
+    <span
+      aria-hidden
+      className="flex h-[8px] w-full gap-[2px] overflow-hidden rounded-[2px]"
+      // the empty track is no Paradox at all: neutral, never a faint red
+      style={{ background: "color-mix(in srgb, var(--ink) 8%, transparent)" }}
+    >
+      {SEVERITY_STEPS.map((step, i) => {
+        const p = severities[i] ?? 0
+        return p < 0.005 ? null : (
+          <span
+            key={step.name}
+            className="h-full first:rounded-l-[2px]"
+            style={{
+              width: `${p * 100}%`,
+              background: `color-mix(in srgb, var(--paradox) ${step.depth}%, transparent)`,
+            }}
+          />
+        )
+      })}
+    </span>
+  )
+}
+
+/** The row's numbers, for its title: each severity with a real chance. */
+const severitySays = (severities: ReadonlyArray<number>): string => {
+  const shown = SEVERITY_STEPS.flatMap((step, i) => {
+    const p = severities[i] ?? 0
+    return p < 0.0005 ? [] : [`${step.name} ${pct(p)}`]
+  })
+  return shown.length === 0 ? "No Paradox" : shown.join(" · ")
+}
+
+/** A row's title: the bar's numbers, then what ≈ means. */
+const rowSays = (row: OddsRowProps): string =>
+  `${severitySays(row.severities)} · ≈${row.expected.toFixed(1)} successes`
 
 const OddsCellsProps = Schema.Struct({ ...OddsRowProps.fields, here: Schema.Boolean })
 
@@ -1343,24 +1402,23 @@ const OddsCellsProps = Schema.Struct({ ...OddsRowProps.fields, here: Schema.Bool
  * alone. A chance-die reduction that is a real possibility warns in the
  * row's own grammar.
  */
-function OddsCells({ spend, dice, paradox, success, dramaticFailure, here }: typeof OddsCellsProps.Type) {
+function OddsCells({ spend, dice, severities, success, expected, dramaticFailure, here }: typeof OddsCellsProps.Type) {
   return (
     <>
       <span style={{ color: here ? "var(--mana)" : undefined }}><Lozenge /> {spend}</span>
       <span style={{ color: here ? "var(--ink)" : undefined }}>{diceLabel(dice)}</span>
-      <span className="inline-flex items-center gap-1">
+      <span className="flex items-center gap-1">
         <ParadoxGlyph size={12} />
-        <b className="text-[12px]" style={{ color: "var(--paradox)" }}>
-          {pct(paradox)}
-        </b>
+        <SeverityBar severities={severities} />
       </span>
-      <span className="inline-flex flex-wrap items-center gap-x-2">
+      <span className="inline-flex flex-wrap items-center gap-x-1.5">
         <span>
           success{" "}
           <b className="text-[12px]" style={{ color: "var(--rail-success)" }}>
             {pct(success)}
           </b>
         </span>
+        <span style={{ color: here ? "var(--ink)" : undefined }}>≈{expected.toFixed(1)}</span>
         {dramaticFailure >= DRAMATIC_FAILURE_WARN_FLOOR && (
           <span style={{ color: "var(--bad)" }}>dramatic failure {pct(dramaticFailure)}</span>
         )}
@@ -1372,7 +1430,7 @@ function OddsCells({ spend, dice, paradox, success, dramaticFailure, here }: typ
 /** The odds row alone beneath the felt — the table's grid, no table. */
 function OddsRow(props: OddsRowProps) {
   return (
-    <div className={`mv-data mt-1.5 ${ROW_GRID}`} style={{ color: "var(--dim)" }}>
+    <div className={`mv-data mt-1.5 ${ROW_GRID}`} style={{ color: "var(--dim)" }} title={rowSays(props)}>
       <OddsCells {...props} here={false} />
     </div>
   )
@@ -1435,9 +1493,7 @@ function MitigationPreview({
                     color: here ? "var(--ink)" : "var(--dim)",
                   }
             }
-            {...(locked
-              ? { title: `${affordable} Mana free` }
-              : {})}
+            title={locked ? `${affordable} Mana free` : rowSays(row)}
           >
             <OddsCells {...row} here={here} />
           </span>
@@ -1446,6 +1502,7 @@ function MitigationPreview({
             key={row.spend}
             onClick={() => onSelect(row.spend)}
             disabled={disabled}
+            title={rowSays(row)}
             className={`mv-data ${ROW_GRID} disabled:opacity-40`}
             style={{
               border: here ? "1px solid var(--accent)" : "1px solid transparent",

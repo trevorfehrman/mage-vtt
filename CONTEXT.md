@@ -75,7 +75,7 @@ Paradox; Covert spells never roll it.
 **Paradox**:
 Reality's backlash against Vulgar magic. The Storyteller rolls a Paradox pool
 *before* the casting roll. Each success left loose takes one die off the cast
-(p. 129) and pushes the effect one step up (Havoc → Bedlam → Anomaly →
+(p. 124) and pushes the effect one step up (Havoc → Bedlam → Anomaly →
 Branding → Manifestation). A success contained by Backlash does neither: the
 cast gets its die back (owner, 2026-10-25). Rolled only for Vulgar casting.
 

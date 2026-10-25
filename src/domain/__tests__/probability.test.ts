@@ -6,6 +6,7 @@ import {
   probabilityOfExceptional,
   probabilityOfSuccess,
   rollOdds,
+  severityOdds,
   successDistribution,
 } from "../probability"
 
@@ -144,5 +145,42 @@ describe("castOddsUnderParadox (reality rolls first, one die eaten per success �
     expect(odds.success).toBeCloseTo(0.1, 12)
     expect(odds.chanceDie).toBeCloseTo(1, 12)
     expect(odds.dramaticFailure).toBeCloseTo(0.1, 12)
+  })
+})
+
+describe("castOddsUnderParadox's expected successes — what Paradox takes from the spell's strength (MAG-54)", () => {
+  it("one cast die against one Paradox die, by hand", () => {
+    // 0.7 the die survives (⅓ expected), 0.3 it falls to the chance die (0.1).
+    expect(castOddsUnderParadox(1, 1).expected).toBeCloseTo(0.7 / 3 + 0.3 * 0.1, 12)
+  })
+
+  it("every die mitigated away gives the spell back about a third of a success", () => {
+    const ladder = [4, 3, 2, 1, 0].map((r) => castOddsUnderParadox(9, r).expected)
+    ladder.slice(1).forEach((e, i) => expect(e).toBeGreaterThan(ladder[i]!))
+    // Paradox at 0 dice still throws its chance die (0.1 of eating one die).
+    expect(castOddsUnderParadox(9, 0).expected).toBeCloseTo(0.9 * 3 + 0.1 * (8 / 3), 12)
+  })
+})
+
+describe("severityOdds — the Paradox roll by severity (Mage p. 124: 1 Havoc … 5+ Manifestation)", () => {
+  it("one die, by hand: exactly k successes is 0.27·0.1^(k−1)", () => {
+    const [havoc, bedlam, anomaly, branding, manifestation] = severityOdds(1)
+    expect(havoc).toBeCloseTo(0.27, 12)
+    expect(bedlam).toBeCloseTo(0.027, 12)
+    expect(anomaly).toBeCloseTo(0.0027, 12)
+    expect(branding).toBeCloseTo(0.00027, 12)
+    // 5+ is the tail: 0.3 − the four above.
+    expect(manifestation).toBeCloseTo(0.3 - 0.27 - 0.027 - 0.0027 - 0.00027, 12)
+  })
+
+  it("the five severities sum to the chance of any Paradox", () => {
+    ;[1, 2, 4, 7].forEach((dice) => {
+      const total = severityOdds(dice).reduce((a, b) => a + b, 0)
+      expect(total).toBeCloseTo(probabilityOfSuccess(dice), 10)
+    })
+  })
+
+  it("a fully mitigated pool's chance die can only Havoc", () => {
+    expect(severityOdds(0)).toEqual([0.1, 0, 0, 0, 0])
   })
 })
