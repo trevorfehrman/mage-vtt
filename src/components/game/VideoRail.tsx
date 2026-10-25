@@ -1,6 +1,7 @@
 import { Schema } from "effect"
+import { Feather } from "lucide-react"
 import { CharacterSheet } from "#/domain/character"
-import { VideoSeat } from "#/domain/video-rail"
+import { VideoSeat, seatName } from "#/domain/video-rail"
 import { HealthLine, PoolNumerals } from "./CastHeaderStats"
 
 /**
@@ -33,13 +34,38 @@ const VideoRailProps = Schema.Struct({
 
 const SCRIM = "rgba(4,6,8,0.78)"
 
-export function VideoRail({ seats, pending }: typeof VideoRailProps.Type) {
+/** MAG-53: the tiles are the whisper roster — click a face to whisper
+ * them, click more to add them. Absent, the tiles are plain frames. */
+interface WhisperDoor {
+  /** who is being whispered to, by user id */
+  readonly selected: ReadonlyArray<string>
+  /** the viewer's own user id: their own tile can't be whispered */
+  readonly self: string
+  readonly onToggle: (userId: string) => void
+}
+
+export function VideoRail({
+  seats,
+  pending,
+  whisper,
+}: typeof VideoRailProps.Type & { whisper?: WhisperDoor }) {
   return (
     // The rail is the container the 16:9 cap reads (inline, so it holds
     // under a running dev server).
     <div className="flex h-full flex-col gap-2 p-2" style={{ containerType: "inline-size" }}>
       {seats.map((seat) => (
-        <Frame key={seat.memberId}>
+        <Frame
+          key={seat.memberId}
+          door={
+            whisper === undefined || seat.userId === whisper.self
+              ? null
+              : {
+                  on: whisper.selected.includes(seat.userId),
+                  name: seatName(seat),
+                  toggle: () => whisper.onToggle(seat.userId),
+                }
+          }
+        >
           {seat.sheet === null && seat.role === "storyteller" ? (
             <span className="mv-data uppercase tracking-wider" style={{ color: "var(--dim)", fontSize: 9 }}>
               {seat.displayName} · Storyteller
@@ -47,7 +73,7 @@ export function VideoRail({ seats, pending }: typeof VideoRailProps.Type) {
           ) : (
             <PlayerBands
               // the sheet's own headline: the shadow name when there is one
-              name={seat.sheet?.shadowName ?? seat.sheet?.name ?? seat.displayName}
+              name={seatName(seat)}
               storyteller={seat.role === "storyteller"}
               sheet={seat.sheet}
               pending={pending !== null && seat.sheet?.id === pending.characterId ? pending : null}
@@ -59,20 +85,46 @@ export function VideoRail({ seats, pending }: typeof VideoRailProps.Type) {
   )
 }
 
-/** The video's stand-in: a dark frame sharing the rail's height. */
-function Frame({ children }: { children: React.ReactNode }) {
+/** The video's stand-in: a dark frame sharing the rail's height. With a
+ * whisper door it is a toggle: chosen, its border burns accent and a
+ * quill rides its edge. */
+function Frame({
+  children,
+  door,
+}: {
+  children: React.ReactNode
+  door: { on: boolean; name: string; toggle: () => void } | null
+}) {
+  const Tag = door === null ? "div" : "button"
   return (
-    <div
-      className="relative grid min-h-0 flex-1 place-items-center overflow-hidden rounded-[3px] border"
+    <Tag
+      {...(door === null
+        ? {}
+        : {
+            type: "button" as const,
+            onClick: door.toggle,
+            "aria-pressed": door.on,
+            title: door.on ? `Stop whispering to ${door.name}` : `Whisper to ${door.name}`,
+          })}
+      className={`relative grid min-h-0 w-full flex-1 place-items-center overflow-hidden rounded-[3px] border ${door === null ? "" : "mv-tile-door cursor-pointer"}`}
       style={{
         maxHeight: "calc(100cqw * 9 / 16)",
-        borderColor: "var(--line)",
+        borderColor: door?.on ? "var(--accent)" : "var(--line)",
+        boxShadow: door?.on ? "inset 0 0 0 1px var(--accent), 0 0 12px -4px var(--accent)" : undefined,
         background:
           "radial-gradient(120% 90% at 50% 35%, color-mix(in srgb, var(--panel) 70%, var(--line)), var(--void, #07090b))",
       }}
     >
       {children}
-    </div>
+      {door?.on && (
+        // the quill: chosen to whisper, in the corner opposite the name
+        <Feather
+          aria-hidden
+          className="absolute right-1.5 bottom-1/2 size-3.5 translate-y-1/2"
+          style={{ color: "var(--accent)" }}
+        />
+      )}
+    </Tag>
   )
 }
 

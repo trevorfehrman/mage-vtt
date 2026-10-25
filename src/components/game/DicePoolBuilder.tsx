@@ -5,12 +5,12 @@ import type { CharacterSheet } from "#/domain/character";
 import { GateButton } from "#/components/ui/gate-button";
 import { UnifiedDie } from "./UnifiedDie";
 import { Felt } from "./Felt";
+import { DieRows, DieStack } from "./DieStack";
 import type { PoolKind } from "./die-look";
 import { pooledDice } from "#/machines/dice-pool";
 import type { useDicePool } from "#/hooks/use-dice-pool";
 import { useTrayForm } from "#/hooks/use-tray-form";
 import { OPTION_WORDS, flipTrayForm, trayOptionWords } from "./tray-form";
-import { Lozenge } from "./Lozenge";
 
 type DicePoolAPI = ReturnType<typeof useDicePool>;
 
@@ -184,40 +184,50 @@ export function DicePoolBuilder({
         <span className="mv-grip-bar" />
       </button>
       {!tall ? (
-        // the strip: the tall tray's columns, Roll inside the felt's, so ‹
-        // and › keep their x when it opens
+        // the strip: ‹ the felt › and Roll at the far right (owner,
+        // 2026-10-24), the trigger where the message box's Send stands
         <div
           className="mx-3 grid items-center gap-1.5 py-2"
-          style={{ gridTemplateColumns: "2rem minmax(0,1fr) 2rem" }}
+          style={{ gridTemplateColumns: "2rem minmax(0,1fr) 2rem auto" }}
         >
           {rail("skim", "h-8")}
-          <div className="flex min-w-0 items-center gap-1.5">
-            <Felt
-              {...feltTap}
-              className="flex h-8 min-w-0 flex-1 cursor-copy items-center justify-between"
-            >
+          <Felt
+            {...feltTap}
+            className="flex h-8 min-w-0 cursor-copy items-center justify-between"
+          >
+            {/* the dice themselves, stacking as they crowd; the count is
+                Roll's (owner, 2026-10-25) */}
+            {total === 0 ? (
               <span
                 className="mv-data whitespace-nowrap px-2.5 text-[13px]"
-                style={{ color: total === 0 ? "var(--dim)" : "var(--ink)" }}
+                style={{ color: "var(--dim)" }}
               >
-                {total === 0 ? "chance die" : diceLabel(total)}
+                chance die
               </span>
+            ) : (
+              <DieStack size="sm">
+                {sheetDice}
+                {willpowerDice}
+                {looseDice}
+              </DieStack>
+            )}
+            {trayOptionWords(pool.context).length > 0 && (
               <span
-                className="mv-data min-w-0 truncate px-2.5 text-[10px] uppercase"
+                className="mv-data shrink-0 px-2.5 text-[10px] uppercase"
                 style={{ letterSpacing: "0.06em", color: "var(--dim)" }}
               >
                 {trayOptionWords(pool.context).join(" · ")}
               </span>
-            </Felt>
-            <button
-              {...rollTrigger}
-              className="mv-roll h-8 shrink-0 rounded-[3px] text-[12px] disabled:opacity-40"
-              style={{ minWidth: 76, padding: "0 10px" }}
-            >
-              {rolling ? "Rolling…" : total === 0 ? <><Lozenge /> Roll</> : "Roll"}
-            </button>
-          </div>
+            )}
+          </Felt>
           {rail("feed", "h-8")}
+          <button
+            {...rollTrigger}
+            className="mv-roll h-8 shrink-0 rounded-[3px] text-[12px] disabled:opacity-40"
+            style={{ minWidth: 76, padding: "0 10px" }}
+          >
+            {rolling ? "Rolling…" : total === 0 ? "Roll" : `Roll ${total}`}
+          </button>
         </div>
       ) : (
         <>
@@ -233,14 +243,14 @@ export function DicePoolBuilder({
               {...feltTap}
               className="relative block min-w-0 cursor-copy px-2 pt-2 pb-1 text-left"
             >
-              {/* fixed two-row height — no shift as dice arrive; a third row
-                  scrolls */}
-              <span className="flex h-[58px] flex-wrap content-start gap-2.5 overflow-y-auto p-1">
-                <AnimatePresence initial={false}>
+              {/* fixed two-row height — no shift as dice arrive; past two
+                  rows the last place reads "+N" (owner, 2026-10-25) */}
+              <span className="flex h-[58px]">
+                <DieRows size="sm" rows={2}>
                   {sheetDice}
                   {willpowerDice}
                   {looseDice}
-                </AnimatePresence>
+                </DieRows>
               </span>
               {/* the gutter — the lineage in the tray's own frame, no shift
                   when it arrives */}
@@ -361,7 +371,7 @@ export function DicePoolBuilder({
               {rolling
                 ? "Rolling…"
                 : total === 0
-                  ? <><Lozenge /> Roll</>
+                  ? "Roll a chance die"
                   : `Roll ${diceLabel(total)}`}
             </button>
           </div>

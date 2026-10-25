@@ -1,5 +1,30 @@
 # Component polish runs shared-first, on Motion, against an amended identity
 
+> **Amended** (2026-10-24/25, MAG-53, the owner's calls: in a video-call
+> game chat "can't justify a permanent place on every seat"; "i think what
+> we want is to just be able to whisper cleanly, if the expanded view
+> doesn't expand by much so be it"). **The working slot**: the message box
+> and the dice tray share one place at the rail's foot, flipped at the
+> Chronicle's header (Dice | Message), picked from a three-way audition
+> (tabs on the slot's edge, a door at the line's head, the Chronicle's
+> header). Each hidden side carries its news — the dice waiting, the lines
+> unread, a whisper to you counted apart and filled. Both stay mounted, so
+> a draft and a pool survive a flip; the slot stands below a live cast on
+> every seat. **The message box** wears the tray's grammar (a felt, its own
+> grip, Send at the far right, its form remembered per browser like the
+> tray's) and carries no "Table" label: a whisper's people are named inside
+> the felt with a × back to the table, and its tall form adds only a row of
+> people — three richer tall forms (a thread, a roster, voices) were tried
+> and rejected. **The video tiles are the whisper roster**: click a face to
+> whisper them, more faces to add them (a group whisper, carried as
+> `whisperTargetIds`); the chosen tile burns accent with a quill on its
+> edge. **The shrunk tray** is ‹ · felt · › · Roll, Roll at the far right
+> with the count on it ("Roll 20"); its felt shows the dice themselves in
+> one row that stacks as it crowds (a removed die leaves at once so a run
+> of skims never crushes the row). **The tall tray** keeps its two rows
+> and shows "+N" in the last place past them. The ◈ is off the empty Roll
+> (it read as Mana); the tall one says "Roll a chance die".
+
 > **Amended** (2026-10-24, MAG-51/52): **the depletables leave the rail
 > foot.** The ResourceStrip is gone; its stats have two homes. Every
 > player's video tile wears their Will · Mana and whole health track inside

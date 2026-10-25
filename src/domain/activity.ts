@@ -85,10 +85,17 @@ export type Reader = {
   readonly role: SessionRole
 } | null
 
+/** Whether a Whisper reaches this user: its one target (the older shape) or
+ * any of its group (MAG-53). */
+export const whisperReaches = (
+  m: { readonly whisperTargetId?: string; readonly whisperTargetIds?: ReadonlyArray<string> },
+  userId: string,
+): boolean => m.whisperTargetId === userId || (m.whisperTargetIds ?? []).includes(userId)
+
 /**
  * The visibility policy — the one home of who sees what (issue #22 PRD).
  * Public and system Messages are visible to all members; a Whisper to its
- * sender, its target, and the Storyteller; a public Roll to all members; a
+ * sender, its targets, and the Storyteller; a public Roll to all members; a
  * Hidden roll to its roller and the Storyteller; a non-member sees nothing.
  */
 export const visibleTo =
@@ -103,7 +110,7 @@ export const visibleTo =
           Match.when("system", () => true),
           Match.when(
             "whisper",
-            () => m.senderId === reader.userId || m.whisperTargetId === reader.userId,
+            () => m.senderId === reader.userId || whisperReaches(m, reader.userId),
           ),
           Match.exhaustive,
         ),

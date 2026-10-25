@@ -22,7 +22,7 @@ import { useSessionShortcuts } from "#/hooks/use-session-shortcuts"
 /**
  * The settled 4-section grid (docs/ui-direction.md), rendered in reduced form
  * for the covert-tier phase (PRD #11, issue #13): center = Character; right
- * rail = Activity Log + dice pool + chat. The left rail renders a cosmetic
+ * rail = Activity Log + the working slot (dice tray / message box, MAG-53). The left rail renders a cosmetic
  * video placeholder (owner call 2026-07-04 — the grid can't be judged without
  * its fourth wall); the bottom band is the FFX-style tick timeline (issue
  * #60), a slot like the strip's — it collapses itself out of combat.
@@ -42,10 +42,12 @@ interface SessionLayoutProps {
   characterSheet?: ReactNode
   activityLog: ReactNode
   /** Every live cast at the table: present, it takes the working zone over
-   * on every seat, in place of the tray (MAG-48). */
+   * on every seat (MAG-48), above the working slot (MAG-53). */
   liveCasts?: ReactNode
-  dicePoolBuilder: ReactNode
-  chatInput: ReactNode
+  /** The working slot (MAG-53): the message box and the tray in one place
+   * at the rail's foot, toggled from the Chronicle's header. It stands below
+   * a live cast too (MAG-50's opening). */
+  workingSlot: ReactNode
   /** The FFX tick timeline (issue #60): the full-width bottom band. */
   combatTracker?: ReactNode
   onClearPool: () => void
@@ -62,8 +64,7 @@ export function SessionLayout({
   characterSheet,
   activityLog,
   liveCasts,
-  dicePoolBuilder,
-  chatInput,
+  workingSlot,
   combatTracker,
   onClearPool,
 }: SessionLayoutProps) {
@@ -211,28 +212,27 @@ export function SessionLayout({
           className="mv-panel border-0"
         >
           <div className="flex h-full flex-col">
-            {/* The feed and its chat — one thing (MAG-48), the working zone
-                below another. */}
+            {/* The feed — one thing (MAG-48), the working zone below
+                another. */}
             <div className="mv-rail-feed flex min-h-0 flex-1 flex-col">
               {/* Activity log — fills available space */}
               <div className="min-h-0 flex-1 overflow-hidden">{activityLog}</div>
-              <div className="shrink-0">{chatInput}</div>
             </div>
-            {/* The working zone, the foot of the rail. A live cast takes it
-                over on every seat, in place of the tray (MAG-48): full width,
-                framed whole in the live zone's red, so the table reads "pause
-                — something that touches everyone is happening"; capped so
-                a stack of casts never squeezes the Chronicle out (inline, so
-                the cap holds under a running dev server). Otherwise the
-                memory/judgment boundary (styles.css): the zone stands on the
-                void, postures wear the mv-stage frame. */}
-            {liveCasts ? (
-              <div className="mv-live-zone shrink-0 overflow-y-auto" style={{ maxHeight: "70%" }}>
+            {/* The working zone, the foot of the rail. A live cast stands
+                in it on every seat (MAG-48): full width, framed whole in the
+                live zone's red, so the table reads "pause — something that
+                touches everyone is happening"; capped so a stack of casts
+                never squeezes the Chronicle out (inline, so the cap holds
+                under a running dev server). Below it, always, the working
+                slot (MAG-53): the memory/judgment boundary (styles.css) —
+                the slot stands on the void, postures wear the mv-stage
+                frame. */}
+            {liveCasts && (
+              <div className="mv-live-zone shrink-0 overflow-y-auto" style={{ maxHeight: "60%" }}>
                 {liveCasts}
               </div>
-            ) : (
-              <div className="mv-stage-ground shrink-0">{dicePoolBuilder}</div>
             )}
+            <div className="mv-stage-ground shrink-0">{workingSlot}</div>
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>

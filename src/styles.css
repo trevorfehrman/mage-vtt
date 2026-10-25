@@ -585,6 +585,18 @@ pre code {
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
+/* A felt holding a field (the message box, MAG-53): focus speaks at the
+ * felt's border, as it does at a field's (.mv-field) — the caret already
+ * says where you are. */
+.mv-felt:has(input:focus, textarea:focus) {
+  border-color: var(--accent);
+}
+
+/* A video tile as the whisper door (MAG-53): the border wakes on approach. */
+.mv-tile-door:hover:not([aria-pressed="true"]) {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line)) !important;
+}
+
 /* The tray's grip (MAG-47): a drawer handle riding the dice tray's top edge,
  * in the same place in both forms — press it to open or shrink the tray. A
  * dim bar at rest; it widens and burns accent under the pointer or the
@@ -765,6 +777,7 @@ pre code {
  * owns the plank: mv-* controls and the restyled shadcn primitives
  * (data-slot) all take the same ring. */
 .mv-btn:focus-visible,
+.mv-tile-door:focus-visible,
 .mv-grip:focus-visible,
 .mv-seal-half:focus-visible,
 .mv-mini:focus-visible,

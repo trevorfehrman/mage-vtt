@@ -13,6 +13,8 @@ import { SessionMemberRow } from "./session"
  */
 export const VideoSeat = Schema.Struct({
   memberId: Schema.String,
+  /** Whom a whisper from this tile reaches (MAG-53). */
+  userId: Schema.String,
   displayName: Schema.String,
   role: SessionRole,
   sheet: Schema.NullOr(CharacterSheet),
@@ -30,7 +32,14 @@ export const videoSeats = (
 ): ReadonlyArray<VideoSeat> =>
   Arr.sort(members, byRoleThenJoined).map((m) => ({
     memberId: m._id,
+    userId: m.userId,
     displayName: m.displayName,
     role: m.role,
     sheet: Option.getOrNull(Arr.findFirst(sheets, (s) => String(s.sessionMemberId) === String(m._id))),
   }))
+
+/** The name a seat goes by at the table: its sheet's headline (the shadow
+ * name when there is one), else the member's own. The tile wears it, and
+ * the message box names a whisper's people by it (MAG-53). */
+export const seatName = (seat: VideoSeat): string =>
+  seat.sheet?.shadowName ?? seat.sheet?.name ?? seat.displayName
