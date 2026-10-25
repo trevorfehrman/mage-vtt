@@ -47,6 +47,8 @@ interface PoolModeProps {
   reduced: boolean | null
   size?: DieSize
   ghost?: boolean
+  /** The ghost's cause ink, when it isn't the die's own (MAG-49). */
+  ghostInk?: string | undefined
   /** The `layout` reflow glide — on for composing felts, off where the
    * surrounding frame snaps (the live Cast card, pass 3 note 8). */
   glide?: boolean
@@ -73,6 +75,8 @@ const FaceModeProps = Schema.Struct({
   size: Schema.optional(DieSize),
   /** A declared die that never rolled — eaten before the throw. */
   ghost: Schema.optional(Schema.Boolean),
+  /** The ghost's cause ink, when it isn't the ring's (MAG-49). */
+  ghostInk: Schema.optional(Schema.String),
   title: Schema.optional(Schema.String),
 })
 type FaceModeProps = typeof FaceModeProps.Type
@@ -91,6 +95,7 @@ function PoolDie({
   reduced,
   size = "sm",
   ghost = false,
+  ghostInk,
   glide = true,
   onSkim,
   disabled = false,
@@ -98,7 +103,7 @@ function PoolDie({
   lit = false,
   entrance = true,
 }: PoolModeProps) {
-  const input = { kind, ghost, lit, arcanum }
+  const input = { kind, ghost, lit, arcanum, ...(ghostInk !== undefined ? { ghostInk } : {}) }
   const look = poolLook(input)
   const anim = {
     layout: !reduced && glide,
@@ -152,9 +157,10 @@ function FaceDie({
   ring,
   size = "sm",
   ghost = false,
+  ghostInk,
   title,
 }: FaceModeProps) {
-  const look = faceLook({ v, again, chance, tone, ring, ghost })
+  const look = faceLook({ v, again, chance, tone, ring, ghost, ...(ghostInk !== undefined ? { ghostInk } : {}) })
   const shape = shapeClass(size)
   if (ghost) {
     // A ghost with a value is a face that rolled and was then absorbed (a
@@ -174,7 +180,7 @@ function FaceDie({
       <span
         data-face
         aria-hidden
-        title={title ?? "Eaten by the containment bet — declared, never rolled"}
+        title={title ?? "Lost"}
         className={shape}
         style={{ ...look, ...DIAMOND_STANCE }}
       />

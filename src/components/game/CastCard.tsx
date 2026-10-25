@@ -86,6 +86,14 @@ const PARADOX_GRACE =
  * the caster bore it. One word, in the lore slot's own voice. */
 const CONTAINED_MARK = "Borne"
 
+/** A ghost wears the ink of the REASON it isn't there (MAG-49, owner
+ * 2026-10-25): a cast die lost to Paradox the Paradox red, one lost to
+ * wounds the penalty numbers' own ink, a Paradox die that never landed the
+ * caster's green. */
+const PARADOX_INK = "var(--paradox)"
+const WOUND_INK = "var(--bad)"
+const SPARED_INK = "var(--accent)"
+
 export function CastCard({
   cast,
   sessionId,
@@ -291,6 +299,18 @@ export function CastCard({
         })
       : null
 
+  // The cast's odds under the bet, standing above the Cast button (owner,
+  // 2026-10-25): the cockpit's surviving pool when the sheet decoded, the
+  // same leaf off the local count when it did not (the NumberInput fallback
+  // still bets).
+  const castOdds =
+    status === "paradox" && cast.paradoxSuccesses !== undefined
+      ? rollOdds(
+          outlook?.castPool ??
+            castPoolAfterParadox(cast.declaredPool, cast.paradoxSuccesses, cockpitContained),
+        )
+      : null
+
   const waiting = waitingOn(cast)
   const terminal = waiting === null
   // Whose move it is, from this seat: the shrunk line and the footer agree.
@@ -365,21 +385,19 @@ export function CastCard({
     )
   // The eaten dice have two causes (MAG-49): each loose Paradox success
   // (p. 129) and the wound penalty the track carries (WoD p. 172). They ghost
-  // apart, from the row's end — Paradox's in its own red, the wounds' in the
-  // die's own ink — so containing visibly turns a red ghost into a die, or,
-  // when the bet's damage brings a new penalty, into a wound ghost (owner,
-  // 2026-10-25: "shouldn't the ghost dice be coming back?").
+  // apart, from the row's end, each in its CAUSE's ink — Paradox's red, the
+  // wounds' the penalty numbers' own — so containing visibly turns a red
+  // ghost into a die, or, when the bet's damage brings a new penalty, into a
+  // wound ghost (owner, 2026-10-25: "the ghost cast dice should be the color
+  // of the reason they aren't there").
   const eatenByParadox = outlook !== null ? Math.min(eaten, Math.max(0, outlook.uncontained)) : 0
+  const eatenByWounds = eaten - eatenByParadox
   const feltDice = feltKinds.map((kind, i) => {
     const fromEnd = feltKinds.length - 1 - i
     const ghosted = fromEnd < eaten
     const byParadox = fromEnd < eatenByParadox
     const arcanum = feltSpecs[i]?.arcanum
-    const says = !ghosted
-      ? groupSays(kind, arcanum)
-      : byParadox
-        ? "Eaten by Paradox — contain it to win this die back"
-        : `Lost to wounds (${outlook?.penaltyAfter ?? 0})`
+    const says = !ghosted ? groupSays(kind, arcanum) : byParadox ? "Lost to Paradox" : "Lost to wounds"
     return (
       <Tooltip key={`${kind}:${i}`}>
         <TooltipTrigger asChild>
@@ -391,11 +409,12 @@ export function CastCard({
           >
             <UnifiedDie
               mode="pool"
-              kind={byParadox ? "paradox" : kind}
-              arcanum={byParadox ? undefined : arcanum}
+              kind={kind}
+              arcanum={arcanum}
               reduced={reduced}
               glide={false}
               ghost={ghosted}
+              ghostInk={byParadox ? PARADOX_INK : WOUND_INK}
               lit={litKind === kind}
             />
           </span>
@@ -560,26 +579,11 @@ export function CastCard({
         : pricedRow(Mana.make(0), PoolSize.make(feltPool.totalDice), cast.declaredPool),
     ),
     Match.when("paradox", () => {
-      if (pool === null) return null
-      if (cast.paradoxSuccesses === undefined) {
-        return pricedRow(Mana.make(cast.manaMitigation ?? 0), PoolSize.make(pool.totalDice), cast.declaredPool)
-      }
-      // The surviving cast pool under the bet — the cockpit's own number
-      // when the sheet decoded, the same leaf off the local count when it
-      // did not (the NumberInput fallback still bets).
-      const castPool =
-        outlook?.castPool ??
-        castPoolAfterParadox(cast.declaredPool, cast.paradoxSuccesses, cockpitContained)
-      const odds = rollOdds(castPool)
-      return {
-        spend: Mana.make(cast.manaMitigation ?? 0),
-        // the committed pool, as the table priced it — explosions are the
-        // felt's to show, not a change of what was rolled against
-        dice: PoolSize.make(pool.totalDice),
-        paradox: { kind: "rolled", successes: cast.paradoxSuccesses },
-        success: odds.success,
-        dramaticFailure: odds.isChanceDie ? odds.dramaticFailure : 0,
-      }
+      // Once reality has rolled the row stands down (owner, 2026-10-25:
+      // "this row isn't earning its keep"): the felt, the severity line and
+      // the Cast button's own odds say it all.
+      if (pool === null || cast.paradoxSuccesses !== undefined) return null
+      return pricedRow(Mana.make(cast.manaMitigation ?? 0), PoolSize.make(pool.totalDice), cast.declaredPool)
     }),
     // The draft prices nothing yet; the record and the dead rungs say nothing
     // here — listed, not defaulted (ADR-0018).
@@ -621,7 +625,7 @@ export function CastCard({
           onClick={() => setShrunk((v) => !v)}
           className="mv-grip"
           style={{ top: -6 }}
-          title={shrunk ? "Open the cast" : "Shrink the cast to one line"}
+          title={shrunk ? "Expand" : "Collapse"}
           aria-label={shrunk ? "Open the cast" : "Shrink the cast to one line"}
           aria-expanded={!shrunk}
         >
@@ -802,8 +806,12 @@ export function CastCard({
             rolledAt={cast.timestamp}
             contained={containedNow}
             eaten={boughtOff}
-            eatenTitle={`Mitigated: −${boughtOff} (Mana spent at the commit)`}
-            ghostTitle="Contained — this Paradox success lands as Resistant bashing instead of manifesting"
+            // A Paradox die that never landed is the caster's win: green
+            // (owner, 2026-10-25), whether the body or the Mana paid for it.
+            eatenSays="Mitigated"
+            eatenInk={SPARED_INK}
+            ghostSays="Contained"
+            ghostInk={SPARED_INK}
           />
         )}
         {paradoxDiceCount !== null && (
@@ -863,7 +871,12 @@ export function CastCard({
         )}
         </FeltSection>
         )}
-        <FeltSection label="cast" labelAt="bottom" divided={paradoxArea}>
+        <FeltSection
+          label="cast"
+          labelAt="bottom"
+          divided={paradoxArea}
+          aside={outlook !== null && <LostLegend paradox={eatenByParadox} wounds={eatenByWounds} />}
+        >
         {status === "resolved" && cast.castRolls !== undefined ? (
           // The cast roll on ONE row (2026-07-20), in the burst order
           // (MAG-18): each explosion beside its trigger, then the dice the
@@ -995,7 +1008,7 @@ export function CastCard({
               disabled={busy}
               className="mv-btn rounded-[3px] px-2 py-1 text-[12px]"
               style={{ borderColor: "var(--bad)", color: "var(--bad)" }}
-              title="Override-stamped repair: restores Mana and Willpower, frees the stage, leaves no accumulator trace."
+              title="Refunds Mana and Willpower"
             >
               Void
             </button>
@@ -1011,7 +1024,6 @@ export function CastCard({
               onClick={() => run(() => engage(step))}
               disabled={busy}
               className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
-              title="Put the offer on stage — the Tides get set on this card."
             >
               Engage
             </button>
@@ -1021,7 +1033,6 @@ export function CastCard({
               onClick={() => run(() => lockPrice(step))}
               disabled={busy}
               className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
-              title="THE FIX: the Tides stamp onto the card and cannot shift again."
             >
               Fix the Tides
             </button>
@@ -1039,7 +1050,6 @@ export function CastCard({
               }
               disabled={busy}
               className="mv-roll inline-flex items-center gap-1.5 rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
-              title="The point of no return: mitigation, spell cost, and any precommitted Willpower commit now."
             >
               Commit
               {/* The spend, bare (owner, 2026-10-22): "Commit 2 ◈" — the
@@ -1050,7 +1060,7 @@ export function CastCard({
               {pendingManaNow > 0 && (
                 <b
                   className="mv-data leading-none"
-                  title="The Mana this commit spends — spell cost plus the selected mitigation"
+                  title="Mana"
                 >
                   {pendingManaNow} <Lozenge />
                 </b>
@@ -1058,7 +1068,7 @@ export function CastCard({
               {cast.spendWillpower && (
                 <b
                   className="mv-data leading-none"
-                  title="The precommitted Willpower point — it spends at the commit"
+                  title="Willpower"
                 >
                   1 <Lozenge />
                 </b>
@@ -1090,19 +1100,30 @@ export function CastCard({
               rescinded (#102, owner walk 2026-07-18) — it read as aimless
               against the hot Paradox family. */}
           {controls.includes("release") && (
-            <button
-              onClick={() =>
-                run(() => release({ ...step, containedSuccesses: contained }))
-              }
-              disabled={busy}
-              className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
-              title="One commitment: the containment lands as Resistant bashing and the dice fly."
-            >
-              {/* The pool the spell will roll rides the trigger once the
-                  Paradox is in (owner, 2026-10-25, MAG-49): "at a glance i
-                  wanna be like okay i'm gonna roll 9" — it moves with the bet. */}
-              {outlook !== null ? `Cast ${diceLabel(outlook.castPool)}` : "Cast"}
-            </button>
+            // The success % stands above the trigger, moving with the bet.
+            <span className="flex flex-col items-end gap-1">
+              {castOdds !== null && (
+                <span className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
+                  success{" "}
+                  <b style={{ color: "var(--rail-success)" }}>{pct(castOdds.success)}</b>
+                  {castOdds.isChanceDie && castOdds.dramaticFailure >= DRAMATIC_FAILURE_WARN_FLOOR && (
+                    <span style={{ color: "var(--bad)" }}> · dramatic failure {pct(castOdds.dramaticFailure)}</span>
+                  )}
+                </span>
+              )}
+              <button
+                onClick={() =>
+                  run(() => release({ ...step, containedSuccesses: contained }))
+                }
+                disabled={busy}
+                className="mv-roll rounded-[3px] px-3 py-1.5 text-[12px] disabled:opacity-40"
+              >
+                {/* The pool the spell will roll rides the trigger once the
+                    Paradox is in (owner, 2026-10-25, MAG-49): "at a glance i
+                    wanna be like okay i'm gonna roll 9" — it moves with the bet. */}
+                {outlook !== null ? `Cast ${diceLabel(outlook.castPool)}` : "Cast"}
+              </button>
+            </span>
           )}
         </div>
       )}
@@ -1208,16 +1229,14 @@ const ROW_GRID = "grid grid-cols-[3.5rem_5.5rem_4.5rem_1fr] items-center gap-2 r
 
 /**
  * One odds row's facts (MAG-45): the Mana spent, the red dice, reality's
- * cell — its success odds before the roll, its rolled count after — and the
+ * success odds (the row lives only before reality rolls) — and the
  * cast's success % with those dice priced in (castOddsUnderParadox, p. 124).
  */
 const OddsRowProps = Schema.Struct({
   spend: Mana,
   dice: PoolSize,
-  paradox: Schema.Union([
-    Schema.Struct({ kind: Schema.Literal("odds"), p: Schema.Number }),
-    Schema.Struct({ kind: Schema.Literal("rolled"), successes: Schema.Number }),
-  ]),
+  /** Reality's success odds before its roll. */
+  paradox: Schema.Number,
   success: Schema.Number,
   dramaticFailure: Schema.Number,
 })
@@ -1229,7 +1248,7 @@ const pricedRow = (spend: Mana, dice: PoolSize, declaredPool: number): OddsRowPr
   return {
     spend,
     dice,
-    paradox: { kind: "odds", p: rollOdds(dice).success },
+    paradox: rollOdds(dice).success,
     success: cast.success,
     dramaticFailure: cast.dramaticFailure,
   }
@@ -1252,11 +1271,7 @@ function OddsCells({ spend, dice, paradox, success, dramaticFailure, here }: typ
       <span className="inline-flex items-center gap-1">
         <ParadoxGlyph size={12} />
         <b className="text-[12px]" style={{ color: "var(--paradox)" }}>
-          {Match.value(paradox).pipe(
-            Match.when({ kind: "odds" }, ({ p }) => pct(p)),
-            Match.when({ kind: "rolled" }, ({ successes }) => String(successes)),
-            Match.exhaustive,
-          )}
+          {pct(paradox)}
         </b>
       </span>
       <span className="inline-flex flex-wrap items-center gap-x-2">
@@ -1337,7 +1352,7 @@ function MitigationPreview({
                 : { border: "1px solid transparent", color: "var(--dim)" }
             }
             {...(locked
-              ? { title: `Needs ${row.spend} Mana free after the spell's cost — ${affordable} ${affordable === 1 ? "is" : "are"} free.` }
+              ? { title: `${affordable} Mana free` }
               : {})}
           >
             <OddsCells {...row} here={false} />
@@ -1417,15 +1432,19 @@ function ParadoxCockpit({
           the quiet word when nothing runs loose — same height either way. */}
       <div className="flex h-[24px] items-center justify-center">
         {outlook.uncontained > 0 ? (
+          // "2 ⟐ BEDLAM" (owner, 2026-10-25): the loose successes and what
+          // they become, on one line.
           <span
-            className="mv-h text-[22px] uppercase leading-none tracking-[0.1em]"
+            className="mv-h inline-flex items-center gap-2 text-[22px] uppercase leading-none tracking-[0.1em]"
             style={{
               color: "var(--paradox)",
               textShadow:
                 "0 0 14px color-mix(in srgb, var(--paradox) 55%, transparent)",
             }}
           >
-            {severity}
+            <span>{outlook.uncontained}</span>
+            <ParadoxGlyph size={18} />
+            <span>{severity}</span>
           </span>
         ) : (
           paradoxSuccesses === 0 ? (
@@ -1443,7 +1462,7 @@ function ParadoxCockpit({
                 color: "var(--ember)",
                 textShadow: "0 0 14px color-mix(in srgb, var(--ember) 45%, transparent)",
               }}
-              title="Every Paradox success taken on the body as Resistant bashing"
+              title="All contained"
             >
               {CONTAINED_MARK}
             </span>
@@ -1457,18 +1476,12 @@ function ParadoxCockpit({
           const reachable = ordinal !== null && ordinal < cap
           const title =
             ordinal === null
-              ? `${box.severity} damage${box.resistant ? " · Resistant" : ""}`
+              ? `${box.severity.charAt(0).toUpperCase()}${box.severity.slice(1)}${box.resistant ? " · Resistant" : ""}`
               : ghosted
-                ? "Contained — this box takes Resistant bashing when you Cast; click to release it"
+                ? "Contained"
                 : reachable
-                  ? interactive
-                    ? "Contain one more Paradox here — Resistant bashing, one fewer loose"
-                    : "A box the caster could offer"
-                  : paradoxSuccesses === 0
-                    ? "No Paradox rolled — nothing to contain"
-                    : paradoxSuccesses <= cap
-                      ? `Only ${paradoxSuccesses} Paradox rolled — nothing more to contain`
-                      : "Beyond the bet — containment can fill the track, never pass it"
+                  ? "Contain"
+                  : "Out of reach"
           // The printed sheet's wound penalties (WoD p. 171): −1/−2/−3 at
           // the last three boxes — standing above them here, since the
           // Resistant dot owns the space beneath (Mage p. 124). Exactly one
@@ -1524,11 +1537,7 @@ function ParadoxCockpit({
                     opacity: penaltyLive ? 1 : 0.6,
                     fontWeight: penaltyLive ? 700 : 400,
                   }}
-                  title={
-                    penaltyLive
-                      ? "Wound penalty in effect — it rides every roll, this cast's included"
-                      : "Wound penalty once this box is filled (the printed sheet's −1/−2/−3)"
-                  }
+                  title="Wound penalty"
                 >
                   −{-penaltyLabel}
                 </span>
@@ -1549,7 +1558,7 @@ function ParadoxCockpit({
                 {ghosted ? (
                   <span
                     className="size-[5px] rounded-full"
-                    title="Resistant — heals only naturally (the sheet's dot beneath the box)"
+                    title="Resistant"
                     style={{ background: "var(--ember)", opacity: 0.7 }}
                   />
                 ) : (
@@ -1568,7 +1577,7 @@ function ParadoxCockpit({
         <p
           className={`${martyrReachable ? "min-h-[18px] " : ""}mv-data text-center text-[12px]`}
           style={{ color: "var(--bad)" }}
-          title={outlook.martyr ? "The last health box takes bashing: unconscious (p. 126; the Storyteller adjudicates). The cast still completes." : undefined}
+          title={outlook.martyr ? "The cast still completes" : undefined}
         >
           {outlook.martyr ? "unconscious" : ""}
         </p>
@@ -1665,6 +1674,48 @@ function ResolutionTag({
  * dice and reality's read as two areas with two jobs — the hand he throws
  * and the roll that is made against it first — not one overflowing row.
  */
+/** The wound's mark: a health box struck through, in the penalty's ink. */
+function WoundGlyph({ size = 13 }: { size?: number }) {
+  return (
+    <span
+      aria-hidden
+      className="mv-data grid place-items-center rounded-[2px] border font-bold leading-none"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.7), borderColor: "currentColor" }}
+    >
+      ╱
+    </span>
+  )
+}
+
+/**
+ * The cast felt's legend (MAG-49, owner 2026-10-25), bottom right, mirroring
+ * the Paradox area's instruments top right: the dice lost to each cause, a
+ * number and a symbol each, in the cause's ink — dim at zero.
+ */
+function LostLegend({ paradox, wounds }: { paradox: number; wounds: number }) {
+  const entries = [
+    { key: "paradox", glyph: <ParadoxGlyph size={13} />, lost: paradox, ink: PARADOX_INK, says: "Lost to Paradox" },
+    { key: "wounds", glyph: <WoundGlyph />, lost: wounds, ink: WOUND_INK, says: "Lost to wounds" },
+  ]
+  return (
+    <TooltipProvider>
+      <span className="flex items-center justify-end gap-x-3 normal-case tracking-normal">
+        {entries.map((e) => (
+          <Tooltip key={e.key}>
+            <TooltipTrigger asChild>
+              <span className="inline-flex items-center gap-1" style={{ color: e.lost > 0 ? e.ink : "var(--dim)" }}>
+                {e.glyph}
+                <span>{e.lost > 0 ? `−${e.lost}` : "0"}</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={4}>{e.says}</TooltipContent>
+          </Tooltip>
+        ))}
+      </span>
+    </TooltipProvider>
+  )
+}
+
 function FeltSection({
   label,
   labelAt,

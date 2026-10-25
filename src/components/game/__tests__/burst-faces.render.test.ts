@@ -73,7 +73,7 @@ describe("BurstFaces", () => {
     expect([...container.querySelectorAll("[data-burst]")].every((c) => c.getAttribute("data-burst") === "one")).toBe(true)
   })
 
-  it("ghosts the contained successes with the ghost title, and trails the eaten dice", () => {
+  it("ghosts the contained successes in their cause's ink behind a tooltip, and trails the eaten dice", () => {
     const { container } = render(
       createElement(BurstFaces, {
         rolls: [8, 9],
@@ -82,7 +82,8 @@ describe("BurstFaces", () => {
         again: 10,
         reduced: true,
         contained: 1,
-        ghostTitle: "Contained",
+        ghostSays: "Contained",
+        ghostInk: "var(--accent)",
         eaten: 2,
         tone: "paradox",
       }),
@@ -91,12 +92,14 @@ describe("BurstFaces", () => {
     expect(faces.map((f) => f.textContent)).toEqual(["8", "9", "", ""])
     expect(faces[0]!.style.border).toContain("solid")
     expect(faces[1]!.style.border).toContain("dashed")
-    expect(faces[1]!.title).toBe("Contained")
+    expect(faces[1]!.style.border).toContain("var(--accent)")
+    expect(faces[1]!.parentElement!.getAttribute("data-slot")).toBe("tooltip-trigger")
+    expect(faces[0]!.parentElement!.getAttribute("data-slot")).toBeNull()
     expect(faces[2]!.style.border).toContain("dashed")
     expect(faces[3]!.style.border).toContain("dashed")
   })
 
-  it("titles the eaten dice by what ate them", () => {
+  it("the eaten dice say what ate them, in its ink", () => {
     const { container } = render(
       createElement(BurstFaces, {
         rolls: [4],
@@ -105,12 +108,14 @@ describe("BurstFaces", () => {
         again: 10,
         reduced: true,
         eaten: 1,
-        eatenTitle: "Mitigated",
+        eatenSays: "Mitigated",
+        eatenInk: "var(--mana)",
         tone: "paradox",
       }),
     )
     const faces = [...container.querySelectorAll("[data-face]")] as HTMLElement[]
-    expect(faces[1]!.title).toBe("Mitigated")
+    expect(faces[1]!.style.border).toContain("var(--mana)")
+    expect(faces[1]!.parentElement!.getAttribute("data-slot")).toBe("tooltip-trigger")
   })
 
   it("a child enters hidden when motion is on, and stands at once when reduced", () => {

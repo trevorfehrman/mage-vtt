@@ -125,7 +125,7 @@ export function HealthLine({ track, ghosts, box: edge = 14 }: typeof HealthLineP
         <span
           className="mv-data text-[12px] leading-none font-bold"
           style={{ color: "var(--bad)", paddingBottom: 6 }}
-          title="Wound penalty — it rides every roll"
+          title="Wound penalty"
         >
           {penalty}
         </span>
