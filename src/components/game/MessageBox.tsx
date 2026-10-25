@@ -1,5 +1,9 @@
 import { useState, type RefObject } from "react"
+import { ConvexError } from "convex/values"
 import { useMessageForm } from "#/hooks/use-tray-form"
+import { GateButton } from "#/components/ui/gate-button"
+import type { WhisperPerson } from "#/domain/video-rail"
+import { seamErrorMessage } from "#/lib/seam-errors"
 import { Felt } from "./Felt"
 
 /**
@@ -14,14 +18,18 @@ import { Felt } from "./Felt"
  * 2026-10-25: it took too much room). The draft lives here, and the slot
  * keeps this mounted while the tray shows, so a flip never loses it.
  */
-interface Person {
-  readonly id: string
-  readonly name: string
-}
+/** Chat's refusals are plain sentences, not the seam's tags (ADR-0010 covers
+ * the rules flows); either way the line speaks the sentence, never Convex's
+ * wrapper around it. */
+const refusal = (e: unknown): string =>
+  seamErrorMessage(e, {
+    fallback: (err) =>
+      err instanceof ConvexError && typeof err.data === "string" ? err.data : "The message didn't send.",
+  })
 
 interface MessageBoxProps {
   /** everyone the viewer could whisper */
-  readonly people: ReadonlyArray<Person>
+  readonly people: ReadonlyArray<WhisperPerson>
   /** who the line is whispered to, by user id; empty is the table */
   readonly targets: ReadonlyArray<string>
   readonly onToggle: (id: string) => void
@@ -45,7 +53,7 @@ export function MessageBox({ people, targets, onToggle, onClear, onSend, onEscap
     setError(null)
     onSend(words, chosen.map((p) => p.id)).then(
       () => setDraft(""),
-      (e: unknown) => setError(e instanceof Error ? e.message : "The message didn't send."),
+      (e: unknown) => setError(refusal(e)),
     )
   }
   const grip = tall ? "Shrink the message box" : "Show who to whisper"
@@ -131,14 +139,15 @@ export function MessageBox({ people, targets, onToggle, onClear, onSend, onEscap
             style={{ color: "var(--ink)" }}
           />
         </Felt>
-        <button
+        {/* the gate speaks at the control that refuses (ADR-0021) */}
+        <GateButton
+          gate={words ? null : whisper ? "Write the whisper first." : "Write a message first."}
           onClick={send}
-          disabled={!words}
-          className="mv-roll h-8 shrink-0 rounded-[3px] text-[12px] disabled:opacity-40"
+          className="mv-roll h-8 shrink-0 rounded-[3px] text-[12px]"
           style={{ minWidth: 76, padding: "0 10px" }}
         >
           {whisper ? "Whisper" : "Send"}
-        </button>
+        </GateButton>
       </div>
       {/* the seam's refusal, spoken under the line as the tray speaks its own */}
       {error && (

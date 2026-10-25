@@ -1,4 +1,4 @@
-import { Array as Arr, Option, Order, Schema } from "effect"
+import { Array as Arr, Option, Order, Result, Schema } from "effect"
 import { CharacterSheet } from "./character"
 import { SessionRole } from "./roles"
 import { SessionMemberRow } from "./session"
@@ -43,3 +43,14 @@ export const videoSeats = (
  * the message box names a whisper's people by it (MAG-53). */
 export const seatName = (seat: VideoSeat): string =>
   seat.sheet?.shadowName ?? seat.sheet?.name ?? seat.displayName
+
+/** Someone a whisper can reach, named as their tile is (MAG-53). */
+export const WhisperPerson = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+})
+export type WhisperPerson = typeof WhisperPerson.Type
+
+/** Everyone at the table the viewer could whisper: every seat but their own. */
+export const whisperable = (seats: ReadonlyArray<VideoSeat>, selfId: string): ReadonlyArray<WhisperPerson> =>
+  Arr.filterMap(seats, (s) => (s.userId === selfId ? Result.failVoid : Result.succeed({ id: s.userId, name: seatName(s) })))

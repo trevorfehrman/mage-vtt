@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { Schema } from "effect"
 import { SessionMemberRow } from "../session"
 import { makeAldousSheet, makeCorvinSheet } from "../testing/fixtures"
-import { seatName, videoSeats } from "../video-rail"
+import { seatName, videoSeats, whisperable } from "../video-rail"
 
 const member = (id: string, role: "storyteller" | "player", joined: number, displayName = id) =>
   Schema.decodeUnknownSync(SessionMemberRow)({
@@ -55,5 +55,13 @@ describe("videoSeats", () => {
       [makeCorvinSheet({ shadowName: "Tessellate" })],
     )
     expect(seats.map(seatName)).toEqual(["Tessellate", "Newcomer"])
+  })
+
+  it("offers every seat but the viewer's own to whisper, named as their tiles are", () => {
+    const seats = videoSeats(
+      [member("member-st", "storyteller", 1, "Morrigan"), member("member-corvin", "player", 2)],
+      [makeCorvinSheet({ shadowName: "Tessellate" })],
+    )
+    expect(whisperable(seats, "user-member-st")).toEqual([{ id: "user-member-corvin", name: "Tessellate" }])
   })
 })

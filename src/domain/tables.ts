@@ -376,6 +376,10 @@ export const CombatDoc = Schema.Struct({
   endedAt: Schema.optionalKey(Schema.Number),
 })
 
+/** A group whisper's members, by user id (MAG-53): the message row's field
+ * and the send's argument, one shape. */
+export const WhisperTargetIds = Schema.Array(Schema.String)
+
 export const MessageDoc = Schema.Struct({
   sessionId: ConvexId("sessions"),
   senderId: Schema.String,
@@ -383,9 +387,12 @@ export const MessageDoc = Schema.Struct({
   text: Schema.String,
   visibilityType: Schema.Literals(["public", "whisper", "system"]),
   whisperTargetId: Schema.optionalKey(Schema.String),
-  // A group whisper (MAG-53): every member it reaches. New whispers carry
-  // this; older ones carry the single `whisperTargetId` above.
-  whisperTargetIds: Schema.optionalKey(Schema.Array(Schema.String)),
+  // A group whisper (MAG-53): every member it reaches, and their names as
+  // they stood when it was sent (self-describing, ADR-0009 — the record
+  // names its people the way it names its sender). New whispers carry these;
+  // older ones carry the single `whisperTargetId` above.
+  whisperTargetIds: Schema.optionalKey(WhisperTargetIds),
+  whisperTargetNames: Schema.optionalKey(Schema.Array(Schema.String)),
   // Override provenance (ADR-0006): present only when a rule was bent — the
   // hand-edit flow's system entries carry it (issue #19). Absent on chat.
   override: Schema.optionalKey(OverrideMarkerDoc),

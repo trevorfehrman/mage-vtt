@@ -27,6 +27,9 @@ const messageEntry = (m: Doc<"messages">) => ({
   ...(m.whisperTargetIds !== undefined && {
     whisperTargetIds: m.whisperTargetIds,
   }),
+  ...(m.whisperTargetNames !== undefined && {
+    whisperTargetNames: m.whisperTargetNames,
+  }),
   ...(m.override !== undefined && { override: m.override }),
 })
 

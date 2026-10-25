@@ -92,17 +92,32 @@ export const whisperReaches = (
   userId: string,
 ): boolean => m.whisperTargetId === userId || (m.whisperTargetIds ?? []).includes(userId)
 
+/** The members a whisper reaches (MAG-53): each named member of the table
+ * once, in the order named, never the sender and never anyone who isn't at
+ * the table. Empty means it reaches no one — the send refuses rather than
+ * quietly speaking to the table. */
+export const whisperTargets = <M extends { readonly userId: string }>(
+  named: ReadonlyArray<string>,
+  senderId: string,
+  table: ReadonlyArray<M>,
+): ReadonlyArray<M> =>
+  Arr.filterMap(Arr.dedupe(named), (id) =>
+    id === senderId ? Result.failVoid : Result.fromOption(Arr.findFirst(table, (m) => m.userId === id), () => undefined),
+  )
+
 /**
  * The visibility policy — the one home of who sees what (issue #22 PRD).
  * Public and system Messages are visible to all members; a Whisper to its
- * sender, its targets, and the Storyteller; a public Roll to all members; a
+ * sender and its targets only — the Storyteller included only when they are
+ * one of those (owner, 2026-10-25, MAG-53: "the ST should absolutely not be
+ * able to see every whisper at the table, only whispers to them"); a public Roll to all members; a
  * Hidden roll to its roller and the Storyteller; a non-member sees nothing.
  */
 export const visibleTo =
   (reader: Reader) =>
   (entry: ActivityEntry): boolean => {
     if (reader === null) return false
-    if (reader.role === "storyteller") return true
+    const storyteller = reader.role === "storyteller"
     return Match.value(entry).pipe(
       Match.tag("message", (m) =>
         Match.value(m.visibilityType).pipe(
@@ -117,7 +132,7 @@ export const visibleTo =
       ),
       Match.tag(
         "roll",
-        (r) => r.visibility === "public" || r.userId === reader.userId,
+        (r) => storyteller || r.visibility === "public" || r.userId === reader.userId,
       ),
       // All Casts are public in this slice (issue #43): the handshake is a
       // contested spectacle, and the whole table watches the ladder climb.

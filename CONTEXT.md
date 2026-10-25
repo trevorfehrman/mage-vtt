@@ -313,9 +313,10 @@ visibility.
 
 **Whisper**:
 A private Message from one user to one or more others (commonly Storyteller ↔
-Player), visible only to its sender, its targets, and the Storyteller. A group
-whisper (MAG-53) names every member it reaches; the targets are chosen by
-clicking their Video tiles, or in the Message box's row of people.
+Player), visible only to its sender and its targets — the Storyteller sees a
+whisper only as one of those (owner, 2026-10-25). A group whisper (MAG-53)
+names every member it reaches, in the Activity Log too; the targets are chosen
+by clicking their Video tiles, or in the Message box's row of people.
 
 **Override**:
 A provenance marker on an Activity recording that a rule was bent to produce it —

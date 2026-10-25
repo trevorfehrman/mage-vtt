@@ -48,7 +48,7 @@ import { pooledDice } from "#/machines/dice-pool"
 import { MessageBox } from "#/components/game/MessageBox"
 import { ChronicleSwitch, WorkingSlot } from "#/components/game/WorkingSlot"
 import { useWorkingSlot } from "#/hooks/use-working-slot"
-import { seatName } from "#/domain/video-rail"
+import { whisperable } from "#/domain/video-rail"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { VideoRail } from "#/components/game/VideoRail"
 import type { CharacterSheet as Sheet } from "#/domain/character"
@@ -390,6 +390,8 @@ function DressingRoom() {
   const someoneElse = PEOPLE.find((p) => p.id !== view.viewerUserId)!
   // the working slot reads the rig's feed as the route reads the real one
   const slot = useWorkingSlot([systemMsg, chatMsg, priorRoll, ...arrived], view.viewerUserId)
+  // the tiles are the whisper roster, the viewer's own excepted
+  const people = whisperable(RIG_SEATS, view.viewerUserId)
   let seq = arrived.length
   const line = (
     from: { id: string; name: string },
@@ -402,7 +404,12 @@ function DressingRoom() {
     senderName: from.name,
     text,
     visibilityType: whisperTo.length === 0 ? "public" : "whisper",
-    ...(whisperTo.length === 0 ? {} : { whisperTargetIds: whisperTo }),
+    ...(whisperTo.length === 0
+      ? {}
+      : {
+          whisperTargetIds: whisperTo,
+          whisperTargetNames: whisperTo.map((id) => people.find((p) => p.id === id)?.name ?? "you"),
+        }),
     timestamp: T0 + seq * 1000,
   })
   // the knob's incoming lines: the slot counts them while the tray shows
@@ -417,11 +424,6 @@ function DressingRoom() {
     ])
   }
   const pooled = pooledDice(pool.context)
-  // the tiles are the whisper roster, the viewer's own excepted
-  const people = RIG_SEATS.filter((s) => s.userId !== view.viewerUserId).map((s) => ({
-    id: s.userId,
-    name: seatName(s),
-  }))
 
   // Functional updaters: each knob patches only its own key, so a fast
   // seat-click + arrow-press never overwrite each other.
@@ -480,7 +482,7 @@ function DressingRoom() {
         style={{ borderColor: "var(--line)" }}
       >
         <h2 className="mv-eyebrow">Chronicle</h2>
-        <ChronicleSwitch mode={slot.mode} setMode={slot.setMode} unread={slot.unread} pooled={pooled} />
+        <ChronicleSwitch mode={slot.mode} setMode={slot.setMode} unread={slot.unread} pooled={pooled} diceRef={slot.switchRef} />
       </div>
       <ScrollArea className="min-h-0 flex-1 px-3 py-2">
         <div className="grid gap-2">
@@ -545,10 +547,7 @@ function DressingRoom() {
                   setArrived((prev) => [...prev, line(me, text, targets)])
                   return Promise.resolve()
                 }}
-                onEscape={() => {
-                  slot.setMode("dice")
-                  slot.inputRef.current?.blur()
-                }}
+                onEscape={slot.escape}
                 inputRef={slot.inputRef}
               />
             }

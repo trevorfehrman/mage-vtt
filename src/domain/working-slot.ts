@@ -9,6 +9,10 @@ import { whisperReaches, type ActivityEntry, type MessageEntry } from "./activit
  * chat. "Since" is the newest message the viewer had when they flipped away,
  * a server timestamp, so the two clocks never meet.
  */
+/** Which instrument the slot shows: the dice tray or the message box. */
+export const SlotMode = Schema.Literals(["dice", "message"])
+export type SlotMode = typeof SlotMode.Type
+
 export const Unread = Schema.Struct({
   chat: Schema.Number,
   whisper: Schema.Number,

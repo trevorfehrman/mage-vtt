@@ -216,7 +216,10 @@ export function MessageItem({ message, dropCap }: { message: MessageEntry; dropC
       {message.visibilityType === "whisper" && (
         <span className="text-[11px] italic" style={{ color: "var(--dim)" }}>
           {" "}
-          (whisper)
+          {/* a whisper names its people, as it names its sender (MAG-53) */}
+          {message.whisperTargetNames !== undefined && message.whisperTargetNames.length > 0
+            ? `(whisper to ${message.whisperTargetNames.join(", ")})`
+            : "(whisper)"}
         </span>
       )}{" "}
       <span style={{ color: message.visibilityType === "whisper" ? "var(--dim)" : "var(--ink)" }}>
