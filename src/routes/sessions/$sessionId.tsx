@@ -20,7 +20,8 @@ import {
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { CastCard } from "#/components/game/CastCard"
 import { CastMount } from "#/components/game/CastMount"
-import { ChatInput } from "#/components/game/ChatInput"
+import { MessageBox } from "#/components/game/MessageBox"
+import { ChronicleSwitch, WorkingSlot } from "#/components/game/WorkingSlot"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
 import { SheetSky } from "#/components/game/TraitSky"
 import { Roster } from "#/components/game/Roster"
@@ -34,7 +35,9 @@ import { seamErrorMessage } from "#/lib/seam-errors"
 import { isOnStage, stripTides } from "#/domain/cast"
 import type { CharacterSheet as CharacterSheetData } from "#/domain/character"
 import { decodeSheetDoc } from "#/lib/sheet-doc"
-import { videoSeats } from "#/domain/video-rail"
+import { seatName, videoSeats } from "#/domain/video-rail"
+import { useActivity } from "#/hooks/use-activity"
+import { useWorkingSlot } from "#/hooks/use-working-slot"
 import { arctusData } from "#/domain/fixtures/arctus"
 import type { Id } from "../../../convex/_generated/dataModel"
 
@@ -241,6 +244,22 @@ function SessionPage() {
     }
   }, [character, seatId, sessionId, seedCharacter])
 
+  // The working slot (MAG-53): it reads the feed the Chronicle reads (one
+  // shared subscription) to count what arrives while the tray shows.
+  const feed = useActivity(sessionId, seatMember?._id)
+  const slot = useWorkingSlot(feed, seatMember?.userId ?? user?._id ?? "")
+  const sendMessage = useMutation(api.messages.send)
+  // Building a pool from the sheet or arming a cast is the tray's business:
+  // either brings the tray back if the message box was showing.
+  const pooledNow = pooledDice(pool.context)
+  const trayCue = useRef({ pooled: pooledNow, casting: rawCast.state !== "idle" })
+  useEffect(() => {
+    const casting = rawCast.state !== "idle"
+    const prev = trayCue.current
+    if (pooledNow > prev.pooled || (casting && !prev.casting)) slot.setMode("dice")
+    trayCue.current = { pooled: pooledNow, casting }
+  })
+
   if (!session || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -262,8 +281,8 @@ function SessionPage() {
 
   // The caster's own live cast (the card takeover; was #110's posture): the
   // viewer's pending vulgar cast, read off the same live casts as the offer.
-  // While it stands it holds their working zone — honest, since the seam
-  // refuses their every other roll (issue #109; MAG-50 revisits).
+  // It stands in the working zone above the slot (MAG-53); the seam still
+  // refuses the caster's every other roll (issue #109; MAG-50 revisits).
   const viewerUserId = effectiveMember?.userId ?? user._id
   const myPendingCast = live?.find((c) => c.casterUserId === viewerUserId) ?? null
 
@@ -388,13 +407,20 @@ function SessionPage() {
     </>
   )
 
+  // The table, seat by seat: the video tiles, and the people a whisper can
+  // reach (everyone but the viewer's own seat), named as their tiles are.
+  const seats = videoSeats(session.members, rosterSheets)
+  const whisperable = seats
+    .filter((s) => s.userId !== viewerUserId)
+    .map((s) => ({ id: s.userId, name: seatName(s) }))
+
   return (
     <SessionLayout
       sessionName={session.name}
       inviteCode={session.inviteCode}
       videoRail={
         <VideoRail
-          seats={videoSeats(session.members, rosterSheets)}
+          seats={seats}
           pending={
             mySheet
               ? {
@@ -404,6 +430,8 @@ function SessionPage() {
                 }
               : null
           }
+          // click a face to whisper them (MAG-53); chrome follows the seat
+          whisper={{ selected: slot.targets, self: viewerUserId, onToggle: slot.toggleTarget }}
         />
       }
       presence={
@@ -451,6 +479,14 @@ function SessionPage() {
           viewerUserId={effectiveMember?.userId ?? user._id}
           mySheet={mySheet}
           {...seatArg}
+          headerEnd={
+            <ChronicleSwitch
+              mode={slot.mode}
+              setMode={slot.setMode}
+              unread={slot.unread}
+              pooled={pooledNow}
+            />
+          }
         />
       }
       liveCasts={
@@ -473,40 +509,56 @@ function SessionPage() {
           </CastMount>
         ))
       }
-      dicePoolBuilder={
-        // The console: the posture alone now (MAG-52) — the depletables
-        // left the masthead for the sheet's header and each video tile.
-        // Arming a cast puts the felt in its declaring posture (issue #107)
-        // — same instrument, same slot. A live cast takes the whole zone
-        // over instead (MAG-48, liveCasts above), its header carrying the
-        // caster's stats, so none of this renders while one is up.
-        <>
-          {/* Each posture keyed so a change remounts through the assembly
-              beat (.mv-assemble): the zone doesn't swap, it re-marshals
-              beneath the masthead (styles.css). */}
-          {rawCast.state !== "idle" && mySheet ? (
-            <div key="declaring" className="mv-assemble mv-stage">
-              <DeclarationFelt
-                cast={cast}
-                character={mySheet}
-                hasPendingCast={hasPendingCast === true}
-                tides={stripTides(scene, pips, mySheet.id)}
-              />
-            </div>
-          ) : (
-            <div key="resting" className="mv-assemble mv-stage">
-              <DicePoolBuilder pool={pool} character={mySheet ?? undefined} />
-            </div>
-          )}
-        </>
-      }
-      chatInput={
-        <ChatInput
-          sessionId={sessionId}
-          members={session.members}
-          // Chrome follows the seat (ADR-0013): whisper targets exclude the
-          // seat member, not the Dev. Sends are still the Dev's own writes.
-          currentUserId={effectiveMember?.userId ?? user._id}
+      workingSlot={
+        <WorkingSlot
+          mode={slot.mode}
+          tray={
+            // The console: the posture alone now (MAG-52) — the depletables
+            // left the masthead for the sheet's header and each video tile.
+            // Arming a cast puts the felt in its declaring posture (issue #107)
+            // — same instrument, same slot. A live cast stands above the slot
+            // now (MAG-53), so every seat keeps a tray during one; the seam
+            // still refuses the caster's own rolls until MAG-50 loosens it.
+            <>
+              {/* Each posture keyed so a change remounts through the assembly
+                  beat (.mv-assemble): the zone doesn't swap, it re-marshals
+                  beneath the masthead (styles.css). */}
+              {rawCast.state !== "idle" && mySheet ? (
+                <div key="declaring" className="mv-assemble mv-stage">
+                  <DeclarationFelt
+                    cast={cast}
+                    character={mySheet}
+                    hasPendingCast={hasPendingCast === true}
+                    tides={stripTides(scene, pips, mySheet.id)}
+                  />
+                </div>
+              ) : (
+                <div key="resting" className="mv-assemble mv-stage">
+                  <DicePoolBuilder pool={pool} character={mySheet ?? undefined} />
+                </div>
+              )}
+            </>
+          }
+          message={
+            <MessageBox
+              people={whisperable}
+              targets={slot.targets}
+              onToggle={slot.toggleTarget}
+              onClear={slot.clearTargets}
+              onSend={(text, targets) =>
+                sendMessage({
+                  sessionId,
+                  text,
+                  ...(targets.length > 0 && { whisperTargetIds: [...targets] }),
+                })
+              }
+              onEscape={() => {
+                slot.setMode("dice")
+                slot.inputRef.current?.blur()
+              }}
+              inputRef={slot.inputRef}
+            />
+          }
         />
       }
       combatTracker={

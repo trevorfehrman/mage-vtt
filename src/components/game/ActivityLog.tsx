@@ -26,6 +26,8 @@ interface ActivityLogProps {
   viewerUserId: string
   /** The viewer's own decoded sheet — the Cast card's input caps read it. */
   mySheet: CharacterSheet | null
+  /** The header row's far end: the working slot's switch (MAG-53). */
+  headerEnd?: ReactNode
 }
 
 /**
@@ -41,6 +43,7 @@ export function ActivityLog({
   isStoryteller,
   viewerUserId,
   mySheet,
+  headerEnd,
 }: ActivityLogProps) {
   const activity = useActivity(sessionId, seat)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -114,6 +117,7 @@ export function ActivityLog({
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center gap-2 border-b px-3 py-2" style={{ borderColor: "var(--line)" }}>
         <h2 className="mv-eyebrow">Chronicle</h2>
+        {headerEnd}
       </div>
 
       {/* min-h-0: without it the flex item's auto minimum tracks content

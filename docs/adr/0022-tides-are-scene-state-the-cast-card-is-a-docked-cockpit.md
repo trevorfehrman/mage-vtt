@@ -1,5 +1,11 @@
 # Tides are scene state; the cast card is a docked cockpit
 
+> **Amended** (2026-10-24, MAG-53): the live zone no longer replaces the
+> tray. It stands above the **working slot** (the message box and the tray,
+> toggled), which stays on every seat during a live Cast, capping the zone
+> at 60% of the rail. The seam still refuses the caster's own rolls while
+> their Cast is live (issue #109); loosening that to plain rolls is MAG-50's.
+
 > **Amended** (2026-10-24, MAG-48, the owner's calls: the vulgar flow and
 > the activity stream "are not the same thing anymore"; it must declare
 > "pause, something important is going on and it affects everyone" while

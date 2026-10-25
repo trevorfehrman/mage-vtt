@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { Schema } from "effect"
 import { SessionMemberRow } from "../session"
 import { makeAldousSheet, makeCorvinSheet } from "../testing/fixtures"
-import { videoSeats } from "../video-rail"
+import { seatName, videoSeats } from "../video-rail"
 
 const member = (id: string, role: "storyteller" | "player", joined: number, displayName = id) =>
   Schema.decodeUnknownSync(SessionMemberRow)({
@@ -39,13 +39,21 @@ describe("videoSeats", () => {
       [],
     )
     expect(seats).toEqual([
-      { memberId: "member-st", displayName: "Morrigan", role: "storyteller", sheet: null },
-      { memberId: "member-new", displayName: "Newcomer", role: "player", sheet: null },
+      { memberId: "member-st", userId: "user-member-st", displayName: "Morrigan", role: "storyteller", sheet: null },
+      { memberId: "member-new", userId: "user-member-new", displayName: "Newcomer", role: "player", sheet: null },
     ])
   })
 
   it("gives a Storyteller who has a sheet their sheet", () => {
     const seats = videoSeats([member("member-st", "storyteller", 1)], [makeAldousSheet({ sessionMemberId: "member-st" })])
     expect(seats[0]?.sheet?.name).toBe("Aldous")
+  })
+
+  it("names each seat by its sheet's headline, else the member's own name", () => {
+    const seats = videoSeats(
+      [member("member-corvin", "player", 1), member("member-new", "player", 2, "Newcomer")],
+      [makeCorvinSheet({ shadowName: "Tessellate" })],
+    )
+    expect(seats.map(seatName)).toEqual(["Tessellate", "Newcomer"])
   })
 })

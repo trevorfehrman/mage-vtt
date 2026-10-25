@@ -16,9 +16,10 @@
 // The REAL app shell (SessionLayout), the REAL feed neighbors (MessageItem /
 // RollItem), and the REAL CastCard — fed hand-built fake Cast documents via
 // URL knobs (?rung=…&seat=…), reload-stable and shareable. Each seat mounts
-// the card where the session does (MAG-48): while live it takes the working
-// zone over on every seat, in place of the tray; the feed once it is a
-// record.
+// the card where the session does (MAG-48): while live it stands in the
+// working zone on every seat, above the working slot (MAG-53); the feed
+// once it is a record. The slot is the real one — the message box sends
+// locally, and +chat / +whisper feed it lines to count.
 //
 // Unlike the census-era prototypes in this directory, this rig imports app
 // code ON PURPOSE — that is its whole job (map #95 reaffirmed ADR-0021's
@@ -43,7 +44,11 @@ import { CastCard } from "#/components/game/CastCard"
 import { CastMount } from "#/components/game/CastMount"
 import { isUnresolved } from "#/domain/cast"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
-import { ChatInput } from "#/components/game/ChatInput"
+import { pooledDice } from "#/machines/dice-pool"
+import { MessageBox } from "#/components/game/MessageBox"
+import { ChronicleSwitch, WorkingSlot } from "#/components/game/WorkingSlot"
+import { useWorkingSlot } from "#/hooks/use-working-slot"
+import { seatName } from "#/domain/video-rail"
 import { DicePoolBuilder } from "#/components/game/DicePoolBuilder"
 import { VideoRail } from "#/components/game/VideoRail"
 import type { CharacterSheet as Sheet } from "#/domain/character"
@@ -167,9 +172,11 @@ const RIG_PLAYERS: ReadonlyArray<Sheet | null> = [
 ]
 
 const RIG_SEATS: ReadonlyArray<VideoSeat> = [
-  { memberId: "proto-st", displayName: "Morrigan", role: "storyteller", sheet: null },
+  { memberId: "proto-st", userId: STORYTELLER, displayName: "Morrigan", role: "storyteller", sheet: null },
   ...RIG_PLAYERS.flatMap((sheet) =>
-    sheet ? [{ memberId: `seat-${sheet.id}`, displayName: sheet.name, role: "player" as const, sheet }] : [],
+    sheet
+      ? [{ memberId: `seat-${sheet.id}`, userId: String(sheet.userId), displayName: sheet.name, role: "player" as const, sheet }]
+      : [],
   ),
 ]
 
@@ -353,6 +360,10 @@ function DressingRoom() {
   const navigate = Route.useNavigate()
   const pool = useDicePool(SESSION_ID)
 
+  // MAG-53: the lines the knobs (+chat, +whisper) and the message box add,
+  // local — the rig has no server.
+  const [arrived, setArrived] = useState<ReadonlyArray<MessageEntry>>([])
+
   // The ST's adjustments live here, per rung (MAG-45): the fixture cast has
   // no server document, so the card's adjust door writes local state and
   // the Tides box, the felt and the table all move as they would live.
@@ -369,6 +380,48 @@ function DressingRoom() {
   const adjust = async (next: ReadonlyArray<ParadoxPoolModifier>) =>
     setAdjusted((prev) => ({ ...prev, [rung]: next }))
   const mySheet = seat === "caster" ? arctusSheet : null
+
+  const PEOPLE = [
+    { id: CASTER, name: "The Little Bear" },
+    { id: STORYTELLER, name: "Morrigan" },
+    { id: BYSTANDER, name: "The Witness" },
+  ]
+  const me = PEOPLE.find((p) => p.id === view.viewerUserId)!
+  const someoneElse = PEOPLE.find((p) => p.id !== view.viewerUserId)!
+  // the working slot reads the rig's feed as the route reads the real one
+  const slot = useWorkingSlot([systemMsg, chatMsg, priorRoll, ...arrived], view.viewerUserId)
+  let seq = arrived.length
+  const line = (
+    from: { id: string; name: string },
+    text: string,
+    whisperTo: ReadonlyArray<string>,
+  ): MessageEntry => ({
+    _tag: "message",
+    _id: `proto-arrived-${(seq += 1)}` as MessageEntry["_id"],
+    senderId: from.id,
+    senderName: from.name,
+    text,
+    visibilityType: whisperTo.length === 0 ? "public" : "whisper",
+    ...(whisperTo.length === 0 ? {} : { whisperTargetIds: whisperTo }),
+    timestamp: T0 + seq * 1000,
+  })
+  // the knob's incoming lines: the slot counts them while the tray shows
+  const arrive = (whisper: boolean) => {
+    setArrived((prev) => [
+      ...prev,
+      line(
+        someoneElse,
+        whisper ? "Don't tell the others — I saw the sigil move." : "Footsteps on the stair. Someone's coming down.",
+        whisper ? [view.viewerUserId] : [],
+      ),
+    ])
+  }
+  const pooled = pooledDice(pool.context)
+  // the tiles are the whisper roster, the viewer's own excepted
+  const people = RIG_SEATS.filter((s) => s.userId !== view.viewerUserId).map((s) => ({
+    id: s.userId,
+    name: seatName(s),
+  }))
 
   // Functional updaters: each knob patches only its own key, so a fast
   // seat-click + arrow-press never overwrite each other.
@@ -427,6 +480,7 @@ function DressingRoom() {
         style={{ borderColor: "var(--line)" }}
       >
         <h2 className="mv-eyebrow">Chronicle</h2>
+        <ChronicleSwitch mode={slot.mode} setMode={slot.setMode} unread={slot.unread} pooled={pooled} />
       </div>
       <ScrollArea className="min-h-0 flex-1 px-3 py-2">
         <div className="grid gap-2">
@@ -434,6 +488,9 @@ function DressingRoom() {
           <MessageItem message={chatMsg} />
           <RollItem roll={priorRoll} />
           {!live && card}
+          {arrived.map((m) => (
+            <MessageItem key={m._id} message={m} />
+          ))}
         </div>
       </ScrollArea>
     </div>
@@ -447,7 +504,13 @@ function DressingRoom() {
       <SessionLayout
         sessionName="The Dressing Room"
         inviteCode="PROTO-96"
-        videoRail={<VideoRail seats={RIG_SEATS} pending={null} />}
+        videoRail={
+          <VideoRail
+            seats={RIG_SEATS}
+            pending={null}
+            whisper={{ selected: slot.targets, self: view.viewerUserId, onToggle: slot.toggleTarget }}
+          />
+        }
         characterSheet={
           shownSheet ? (
             <CharacterSheet
@@ -468,16 +531,27 @@ function DressingRoom() {
         }
         activityLog={feed}
         liveCasts={live && <CastMount>{card}</CastMount>}
-        dicePoolBuilder={
-          <>
-            <DicePoolBuilder pool={pool} />
-          </>
-        }
-        chatInput={
-          <ChatInput
-            sessionId={SESSION_ID}
-            members={[]}
-            currentUserId={view.viewerUserId}
+        workingSlot={
+          <WorkingSlot
+            mode={slot.mode}
+            tray={<DicePoolBuilder pool={pool} />}
+            message={
+              <MessageBox
+                people={people}
+                targets={slot.targets}
+                onToggle={slot.toggleTarget}
+                onClear={slot.clearTargets}
+                onSend={(text, targets) => {
+                  setArrived((prev) => [...prev, line(me, text, targets)])
+                  return Promise.resolve()
+                }}
+                onEscape={() => {
+                  slot.setMode("dice")
+                  slot.inputRef.current?.blur()
+                }}
+                inputRef={slot.inputRef}
+              />
+            }
           />
         }
         onClearPool={pool.reset}
@@ -487,6 +561,23 @@ function DressingRoom() {
       {/* The knobs — deliberately foreign to the mv language so nobody
           mistakes them for the design under audition. */}
       <div className="fixed top-1.5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full bg-zinc-100 px-4 py-2 text-zinc-900 shadow-lg">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => arrive(false)}
+            className="rounded-full px-2 py-0.5 text-[11px] font-semibold hover:bg-zinc-300"
+            title="A chat line arrives from someone else"
+          >
+            +chat
+          </button>
+          <button
+            onClick={() => arrive(true)}
+            className="rounded-full px-2 py-0.5 text-[11px] font-semibold hover:bg-zinc-300"
+            title="A whisper to you arrives"
+          >
+            +whisper
+          </button>
+        </div>
+        <span className="h-4 w-px bg-zinc-400" />
         <div className="flex items-center gap-1">
           {GRAMMAR_ORDER.map((g) => (
             <button

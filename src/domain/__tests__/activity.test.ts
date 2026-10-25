@@ -226,6 +226,21 @@ describe("visibleEntries: the Reader × visibility matrix", () => {
     })
   }
 
+  it("a group Whisper (MAG-53) reaches its sender, each of its targets and the Storyteller — no one else", () => {
+    const group = message({
+      _id: "m_group",
+      visibilityType: "whisper",
+      senderId: "user_a",
+      whisperTargetIds: ["user_b", "user_c"],
+    })
+    const sees = (reader: Reader) => visibleEntries(reader, [group]).length === 1
+    expect(sees({ userId: "user_a", role: "player" })).toBe(true)
+    expect(sees({ userId: "user_b", role: "player" })).toBe(true)
+    expect(sees({ userId: "user_c", role: "player" })).toBe(true)
+    expect(sees({ userId: "user_st", role: "storyteller" })).toBe(true)
+    expect(sees({ userId: "user_z", role: "player" })).toBe(false)
+  })
+
   it("a seated Reader (ADR-0013) sees exactly the target member's feed — replacement, not union", () => {
     // A Dev whose own sight is Storyteller-wide takes an uninvolved player's seat:
     // the wider sight is genuinely lost while seated.

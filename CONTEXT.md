@@ -213,7 +213,9 @@ The short code that admits a user to a Session as a new session member.
 
 **Video tile**:
 A Session member's seat in the left rail, the Storyteller's first and then the
-players' in the order they joined (MAG-51). A member with a sheet wears its
+players' in the order they joined (MAG-51). Clicking someone else's tile chooses
+them for a Whisper (MAG-53): the chosen tile's border burns accent and a quill
+rides its edge. A member with a sheet wears its
 depletables inside the tile on every seat: the sheet's headline name at the
 head, the whole health track and Will · Mana at the foot, a pending spend
 shown as what would be left, in ember. The tiles share the rail's height, so a
@@ -271,13 +273,30 @@ _Avoid_: Chat log, Roll history (those were the two separate panes this replaced
 
 **Live zone**:
 The foot of the right rail while a Cast is live: the Cast takes the working
-zone over on every seat, in place of the tray, full width, framed in the
-Paradox red (MAG-48, ADR-0022). The table reads it as "pause — something that
-touches everyone is happening", and every seat stays usable. A live Cast is
-never an Activity Log entry; its resolved record is. The chat input sits at
-the Activity Log's foot, above it.
+zone over on every seat, full width, framed in the Paradox red (MAG-48,
+ADR-0022), with the Working slot below it (MAG-53). The table reads it as
+"pause — something that touches everyone is happening", and every seat stays
+usable. A live Cast is never an Activity Log entry; its resolved record is.
 _Avoid_: Pinned cast (the MAG-46 slot above a bystander's tray, retired),
 live feed card (the feed never carries a live Cast).
+
+**Working slot**:
+The one place at the right rail's foot that the Message box and the dice tray
+share (MAG-53): in a video-call game chat is a niche tool, so it gets no
+permanent place of its own. The viewer flips between them at the Chronicle's
+header (Dice | Message), where each hidden side carries its news: the dice
+waiting on the felt, the lines unread (a whisper to you counted apart). Both
+stay mounted, so a flip never loses a draft or a pool. It stands below a live
+Cast on every seat. Building a pool from the sheet or arming a cast brings the
+tray back; Enter outside any field, or clicking a Video tile, brings the Message
+box.
+_Avoid_: Chat input (the line that sat under the Chronicle until MAG-53).
+
+**Message box**:
+The dice tray's partner in the Working slot, in the tray's grammar: a felt, a
+grip, Send at the far right. One line to the table; while whispering, the
+targets are named inside the felt with a × back to the table. Its tall form adds
+only a row of people to toggle.
 
 **Cast mark**:
 How a Cast names itself in its header: the Arcanum's glyph standing for its
@@ -293,8 +312,10 @@ A dice-roll Activity: who rolled, the pool, the results, the successes, and its
 visibility.
 
 **Whisper**:
-A private Message between two users (commonly Storyteller ↔ Player), visible only
-to sender, target, and the Storyteller.
+A private Message from one user to one or more others (commonly Storyteller ↔
+Player), visible only to its sender, its targets, and the Storyteller. A group
+whisper (MAG-53) names every member it reaches; the targets are chosen by
+clicking their Video tiles, or in the Message box's row of people.
 
 **Override**:
 A provenance marker on an Activity recording that a rule was bent to produce it —
