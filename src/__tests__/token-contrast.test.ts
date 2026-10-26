@@ -50,3 +50,13 @@ describe("identity token contrast (the a11y floor)", () => {
     ),
   );
 });
+
+describe("the odds breakdown's labels (MAG-54)", () => {
+  // Severity names wear --paradox and None wears --accent, as text on the
+  // tooltip's --raise: the bars step in depth, the words never do.
+  ;(["paradox", "accent"] as const).forEach((text) =>
+    it(`--${text} clears 4.5:1 on --raise`, () => {
+      expect(contrast(token(text), token("raise"))).toBeGreaterThanOrEqual(4.5);
+    }),
+  );
+});

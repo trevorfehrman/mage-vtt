@@ -9,6 +9,8 @@
  */
 
 import { Array as Arr, Schema } from "effect"
+import { ParadoxSeverity } from "./paradox"
+import type { PoolSize } from "./quantities"
 
 /** P(a single standard die scores no success): 7 failing faces in 10. */
 const DIE_FAILURE = 0.7
@@ -158,21 +160,36 @@ export const castOddsUnderParadox = (
     { success: 0, chanceDie: 0, dramaticFailure: 0, expected: 0 },
   )
 
-/** How many Paradox successes each severity takes: 1 Havoc, 2 Bedlam, 3
- * Anomaly, 4 Branding, 5+ Manifestation (Mage p. 124). */
-const SEVERITY_STEPS = 5
+/** The severities a Paradox success count reaches, in order: 1 Havoc, 2
+ * Bedlam, 3 Anomaly, 4 Branding, 5+ Manifestation (Mage p. 124). */
+const SEVERITY_LADDER: ReadonlyArray<ParadoxSeverity> = [
+  "havoc",
+  "bedlam",
+  "anomaly",
+  "branding",
+  "manifestation",
+]
 
 /**
- * The Paradox roll by severity (MAG-54): P(Havoc), P(Bedlam), P(Anomaly),
- * P(Branding), P(Manifestation) — the last the whole tail from five up. Each
- * step is a worse outcome, a cast die eaten and a box to contain it, so the
- * chance of "any Paradox" alone hides the shape of the risk.
+ * The Paradox roll by severity (MAG-54): the chance of none, then of each
+ * severity in order — Manifestation the whole tail from five up. Each step is
+ * a worse outcome, a cast die eaten and a box to contain it, so the chance of
+ * "any Paradox" alone hides the shape of the risk.
  */
-export const severityOdds = (dice: number): ReadonlyArray<number> => {
+export const SeverityOdds = Schema.Struct({
+  none: Schema.Number,
+  steps: Schema.Array(Schema.Struct({ severity: ParadoxSeverity, p: Schema.Number })),
+})
+export type SeverityOdds = typeof SeverityOdds.Type
+
+export const severityOdds = (dice: PoolSize): SeverityOdds => {
   const dist = successDistribution(dice)
-  return Arr.makeBy(SEVERITY_STEPS, (i) =>
-    i < SEVERITY_STEPS - 1
-      ? (dist[i + 1] ?? 0)
-      : Arr.reduce(dist.slice(SEVERITY_STEPS), 0, (a, b) => a + b),
-  )
+  const last = SEVERITY_LADDER.length
+  return {
+    none: dist[0] ?? 0,
+    steps: SEVERITY_LADDER.map((severity, i) => ({
+      severity,
+      p: i < last - 1 ? (dist[i + 1] ?? 0) : Arr.reduce(Arr.drop(dist, last), 0, (a, b) => a + b),
+    })),
+  }
 }
