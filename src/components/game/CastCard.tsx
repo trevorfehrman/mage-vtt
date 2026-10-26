@@ -22,8 +22,9 @@ import {
   calculateParadoxPool,
   resolveParadox,
   type ParadoxPoolModifier,
+  type ParadoxSeverity,
 } from "#/domain/paradox"
-import { castOddsUnderParadox, rollOdds, severityOdds } from "#/domain/probability"
+import { castOddsUnderParadox, rollOdds, severityOdds, SeverityOdds } from "#/domain/probability"
 import { Mana, PoolSize } from "#/domain/quantities"
 import { signedDice, tideDraftDice, tidesNetInk, tidesWeight, type TideDraft } from "./tides-ground"
 import { TidesBox, type Weather } from "./TidesBox"
@@ -1181,10 +1182,7 @@ export function CastCard({
                     <TooltipTrigger asChild>
                       <span tabIndex={0} className="mv-data text-[12px]" style={{ color: "var(--dim)" }}>
                         {/* the odds breakdown's own foot (owner, 2026-10-25) */}
-                        ≥1 success{" "}
-                        <b style={{ color: "var(--rail-success)" }}>{pct(castOdds.success)}</b>
-                        {" · avg "}
-                        <span style={{ color: "var(--ink)" }}>{castOdds.expected.toFixed(1)}</span>
+                        <OddsFoot success={castOdds.success} expected={castOdds.expected} />
                         {castOdds.isChanceDie && castOdds.dramaticFailure >= DRAMATIC_FAILURE_WARN_FLOOR && (
                           <span style={{ color: "var(--bad)" }}> · dramatic failure {pct(castOdds.dramaticFailure)}</span>
                         )}
@@ -1312,14 +1310,14 @@ const ROW_GRID = "grid grid-cols-[2.75rem_4.75rem_5.5rem_1fr] items-center gap-2
 
 /**
  * One odds row's facts (MAG-45): the Mana spent, the red dice, reality's
- * success odds (the row lives only before reality rolls) — and the
- * cast's success % with those dice priced in (castOddsUnderParadox, p. 124).
+ * roll by severity (the row lives only before reality rolls) — and the
+ * cast's odds with those dice priced in (castOddsUnderParadox, p. 124).
  */
 const OddsRowProps = Schema.Struct({
   spend: Mana,
   dice: PoolSize,
-  /** Reality's roll by severity, Havoc to Manifestation (MAG-54). */
-  severities: Schema.Array(Schema.Number),
+  /** Reality's roll by severity: none, then Havoc to Manifestation (MAG-54). */
+  severities: SeverityOdds,
   success: Schema.Number,
   /** The cast's expected successes: its strength, past merely working. */
   expected: Schema.Number,
@@ -1340,25 +1338,38 @@ const pricedRow = (spend: Mana, dice: PoolSize, declaredPool: number): OddsRowPr
   }
 }
 
-/** The severities in order, each a step deeper into the Paradox red. */
-const SEVERITY_STEPS = [
-  { name: "Havoc", depth: 45 },
-  { name: "Bedlam", depth: 65 },
-  { name: "Anomaly", depth: 80 },
-  { name: "Branding", depth: 90 },
-  { name: "Manifestation", depth: 100 },
-] as const
+/** How deep each severity burns: a step brighter into the Paradox red as it
+ * worsens. The words never step — they wear --paradox whole (contrast). */
+const SEVERITY_DEPTH = {
+  havoc: 45,
+  bedlam: 65,
+  anomaly: 80,
+  branding: 90,
+  manifestation: 100,
+  none: 0,
+} as const satisfies Record<ParadoxSeverity, number>
+
+/** A severity's fill: its depth of Paradox red over the surface. */
+const paradoxFill = (severity: ParadoxSeverity): string =>
+  `color-mix(in srgb, var(--paradox) ${SEVERITY_DEPTH[severity]}%, transparent)`
+
+/** Below this a share is invisible at any width: the bar leaves it out. */
+const SLIVER = 0.0005
 
 /**
  * Reality's roll as a bar (MAG-54): the full width is certainty, each
  * severity a segment as wide as its chance and as bright a red as it is
- * bad, the neutral track the chance of no Paradox at all. Every success is a worse
- * outcome, a cast die eaten and a box to contain it (Mage p. 124), so the
- * bar shows the shape of the risk a single "any Paradox" % hides.
+ * bad, the neutral track the chance of no Paradox at all. Every success is a
+ * worse outcome, a cast die eaten and a box to contain it (Mage p. 124), so
+ * the bar shows the shape of the risk a single "any Paradox" % hides. The
+ * segments never shrink: each takes its share of the width the 2px seams
+ * leave, so a big pool's bar stays true.
  */
-const SeverityBarProps = Schema.Struct({ severities: Schema.Array(Schema.Number) })
+const SeverityBarProps = Schema.Struct({ severities: SeverityOdds })
 
 function SeverityBar({ severities }: typeof SeverityBarProps.Type) {
+  const shown = severities.steps.filter((step) => step.p >= SLIVER)
+  const seams = Math.max(0, shown.length - 1) * 2
   return (
     <span
       aria-hidden
@@ -1366,28 +1377,42 @@ function SeverityBar({ severities }: typeof SeverityBarProps.Type) {
       // the empty track is no Paradox at all: neutral, never a faint red
       style={{ background: "color-mix(in srgb, var(--ink) 8%, transparent)" }}
     >
-      {SEVERITY_STEPS.map((step, i) => {
-        const p = severities[i] ?? 0
-        return p < 0.005 ? null : (
-          <span
-            key={step.name}
-            className="h-full first:rounded-l-[2px]"
-            style={{
-              width: `${p * 100}%`,
-              background: `color-mix(in srgb, var(--paradox) ${step.depth}%, transparent)`,
-            }}
-          />
-        )
-      })}
+      {shown.map((step) => (
+        <span
+          key={step.severity}
+          className="h-full shrink-0 first:rounded-l-[2px]"
+          style={{
+            width: `max(1px, calc(${step.p} * (100% - ${seams}px)))`,
+            background: paradoxFill(step.severity),
+          }}
+        />
+      ))}
     </span>
+  )
+}
+
+/**
+ * The spell's odds in the fewest words (owner, 2026-10-25): at least one
+ * success, and the average past it. The breakdown's foot, and the odds above
+ * the Cast button — one format in both places.
+ */
+const OddsFootProps = Schema.Struct({ success: Schema.Number, expected: Schema.Number })
+
+function OddsFoot({ success, expected }: typeof OddsFootProps.Type) {
+  return (
+    <>
+      ≥1 success <b style={{ color: "var(--rail-success)" }}>{pct(success)}</b>
+      {" · avg "}
+      <span style={{ color: "var(--ink)" }}>{expected.toFixed(1)}</span>
+    </>
   )
 }
 
 /**
  * A row's breakdown (MAG-54, owner 2026-10-25: the bar only if its tooltip
  * shows the breakdown attractively): reality's roll severity by severity —
- * none first in verdigris, then Havoc to Manifestation, each its bar share
- * in its own red — and the spell's odds and strength beneath. The
+ * none first in verdigris (the caster's win), then Havoc to Manifestation,
+ * each its bar share in its own red — and the spell's odds beneath. The
  * whole row is the trigger, so the eye can sweep down the table and the
  * breakdown follows.
  */
@@ -1396,17 +1421,24 @@ const OddsBreakdownProps = Schema.Struct({
   /** Why a locked row can't be picked, in its own line. */
   note: Schema.optional(Schema.String),
 })
+type OddsBreakdownProps = typeof OddsBreakdownProps.Type
 
-function OddsBreakdown({ row, note }: typeof OddsBreakdownProps.Type) {
-  const none = Math.max(0, 1 - row.severities.reduce((a, b) => a + b, 0))
+const severityName = (severity: ParadoxSeverity): string =>
+  severity.charAt(0).toUpperCase() + severity.slice(1)
+
+function OddsBreakdown({ row, note }: OddsBreakdownProps) {
   const lines = [
-    // No Paradox is the caster's win: verdigris (owner, 2026-10-25).
-    { name: "None", p: none, ink: "var(--accent)", fill: "color-mix(in srgb, var(--accent) 70%, transparent)" },
-    ...SEVERITY_STEPS.map((step, i) => ({
-      name: step.name,
-      p: row.severities[i] ?? 0,
-      ink: `color-mix(in srgb, var(--paradox) ${Math.max(step.depth, 70)}%, var(--ink))`,
-      fill: `color-mix(in srgb, var(--paradox) ${step.depth}%, transparent)`,
+    {
+      name: "None",
+      p: row.severities.none,
+      ink: "var(--accent)",
+      fill: "color-mix(in srgb, var(--accent) 70%, transparent)",
+    },
+    ...row.severities.steps.map((step) => ({
+      name: severityName(step.severity),
+      p: step.p,
+      ink: "var(--paradox)",
+      fill: paradoxFill(step.severity),
     })),
   ]
   return (
@@ -1417,7 +1449,7 @@ function OddsBreakdown({ row, note }: typeof OddsBreakdownProps.Type) {
       </div>
       <div className="grid grid-cols-[auto_6rem_auto] items-center gap-x-2 gap-y-1">
         {lines.map((line) => (
-          <div key={line.name} className="contents" style={{ opacity: line.p < 0.0005 ? 0.4 : 1 }}>
+          <div key={line.name} className="contents" style={{ opacity: line.p < SLIVER ? 0.4 : 1 }}>
             <span style={{ color: line.ink }}>{line.name}</span>
             <span className="h-[6px] w-full rounded-[2px]" style={{ background: "color-mix(in srgb, var(--ink) 6%, transparent)" }}>
               <span
@@ -1429,14 +1461,8 @@ function OddsBreakdown({ row, note }: typeof OddsBreakdownProps.Type) {
           </div>
         ))}
       </div>
-      <div className="flex items-baseline gap-2 border-t pt-1.5" style={{ borderColor: "var(--line)", color: "var(--dim)" }}>
-        {/* the fewest words that say it (owner, 2026-10-25): at least one
-            success, and the average past it */}
-        <span>≥1 success</span>
-        <b style={{ color: "var(--rail-success)" }}>{pct(row.success)}</b>
-        <span>·</span>
-        <span>avg</span>
-        <span style={{ color: "var(--ink)" }}>{row.expected.toFixed(1)}</span>
+      <div className="border-t pt-1.5" style={{ borderColor: "var(--line)", color: "var(--dim)" }}>
+        <OddsFoot success={row.success} expected={row.expected} />
       </div>
       {note !== undefined && <div style={{ color: "var(--dim)" }}>{note}</div>}
     </div>
@@ -1444,12 +1470,12 @@ function OddsBreakdown({ row, note }: typeof OddsBreakdownProps.Type) {
 }
 
 /** One odds row wrapped in its breakdown, beside the card where the stage has room. */
-function withBreakdown(row: OddsRowProps, trigger: ReactNode, note?: string) {
+function withBreakdown(breakdown: OddsBreakdownProps, trigger: ReactNode) {
   return (
-    <Tooltip key={row.spend}>
+    <Tooltip key={breakdown.row.spend}>
       <TooltipTrigger asChild>{trigger}</TooltipTrigger>
       <TooltipContent side="left" sideOffset={10} className="max-w-none px-3 py-2.5">
-        <OddsBreakdown row={row} {...(note !== undefined ? { note } : {})} />
+        <OddsBreakdown {...breakdown} />
       </TooltipContent>
     </Tooltip>
   )
@@ -1491,7 +1517,7 @@ function OddsRow(props: OddsRowProps) {
   return (
     <TooltipProvider disableHoverableContent>
       {withBreakdown(
-        props,
+        { row: props },
         <div tabIndex={0} className={`mv-data mt-1.5 ${ROW_GRID}`} style={{ color: "var(--dim)" }}>
           <OddsCells {...props} here={false} />
         </div>,
@@ -1505,12 +1531,13 @@ function OddsRow(props: OddsRowProps) {
  * regardless of the caster's Mana — the shrunken pool and its exact odds,
  * live off the same leaves the server rolls with. With `onSelect`,
  * affordable rows select (they ARE the mitigation control — the stepper
- * died with note 9); without it the table is the Storyteller's reading on
- * the fluid rung (MAG-45) and no row is a control. Unaffordable rows stand
- * visible and refuse, their titles explaining the gate (ADR-0021). Each
- * row reads across: Mana out, Paradox in, spell landing (owner,
- * 2026-10-22) — the cast's own odds with THIS row's red dice rolling first
- * and eating dice (p. 124), no containment assumed: the floor.
+ * died with note 9); without it the table is a reading (the Storyteller's on
+ * the fluid rung, MAG-45; every other seat's watching the pick, MAG-34) and
+ * no row is a control. Unaffordable rows stand visible and refuse, their
+ * breakdowns explaining the gate (ADR-0021). Each row reads across: Mana
+ * out, Paradox in, spell landing (owner, 2026-10-22) — the cast's own odds
+ * with THIS row's red dice rolling first and eating dice (p. 124), no
+ * containment assumed: the floor.
  */
 function MitigationPreview({
   poolInputs,
@@ -1533,54 +1560,61 @@ function MitigationPreview({
     pricedRow(Mana.make(spend), PoolSize.make(calculateParadoxPool({ ...poolInputs, manaMitigation: spend }).totalDice), declaredPool),
   )
   return (
-    // No explainer eyebrow, no dotted frame (#114): the table is the phase's
-    // whole job and its columns speak the rule — Mana in, Paradox dice out.
     // The breakdown is read, never hovered: no grace area to hold it open
     // while the pointer sweeps on to the next row.
     <TooltipProvider disableHoverableContent>
-    <div className="mt-2 grid gap-1 py-1">
-      {/* The selected row's box is verdigris (owner, 2026-10-22; it burned
-          ember before). */}
-      {rows.map((row) => {
-        const locked = row.spend > affordable
-        const here = selected !== null && !locked && row.spend === Math.min(selected, affordable)
-        // A locked row is a mark, not a disabled control (the pool die's idiom):
-        // its title stays reachable and nothing pretends it could be clicked.
-        // A read-only table draws every row as a mark, unlocked ones on a
-        // clear border — the caster's live pick on the verdigris one (MAG-34).
-        return locked || onSelect === undefined ? withBreakdown(
-          row,
-          <span
-            tabIndex={0}
-            className={`mv-data ${ROW_GRID}`}
-            style={
-              locked
-                ? { border: "1px dashed var(--line)", color: "var(--dim)", opacity: 0.5 }
-                : {
+      {/* No explainer eyebrow, no dotted frame (#114): the table is the
+          phase's whole job and its columns speak the rule — Mana in, Paradox
+          dice out. The selected row's box is verdigris (owner, 2026-10-22;
+          it burned ember before). */}
+      <div className="mt-2 grid gap-1 py-1">
+        {rows.map((row) => {
+          const locked = row.spend > affordable
+          const here = selected !== null && !locked && row.spend === Math.min(selected, affordable)
+          // A locked row is a mark, not a disabled control (the pool die's
+          // idiom): its breakdown stays reachable and nothing pretends it
+          // could be clicked. A read-only table draws every row as a mark,
+          // unlocked ones on a clear border — the caster's live pick on the
+          // verdigris one (MAG-34).
+          return locked || onSelect === undefined
+            ? withBreakdown(
+                { row, ...(locked ? { note: `${affordable} Mana free` } : {}) },
+                <span
+                  tabIndex={0}
+                  className={`mv-data ${ROW_GRID}`}
+                  style={
+                    locked
+                      ? { border: "1px dashed var(--line)", color: "var(--dim)", opacity: 0.5 }
+                      : {
+                          border: here ? "1px solid var(--accent)" : "1px solid transparent",
+                          color: here ? "var(--ink)" : "var(--dim)",
+                        }
+                  }
+                >
+                  <OddsCells {...row} here={here} />
+                </span>,
+              )
+            : withBreakdown(
+                { row },
+                // aria-disabled, not disabled: a disabled button takes no
+                // pointer or focus, and the breakdown must still open while a
+                // write is in flight (ADR-0021: a refusing control explains).
+                <button
+                  onClick={() => {
+                    if (!disabled) onSelect(row.spend)
+                  }}
+                  aria-disabled={disabled}
+                  className={`mv-data ${ROW_GRID} aria-disabled:opacity-40`}
+                  style={{
                     border: here ? "1px solid var(--accent)" : "1px solid transparent",
                     color: here ? "var(--ink)" : "var(--dim)",
-                  }
-            }
-          >
-            <OddsCells {...row} here={here} />
-          </span>,
-          locked ? `${affordable} Mana free` : undefined,
-        ) : withBreakdown(
-          row,
-          <button
-            onClick={() => onSelect(row.spend)}
-            disabled={disabled}
-            className={`mv-data ${ROW_GRID} disabled:opacity-40`}
-            style={{
-              border: here ? "1px solid var(--accent)" : "1px solid transparent",
-              color: here ? "var(--ink)" : "var(--dim)",
-            }}
-          >
-            <OddsCells {...row} here={here} />
-          </button>,
-        )
-      })}
-    </div>
+                  }}
+                >
+                  <OddsCells {...row} here={here} />
+                </button>,
+              )
+        })}
+      </div>
     </TooltipProvider>
   )
 }

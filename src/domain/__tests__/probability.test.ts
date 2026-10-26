@@ -9,6 +9,7 @@ import {
   severityOdds,
   successDistribution,
 } from "../probability"
+import { PoolSize } from "../quantities"
 
 /**
  * Pure-leaf tests for the probability module (issue #45): exact, seed-free
@@ -163,8 +164,12 @@ describe("castOddsUnderParadox's expected successes — what Paradox takes from 
 })
 
 describe("severityOdds — the Paradox roll by severity (Mage p. 124: 1 Havoc … 5+ Manifestation)", () => {
+  const odds = (dice: number) => severityOdds(PoolSize.make(dice))
+  const shares = (dice: number) => odds(dice).steps.map((s) => s.p)
+
   it("one die, by hand: exactly k successes is 0.27·0.1^(k−1)", () => {
-    const [havoc, bedlam, anomaly, branding, manifestation] = severityOdds(1)
+    const [havoc, bedlam, anomaly, branding, manifestation] = shares(1)
+    expect(odds(1).none).toBeCloseTo(0.7, 12)
     expect(havoc).toBeCloseTo(0.27, 12)
     expect(bedlam).toBeCloseTo(0.027, 12)
     expect(anomaly).toBeCloseTo(0.0027, 12)
@@ -173,14 +178,20 @@ describe("severityOdds — the Paradox roll by severity (Mage p. 124: 1 Havoc �
     expect(manifestation).toBeCloseTo(0.3 - 0.27 - 0.027 - 0.0027 - 0.00027, 12)
   })
 
-  it("the five severities sum to the chance of any Paradox", () => {
+  it("names the severities in order", () => {
+    expect(odds(3).steps.map((s) => s.severity)).toEqual(["havoc", "bedlam", "anomaly", "branding", "manifestation"])
+  })
+
+  it("none and the five severities make certainty", () => {
     ;[1, 2, 4, 7].forEach((dice) => {
-      const total = severityOdds(dice).reduce((a, b) => a + b, 0)
-      expect(total).toBeCloseTo(probabilityOfSuccess(dice), 10)
+      const total = odds(dice).none + shares(dice).reduce((a, b) => a + b, 0)
+      expect(total).toBeCloseTo(1, 10)
+      expect(1 - odds(dice).none).toBeCloseTo(probabilityOfSuccess(dice), 10)
     })
   })
 
   it("a fully mitigated pool's chance die can only Havoc", () => {
-    expect(severityOdds(0)).toEqual([0.1, 0, 0, 0, 0])
+    expect(odds(0).none).toBeCloseTo(0.9, 12)
+    expect(shares(0)).toEqual([0.1, 0, 0, 0, 0])
   })
 })
