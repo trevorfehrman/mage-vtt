@@ -2,7 +2,7 @@ import { Schema } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import { CharacterSheet, decodeSheet } from "../character"
 import { makeAldousSheet } from "../testing/fixtures"
-import { actsOfHubris, STARTING_WISDOM, WisdomBand, wisdomBand, wisdomBandWords } from "../wisdom"
+import { actsOfHubris, STARTING_WISDOM, wisdomBand } from "../wisdom"
 
 /**
  * Wisdom on the sheet (MAG-56): the morality trait rides the sheet as a
@@ -52,11 +52,5 @@ describe("wisdomBand (MAG-56: the drama of the number)", () => {
     expect(wisdomBand(3)).toBe("blind")
     expect(wisdomBand(2)).toBe("blind")
     expect(wisdomBand(1)).toBe("lost")
-  })
-
-  it("every band has its word", () => {
-    for (const band of WisdomBand.literals) {
-      expect(wisdomBandWords(band)).toMatch(/^[A-Z]/)
-    }
   })
 })

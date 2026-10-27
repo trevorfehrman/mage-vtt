@@ -60,17 +60,6 @@ const BAND_BY_RANK: Record<WisdomRank, WisdomBand> = {
 
 export const wisdomBand = (wisdom: WisdomRank): WisdomBand => BAND_BY_RANK[wisdom]
 
-export const wisdomBandWords = (band: WisdomBand): string =>
-  Match.value(band).pipe(
-    Match.when("serene", () => "Serene"),
-    Match.when("clear", () => "Clear"),
-    Match.when("steady", () => "Steady"),
-    Match.when("faltering", () => "Faltering"),
-    Match.when("blind", () => "Blind"),
-    Match.when("lost", () => "Lost"),
-    Match.exhaustive,
-  )
-
 // --- Degeneration dice pool by Wisdom (pages 79-80, Mage) ---
 
 const DEGENERATION_POOL: Record<WisdomRank, number> = {

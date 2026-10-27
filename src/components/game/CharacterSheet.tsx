@@ -28,14 +28,7 @@ import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { ToolSwitch } from "./ToolSwitch"
 import { PoolNumerals } from "./CastHeaderStats"
 import { woundPenalty } from "#/domain/health"
-import {
-  WisdomHeat,
-  WisdomLadder,
-  WisdomRail,
-  WisdomScales,
-  WisdomWord,
-  type WisdomLook,
-} from "./WisdomMark"
+import { WisdomMeter, WisdomStairs, WisdomTrack, WisdomTwin, type WisdomLook } from "./WisdomMark"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
@@ -80,7 +73,7 @@ export function CharacterSheet({
   pendingMana = 0,
   pendingWillpower = 0,
   onSetMagicalTool,
-  wisdomLook = "heat",
+  wisdomLook = "track",
 }: CharacterSheetProps) {
   const penalty = woundPenalty(character.healthTrack)
   const canToggle =
@@ -140,6 +133,9 @@ export function CharacterSheet({
                 />
               </span>
             </div>
+            {/* Wisdom (MAG-56), the look that twins the health track: the
+                body's row above, the soul's row beneath, the same width */}
+            {wisdomLook === "twin" && <WisdomTwin wisdom={character.wisdom} />}
           </div>
           <div className="mv-data grid shrink-0 justify-items-end gap-3 text-right">
             <span className="flex items-baseline gap-2 leading-none">
@@ -155,17 +151,13 @@ export function CharacterSheet({
                 <Rating label="Speed" stat="speed" value={character.speed} />
               </div>
             </TooltipProvider>
-            {/* Wisdom (MAG-56), the looks that stand beneath Gnosis: the two
-                numbers that define a mage, stacked */}
-            {wisdomLook === "heat" && <WisdomHeat wisdom={character.wisdom} />}
-            {wisdomLook === "ladder" && <WisdomLadder wisdom={character.wisdom} />}
           </div>
         </div>
         {/* Wisdom (MAG-56), the looks that take a row of their own: the
             mage's conscience between who they are and what kind of mage */}
-        {wisdomLook === "rail" && <WisdomRail wisdom={character.wisdom} />}
-        {wisdomLook === "word" && <WisdomWord wisdom={character.wisdom} />}
-        {wisdomLook === "scales" && <WisdomScales wisdom={character.wisdom} />}
+        {wisdomLook === "track" && <WisdomTrack wisdom={character.wisdom} />}
+        {wisdomLook === "meter" && <WisdomMeter wisdom={character.wisdom} />}
+        {wisdomLook === "stairs" && <WisdomStairs wisdom={character.wisdom} />}
         <div className="flex items-end justify-between gap-6">
           <div className="flex flex-wrap items-stretch gap-x-4 gap-y-3">
             <EmblemGroup label="Path">

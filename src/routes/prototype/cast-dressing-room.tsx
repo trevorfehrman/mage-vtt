@@ -103,7 +103,7 @@ const isGrammar = (v: unknown): v is RigGrammar =>
 // treatment on the title card (WisdomMark.tsx) so the owner can judge them.
 const WISDOM_ORDER = [10, 7, 5, 2] as const
 type RigWisdom = (typeof WISDOM_ORDER)[number]
-const LOOK_ORDER: ReadonlyArray<WisdomLook> = ["heat", "word", "scales", "ladder", "rail"]
+const LOOK_ORDER: ReadonlyArray<WisdomLook> = ["track", "meter", "stairs", "twin"]
 const isWisdom = (v: unknown): v is RigWisdom =>
   (WISDOM_ORDER as ReadonlyArray<unknown>).includes(typeof v === "string" ? Number(v) : v)
 const isLook = (v: unknown): v is WisdomLook =>
@@ -116,7 +116,7 @@ export const Route = createFileRoute("/prototype/cast-dressing-room")({
     grammar: isGrammar(search.grammar) ? search.grammar : ("merge" as RigGrammar),
     hurt: search.hurt === true || search.hurt === "true",
     wisdom: isWisdom(search.wisdom) ? (Number(search.wisdom) as RigWisdom) : (7 as RigWisdom),
-    look: isLook(search.look) ? search.look : ("heat" as WisdomLook),
+    look: isLook(search.look) ? search.look : ("track" as WisdomLook),
   }),
   component: DressingRoom,
 })
