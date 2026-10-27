@@ -46,14 +46,26 @@ costing two), 2 XP a dot after — from a closed catalog of the two core books'
 offerings (`merits.ts`, MAG-59): the Rulebook's Mental, Physical and Social
 families (WoD pp. 108–117) and the Mage book's Awakened family, "available to
 only willworkers" (pp. 80–89). Most are a name, a rating and a sentence the
-Storyteller applies by judgment: the catalog records the sentence, the table
-applies it. A few change numbers the sheet derives (Fast Reflexes, Fleet of
-Foot, Giant) or gate a flow (High Speech, the +2 chant); those are enforced
-where they bite, dispatching on the Merit's name. A **named** Merit (Allies,
-Status, Language, Retainer…) is held once per thing it names, the label
-written beside it as the book does: "Allies (Police) ••". On the sheet, a
-Merits section under Attributes & Skills, in the trait rows' grammar: the
-name (and label), its dots, the book's sentence on hover. It arrives with the
+Storyteller applies by judgment: the catalog records the sentence (the
+book's **effect**), the table applies it. Every entry also carries its
+**mechanic**: the typed thing the app can act on, from a closed list of
+kinds — nothing to compute (most), dice added to a roll, a change to a
+derived number (Fast Reflexes, Fleet of Foot, Giant, Iron Stamina), a gate on
+a flow (High Speech, the +2 chant), a spendable pool (Destiny). The sheet, the
+tray and the flows read the mechanic; nothing in code names a Merit. A Merit
+that adds dice is never added by the app: the player **activates** it by hand
+on the sheet, for any roll (the book's "where it applies" is the table's
+judgment, and the roll's record shows the Merit's name for the Storyteller to
+see), and the dice land in the pool under the Merit's name. A Merit that
+changes a derived number simply makes the number read higher, the number
+marked as enhanced where it would otherwise be plain. Destiny is a **purse**,
+like Willpower and Mana: its dice are spent by hand into a roll and refill
+each session. A
+**named** Merit (Allies, Status, Language, Retainer…) is held once per thing
+it names, the label written beside it as the book does: "Allies (Police) ••",
+and each holding is its own entry — there is no single "dots of Allies". On
+the sheet, a Merits section under Attributes & Skills, in the trait rows'
+grammar: the name (and label) and its dots; no hover. It arrives with the
 ingest; no door writes it yet, and High Speech's +2 is refused to a sheet
 without the Merit.
 _Avoid_: Feat, Advantage (the book's Advantages are the derived numbers —

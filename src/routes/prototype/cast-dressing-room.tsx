@@ -55,6 +55,13 @@ import { VideoRail } from "#/components/game/VideoRail"
 import type { CharacterSheet as Sheet } from "#/domain/character"
 import type { VideoSeat } from "#/domain/video-rail"
 import type { Id } from "../../../convex/_generated/dataModel"
+import {
+  AUDITION_MERITS,
+  AUDITION_VARIANT_NAMES,
+  MERITS_AUDITION_ORDER,
+  MeritsAudition,
+  isMeritsAuditionVariant,
+} from "./-merits-audition"
 
 // ── The knobs ────────────────────────────────────────────────────────────────
 
@@ -112,6 +119,8 @@ export const Route = createFileRoute("/prototype/cast-dressing-room")({
     grammar: isGrammar(search.grammar) ? search.grammar : ("merge" as RigGrammar),
     hurt: search.hurt === true || search.hurt === "true",
     wisdom: isWisdom(search.wisdom) ? (Number(search.wisdom) as RigWisdom) : (7 as RigWisdom),
+    // PROTOTYPE (MAG-59 audition): which Merits area the sheet shows.
+    merits: isMeritsAuditionVariant(search.merits) ? search.merits : ("off" as const),
   }),
   component: DressingRoom,
 })
@@ -380,7 +389,7 @@ const SEAT_VIEW: Record<
 // ── The rig ──────────────────────────────────────────────────────────────────
 
 function DressingRoom() {
-  const { rung, seat, grammar, hurt, wisdom } = Route.useSearch()
+  const { rung, seat, grammar, hurt, wisdom, merits } = Route.useSearch()
   const casterNow = hurt ? hurtArctusSheet : arctusSheet
   // MAG-52: the sheet's tool switch flips a local copy (no server here).
   const [toolInHand, setToolInHand] = useState(false)
@@ -397,8 +406,11 @@ function DressingRoom() {
         hasMagicalTool: toolInHand,
         wisdom: marks.wisdom ?? wisdom,
         ...(marks.healthTrack !== undefined ? { healthTrack: marks.healthTrack } : {}),
+        // PROTOTYPE (MAG-59 audition): two more Merits, so there is something
+        // to activate and a purse to spend
+        ...(merits === "off" ? {} : { merits: [...AUDITION_MERITS] }),
       }),
-    [toolInHand, wisdom, marks],
+    [toolInHand, wisdom, marks, merits],
   )
   const navigate = Route.useNavigate()
   const pool = useDicePool(SESSION_ID)
@@ -592,6 +604,11 @@ function DressingRoom() {
                 setMarks((prev) => ({ ...prev, ...mark }))
                 return Promise.resolve()
               }}
+              meritsAudition={
+                merits === "off" ? undefined : (
+                  <MeritsAudition variant={merits} held={shownSheet.meritsHeld} pool={pool} />
+                )
+              }
             />
           ) : (
             <p className="text-sm" style={{ color: "var(--bad)" }}>
@@ -671,6 +688,23 @@ function DressingRoom() {
               title="MAG-56: the caster's Wisdom — 10 amazing, 7 fine, 5 sketchy, 2 really bad; the resolved aftermath follows"
             >
               W{w}
+            </button>
+          ))}
+        </div>
+        <span className="h-4 w-px bg-zinc-400" />
+        <div className="flex items-center gap-1">
+          {MERITS_AUDITION_ORDER.map((m) => (
+            <button
+              key={m}
+              onClick={() =>
+                void navigate({ search: (prev) => ({ ...prev, merits: m }), replace: true })
+              }
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                m === merits ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
+              }`}
+              title={`MAG-59 Merits audition: ${AUDITION_VARIANT_NAMES[m]}`}
+            >
+              {m === "off" ? "merits" : m}
             </button>
           ))}
         </div>

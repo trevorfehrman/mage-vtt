@@ -67,6 +67,9 @@ interface CharacterSheetProps {
    * Present on your own sheet and, for the Storyteller, on anyone's; the
    * server's ladder decides and a refusal speaks at the mark. */
   onMarkSheet?: ((mark: SheetMark) => Promise<unknown>) | undefined
+  /** PROTOTYPE (MAG-59 audition, 2026-10-27): the dressing room swaps the
+   * Merits section's body for a candidate. Remove with the audition. */
+  meritsAudition?: ReactNode | undefined
 }
 
 
@@ -82,6 +85,7 @@ export function CharacterSheet({
   pendingWillpower = 0,
   onSetMagicalTool,
   onMarkSheet,
+  meritsAudition,
 }: CharacterSheetProps) {
   const penalty = woundPenalty(character.healthTrack)
   const canToggle =
@@ -335,11 +339,13 @@ export function CharacterSheet({
           don't edit it; it comes with the ingest. Absent until any is held. */}
       {character.meritsHeld.length > 0 && (
         <Section title="Merits">
-          <div className="grid grid-cols-3 gap-x-6 gap-y-1">
-            {character.meritsHeld.map((held) => (
-              <MeritRow key={`${held.name}${held.label === undefined ? "" : ` (${held.label})`}`} held={held} />
-            ))}
-          </div>
+          {meritsAudition ?? (
+            <div className="grid grid-cols-3 gap-x-6 gap-y-1">
+              {character.meritsHeld.map((held) => (
+                <MeritRow key={`${held.name}${held.label === undefined ? "" : ` (${held.label})`}`} held={held} />
+              ))}
+            </div>
+          )}
         </Section>
       )}
 
