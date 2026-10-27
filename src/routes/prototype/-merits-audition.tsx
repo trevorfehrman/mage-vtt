@@ -186,7 +186,7 @@ function Key({ h, pool, canToggle, read, onRead, markSize, nameClass, stem, widt
       <span className={`${nameClass} leading-tight`} style={{ color: ink }}>
         {h.name}
         {h.label !== undefined && (
-          <span className="block text-[11px] normal-case tracking-normal" style={{ color: "var(--dim)" }}>
+          <span className="block whitespace-nowrap text-[11px] normal-case tracking-normal" style={{ color: "var(--dim)" }}>
             ({h.label})
           </span>
         )}
@@ -267,6 +267,6 @@ export function MeritsAudition({
     )
   }
   return (
-    <Ring held={held} pool={pool} canToggle={canToggle} markSize={34} nameClass="mv-data text-[9px] uppercase tracking-[0.14em]" stem={10} width={72} gap="gap-x-1 gap-y-3" />
+    <Ring held={held} pool={pool} canToggle={canToggle} markSize={34} nameClass="mv-data text-[9px] uppercase tracking-[0.12em]" stem={10} width={94} gap="gap-x-0 gap-y-3" />
   )
 }
