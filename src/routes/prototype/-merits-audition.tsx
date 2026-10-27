@@ -364,14 +364,20 @@ function Fan({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool: 
                 style={{ width: 90, marginLeft: -45, color: ink, transformOrigin: `50% ${FAN_RADIUS}px` }}
                 animate={{
                   rotate: (i - hand) * FAN_STEP,
-                  scale: isHand ? 1 : 0.8,
                   opacity: Math.abs(i - hand) > 3 ? 0 : isHand ? 1 : lit ? 0.9 : 0.6,
-                  y: isHand ? -6 : 0,
                 }}
                 transition={reduced ? { duration: 0 } : SPRING}
               >
-                <Mark name={h.name} size={34} turned={lit} />
-                <span className="mv-data text-[9px] uppercase tracking-[0.12em] leading-tight whitespace-nowrap">{h.name}</span>
+                {/* the scale pivots on the key itself, not the ring's center */}
+                <motion.span
+                  className="grid justify-items-center gap-1"
+                  style={{ transformOrigin: "50% 0%" }}
+                  animate={{ scale: isHand ? 1 : 0.8, y: isHand ? -6 : 0 }}
+                  transition={reduced ? { duration: 0 } : SPRING}
+                >
+                  <Mark name={h.name} size={34} turned={lit} />
+                  <span className="mv-data text-[9px] uppercase tracking-[0.12em] leading-tight whitespace-nowrap">{h.name}</span>
+                </motion.span>
               </motion.button>
             )
           })}
