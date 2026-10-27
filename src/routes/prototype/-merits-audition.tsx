@@ -352,60 +352,65 @@ function Ring({
 
 const ROW = 36 // one key's height on the wheel
 const VISIBLE = 7 // rows in the frame, the key in hand at the middle
+const SLOTS = [-4, -3, -2, -1, 0, 1, 2, 3, 4] // rows rendered, around the middle
 const wrapIndex = (n: number, i: number) => ((i % n) + n) % n
-/** Signed distance around the ring, in (-n/2, n/2]. */
-const ringDistance = (n: number, d: number) => {
-  const w = wrapIndex(n, d)
-  return w > n / 2 ? w - n : w
-}
 
-/** One key on the wheel: its place is a pure function of the wheel's
- * offset (a motion value, in rows), so scrolling never re-renders it. */
-function WheelKey({
-  h,
-  i,
+/**
+ * One row of the wheel. The wheel is an infinite list: row `k` sits `k`
+ * rows from the integer position `base`, and shows whichever key the
+ * modulo gives `base + k`. When the wheel passes an integer, `base` moves
+ * on and every row takes the next key — at the same place on screen it
+ * was already at, so nothing jumps. Its place is a transform of the
+ * wheel's offset (a motion value), so scrolling never re-renders it.
+ */
+function Slot({
+  k,
+  base,
   count,
   offset,
-  lit,
-  turns,
+  held,
+  pool,
   onTap,
 }: {
-  h: HeldMerit
-  i: number
+  k: number
+  base: number
   count: number
   offset: MotionValue<number>
-  lit: boolean
-  turns: boolean
-  onTap: () => void
+  held: ReadonlyArray<HeldMerit>
+  pool: Pool
+  onTap: (position: number) => void
 }) {
-  const dist = useTransform(offset, (o) => ringDistance(count, i - o))
-  const y = useTransform(dist, (d) => d * ROW)
-  // flat (owner, round seven): no drum — nothing scales or recedes, so no
-  // key ever lies over another. The key in hand only steps toward the door.
-  const x = useTransform(dist, (d) => Math.max(0, 1 - Math.abs(d)) * 12)
-  // the seam where a key leaves one edge for the other sits past the frame
-  // (±4 rows on an eight-key ring; the frame shows ±3.5), so the column is
-  // always full — the mask does the fading at the edges
-  const opacity = useTransform(dist, (d) => (Math.abs(d) > 3.75 ? 0 : Math.max(0.2, 1 - Math.abs(d) * 0.2)))
-  const stem = useTransform(dist, (d) => 10 + Math.max(0, 1 - Math.abs(d)) * 14)
+  const position = base + k
+  const h = held[wrapIndex(count, position)]!
+  const dist = useTransform(offset, (o) => position - o)
+  const y = useTransform(offset, (o) => (position - o) * ROW)
+  const x = useTransform(offset, (o) => Math.max(0, 1 - Math.abs(position - o)) * 12)
+  const stem = useTransform(offset, (o) => 10 + Math.max(0, 1 - Math.abs(position - o)) * 14)
   const stemMargin = useTransform(stem, (w) => 10 - w)
-  const [near, setNear] = useState(false)
+  const [near, setNear] = useState(Math.abs(position - offset.get()) < 0.5)
   useMotionValueEvent(dist, "change", (d) => setNear(Math.abs(d) < 0.5))
+  const lit = litOf(pool, h)
+  const turns = turnsOf(h)
   const ink = lit ? "var(--ember)" : near || turns ? "var(--ink)" : "var(--dim)"
+  const seam = wrapIndex(count, position) === 0
   return (
-    <motion.button
-      type="button"
-      onClick={onTap}
-      className={`absolute left-[6px] top-1/2 -mt-[18px] flex h-[36px] items-center gap-2 whitespace-nowrap text-left ${turns ? "" : "cursor-default"}`}
-      style={{ y, x, opacity, color: ink }}
-    >
-      <motion.span aria-hidden className="block h-px" style={{ width: stem, marginLeft: stemMargin, background: lit ? "var(--ember)" : "var(--line)" }} />
-      <Mark name={h.name} size={26} turned={lit} />
-      <span className="mv-data text-[10px] uppercase tracking-[0.12em]">
-        {h.name}
-        {h.label !== undefined && <span className="normal-case tracking-normal" style={{ color: "var(--dim)" }}> ({h.label})</span>}
-      </span>
-    </motion.button>
+    <motion.div className="absolute inset-x-0 top-1/2 -mt-[18px] h-[36px]" style={{ y }}>
+      {/* the seam: where the ring starts over */}
+      {seam && <span aria-hidden className="absolute inset-x-0 top-0 h-px" style={{ background: "var(--line)" }} />}
+      <motion.button
+        type="button"
+        onClick={() => onTap(position)}
+        className={`absolute left-[6px] top-0 flex h-[36px] items-center gap-2 whitespace-nowrap text-left ${turns ? "" : "cursor-default"}`}
+        style={{ x, color: ink }}
+      >
+        <motion.span aria-hidden className="block h-px" style={{ width: stem, marginLeft: stemMargin, background: lit ? "var(--ember)" : "var(--line)" }} />
+        <Mark name={h.name} size={26} turned={lit} />
+        <span className="mv-data text-[10px] uppercase tracking-[0.12em]">
+          {h.name}
+          {h.label !== undefined && <span className="normal-case tracking-normal" style={{ color: "var(--dim)" }}> ({h.label})</span>}
+        </span>
+      </motion.button>
+    </motion.div>
   )
 }
 
@@ -415,9 +420,13 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
   // the wheel's position, in rows, unbounded: the ring wraps
   const offset = useMotionValue(0)
   const [hand, setHand] = useState(0)
+  // the integer position the rows hang from; moves once per row
+  const [base, setBase] = useState(0)
   useMotionValueEvent(offset, "change", (o) => {
     const i = wrapIndex(count, Math.round(o))
     if (i !== hand) setHand(i)
+    const b = Math.floor(o)
+    if (b !== base) setBase(b)
   })
 
   /** Coast from a velocity (rows per second) and land exactly on a key:
@@ -433,7 +442,6 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
   const goTo = (target: number) =>
     animate(offset, target, reduced ? { duration: 0 } : { duration: 0.26, ease: [0.22, 1, 0.36, 1] })
   const step = (by: number) => goTo(Math.round(offset.get()) + by)
-  const goToIndex = (i: number) => goTo(offset.get() + ringDistance(count, i - offset.get()))
 
   // the wheel: a non-passive listener, so the page does not scroll with it.
   // A mouse wheel's notch is a push on a spinning wheel: it adds to the
@@ -487,10 +495,10 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
     coast(offset.getVelocity())
     if (moved) suppressClick.current = true
   }
-  const onTap = (i: number, h: HeldMerit) => {
+  const onTap = (position: number) => {
     if (suppressClick.current) { suppressClick.current = false; return }
-    if (i !== hand) { goToIndex(i); return }
-    turn(h, pool, canToggle)
+    if (position !== Math.round(offset.get())) { goTo(position); return }
+    turn(held[wrapIndex(count, position)]!, pool, canToggle)
   }
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") { e.preventDefault(); step(1) }
@@ -519,8 +527,8 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
       >
         {/* the ring's line */}
         <span aria-hidden className="absolute inset-y-0 left-[6px] w-px" style={{ background: "var(--line)" }} />
-        {held.map((h, i) => (
-          <WheelKey key={keyOf(h)} h={h} i={i} count={count} offset={offset} lit={litOf(pool, h)} turns={turnsOf(h)} onTap={() => onTap(i, h)} />
+        {SLOTS.map((k) => (
+          <Slot key={k} k={k} base={base} count={count} offset={offset} held={held} pool={pool} onTap={onTap} />
         ))}
       </div>
       {/* the door: what the key in hand opens */}
