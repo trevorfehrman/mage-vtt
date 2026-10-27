@@ -435,8 +435,11 @@ function RingKey({
   // has air; a row on its way in slides the same distance it has come
   const y = useTransform(dist, (d) => d * ROW + Math.sign(d) * Math.min(Math.abs(d), 1) * PART)
   const x = useTransform(lift, (l) => l * 12)
+  // the key's own tick to the ring fades as it comes to hand: the reach
+  // line is the key in hand's stem, and a tick over it would cross it
   const stem = useTransform(lift, (l) => 10 + l * 14)
   const stemMargin = useTransform(stem, (w) => 10 - w)
+  const stemOpacity = useTransform(lift, (l) => 1 - l)
   const markSize = useTransform(lift, (l) => MARK + l * (MARK_IN_HAND - MARK))
   const nameSize = useTransform(lift, (l) => NAME + l * (NAME_IN_HAND - NAME))
   const [near, setNear] = useState(Math.abs(dist.get()) < 0.5)
@@ -454,7 +457,7 @@ function RingKey({
         className={`absolute left-[6px] top-0 flex h-[36px] items-center gap-2 whitespace-nowrap text-left ${turns ? "" : "cursor-default"}`}
         style={{ x, rotate: lean, transformOrigin: "0 50%", color: ink }}
       >
-        <motion.span aria-hidden className="block h-px" style={{ width: stem, marginLeft: stemMargin, background: lit ? "var(--ember)" : "var(--line)" }} />
+        <motion.span aria-hidden className="block h-px" style={{ width: stem, marginLeft: stemMargin, opacity: stemOpacity, background: lit ? "var(--ember)" : "var(--line)" }} />
         {/* the mark and the name wear the sheet's background, so a key
             strung on the reach line sits on it rather than behind it */}
         <motion.span className="grid shrink-0 place-items-center rounded-full" style={{ width: markSize, height: markSize, background: "var(--bg)" }}>
@@ -588,7 +591,10 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
   const inHandLit = litOf(pool, inHand)
   const inHandTurns = turnsOf(inHand)
   const reaches = inHandTurns || mechanicOf(inHand).kind === "gate"
-  const reachInk = inHandLit ? "var(--ember)" : reaches ? "var(--ink)" : "var(--line)"
+  // the reach is always ink (ember when turned); a still key is told by
+  // the line stopping short and the keyhole dim, not by the line fading
+  const reachInk = inHandLit ? "var(--ember)" : "var(--ink)"
+  const keyholeInk = inHandLit ? "var(--ember)" : reaches ? "var(--ink)" : "var(--line)"
   const middle = (VISIBLE * ROW) / 2
   return (
     <div className="relative grid grid-cols-[minmax(0,15rem)_1fr] gap-x-8">
@@ -652,7 +658,7 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
           onClick={() => turn(inHand, pool, canToggle)}
           aria-label={inHandLit ? `Let ${inHand.name} go` : `Turn ${inHand.name}`}
           className={`absolute grid place-items-center ${inHandTurns ? "" : "cursor-default"}`}
-          style={{ left: -KEYHOLE / 2, top: middle - KEYHOLE / 2, width: KEYHOLE, height: KEYHOLE, color: reachInk, transition: "color 0.3s" }}
+          style={{ left: -KEYHOLE / 2, top: middle - KEYHOLE / 2, width: KEYHOLE, height: KEYHOLE, color: keyholeInk, transition: "color 0.3s" }}
         >
           <Keyhole size={KEYHOLE} lit={inHandLit} />
         </button>
