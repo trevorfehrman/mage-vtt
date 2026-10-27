@@ -1,5 +1,4 @@
 import { WisdomRank } from "#/domain/wisdom"
-import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip"
 
 /**
  * Wisdom on the title card (MAG-56): the meter. The owner's brief
@@ -10,10 +9,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip
  * color is the rank's own — bright verdigris at 10, the card's standard
  * verdigris at a new mage's 7, ember through the middle where Paradox
  * starts to linger, the Paradox red from 3 down. On a step the lost cell
- * goes dark over `SHIFT`, slow enough to be seen. The tooltip (focusable,
- * like every numeral's on the card — ADR-0021) says the one thing the
- * cells do not: the number (owner, 2026-10-27: anything more is too
- * verbose). The cells are buttons on your own sheet — see `onSet`.
+ * goes dark over `SHIFT`, slow enough to be seen. No tooltip: the owner's
+ * call (2026-10-27) is that the cells say it and a hover adds nothing — a
+ * standing exception to ADR-0021's every-numeral-names-itself rule, since
+ * there is no numeral; the group's accessible name carries the number.
  */
 
 /** The one timing the step shifts with: slow enough to be felt. */
@@ -71,34 +70,27 @@ export function WisdomMeter({
     transition: `background-color ${SHIFT}, box-shadow ${SHIFT}`,
   })
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          tabIndex={onSet ? undefined : 0}
-          className="grid w-full grid-cols-10 gap-[3px]"
-          style={{ height: 12 }}
-          aria-label={`Wisdom ${wisdom}`}
-        >
-          {WisdomRank.literals.map((rank) =>
-            onSet ? (
-              <button
-                key={rank}
-                type="button"
-                onClick={() => onSet(rank)}
-                aria-label={`Set Wisdom ${rank}`}
-                aria-pressed={rank === wisdom}
-                className="block cursor-pointer rounded-[2px]"
-                style={cellStyle(rank <= wisdom)}
-              />
-            ) : (
-              <span key={rank} className="block rounded-[2px]" style={cellStyle(rank <= wisdom)} />
-            ),
-          )}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="top" sideOffset={4}>
-        Wisdom {wisdom}
-      </TooltipContent>
-    </Tooltip>
+    <span
+      className="grid w-full grid-cols-10 gap-[3px]"
+      style={{ height: 12 }}
+      role="group"
+      aria-label={`Wisdom ${wisdom}`}
+    >
+      {WisdomRank.literals.map((rank) =>
+        onSet ? (
+          <button
+            key={rank}
+            type="button"
+            onClick={() => onSet(rank)}
+            aria-label={`Set Wisdom ${rank}`}
+            aria-pressed={rank === wisdom}
+            className="block cursor-pointer rounded-[2px]"
+            style={cellStyle(rank <= wisdom)}
+          />
+        ) : (
+          <span key={rank} className="block rounded-[2px]" style={cellStyle(rank <= wisdom)} />
+        ),
+      )}
+    </span>
   )
 }

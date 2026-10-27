@@ -165,12 +165,10 @@ export function CharacterSheet({
                 width — the held cells filled in the rank's own color, the
                 lost ones hollow; the number lives in its tooltip */}
             <Eyebrowed label="Wisdom">
-              <TooltipProvider>
-                <WisdomMeter
-                  wisdom={character.wisdom}
-                  onSet={onMarkSheet ? (wisdom) => void onMarkSheet({ wisdom }) : undefined}
-                />
-              </TooltipProvider>
+              <WisdomMeter
+                wisdom={character.wisdom}
+                onSet={onMarkSheet ? (wisdom) => void onMarkSheet({ wisdom }) : undefined}
+              />
             </Eyebrowed>
           </div>
           <div className="mv-data grid shrink-0 justify-items-end gap-3 text-right">
