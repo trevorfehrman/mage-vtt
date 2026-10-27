@@ -117,6 +117,10 @@ const addedColumns = {
   // MAG-57/58/61: the record's optional columns; absence means none.
   experienceUnspent: v.optional(v.number()),
   skillSpecialties: v.optional(v.array(v.object({ skill: v.string(), label: v.string() }))),
+  // MAG-59: Merits held, the label optional.
+  merits: v.optional(
+    v.array(v.object({ name: v.string(), dots: v.number(), label: v.optional(v.string()) })),
+  ),
   nimbus: v.optional(v.string()),
   legacy: v.optional(v.object({ name: v.string(), attainments: v.array(v.string()) })),
   cabal: v.optional(v.string()),

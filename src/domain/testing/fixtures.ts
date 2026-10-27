@@ -80,6 +80,15 @@ export const makeCorvinSheet = (
     healthTrack: ["empty", "empty", "empty", "empty", "empty", "empty", "empty"],
     willpowerCurrent: 6,
     manaCurrent: 11,
+    // the template's Merits (MAG-59): High Speech among them, so Corvin is
+    // the fixture that may chant
+    merits: [
+      { name: "High Speech", dots: 1 },
+      { name: "Resources", dots: 2 },
+      { name: "Contacts", dots: 2 },
+      { name: "Allies", dots: 1, label: "Museum staff" },
+      { name: "Language", dots: 1, label: "Latin" },
+    ],
     ...overrides,
   })
 

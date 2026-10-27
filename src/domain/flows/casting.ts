@@ -69,6 +69,16 @@ export class ArcanumTooWeak extends Schema.TaggedError<ArcanumTooWeak>()(
   },
 ) {}
 
+/**
+ * Rules/precondition (MAG-59): High Speech was declared by a caster whose
+ * sheet does not hold the Merit (Mage p. 117: "the mage must know the
+ * language"). Shared by the improvised and Rote flows.
+ */
+export class HighSpeechNeedsMerit extends Schema.TaggedError<HighSpeechNeedsMerit>()(
+  "HighSpeechNeedsMerit",
+  {},
+) {}
+
 /** Validation: the declaration itself is malformed (unknown Arcanum, level outside 1–5). */
 export class InvalidCastDeclaration extends Schema.TaggedError<InvalidCastDeclaration>()(
   "InvalidCastDeclaration",
@@ -197,6 +207,12 @@ export const castSpell = Effect.fn("Flows.casting.castSpell")(function* (
   // The pending-cast lock (issue #109): a pending vulgar Cast freezes the
   // member's other rolls; an unanswered offer holds the Storyteller's.
   yield* requireRollFreedom(member)
+
+  // High Speech is the Merit's to chant (MAG-59): the +2 needs the sheet to
+  // hold it, whoever declared it.
+  if (declaration.highSpeech && !sheet.knowsHighSpeech) {
+    return yield* new HighSpeechNeedsMerit({})
+  }
 
   // Move rule: the sheet's Arcanum dots must meet the declared level (the
   // Practices ladder). Which level an improvised effect *is* stays table

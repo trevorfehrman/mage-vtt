@@ -15,6 +15,7 @@ import { RoteArcanumName, RotePool } from "./rote-pool"
 import { ORDER_ROTE_SKILLS, SpellAspect } from "./rote-cast"
 import { STARTING_WISDOM, WisdomRank } from "./wisdom"
 import { ArcanumName, SkillKey } from "./trait-keys"
+import { HeldMerit, type MeritName } from "./merits"
 
 // The key vocabularies live in trait-keys.ts (a leaf the catalogs share);
 // the sheet's callers keep importing them from here.
@@ -423,6 +424,9 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   experienceUnspent: Schema.optionalKey(Experience),
   // Skill Specialties (MAG-58): absent means none.
   skillSpecialties: Schema.optionalKey(Schema.Array(SkillSpecialty)),
+  // Merits (MAG-59): the perks the record holds, from the closed catalog;
+  // absent means none. Written by the ingest, never by a door (yet).
+  merits: Schema.optionalKey(Schema.Array(HeldMerit)),
   // The record's words (MAG-61): the nimbus sentence, the Legacy, the cabal
   // and consilium names. None change a roll; all absent until written.
   nimbus: Schema.optionalKey(Schema.String),
@@ -448,6 +452,34 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   /** The pool's +1 for a skill's specialty, when the skill carries one. */
   specialtyComponentFor(skill: SkillKey): Option.Option<PoolComponentInput> {
     return Option.map(this.specialtyFor(skill), specialtyComponent)
+  }
+
+  /** Merits (MAG-59), absent-column-safe. */
+  get meritsHeld(): ReadonlyArray<HeldMerit> {
+    return this.merits ?? []
+  }
+
+  /**
+   * The dots held in a Merit, 0 when it is not held. A `named` Merit held
+   * more than once ("Allies (Police) ••, Allies (Criminals) •••") answers
+   * with its highest rating — the question "how deep does it run" has no
+   * single answer there, and a gate only asks whether it is held at all.
+   */
+  meritDots(name: MeritName): number {
+    return Math.max(0, ...this.meritsHeld.filter((m) => m.name === name).map((m) => m.dots))
+  }
+
+  hasMerit(name: MeritName): boolean {
+    return this.meritDots(name) > 0
+  }
+
+  /**
+   * Whether the mage may chant for the +2 (Mage p. 117: "the mage must know
+   * the language — see the High Speech Merit"). The cast flows refuse the
+   * declaration without it.
+   */
+  get knowsHighSpeech(): boolean {
+    return this.hasMerit("High Speech")
   }
 
   /**

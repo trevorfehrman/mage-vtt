@@ -55,6 +55,13 @@
       { "skill": "science", "label": "Metallurgy" },
       { "skill": "academics", "label": "Accounting" }
     ],
+    "merits": [
+      { "name": "High Speech", "dots": 1 },
+      { "name": "Resources", "dots": 2 },
+      { "name": "Contacts", "dots": 2 },
+      { "name": "Allies", "dots": 1, "label": "Museum staff" },
+      { "name": "Language", "dots": 1, "label": "Latin" }
+    ],
     "nimbus": "Ledgers of frost crawl across every surface; the air rings like struck coin.",
     "cabal": "The Hollow Choir",
     "consilium": "Consilium of the Narrows",

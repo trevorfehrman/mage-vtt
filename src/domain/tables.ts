@@ -155,6 +155,16 @@ export const CharacterSeedData = Schema.Struct({
   skillSpecialties: Schema.optionalKey(
     Schema.Array(Schema.Struct({ skill: Schema.String, label: Schema.String })),
   ),
+  // Merits (MAG-59): name, dots, and the label a named Merit carries.
+  merits: Schema.optionalKey(
+    Schema.Array(
+      Schema.Struct({
+        name: Schema.String,
+        dots: Schema.Number,
+        label: Schema.optionalKey(Schema.String),
+      }),
+    ),
+  ),
   nimbus: Schema.optionalKey(Schema.String),
   legacy: Schema.optionalKey(
     Schema.Struct({ name: Schema.String, attainments: Schema.Array(Schema.String) }),

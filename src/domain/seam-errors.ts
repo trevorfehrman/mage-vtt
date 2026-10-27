@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import { NotAMember, NotStoryteller, NotYourCharacter } from "./authz"
 import { InvalidPoolComponent } from "./dice"
-import { ArcanumTooWeak, InvalidCastDeclaration } from "./flows/casting"
+import { ArcanumTooWeak, HighSpeechNeedsMerit, InvalidCastDeclaration } from "./flows/casting"
 import {
   CombatAlreadyActive,
   DuplicateCombatant,
@@ -61,6 +61,7 @@ export const SeamError = Schema.Union([
   InsufficientMana,
   InsufficientWillpower,
   ArcanumTooWeak,
+  HighSpeechNeedsMerit,
   VulgarCastingNotYetSupported,
   SpellNotVulgar,
   RoteNotKnown,

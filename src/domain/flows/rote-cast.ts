@@ -11,7 +11,7 @@ import { applySpellFactors, calculateRotePool } from "../spellcasting"
 import { spendWillpower, WILLPOWER_BONUS_DICE } from "../willpower-economy"
 import type { CharacterSheet, KnownRote } from "../character"
 import type { DiceRollResult } from "../dice"
-import { factorPenaltyComponents, InvalidCastDeclaration, outcomeOf } from "./casting"
+import { factorPenaltyComponents, HighSpeechNeedsMerit, InvalidCastDeclaration, outcomeOf } from "./casting"
 import { requireRollFreedom } from "./pending-lock"
 
 /**
@@ -160,6 +160,11 @@ export const castRote = Effect.fn("Flows.roteCast.castRote")(function* (
   )
 
   const rote = yield* requireKnownRote(sheet, declaration.roteName)
+
+  // High Speech is the Merit's to chant (MAG-59), on a Rote as on an improvisation.
+  if (declaration.highSpeech && !sheet.knowsHighSpeech) {
+    return yield* new HighSpeechNeedsMerit({})
+  }
 
   // Attribution follows the character's owner (ADR-0006).
   const member = yield* store.getMembership(sheet.sessionId, sheet.userId)

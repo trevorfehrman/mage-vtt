@@ -27,6 +27,7 @@ import {
   pathTint,
 } from "./ArcanaGlyph"
 import { ArcanaSubstance, hasSubstance } from "./ArcanaSubstance"
+import { merit, type HeldMerit } from "#/domain/merits"
 import { RoteBook } from "./RoteBook"
 import { TraitSky } from "./TraitSky"
 import { Separator } from "#/components/ui/separator"
@@ -325,6 +326,24 @@ export function CharacterSheet({
           </div>
         </div>
       </Section>
+
+      {/* Merits (MAG-59; WoD p. 108, Mage p. 80) — the perks the record
+          holds, beside the human traits they were bought with: the name (and
+          a named Merit's label, as the book writes it — "Allies (Police)"),
+          its dots, and the book's one mechanical sentence on hover. Players
+          don't edit it; it comes with the ingest. Absent until any is held. */}
+      {character.meritsHeld.length > 0 && (
+        <Section title="Merits">
+          {/* one provider for the grid, as the title card and the matrix do */}
+          <TooltipProvider>
+            <div className="grid grid-cols-3 gap-x-6 gap-y-1">
+              {character.meritsHeld.map((held) => (
+                <MeritRow key={`${held.name}${held.label === undefined ? "" : ` (${held.label})`}`} held={held} />
+              ))}
+            </div>
+          </TooltipProvider>
+        </Section>
+      )}
 
       {/* Arcana — the magic dashboard, after the human traits. */}
       <Section title="Arcana">
@@ -718,6 +737,39 @@ function CategoryColumn({
       {skills.length > 0 && <span aria-hidden className="h-2" />}
       {zone("skill", skills, "var(--zone-skill)")}
     </div>
+  )
+}
+
+/**
+ * One held Merit in the trait rows' grammar: the name in ink, a named
+ * Merit's label in the dim small face beside it, the dots on the right edge
+ * (Sanctum may run past five, so the rating widens to the dots). The book's
+ * sentence is the tooltip, on hover or focus — a Merit's rule is the one
+ * thing the player needs that the row cannot say.
+ */
+function MeritRow({ held }: { held: HeldMerit }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          tabIndex={0}
+          className="mv-sky-row -mx-2 flex items-center justify-between gap-2 rounded-[3px] px-2 py-1"
+        >
+          <span className="flex min-w-0 items-baseline gap-1.5">
+            <span className="whitespace-nowrap text-[14px]">{held.name}</span>
+            {held.label !== undefined && (
+              <span className="truncate text-[12px]" style={{ color: "var(--dim)" }}>
+                ({held.label})
+              </span>
+            )}
+          </span>
+          <DotRating current={held.dots} max={Math.max(5, held.dots)} />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={4} className="max-w-[28ch] text-balance">
+        {merit(held.name).effect}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

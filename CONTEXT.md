@@ -51,7 +51,11 @@ applies it. A few change numbers the sheet derives (Fast Reflexes, Fleet of
 Foot, Giant) or gate a flow (High Speech, the +2 chant); those are enforced
 where they bite, dispatching on the Merit's name. A **named** Merit (Allies,
 Status, Language, Retainer…) is held once per thing it names, the label
-written beside it as the book does: "Allies (Police) ••".
+written beside it as the book does: "Allies (Police) ••". On the sheet, a
+Merits section under Attributes & Skills, in the trait rows' grammar: the
+name (and label), its dots, the book's sentence on hover. It arrives with the
+ingest; no door writes it yet, and High Speech's +2 is refused to a sheet
+without the Merit.
 _Avoid_: Feat, Advantage (the book's Advantages are the derived numbers —
 Defense, Speed, Initiative, Health, Willpower).
 

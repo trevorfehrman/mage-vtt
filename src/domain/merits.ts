@@ -466,13 +466,18 @@ export const creationCost = (dots: number): number => dots + (dots >= 5 ? 1 : 0)
 
 // --- Creation validation ---
 
-/** One Merit on a sheet or in a selection: the name, the dots, and the label a `named` Merit carries. */
-export const MeritSelection = Schema.Struct({
+/**
+ * One Merit as a sheet holds it (MAG-59): the name, the dots (one to ten —
+ * Sanctum's two aspects at five each are the widest, Mage p. 87), and the
+ * label a `named` Merit carries, written beside it as the book does:
+ * "Allies (Police) ••". Also the shape of a creation selection.
+ */
+export const HeldMerit = Schema.Struct({
   name: MeritName,
-  dots: Schema.Number,
+  dots: Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 1, maximum: 10 })),
   label: Schema.optionalKey(Schema.String),
 })
-export type MeritSelection = typeof MeritSelection.Type
+export type HeldMerit = typeof HeldMerit.Type
 
 export class MeritValidationError extends Schema.TaggedError<MeritValidationError>()(
   "MeritValidationError",
@@ -532,9 +537,9 @@ const prerequisiteFailure = (
  * The first failure refuses the whole selection.
  */
 export const validateMeritSelections = Effect.fn("Merits.validate")(function* (input: {
-  selections: ReadonlyArray<MeritSelection>
+  selections: ReadonlyArray<HeldMerit>
   maxDots: number
-  currentMerits: ReadonlyArray<MeritSelection>
+  currentMerits: ReadonlyArray<HeldMerit>
   traits: MeritTraits
 }) {
   const { selections, maxDots, currentMerits, traits } = input

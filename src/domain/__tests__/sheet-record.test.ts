@@ -3,7 +3,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { attainmentGates, SkillKey, specialtyComponent, specialtyComponentName } from "../character"
 import { buildPool, rollPool } from "../dice"
 import { cycleBox, toggleResistant } from "../health"
-import { makeAldousSheet } from "../testing/fixtures"
+import { makeAldousSheet, makeCorvinSheet } from "../testing/fixtures"
 
 /**
  * The record beyond the ratings (P-MAG-15): unspent experience and Mana a
@@ -81,6 +81,48 @@ describe("CharacterSheet: Skill Specialties (MAG-58)", () => {
       expect(roll.rolls).toHaveLength(5)
     }),
   )
+})
+
+describe("CharacterSheet: Merits (MAG-59)", () => {
+  it("a row without the column holds none; a stored list reads back whole", () => {
+    const bare = makeAldousSheet()
+    expect(bare.meritsHeld).toEqual([])
+    expect(bare.hasMerit("High Speech")).toBe(false)
+    expect(bare.knowsHighSpeech).toBe(false)
+    const sheet = makeAldousSheet({
+      merits: [
+        { name: "High Speech", dots: 1 },
+        { name: "Allies", dots: 2, label: "Police" },
+        { name: "Allies", dots: 3, label: "Criminals" },
+      ],
+    })
+    expect(sheet.meritsHeld).toHaveLength(3)
+    expect(sheet.knowsHighSpeech).toBe(true)
+    expect(sheet.meritDots("High Speech")).toBe(1)
+    expect(sheet.meritDots("Resources")).toBe(0)
+  })
+
+  it("a named Merit held more than once answers with its highest rating", () => {
+    const sheet = makeAldousSheet({
+      merits: [
+        { name: "Allies", dots: 2, label: "Police" },
+        { name: "Allies", dots: 3, label: "Criminals" },
+      ],
+    })
+    expect(sheet.meritDots("Allies")).toBe(3)
+    expect(sheet.hasMerit("Allies")).toBe(true)
+  })
+
+  it("a Merit outside the catalog, or at no dots, is not representable", () => {
+    expect(() => makeAldousSheet({ merits: [{ name: "Unseen Sense" as never, dots: 3 }] })).toThrow()
+    expect(() => makeAldousSheet({ merits: [{ name: "Resources", dots: 0 }] })).toThrow()
+    expect(() => makeAldousSheet({ merits: [{ name: "Sanctum", dots: 11 }] })).toThrow()
+  })
+
+  it("the template character holds High Speech; the bare fixture does not", () => {
+    expect(makeCorvinSheet().knowsHighSpeech).toBe(true)
+    expect(makeAldousSheet().knowsHighSpeech).toBe(false)
+  })
 })
 
 describe("CharacterSheet: the words (MAG-61)", () => {

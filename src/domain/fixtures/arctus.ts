@@ -3,6 +3,7 @@
  * Matches the test fixture from character.test.ts.
  */
 import type { SkillSpecialty } from "../character"
+import type { HeldMerit } from "../merits"
 
 export const arctusData = {
   name: "Arctus",
@@ -65,6 +66,17 @@ export const arctusData = {
     { skill: "investigation", label: "Crime Scenes" },
     { skill: "larceny", label: "Locks" },
   ] as SkillSpecialty[],
+  // Merits (MAG-59): seven creation dots — High Speech free to an order
+  // member but written down all the same, a sanctum with a small library
+  // (Library needs Sanctum), and the named kinds the sheet writes with a label.
+  merits: [
+    { name: "High Speech", dots: 1 },
+    { name: "Sanctum", dots: 1 },
+    { name: "Library", dots: 2 },
+    { name: "Occultation", dots: 1 },
+    { name: "Status", dots: 1, label: "Mysterium" },
+    { name: "Contacts", dots: 1 },
+  ] as HeldMerit[],
   nimbus: "A cold draught and the smell of wet iron; shadows lean toward him.",
   legacy: {
     name: "Bokor",
