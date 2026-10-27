@@ -1,4 +1,4 @@
-import { Effect, Layer, Random } from "effect"
+import { Cause, Effect, Exit, Layer, Random } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import { KnownRote, type CharacterSheet } from "../character"
 import { castSpell } from "../flows/casting"
@@ -20,6 +20,7 @@ import {
   setDraftContainment,
   setDraftMitigation,
   voidCast,
+  InvalidMitigation,
 } from "../flows/vulgar-cast"
 import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "../ids"
 import { Membership } from "../membership"
@@ -896,6 +897,31 @@ describe("Flows.vulgarCast — the caster's live bets (MAG-34)", () => {
     }),
   )
 
+  it.effect("the Mana pick and the commit refuse past Gnosis's Mana a turn, the spell's cost counted (p. 123)", () =>
+    Effect.gen(function* () {
+      // Gnosis 1 spends 1 Mana a turn. A 1-Mana spell takes the whole turn,
+      // so even a full purse (10) and a one-die pool leave nothing to
+      // mitigate with — both doors refuse, and say why.
+      const store = seed({ casts: [castAt("price", { tides: NO_TIDES, spellManaCost: 1 })] })
+      const pick = yield* setDraftMitigation({ sessionId: SESSION, castId, draftMitigation: 1 }).pipe(
+        as(PLAYER), Effect.provide(store.layer), Effect.exit)
+      expect(failureTag(pick)).toBe("InvalidMitigation")
+      const commit = yield* commitCast({ sessionId: SESSION, castId, manaMitigation: 1 }).pipe(
+        as(PLAYER), Effect.provide(store.layer), Effect.exit)
+      expect(failureTag(commit)).toBe("InvalidMitigation")
+      const refusal = Exit.isFailure(commit) ? Cause.squash(commit.cause) : null
+      expect(refusal).toBeInstanceOf(InvalidMitigation)
+      expect(refusal).toMatchObject({ cap: 0, bound: "turn" })
+      expect(store.casts[0]!.status).toBe("price")
+
+      // A free spell leaves the turn's one Mana for the one die.
+      const free = seed({ casts: [fixed()] })
+      yield* setDraftMitigation({ sessionId: SESSION, castId, draftMitigation: 1 }).pipe(
+        as(PLAYER), Effect.provide(free.layer))
+      expect(free.casts[0]!.draftMitigation).toBe(1)
+    }),
+  )
+
   it.effect("each contained Paradox is broadcast working state in the cockpit: no wound until the Cast", () =>
     Effect.gen(function* () {
       const store = seed({ casts: [rolled()] })
@@ -1279,7 +1305,10 @@ describe("Flows.vulgarCast — the refusal matrix", () => {
       const manaExit = yield* commitCast({
         sessionId: SESSION, castId: CAST, manaMitigation: 1,
       }).pipe(as(PLAYER), Effect.provide(broke.layer), Effect.exit)
-      expect(failureTag(manaExit)).toBe("InsufficientMana")
+      // The commit door checks the ceiling itself now (MAG-55): an empty
+      // purse refuses as InvalidMitigation at the door, before spendMana
+      // would have caught it as InsufficientMana.
+      expect(failureTag(manaExit)).toBe("InvalidMitigation")
       expect(broke.sheetPatches).toHaveLength(0)
       expect(broke.casts[0]!.status).toBe("price")
     }),

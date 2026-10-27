@@ -3,7 +3,7 @@ import type { HealthTrack } from "./damage"
 import { Explosion } from "./dice"
 import { containOnTrack, isIncapacitated, woundPenalty } from "./health"
 import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "./ids"
-import type { GnosisRank } from "./mana-economy"
+import { GnosisRank, manaPerTurnByGnosis } from "./mana-economy"
 import { ParadoxPoolModifier, ParadoxSeverity } from "./paradox"
 
 /**
@@ -374,18 +374,78 @@ export const containmentCap = (
     track.filter((box) => box.severity === "empty").length,
   )
 
+/** What stops the caster buying off one more Paradox die. */
+export const MitigationBound = Schema.Literals(["pool", "purse", "turn"])
+export type MitigationBound = typeof MitigationBound.Type
+
+export const MitigationCeiling = Schema.Struct({
+  /** Paradox dice the caster may buy off: one per Mana. */
+  cap: Schema.Number,
+  /**
+   * The bound that holds the cap: `pool` (every die is buyable), `purse`
+   * (the Mana left after the spell's cost) or `turn` (Gnosis's Mana a turn,
+   * the spell's cost counted against it — p. 123).
+   */
+  bound: MitigationBound,
+  // What the words need (`mitigationWhy`): the rank, its allowance, the cost.
+  gnosis: GnosisRank,
+  perTurn: Schema.Number,
+  spellManaCost: Schema.Number,
+})
+export type MitigationCeiling = typeof MitigationCeiling.Type
+
 /**
  * How many Paradox dice the caster may buy off with Mana at the intention
- * lock: one die per Mana, capped by the pool itself and by the Mana still
- * free once the spell's own cost is reserved (issue #52 — the client mirror
- * of the server's mitigation refusals; the server stays authoritative).
+ * lock, and why no more: one die per Mana, capped by the pool itself, by the
+ * Mana still free once the spell's own cost is reserved (issue #52), and by
+ * the Mana a mage of this Gnosis may spend in one turn with the spell's cost
+ * counted in (Mage p. 123: mitigation "cannot exceed the amount of Mana the
+ * mage is normally allowed to spend per turn … including the amount of Mana
+ * that must be spent for the spellcasting itself"). The client mirror of the
+ * server's mitigation refusals; the server stays authoritative.
  */
-export const mitigationCap = (
-  poolBeforeMitigation: number,
-  manaCurrent: number,
-  spellManaCost: number,
-): number =>
-  Math.min(poolBeforeMitigation, Math.max(manaCurrent - spellManaCost, 0))
+export const mitigationCeiling = (input: {
+  poolBeforeMitigation: number
+  manaCurrent: number
+  spellManaCost: number
+  gnosis: GnosisRank
+}): MitigationCeiling => {
+  const { poolBeforeMitigation, manaCurrent, spellManaCost, gnosis } = input
+  const perTurn = manaPerTurnByGnosis(gnosis)
+  const purse = Math.max(manaCurrent - spellManaCost, 0)
+  const turn = Math.max(perTurn - spellManaCost, 0)
+  const cap = Math.min(poolBeforeMitigation, purse, turn)
+  // The pool binds when every die is buyable; between the two Mana bounds
+  // the turn's limit is the one worth naming (a purse refills, Gnosis is
+  // what it is), so it wins a tie.
+  const bound = Match.value(cap).pipe(
+    Match.when(poolBeforeMitigation, (): MitigationBound => "pool"),
+    Match.when(turn, (): MitigationBound => "turn"),
+    Match.orElse((): MitigationBound => "purse"),
+  )
+  return { cap, bound, gnosis, perTurn, spellManaCost }
+}
+
+/**
+ * Why no more than the ceiling — the one sentence both the server's refusal
+ * and the card's locked rows speak (ADR-0021: every gate explains itself).
+ */
+export const mitigationWhy = (ceiling: MitigationCeiling): string =>
+  Match.value(ceiling.bound).pipe(
+    Match.when(
+      "turn",
+      () =>
+        `Gnosis ${ceiling.gnosis} spends ${ceiling.perTurn} Mana a turn${
+          ceiling.spellManaCost > 0 ? `, the spell's ${ceiling.spellManaCost} counted` : ""
+        }`,
+    ),
+    Match.when(
+      "purse",
+      () => `${ceiling.cap} Mana free${ceiling.spellManaCost > 0 ? " after the spell's cost" : ""}`,
+    ),
+    Match.when("pool", () => `the pool holds ${ceiling.cap} dice`),
+    Match.exhaustive,
+  )
 
 /**
  * The climax pool: declared dice minus every uncontained Paradox success

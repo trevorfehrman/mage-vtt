@@ -1,12 +1,14 @@
 import { describe, expect, it } from "@effect/vitest"
 import { Schema } from "effect"
+import type { GnosisRank } from "../mana-economy"
 import {
   Cast,
   castPoolAfterParadox,
   containmentCap,
   containmentOutlook,
   eatenDice,
-  mitigationCap,
+  mitigationCeiling,
+  mitigationWhy,
   deriveAccumulator,
   isCommitted,
   isOnStage,
@@ -292,25 +294,103 @@ describe("containmentCap (the martyr play: last box yes, death no)", () => {
   })
 })
 
-describe("mitigationCap (issue #52: one die per Mana, after the spell takes its cut)", () => {
+// The ceiling's cap alone, for the arithmetic tests.
+const capOf = (poolBeforeMitigation: number, manaCurrent: number, spellManaCost: number, gnosis: GnosisRank) =>
+  mitigationCeiling({ poolBeforeMitigation, manaCurrent, spellManaCost, gnosis }).cap
+// The cap and its bound, for the naming tests.
+const ceilingOf = (poolBeforeMitigation: number, manaCurrent: number, spellManaCost: number, gnosis: GnosisRank) => {
+  const { cap, bound } = mitigationCeiling({ poolBeforeMitigation, manaCurrent, spellManaCost, gnosis })
+  return { cap, bound }
+}
+
+describe("mitigationCeiling's cap (issue #52: one die per Mana, after the spell takes its cut)", () => {
+  // Gnosis 10 spends 15 a turn: the turn never binds in these, only the
+  // pool and the purse.
   it("caps at the pool when Mana is plentiful", () => {
-    expect(mitigationCap(4, 10, 2)).toBe(4)
+    expect(capOf(4, 10, 2, 10)).toBe(4)
   })
 
   it("caps at the Mana left once the spell cost is reserved", () => {
-    expect(mitigationCap(6, 3, 1)).toBe(2)
+    expect(capOf(6, 3, 1, 10)).toBe(2)
   })
 
   it("a spell cost eating the whole reserve leaves nothing to mitigate with", () => {
-    expect(mitigationCap(5, 2, 2)).toBe(0)
+    expect(capOf(5, 2, 2, 10)).toBe(0)
   })
 
   it("clamps at zero when the spell costs more Mana than the caster holds", () => {
-    expect(mitigationCap(5, 1, 3)).toBe(0)
+    expect(capOf(5, 1, 3, 10)).toBe(0)
   })
 
   it("a zero pool needs no mitigation regardless of wealth", () => {
-    expect(mitigationCap(0, 10, 0)).toBe(0)
+    expect(capOf(0, 10, 0, 10)).toBe(0)
+  })
+})
+
+describe("mitigationCeiling's bound (Mage p. 123: Gnosis's Mana a turn, the spell's cost counted in)", () => {
+  it("Gnosis 2 spends 2 a turn: a full purse against seven dice still buys off one after a 1-Mana spell", () => {
+    expect(ceilingOf(7, 8, 1, 2)).toEqual({ cap: 1, bound: "turn" })
+  })
+
+  it("Gnosis 1 casting a 1-Mana spell has nothing left for the turn", () => {
+    expect(ceilingOf(5, 10, 1, 1)).toEqual({ cap: 0, bound: "turn" })
+  })
+
+  it("a free spell lets the whole turn's Mana go to mitigation", () => {
+    expect(ceilingOf(6, 10, 0, 3)).toEqual({ cap: 3, bound: "turn" })
+  })
+
+  it("names the purse when it runs out before the turn does", () => {
+    expect(ceilingOf(6, 3, 1, 10)).toEqual({ cap: 2, bound: "purse" })
+  })
+
+  it("names the pool when every die is buyable", () => {
+    expect(ceilingOf(2, 10, 0, 5)).toEqual({ cap: 2, bound: "pool" })
+  })
+
+  it("a tie between the turn and the purse names the turn", () => {
+    expect(ceilingOf(6, 3, 0, 3)).toEqual({ cap: 3, bound: "turn" })
+  })
+
+  it("the high ranks' larger allowance counts: Gnosis 9 spends 10, Gnosis 10 spends 15", () => {
+    expect(ceilingOf(12, 20, 0, 9)).toEqual({ cap: 10, bound: "turn" })
+    expect(ceilingOf(12, 20, 0, 10)).toEqual({ cap: 12, bound: "pool" })
+  })
+
+  it("carries what the words need", () => {
+    expect(mitigationCeiling({ poolBeforeMitigation: 7, manaCurrent: 8, spellManaCost: 1, gnosis: 2 })).toEqual({
+      cap: 1,
+      bound: "turn",
+      gnosis: 2,
+      perTurn: 2,
+      spellManaCost: 1,
+    })
+  })
+})
+
+describe("mitigationWhy (the one sentence the server's refusal and the card's locked rows share)", () => {
+  it("names the turn's allowance, and the spell's cost when it has one", () => {
+    expect(mitigationWhy(mitigationCeiling({ poolBeforeMitigation: 7, manaCurrent: 8, spellManaCost: 1, gnosis: 2 }))).toBe(
+      "Gnosis 2 spends 2 Mana a turn, the spell's 1 counted",
+    )
+    expect(mitigationWhy(mitigationCeiling({ poolBeforeMitigation: 6, manaCurrent: 10, spellManaCost: 0, gnosis: 3 }))).toBe(
+      "Gnosis 3 spends 3 Mana a turn",
+    )
+  })
+
+  it("names the purse, after the spell's cost when it has one", () => {
+    expect(mitigationWhy(mitigationCeiling({ poolBeforeMitigation: 6, manaCurrent: 3, spellManaCost: 1, gnosis: 10 }))).toBe(
+      "2 Mana free after the spell's cost",
+    )
+    expect(mitigationWhy(mitigationCeiling({ poolBeforeMitigation: 6, manaCurrent: 2, spellManaCost: 0, gnosis: 10 }))).toBe(
+      "2 Mana free",
+    )
+  })
+
+  it("names the pool when every die is buyable", () => {
+    expect(mitigationWhy(mitigationCeiling({ poolBeforeMitigation: 2, manaCurrent: 10, spellManaCost: 0, gnosis: 5 }))).toBe(
+      "the pool holds 2 dice",
+    )
   })
 })
 

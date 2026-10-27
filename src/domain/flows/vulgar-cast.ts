@@ -16,7 +16,9 @@ import {
   isPriceFixed,
   isRoteCast,
   isUnresolved,
-  mitigationCap,
+  MitigationBound,
+  mitigationCeiling,
+  mitigationWhy,
   sceneTides,
   toGnosisRank,
   type Cast,
@@ -130,7 +132,12 @@ export class InvalidAdjustment extends Schema.TaggedError<InvalidAdjustment>()(
 /** Validation: the mitigation declaration itself is malformed or pointless. */
 export class InvalidMitigation extends Schema.TaggedError<InvalidMitigation>()(
   "InvalidMitigation",
-  { message: Schema.String },
+  {
+    message: Schema.String,
+    /** Past the ceiling: how many were allowed, and what held it. */
+    cap: Schema.optionalKey(Schema.Number),
+    bound: Schema.optionalKey(MitigationBound),
+  },
 ) {}
 
 /** Rules/precondition: containment outside 0..min(successes, empty boxes). */
@@ -810,11 +817,14 @@ const requireBettor = Effect.fn("Flows.vulgarCast.requireBettor")(function* (
 })
 
 /**
- * The one mitigation rule both doors enforce: a whole number of Mana, no
- * more than the fixed pool holds. Returns the pool for the caller's checks.
+ * The one mitigation rule both doors enforce: a whole number of Mana, and no
+ * more than the ceiling — the fixed pool, the purse after the spell's cost,
+ * or Gnosis's Mana a turn with the spell's cost counted in (p. 123,
+ * `mitigationCeiling`). One refusal, in the domain's own words.
  */
 const requireMitigable = Effect.fn("Flows.vulgarCast.requireMitigable")(function* (
   cast: Cast,
+  sheet: CharacterSheet,
   mitigation: number,
 ) {
   if (!Schema.is(WholeCount)(mitigation)) {
@@ -822,13 +832,19 @@ const requireMitigable = Effect.fn("Flows.vulgarCast.requireMitigable")(function
       message: `Mitigation must be a whole number of Mana, got ${mitigation}.`,
     })
   }
-  const pool = calculateParadoxPool(yield* paradoxInputs(cast))
-  if (mitigation > pool.totalDice) {
+  const ceiling = mitigationCeiling({
+    poolBeforeMitigation: calculateParadoxPool(yield* paradoxInputs(cast)).totalDice,
+    manaCurrent: sheet.manaCurrent,
+    spellManaCost: cast.spellManaCost,
+    gnosis: toGnosisRank(sheet.gnosis),
+  })
+  if (mitigation > ceiling.cap) {
     return yield* new InvalidMitigation({
-      message: `The Paradox pool holds ${pool.totalDice} dice; ${mitigation} Mana would buy off more than exists.`,
+      message: `${mitigation} Mana of mitigation needs more than the ${ceiling.cap} allowed: ${mitigationWhy(ceiling)}.`,
+      cap: ceiling.cap,
+      bound: ceiling.bound,
     })
   }
-  return pool
 })
 
 export const SetDraftMitigationArgs = Schema.Struct({
@@ -855,13 +871,7 @@ export const setDraftMitigation = Effect.fn("Flows.vulgarCast.setDraftMitigation
     const cast = yield* requireCast(sessionId, castId)
     const sheet = yield* requireBettor(sessionId, cast)
     yield* requirePricePhase(cast, "fixed")
-    const pool = yield* requireMitigable(cast, args.draftMitigation)
-    const affordable = mitigationCap(pool.totalDice, sheet.manaCurrent, cast.spellManaCost)
-    if (args.draftMitigation > affordable) {
-      return yield* new InvalidMitigation({
-        message: `${args.draftMitigation} Mana of mitigation needs more than the ${affordable} free after the spell's cost.`,
-      })
-    }
+    yield* requireMitigable(cast, sheet, args.draftMitigation)
 
     yield* store.patchCast(castId, { draftMitigation: args.draftMitigation })
 
@@ -894,7 +904,7 @@ export const commitCast = Effect.fn("Flows.vulgarCast.commitCast")(function* (
   yield* requirePricePhase(cast, "fixed")
 
   const mitigation = args.manaMitigation
-  yield* requireMitigable(cast, mitigation)
+  yield* requireMitigable(cast, sheet, mitigation)
 
   // The commit is atomic with the status step: spendMana and spendWillpower
   // refuse before any write, and the Convex transaction carries the rest.

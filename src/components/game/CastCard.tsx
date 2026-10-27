@@ -8,12 +8,14 @@ import {
   castPoolAfterParadox,
   containmentCap,
   containmentOutlook,
-  mitigationCap,
+  mitigationCeiling,
+  mitigationWhy,
   isPriceFixed,
   isRoteCast,
   toGnosisRank,
   waitingOn,
   type CastStatus,
+  type MitigationCeiling,
 } from "#/domain/cast"
 import type { CharacterSheet } from "#/domain/character"
 import type { HealthTrack } from "#/domain/damage"
@@ -322,7 +324,12 @@ export function CastCard({
   // caster sheet on every other seat (the 2026-07-19 polish, note 14).
   const cockpitSheet = isCaster ? mySheet : casterSheet
   const mitigateCap = cockpitSheet
-    ? mitigationCap(poolBeforeMitigation, cockpitSheet.manaCurrent, cast.spellManaCost)
+    ? mitigationCeiling({
+        poolBeforeMitigation,
+        manaCurrent: cockpitSheet.manaCurrent,
+        spellManaCost: cast.spellManaCost,
+        gnosis: toGnosisRank(cockpitSheet.gnosis),
+      }).cap
     : 0
   // The commit decision is live: the Tides are fixed and nothing is spent.
   const deciding = status === "price" && isPriceFixed(cast)
@@ -627,10 +634,18 @@ export function CastCard({
       ? provisionalInputs
       : null
   const tablePoolBefore = tableInputs !== null ? calculateParadoxPool(tableInputs).totalDice : 0
-  const tableAffordable =
+  // The table's ceiling, and the words a locked row explains itself with —
+  // the server's own refusal sentence (`mitigationWhy`; ADR-0021: every
+  // gate explains itself).
+  const tableCeiling: MitigationCeiling | null =
     tableInputs !== null && cockpitSheet !== null
-      ? mitigationCap(tablePoolBefore, cockpitSheet.manaCurrent, cast.spellManaCost)
-      : 0
+      ? mitigationCeiling({
+          poolBeforeMitigation: tablePoolBefore,
+          manaCurrent: cockpitSheet.manaCurrent,
+          spellManaCost: cast.spellManaCost,
+          gnosis: toGnosisRank(cockpitSheet.gnosis),
+        })
+      : null
 
   // The odds beneath the felt speak ONE register (MAG-45, owner 2026-10-23
   // — they used to have three voices across the rungs): the table's own
@@ -1001,7 +1016,8 @@ export function CastCard({
         <MitigationPreview
           poolInputs={tableInputs}
           declaredPool={cast.declaredPool}
-          affordable={tableAffordable}
+          affordable={tableCeiling?.cap ?? 0}
+          lockNote={tableCeiling === null ? "" : mitigationWhy(tableCeiling)}
           // No pick exists before the fix: the ST's reading marks no row.
           selected={deciding ? liveMitigation : null}
           // The ST's fluid-rung table is a reading, not a control (MAG-45).
@@ -1543,6 +1559,7 @@ function MitigationPreview({
   poolInputs,
   declaredPool,
   affordable,
+  lockNote,
   selected,
   onSelect,
   disabled,
@@ -1550,6 +1567,8 @@ function MitigationPreview({
   poolInputs: Omit<Parameters<typeof calculateParadoxPool>[0], "manaMitigation">
   declaredPool: number
   affordable: number
+  /** Why the rows past `affordable` are locked — the breakdown's note. */
+  lockNote: string
   /** The caster's pick — clicked here, or watched live (MAG-34); null before the fix. */
   selected: number | null
   onSelect?: ((spend: number) => void) | undefined
@@ -1578,7 +1597,7 @@ function MitigationPreview({
           // verdigris one (MAG-34).
           return locked || onSelect === undefined
             ? withBreakdown(
-                { row, ...(locked ? { note: `${affordable} Mana free` } : {}) },
+                { row, ...(locked ? { note: lockNote } : {}) },
                 <span
                   tabIndex={0}
                   className={`mv-data ${ROW_GRID}`}
