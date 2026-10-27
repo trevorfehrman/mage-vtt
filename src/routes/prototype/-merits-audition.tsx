@@ -21,9 +21,11 @@
 // hand shows its sentence and verb beneath, so hovering IS looking it up;
 // clicking the key in hand turns it (ember; the dice follow), clicking again
 // lets it go. Turned keys stay lit on the ring. Fixed frame, no reflow.
-//   A — Spread: the keys laid out with room for every name; hover lifts.
-//   B — Stacked: the keys overlapping like keys on a ring; hover parts the
-//       neighbors to lift the one in hand — the stacking question, tested.
+//   A — Spread: the keys laid out along a line with room for every name;
+//       hover lifts. (The owner's pick for the foundation, round five.)
+//   B — Vertical: the keys down the left on their own line, the one in hand
+//       stepping toward the right, where the description waits — key and
+//       door.
 import { useState, type ReactNode } from "react"
 import { motion, useReducedMotion } from "motion/react"
 import { merit, type HeldMerit, type MeritName } from "#/domain/merits"
@@ -38,7 +40,7 @@ export const isMeritsAuditionVariant = (v: unknown): v is MeritsAuditionVariant 
 export const AUDITION_VARIANT_NAMES: Record<MeritsAuditionVariant, string> = {
   off: "the branch's own section",
   A: "Spread — every key with room for its name; hover lifts one",
-  B: "Stacked — keys overlapping on the ring; hover parts the neighbors",
+  B: "Vertical — keys down the left, the description on the right: key and door",
 }
 
 /** The rig's Arctus holds two more Merits for the audition, so there is
@@ -329,6 +331,61 @@ function Ring({
   )
 }
 
+// ── Vertical: key and door ───────────────────────────────────────────────────
+
+function Column({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool: Pool; canToggle: boolean }) {
+  const [hand, setHand] = useState<number | null>(null)
+  const reduced = useReducedMotion() ?? false
+  const inHand = hand === null ? undefined : held[hand]
+  const PITCH = 34
+  return (
+    <div className="grid grid-cols-[minmax(0,15rem)_1fr] gap-x-8">
+      {/* the ring: a vertical line the keys hang off, stems to the right */}
+      <div className="relative" style={{ height: held.length * PITCH }}>
+        <span aria-hidden className="absolute inset-y-0 left-[6px] w-px" style={{ background: "var(--line)" }} />
+        {held.map((h, i) => {
+          const lit = litOf(pool, h)
+          const turns = turnsOf(h)
+          const isHand = i === hand
+          const ink = lit ? "var(--ember)" : isHand || turns ? "var(--ink)" : "var(--dim)"
+          return (
+            <motion.button
+              key={keyOf(h)}
+              type="button"
+              onMouseEnter={() => setHand(i)}
+              onFocus={() => setHand(i)}
+              onClick={() => (isHand ? turn(h, pool, canToggle) : setHand(i))}
+              className={`absolute left-[6px] flex h-[34px] items-center gap-2 whitespace-nowrap text-left ${turns ? "" : "cursor-default"}`}
+              style={{ top: i * PITCH, color: ink, transformOrigin: "0% 50%" }}
+              initial={false}
+              animate={{ x: isHand ? 14 : 0, scale: isHand ? 1.12 : 1 }}
+              transition={reduced ? { duration: 0 } : SNAP}
+            >
+              {/* the stem, from the line to the mark; it reaches further for the key in hand */}
+              <motion.span
+                aria-hidden
+                className="block h-px"
+                style={{ background: lit ? "var(--ember)" : "var(--line)", marginLeft: isHand ? -14 : 0 }}
+                animate={{ width: isHand ? 24 : 10 }}
+                transition={reduced ? { duration: 0 } : SNAP}
+              />
+              <Mark name={h.name} size={26} turned={lit} />
+              <span className="mv-data text-[10px] uppercase tracking-[0.12em]">
+                {h.name}
+                {h.label !== undefined && <span className="normal-case tracking-normal" style={{ color: "var(--dim)" }}> ({h.label})</span>}
+              </span>
+            </motion.button>
+          )
+        })}
+      </div>
+      {/* the door: what the key in hand opens */}
+      <div className="min-w-0 border-l pl-6" style={{ borderColor: "var(--line)" }}>
+        {inHand ? <InHand h={inHand} pool={pool} canToggle={canToggle} /> : <div className="min-h-[76px]" />}
+      </div>
+    </div>
+  )
+}
+
 export function MeritsAudition({
   variant,
   held,
@@ -340,5 +397,5 @@ export function MeritsAudition({
 }) {
   const canToggle = pool.state === "idle" || pool.state === "building"
   if (variant === "A") return <Ring held={held} pool={pool} canToggle={canToggle} pitch={82} spread={[8, 3, 0]} namesAtRest />
-  return <Ring held={held} pool={pool} canToggle={canToggle} pitch={40} spread={[30, 14, 6]} namesAtRest={false} />
+  return <Column held={held} pool={pool} canToggle={canToggle} />
 }
