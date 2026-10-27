@@ -11,28 +11,6 @@ export type WisdomRank = typeof WisdomRank.Type
 /** A new mage's Wisdom (page 69): 7, before any creation trade-off. */
 export const STARTING_WISDOM: WisdomRank = 7
 
-// --- Acts of hubris by Wisdom (pages 79-80, Mage) ---
-
-/**
- * The mildest act that threatens a dot at each rank — what a mage of that
- * Wisdom can no longer shrug off. The sheet speaks it beside the number so
- * the trait reads as a conscience, not a score.
- */
-const ACTS_OF_HUBRIS: Record<WisdomRank, string> = {
-  10: "magic where the mundane would do; a selfish thought",
-  9: "magically bending another against their will; a minor selfish act",
-  8: "magically forcing another to break their own morals; injuring another",
-  7: "laying a curse; petty theft",
-  6: "binding an unwilling being to a place or task; grand theft",
-  5: "transforming a person into a lesser being against their will; mass property damage",
-  4: "harming someone with magic; draining another's Mana; an impassioned crime",
-  3: "exiling or possessing another against their will; planned murder",
-  2: "preventing an Awakening; murder by magic; casual, callous murder",
-  1: "stealing a soul; mass murder",
-}
-
-export const actsOfHubris = (wisdom: WisdomRank): string => ACTS_OF_HUBRIS[wisdom]
-
 // --- Degeneration dice pool by Wisdom (pages 79-80, Mage) ---
 
 const DEGENERATION_POOL: Record<WisdomRank, number> = {

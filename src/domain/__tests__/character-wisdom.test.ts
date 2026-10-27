@@ -2,7 +2,7 @@ import { Schema } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import { CharacterSheet, decodeSheet } from "../character"
 import { makeAldousSheet } from "../testing/fixtures"
-import { actsOfHubris, STARTING_WISDOM } from "../wisdom"
+import { STARTING_WISDOM } from "../wisdom"
 
 /**
  * Wisdom on the sheet (MAG-56): the morality trait rides the sheet as a
@@ -31,11 +31,5 @@ describe("CharacterSheet.wisdom (MAG-56)", () => {
   it("Wisdom past 10 or below 1 cannot be represented", () => {
     expect(() => makeAldousSheet({ wisdom: 11 as never })).toThrow()
     expect(() => makeAldousSheet({ wisdom: 0 as never })).toThrow()
-  })
-
-  it("every rank names the mildest act of hubris that threatens it (pages 79-80)", () => {
-    expect(actsOfHubris(10)).toContain("magic where the mundane would do")
-    expect(actsOfHubris(7)).toContain("laying a curse")
-    expect(actsOfHubris(1)).toContain("stealing a soul")
   })
 })

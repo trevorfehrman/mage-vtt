@@ -1,5 +1,4 @@
-import { actsOfHubris, degenerationDicePool, WisdomRank } from "#/domain/wisdom"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
+import { degenerationDicePool, WisdomRank } from "#/domain/wisdom"
 
 /**
  * Wisdom on the title card (MAG-56): the meter. The owner's brief
@@ -10,9 +9,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/comp
  * color is the rank's own — bright verdigris at 10, the card's standard
  * verdigris at a new mage's 7, ember through the middle where Paradox
  * starts to linger, the Paradox red from 3 down. On a step the lost cell
- * goes dark over `SHIFT`, slow enough to be seen. The number, the
- * degeneration dice and the mildest hubris live in the tooltip. Read-only
- * on every sheet; degeneration is the Storyteller's to record through the
+ * goes dark over `SHIFT`, slow enough to be seen. The hover title says the
+ * two things the cells do not: the number itself and the degeneration dice
+ * it rolls (owner, 2026-10-27: the minimum that is useful). Read-only on
+ * every sheet; degeneration is the Storyteller's to record through the
  * hand-edit door.
  */
 
@@ -50,36 +50,26 @@ export function WisdomMeter({ wisdom }: { wisdom: WisdomRank }) {
   const fill = FILL_BY_RANK[wisdom]
   const glow = GLOW_BY_RANK[wisdom]
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
+    <span
+      className="grid w-full grid-cols-10 gap-[3px]"
+      style={{ height: 12 }}
+      title={`Wisdom ${wisdom} · degeneration ${degenerationDicePool(wisdom)} dice`}
+      aria-label={`Wisdom ${wisdom}`}
+    >
+      {WisdomRank.literals.map((rank) => {
+        const held = rank <= wisdom
+        return (
           <span
-            tabIndex={0}
-            className="grid w-full grid-cols-10 gap-[3px]"
-            style={{ height: 12 }}
-            aria-label={`Wisdom ${wisdom}`}
-          >
-            {WisdomRank.literals.map((rank) => {
-              const held = rank <= wisdom
-              return (
-                <span
-                  key={rank}
-                  className="block rounded-[2px]"
-                  style={{
-                    background: held ? fill : "transparent",
-                    boxShadow: held ? glow : "inset 0 0 0 1px var(--line)",
-                    transition: `background-color ${SHIFT}, box-shadow ${SHIFT}`,
-                  }}
-                />
-              )
-            })}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={4}>
-          Wisdom {wisdom} · degeneration rolls {degenerationDicePool(wisdom)} dice · the mildest hubris:{" "}
-          {actsOfHubris(wisdom)}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+            key={rank}
+            className="block rounded-[2px]"
+            style={{
+              background: held ? fill : "transparent",
+              boxShadow: held ? glow : "inset 0 0 0 1px var(--line)",
+              transition: `background-color ${SHIFT}, box-shadow ${SHIFT}`,
+            }}
+          />
+        )
+      })}
+    </span>
   )
 }
