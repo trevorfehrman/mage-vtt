@@ -336,11 +336,10 @@ export function DicePoolBuilder({
                     const on = pool.isComponentActive(component.type, component.name);
                     return (
                       <button
-                        key={sp.skill}
+                        key={component.name}
                         onClick={() => pool.toggleComponent(component)}
                         disabled={!canInteract}
                         className={`mv-mini grow whitespace-nowrap disabled:opacity-40 ${on ? "mv-mini-on" : ""}`}
-                        title="Specialty · +1 die"
                       >
                         {sp.label} +1
                       </button>

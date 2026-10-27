@@ -302,6 +302,13 @@ export const specialtyComponent = (specialty: SkillSpecialty): PoolComponentInpu
   dots: 1,
 })
 
+/** One of the record's words (MAG-61): which, and what was written. */
+export const SheetWord = Schema.Struct({
+  label: Schema.Literals(["Nimbus", "Cabal", "Consilium"]),
+  text: Schema.String,
+})
+export type SheetWord = typeof SheetWord.Type
+
 /** The Gnosis each attainment opens at (p. 93): the first at 3, then 5, then 7. */
 const ATTAINMENT_GNOSIS = [3, 5, 7] as const
 
@@ -460,6 +467,21 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   /** The pool's +1 for a skill's specialty, when the skill carries one. */
   specialtyComponentFor(skill: SkillKey): Option.Option<PoolComponentInput> {
     return Option.map(this.specialtyFor(skill), specialtyComponent)
+  }
+
+  /**
+   * The record's words (MAG-61), as the card's halo lists them: the nimbus,
+   * the cabal, the consilium — each only when written, so an empty list is
+   * "nothing to show" and the halo stays off the card.
+   */
+  get words(): ReadonlyArray<SheetWord> {
+    return [
+      ...(this.nimbus !== undefined ? [{ label: "Nimbus", text: this.nimbus } as const] : []),
+      ...(this.cabal !== undefined ? [{ label: "Cabal", text: this.cabal } as const] : []),
+      ...(this.consilium !== undefined
+        ? [{ label: "Consilium", text: this.consilium } as const]
+        : []),
+    ]
   }
 
   /** Mana this mage may spend in one turn (MAG-57; Mage p. 76): Gnosis's own number, 10 at Gnosis 9, 15 at 10. */

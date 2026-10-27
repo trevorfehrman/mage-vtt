@@ -1,3 +1,4 @@
+import { Schema } from "effect"
 import type { BoxSeverity } from "#/domain/damage"
 
 /** One glyph per health box severity — shared with the hand-edit panel. */
@@ -15,16 +16,21 @@ export const healthBoxGlyph = (severity: BoxSeverity): string =>
  * Awakened magic can't heal. The slot always renders so the track's boxes
  * don't shift when a dot appears; shared with the hand-edit panel.
  */
-export function ResistantDot({ resistant, slot = false }: { resistant: boolean; slot?: boolean }) {
+const ResistantDotProps = Schema.Struct({
+  resistant: Schema.Boolean,
+  /** The dot may be marked here (MAG-63): an empty slot shows a faint ring
+   * so there is visibly something to click. */
+  markable: Schema.optionalKey(Schema.Boolean),
+})
+
+export function ResistantDot({ resistant, markable = false }: typeof ResistantDotProps.Type) {
   return (
     <span
       className="size-[5px] rounded-full"
       title={resistant ? "Resistant — heals only naturally" : undefined}
       style={{
         background: resistant ? "var(--accent)" : "transparent",
-        // the slot (MAG-63): a faint ring under a wounded box on a markable
-        // track, so there is visibly something to click
-        boxShadow: !resistant && slot ? "inset 0 0 0 1px var(--dim)" : undefined,
+        boxShadow: !resistant && markable ? "inset 0 0 0 1px var(--dim)" : undefined,
       }}
     />
   )

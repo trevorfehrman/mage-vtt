@@ -441,11 +441,7 @@ function EmblemGroup({ label, children }: { label: string; children: ReactNode }
  * Nothing when none is written.
  */
 function WordsHalo({ character }: { character: CharacterSheetData }) {
-  const lines = [
-    ...(character.nimbus !== undefined ? [["Nimbus", character.nimbus] as const] : []),
-    ...(character.cabal !== undefined ? [["Cabal", character.cabal] as const] : []),
-    ...(character.consilium !== undefined ? [["Consilium", character.consilium] as const] : []),
-  ]
+  const lines = character.words
   if (lines.length === 0) return null
   return (
     <TooltipProvider>
@@ -453,7 +449,7 @@ function WordsHalo({ character }: { character: CharacterSheetData }) {
         <TooltipTrigger asChild>
           <span
             tabIndex={0}
-            aria-label={lines.map(([label, text]) => `${label}: ${text}`).join(". ")}
+            aria-label={lines.map(({ label, text }) => `${label}: ${text}`).join(". ")}
             className="inline-flex"
             style={{ color: "var(--accent)" }}
           >
@@ -480,7 +476,7 @@ function WordsHalo({ character }: { character: CharacterSheetData }) {
           {/* two columns so the three texts share one left edge whatever
               their labels' widths; rows on a common baseline */}
           <span className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-1.5 py-0.5">
-            {lines.map(([label, text]) => (
+            {lines.map(({ label, text }) => (
               <Fragment key={label}>
                 <span className="mv-eyebrow">{label}</span>
                 <span className="leading-snug">{text}</span>
@@ -564,7 +560,7 @@ function HealthTrack({
               aria-label={`Health box ${i + 1}: ${box.resistant ? "Resistant" : "not Resistant"}. Click to toggle.`}
               aria-pressed={box.resistant}
             >
-              <ResistantDot resistant={box.resistant} slot={box.severity !== "empty"} />
+              <ResistantDot resistant={box.resistant} markable={box.severity !== "empty"} />
             </button>
           ) : (
             <span className="absolute left-1/2 top-full mt-[2px] flex -translate-x-1/2">

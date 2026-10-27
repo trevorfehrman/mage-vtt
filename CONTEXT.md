@@ -249,7 +249,7 @@ The top of the Character Sheet (MAG-52): the mage name with the halo beside
 it when any of the words are written (MAG-61), then HEALTH over the track with Will · Mana
 and Mana-a-turn (MAG-57, a cycle arrow and the number) beside it, then WISDOM
 over its meter (MAG-56: ten cells, filled in the rank's own color, no numeral
-— the number is in the tooltip); opposite, Gnosis with Defense · Initiative ·
+and no tooltip — the cells say it); opposite, Gnosis with Defense · Initiative ·
 Speed beneath it and the unspent XP (MAG-57) under those; then Path | Order |
 ruling Arcana | Virtue | Vice, and the Magical Tool switch at its corner. On your own sheet (and any sheet for
 the ST) the track and the meter are live: see **Mark**. Each player's depletables also ride their Video tile.

@@ -216,6 +216,12 @@ function SessionPage() {
     [character],
   )
 
+  // The viewed sheet, decoded once: the sheet surface and the tray both read
+  // it — the pool is funded by the viewed character, so the tray's Willpower
+  // gate and its specialty chips (MAG-58) follow the sheet being driven,
+  // the ST's "help my players" flow included.
+  const viewedSheet = useMemo(() => (viewed ? decodeSheetDoc(viewed) : null), [viewed])
+
   // Every sheet at the table, decoded once: the video rail wears each
   // player's depletables on their tile (MAG-51), live on every seat.
   const rosterSheets = useMemo(
@@ -342,7 +348,7 @@ function SessionPage() {
     // lost while seated (ADR-0013), so only the seat's own sheet drives.
     const isMine = viewed._id === character?._id
     const mayDrivePool = isMine || isStoryteller || (user.isDev && !seatMember)
-    const sheet = decodeSheetDoc(viewed)
+    const sheet = viewedSheet
 
     sheetContent = sheet ? (
       <div className="grid gap-6">
@@ -553,7 +559,7 @@ function SessionPage() {
                 </div>
               ) : (
                 <div key="resting" className="mv-assemble mv-stage">
-                  <DicePoolBuilder pool={pool} character={mySheet ?? undefined} />
+                  <DicePoolBuilder pool={pool} character={viewedSheet ?? undefined} />
                 </div>
               )}
             </>

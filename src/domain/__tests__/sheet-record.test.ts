@@ -101,6 +101,14 @@ describe("CharacterSheet: the words (MAG-61)", () => {
     expect(sheet.consilium).toBe("The Narrows")
   })
 
+  it("the words list only what is written, in the halo's order", () => {
+    expect(makeAldousSheet().words).toEqual([])
+    expect(makeAldousSheet({ cabal: "The Hollow Choir", nimbus: "Frost." }).words).toEqual([
+      { label: "Nimbus", text: "Frost." },
+      { label: "Cabal", text: "The Hollow Choir" },
+    ])
+  })
+
   it("attainments open at Gnosis 3, 5 and 7 (p. 93), and a Legacy holds at most three", () => {
     expect(attainmentGates({ name: "Bokor", attainments: ["Eyes", "Bind", "Command"] })).toEqual([
       { name: "Eyes", gnosis: 3 },
