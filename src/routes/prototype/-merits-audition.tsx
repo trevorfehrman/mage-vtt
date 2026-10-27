@@ -383,8 +383,10 @@ function WheelKey({
   // flat (owner, round seven): no drum — nothing scales or recedes, so no
   // key ever lies over another. The key in hand only steps toward the door.
   const x = useTransform(dist, (d) => Math.max(0, 1 - Math.abs(d)) * 12)
-  // gone before it wraps from one edge of the frame to the other
-  const opacity = useTransform(dist, (d) => (Math.abs(d) > 3.2 ? 0 : Math.max(0.18, 1 - Math.abs(d) * 0.22)))
+  // the seam where a key leaves one edge for the other sits past the frame
+  // (±4 rows on an eight-key ring; the frame shows ±3.5), so the column is
+  // always full — the mask does the fading at the edges
+  const opacity = useTransform(dist, (d) => (Math.abs(d) > 3.75 ? 0 : Math.max(0.2, 1 - Math.abs(d) * 0.2)))
   const stem = useTransform(dist, (d) => 10 + Math.max(0, 1 - Math.abs(d)) * 14)
   const stemMargin = useTransform(stem, (w) => 10 - w)
   const [near, setNear] = useState(false)
@@ -418,20 +420,24 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
     if (i !== hand) setHand(i)
   })
 
-  /** Coast from the current velocity and land exactly on a key. */
+  /** Coast from a velocity (rows per second) and land exactly on a key:
+   * Motion's inertia with the target snapped to the grid. */
   const coast = (velocity: number) =>
     animate(offset, offset.get(), reduced
       ? { duration: 0 }
-      : { type: "inertia", velocity, power: 0.4, timeConstant: 160, modifyTarget: Math.round, restDelta: 0.002 })
-  /** Go straight to a key (a click, a notch, an arrow): the short way round. */
+      : { type: "inertia", velocity, power: 0.4, timeConstant: 200, modifyTarget: Math.round, restDelta: 0.002 })
+  /** Go straight to a key (a click, an arrow): a short, clicky ease-out. */
   const goTo = (target: number) =>
-    animate(offset, target, reduced ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 42, mass: 0.7 })
+    animate(offset, target, reduced ? { duration: 0 } : { duration: 0.26, ease: [0.22, 1, 0.36, 1] })
   const step = (by: number) => goTo(Math.round(offset.get()) + by)
   const goToIndex = (i: number) => goTo(offset.get() + ringDistance(count, i - offset.get()))
 
   // the wheel: a non-passive listener, so the page does not scroll with it.
-  // A mouse wheel's notch steps exactly one key; a trackpad's fine deltas
-  // turn the wheel continuously and it coasts to a key when they stop.
+  // A mouse wheel's notch is a push on a spinning wheel: it adds to the
+  // wheel's velocity, so repeated notches accelerate it and it coasts and
+  // sticks on a key when the pushing stops (one notch alone lands one key
+  // on). A trackpad's fine deltas turn the wheel directly and it coasts to
+  // a key when they stop.
   const frame = useRef<HTMLDivElement>(null)
   const settling = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastNotch = useRef(0)
@@ -441,9 +447,11 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       const now = Date.now()
-      if (Math.abs(e.deltaY) >= 40 && now - lastNotch.current > 70) {
+      if (Math.abs(e.deltaY) >= 40 && now - lastNotch.current > 40) {
         lastNotch.current = now
-        step(Math.sign(e.deltaY))
+        const push = Math.sign(e.deltaY) * 3.2
+        const carried = Math.sign(offset.getVelocity()) === Math.sign(push) ? offset.getVelocity() : 0
+        coast(carried + push)
         return
       }
       offset.set(offset.get() + e.deltaY / ROW)
@@ -459,6 +467,7 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
   const suppressClick = useRef(false)
   const onPointerDown = (e: React.PointerEvent) => {
     offset.stop()
+    suppressClick.current = false
     drag.current = { startY: e.clientY, startOffset: offset.get(), moved: false }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
