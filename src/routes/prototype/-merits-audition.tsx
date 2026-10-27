@@ -447,27 +447,32 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
   }
 
   // the wheel: a non-passive listener, so the page does not scroll with it.
-  // A mouse wheel's notch pushes the target one key on; a trackpad's fine
-  // deltas turn the wheel directly and it coasts to a key when they stop.
+  // A mouse wheel sends notches — whole, large deltas with a gap between
+  // them — and each pushes the target one key on. A trackpad sends a stream
+  // of small deltas, and macOS keeps the stream going as momentum after the
+  // fingers lift; that stream turns the wheel directly, like a drag, with
+  // no coast of our own (the OS already supplies one), and the wheel snaps
+  // to the nearest key only once the stream has gone quiet.
   const frame = useRef<HTMLDivElement>(null)
   const settling = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastNotch = useRef(0)
+  const lastWheel = useRef(0)
   useEffect(() => {
     const el = frame.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       const now = Date.now()
-      if (Math.abs(e.deltaY) >= 40) {
-        if (now - lastNotch.current > 40) {
-          lastNotch.current = now
-          push(Math.sign(e.deltaY))
-        }
+      const gap = now - lastWheel.current
+      lastWheel.current = now
+      const notch = Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 40 && gap > 80
+      if (notch) {
+        push(Math.sign(e.deltaY))
         return
       }
+      offset.stop()
       offset.set(offset.get() + e.deltaY / ROW)
       if (settling.current) clearTimeout(settling.current)
-      settling.current = setTimeout(() => coast(offset.getVelocity()), 80)
+      settling.current = setTimeout(() => chase(Math.round(offset.get())), 120)
     }
     el.addEventListener("wheel", onWheel, { passive: false })
     return () => el.removeEventListener("wheel", onWheel)
