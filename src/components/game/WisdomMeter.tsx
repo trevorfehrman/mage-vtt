@@ -1,4 +1,4 @@
-import { degenerationDicePool, WisdomRank } from "#/domain/wisdom"
+import { WisdomRank } from "#/domain/wisdom"
 import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip"
 
 /**
@@ -11,11 +11,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip
  * verdigris at a new mage's 7, ember through the middle where Paradox
  * starts to linger, the Paradox red from 3 down. On a step the lost cell
  * goes dark over `SHIFT`, slow enough to be seen. The tooltip (focusable,
- * like every numeral's on the card — ADR-0021) says the two things the
- * cells do not: the number itself and the degeneration dice it rolls
- * (owner, 2026-10-27: the minimum that is useful). Read-only on every
- * sheet; degeneration is the Storyteller's to record through the hand-edit
- * door.
+ * like every numeral's on the card — ADR-0021) says the one thing the
+ * cells do not: the number (owner, 2026-10-27: anything more is too
+ * verbose). The cells are buttons on your own sheet — see `onSet`.
  */
 
 /** The one timing the step shifts with: slow enough to be felt. */
@@ -99,8 +97,7 @@ export function WisdomMeter({
         </span>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={4}>
-        Wisdom {wisdom} · degeneration {degenerationDicePool(wisdom)} dice
-        {onSet && " · click a cell to set it"}
+        Wisdom {wisdom}
       </TooltipContent>
     </Tooltip>
   )
