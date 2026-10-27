@@ -1,4 +1,3 @@
-import { Option } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import {
   objectDurability,
@@ -11,8 +10,6 @@ import {
   spiritEssenceHarvest,
   soulLossProgression,
   demesneBonus,
-  findDerangement,
-  DERANGEMENTS,
 } from "../world-systems"
 
 describe("World Systems", () => {
@@ -82,20 +79,5 @@ describe("World Systems", () => {
     const result = demesneBonus("Moros")
     expect(result.rulingBonus).toBe(1)
     expect(result.vulgarTreatedAsCovert).toBe(true)
-  })
-
-  // --- Derangements ---
-  it("derangement reference data with mechanical effects", () => {
-    expect(DERANGEMENTS.length).toBeGreaterThan(5)
-
-    const depression = Option.getOrThrow(findDerangement("Depression"))
-    expect(depression.penalty).toBeDefined()
-
-    const phobia = Option.getOrThrow(findDerangement("Phobia"))
-    expect(phobia.penalty).toBeDefined()
-  })
-
-  it("an unknown derangement is a miss, not a synthesized default", () => {
-    expect(Option.isNone(findDerangement("Chronic Optimism"))).toBe(true)
   })
 })

@@ -1,8 +1,8 @@
-import { Option, Schema } from "effect"
+import { Schema } from "effect"
 
 // Pure rules leaves (ADR-0014): plain functions throughout. Closed-key tables
-// are total over their Literals vocabulary; the one genuine find-by-name
-// (derangements) returns Option instead of synthesizing an "unknown" object.
+// are total over their Literals vocabulary. (Derangements live in
+// derangements.ts, beside the Merit catalog.)
 
 // ================================================================
 // OBJECTS & VEHICLES (WoD Core pp. 135-148)
@@ -185,42 +185,3 @@ export const demesneBonus = (_path: string): DemesneInfo =>
     rulingBonus: 1,
     vulgarTreatedAsCovert: true,
   })
-
-// ================================================================
-// DERANGEMENTS (WoD Core pp. 97-101)
-// ================================================================
-
-const DerangementDef = Schema.Struct({
-  name: Schema.String,
-  /** mild or severe */
-  mild: Schema.Boolean,
-  resistPool: Schema.String,
-  penalty: Schema.String,
-  trigger: Schema.String,
-})
-type DerangementDef = typeof DerangementDef.Type
-
-export const DERANGEMENTS: ReadonlyArray<DerangementDef> = [
-  { name: "Depression", mild: true, resistPool: "Resolve + Composure", penalty: "Lose 1 WP, can't spend WP for scene", trigger: "Failure or setback" },
-  { name: "Melancholia", mild: false, resistPool: "Resolve + Composure", penalty: "-2 to all pools for scene", trigger: "Failure or setback" },
-  { name: "Phobia", mild: true, resistPool: "Resolve + Composure", penalty: "-5 to attack trigger", trigger: "Encounter phobia trigger" },
-  { name: "Hysteria", mild: false, resistPool: "Resolve + Composure", penalty: "Flee at full speed", trigger: "Encounter phobia trigger" },
-  { name: "Narcissism", mild: true, resistPool: "Resolve + Composure", penalty: "-3 teamwork, -1 Social", trigger: "Denied attention or praise" },
-  { name: "Megalomania", mild: false, resistPool: "Resolve + Composure", penalty: "-4 teamwork, -2 Social", trigger: "Authority challenged" },
-  { name: "Fixation", mild: true, resistPool: "Resolve + Composure", penalty: "-1 to non-fixation tasks", trigger: "New interest or obsession" },
-  { name: "Obsessive Compulsion", mild: false, resistPool: "Resolve + Composure at -2", penalty: "Must perform compulsion or -2 to all pools", trigger: "Stress" },
-  { name: "Suspicion", mild: true, resistPool: "Resolve + Composure", penalty: "-1 Social", trigger: "Unfamiliar situation" },
-  { name: "Paranoia", mild: false, resistPool: "Resolve + Composure", penalty: "-2 Social", trigger: "Any social interaction" },
-  { name: "Inferiority Complex", mild: true, resistPool: "Resolve + Composure", penalty: "-1 to all rolls", trigger: "Challenging task" },
-  { name: "Anxiety", mild: false, resistPool: "Resolve + Composure", penalty: "-2 to all rolls", trigger: "Stressful situation" },
-  { name: "Vocalization", mild: true, resistPool: "Resolve + Composure", penalty: "Involuntary speech, -2 Stealth", trigger: "Stress" },
-  { name: "Schizophrenia", mild: false, resistPool: "Resolve + Composure", penalty: "-2 Social, possible hallucinations", trigger: "Stress or unfamiliar environment" },
-  { name: "Irrationality", mild: true, resistPool: "Resolve + Composure", penalty: "Act on irrational impulse", trigger: "Stress" },
-  { name: "Multiple Personality", mild: false, resistPool: "Resolve + Composure", penalty: "Social Attributes rearranged 1-3 dots", trigger: "Extreme stress" },
-  { name: "Avoidance", mild: true, resistPool: "Resolve + Composure", penalty: "-1 when confronting trigger", trigger: "Encounter avoidance trigger" },
-  { name: "Fugue", mild: false, resistPool: "Resolve + Composure", penalty: "Lose time, automatic actions only", trigger: "Extreme stress or trigger" },
-]
-
-/** Find-by-name over an open name set: a miss is a value, not a default. */
-export const findDerangement = (name: string): Option.Option<DerangementDef> =>
-  Option.fromUndefinedOr(DERANGEMENTS.find((d) => d.name === name))

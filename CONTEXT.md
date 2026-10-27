@@ -40,6 +40,34 @@ rises only through experience. Governs how long a Paradox lasts and the Havoc
 roll (MAG-56).
 _Avoid_: Morality, Humanity, Sanity (those belong to other splats).
 
+**Merit**:
+A perk bought with dots — seven at creation (Mage p. 69, the fifth dot
+costing two), 2 XP a dot after — from a closed catalog of the two core books'
+offerings (`merits.ts`, MAG-59): the Rulebook's Mental, Physical and Social
+families (WoD pp. 108–117) and the Mage book's Awakened family, "available to
+only willworkers" (pp. 80–89). Most are a name, a rating and a sentence the
+Storyteller applies by judgment: the catalog records the sentence, the table
+applies it. A few change numbers the sheet derives (Fast Reflexes, Fleet of
+Foot, Giant) or gate a flow (High Speech, the +2 chant); those are enforced
+where they bite, dispatching on the Merit's name. A **named** Merit (Allies,
+Status, Language, Retainer…) is held once per thing it names, the label
+written beside it as the book does: "Allies (Police) ••".
+_Avoid_: Feat, Advantage (the book's Advantages are the derived numbers —
+Defense, Speed, Initiative, Health, Willpower).
+
+**Derangement**:
+A mental affliction in one of nine mild/severe pairs (WoD pp. 96–100;
+`derangements.ts`, MAG-60), each with a trigger, a Resolve + Composure roll to
+resist a bout, and the bout's penalty. A mage gets one **permanently** when a
+Wisdom degeneration roll fails and the follow-up roll fails too (Mage p. 79) —
+tied to the dot lost, gone when it is bought back — or **temporarily** from a
+**Bedlam** Paradox (Mage pp. 268–271), for the Paradox's duration, in which
+form it also carries a weakness to a kind of magic (Depression: −1 against
+Death). The three starred severe forms (Schizophrenia, Multiple Personality,
+Fugue) take a life-altering trauma to acquire — or a Bedlam, which inflicts
+them freely.
+_Avoid_: Condition, Flaw (other editions' words).
+
 **Virtue / Vice**:
 A character's two moral anchors (nWoD 1e); role-playing them restores Willpower.
 
