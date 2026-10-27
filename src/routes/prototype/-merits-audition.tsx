@@ -309,7 +309,7 @@ function Strip({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
                 onClick={() => tapKey(i, hand, setHand, h, pool, canToggle)}
                 className="grid shrink-0 justify-items-center gap-1 text-center"
                 style={{ width: KEY_W, color: ink, transformOrigin: "50% 0%" }}
-                animate={{ scale: isHand ? 1 : 0.66, opacity: isHand ? 1 : lit ? 0.9 : 0.5, y: isHand ? 4 : 0 }}
+                animate={{ scale: isHand ? 1 : 0.8, opacity: isHand ? 1 : lit ? 0.9 : 0.6, y: isHand ? 4 : 0 }}
                 transition={reduced ? { duration: 0 } : SPRING}
               >
                 <span aria-hidden className="block w-px" style={{ height: isHand ? 18 : 12, background: lit ? "var(--ember)" : "var(--line)" }} />
@@ -326,8 +326,8 @@ function Strip({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
 }
 
 // B — the fan
-const FAN_STEP = 13 // degrees between keys
-const FAN_RADIUS = 300
+const FAN_STEP = 9 // degrees between keys
+const FAN_RADIUS = 480
 function Fan({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool: Pool; canToggle: boolean }) {
   const { hand, setHand, step, onWheel, onKeyDown } = useHand(held.length)
   const reduced = useReducedMotion() ?? false
@@ -338,7 +338,7 @@ function Fan({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool: 
         tabIndex={0}
         onWheel={onWheel}
         onKeyDown={onKeyDown}
-        className="relative h-[124px] overflow-hidden rounded-[3px] outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+        className="relative h-[150px] overflow-hidden rounded-[3px] outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
       >
         <motion.div
           className="absolute inset-0"
@@ -362,12 +362,16 @@ function Fan({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool: 
                 onClick={() => tapKey(i, hand, setHand, h, pool, canToggle)}
                 className="absolute left-1/2 top-[14px] grid justify-items-center gap-1 text-center"
                 style={{ width: 90, marginLeft: -45, color: ink, transformOrigin: `50% ${FAN_RADIUS}px` }}
-                animate={{ rotate: (i - hand) * FAN_STEP, scale: isHand ? 1 : 0.72, opacity: isHand ? 1 : lit ? 0.9 : 0.5, y: isHand ? -6 : 0 }}
+                animate={{
+                  rotate: (i - hand) * FAN_STEP,
+                  scale: isHand ? 1 : 0.8,
+                  opacity: Math.abs(i - hand) > 3 ? 0 : isHand ? 1 : lit ? 0.9 : 0.6,
+                  y: isHand ? -6 : 0,
+                }}
                 transition={reduced ? { duration: 0 } : SPRING}
               >
                 <Mark name={h.name} size={34} turned={lit} />
                 <span className="mv-data text-[9px] uppercase tracking-[0.12em] leading-tight whitespace-nowrap">{h.name}</span>
-                <span aria-hidden className="block w-px" style={{ height: 10, background: lit ? "var(--ember)" : "var(--line)" }} />
               </motion.button>
             )
           })}
