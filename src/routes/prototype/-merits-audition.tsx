@@ -23,11 +23,21 @@
 // lets it go. Turned keys stay lit on the ring. Fixed frame, no reflow.
 //   A — Spread: the keys laid out along a line with room for every name;
 //       hover lifts. (The owner's pick for the foundation, round five.)
-//   B — Vertical: the keys down the left on their own line, the one in hand
-//       stepping toward the right, where the description waits — key and
-//       door.
-import { useState, type ReactNode } from "react"
-import { motion, useReducedMotion } from "motion/react"
+//   B — Wheel: the keys on a vertical wheel at the left, drag or scroll it
+//       and the key in hand is always the one at the middle, stepping toward
+//       the door on the right where its description and verb wait. The
+//       wheel is a motion value, so every frame is the compositor's, not
+//       React's; it snaps to a key on a spring with the drag's velocity.
+import { useEffect, useRef, useState, type ReactNode } from "react"
+import {
+  animate,
+  motion,
+  useMotionValue,
+  useMotionValueEvent,
+  useReducedMotion,
+  useTransform,
+  type MotionValue,
+} from "motion/react"
 import { merit, type HeldMerit, type MeritName } from "#/domain/merits"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 import { DotRating } from "#/components/game/DotRating"
@@ -40,7 +50,7 @@ export const isMeritsAuditionVariant = (v: unknown): v is MeritsAuditionVariant 
 export const AUDITION_VARIANT_NAMES: Record<MeritsAuditionVariant, string> = {
   off: "the branch's own section",
   A: "Spread — every key with room for its name; hover lifts one",
-  B: "Vertical — keys down the left, the description on the right: key and door",
+  B: "Wheel — drag or scroll; the key in hand is always at the middle; the door on the right",
 }
 
 /** The rig's Arctus holds two more Merits for the audition, so there is
@@ -331,56 +341,152 @@ function Ring({
   )
 }
 
-// ── Vertical: key and door ───────────────────────────────────────────────────
+// ── The wheel: key and door ──────────────────────────────────────────────────
 
-function Column({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool: Pool; canToggle: boolean }) {
-  const [hand, setHand] = useState<number | null>(null)
+const ROW = 36 // one key's height on the wheel
+const VISIBLE = 7 // rows in the frame, the key in hand at the middle
+const SNAP_SPRING = { type: "spring", stiffness: 320, damping: 36, mass: 0.8 } as const
+
+/** One key on the wheel: its place is a pure function of the wheel's
+ * offset (a motion value, in rows), so scrolling never re-renders it. */
+function WheelKey({
+  h,
+  i,
+  offset,
+  lit,
+  turns,
+  onTap,
+}: {
+  h: HeldMerit
+  i: number
+  offset: MotionValue<number>
+  lit: boolean
+  turns: boolean
+  onTap: () => void
+}) {
+  const dist = useTransform(offset, (o) => i - o)
+  const y = useTransform(dist, (d) => d * ROW)
+  // the drum: keys away from the middle recede a little to the left and
+  // shrink, so the column reads as a wheel's face, not a list
+  const x = useTransform(dist, (d) => 14 - Math.min(14, d * d * 2.2) + Math.max(0, 1 - Math.abs(d)) * 10)
+  const scale = useTransform(dist, (d) => 1.12 - Math.min(0.3, Math.abs(d) * 0.13))
+  const opacity = useTransform(dist, (d) => Math.max(0.18, 1 - Math.abs(d) * 0.22))
+  const stem = useTransform(dist, (d) => 10 + Math.max(0, 1 - Math.abs(d)) * 14)
+  const stemMargin = useTransform(stem, (w) => 10 - w)
+  const [near, setNear] = useState(false)
+  useMotionValueEvent(dist, "change", (d) => setNear(Math.abs(d) < 0.5))
+  const ink = lit ? "var(--ember)" : near || turns ? "var(--ink)" : "var(--dim)"
+  return (
+    <motion.button
+      type="button"
+      onClick={onTap}
+      className={`absolute left-[6px] top-1/2 -mt-[18px] flex h-[36px] items-center gap-2 whitespace-nowrap text-left ${turns ? "" : "cursor-default"}`}
+      style={{ y, x, scale, opacity, color: ink, transformOrigin: "0% 50%" }}
+    >
+      <motion.span aria-hidden className="block h-px" style={{ width: stem, marginLeft: stemMargin, background: lit ? "var(--ember)" : "var(--line)" }} />
+      <Mark name={h.name} size={26} turned={lit} />
+      <span className="mv-data text-[10px] uppercase tracking-[0.12em]">
+        {h.name}
+        {h.label !== undefined && <span className="normal-case tracking-normal" style={{ color: "var(--dim)" }}> ({h.label})</span>}
+      </span>
+    </motion.button>
+  )
+}
+
+function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool: Pool; canToggle: boolean }) {
   const reduced = useReducedMotion() ?? false
-  const inHand = hand === null ? undefined : held[hand]
-  const PITCH = 34
+  const last = held.length - 1
+  // the wheel's position, in rows: 0 = the first key at the middle
+  const offset = useMotionValue(0)
+  const [hand, setHand] = useState(0)
+  useMotionValueEvent(offset, "change", (o) => {
+    const i = Math.max(0, Math.min(last, Math.round(o)))
+    if (i !== hand) setHand(i)
+  })
+  const clamp = (o: number) => Math.max(0, Math.min(last, o))
+  const settle = (target: number, velocity = 0) =>
+    animate(offset, clamp(Math.round(target)), reduced ? { duration: 0 } : { ...SNAP_SPRING, velocity })
+
+  // the wheel: a non-passive listener, so the page does not scroll with it
+  const frame = useRef<HTMLDivElement>(null)
+  const settling = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    const el = frame.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const o = offset.get() + e.deltaY / ROW
+      // rubber-band past the ends
+      offset.set(o < 0 ? o * 0.35 : o > last ? last + (o - last) * 0.35 : o)
+      if (settling.current) clearTimeout(settling.current)
+      settling.current = setTimeout(() => settle(offset.get()), 90)
+    }
+    el.addEventListener("wheel", onWheel, { passive: false })
+    return () => el.removeEventListener("wheel", onWheel)
+  })
+
+  // drag: the wheel follows the pointer, then settles with its velocity
+  const drag = useRef<{ startY: number; startOffset: number; moved: boolean } | null>(null)
+  const onPointerDown = (e: React.PointerEvent) => {
+    drag.current = { startY: e.clientY, startOffset: offset.get(), moved: false }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!drag.current) return
+    const dy = drag.current.startY - e.clientY
+    if (Math.abs(dy) > 4) drag.current.moved = true
+    const o = drag.current.startOffset + dy / ROW
+    offset.set(o < 0 ? o * 0.35 : o > last ? last + (o - last) * 0.35 : o)
+  }
+  const onPointerUp = () => {
+    if (!drag.current) return
+    const v = offset.getVelocity()
+    // a flick carries the wheel on: project a little past where it is
+    settle(offset.get() + v * 0.12, v)
+    const moved = drag.current.moved
+    drag.current = null
+    if (moved) suppressClick.current = true
+  }
+  const suppressClick = useRef(false)
+  const onTap = (i: number, h: HeldMerit) => {
+    if (suppressClick.current) { suppressClick.current = false; return }
+    if (i !== hand) { settle(i); return }
+    turn(h, pool, canToggle)
+  }
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); settle(hand + 1) }
+    if (e.key === "ArrowUp") { e.preventDefault(); settle(hand - 1) }
+  }
+
+  const inHand = held[hand]!
   return (
     <div className="grid grid-cols-[minmax(0,15rem)_1fr] gap-x-8">
-      {/* the ring: a vertical line the keys hang off, stems to the right */}
-      <div className="relative" style={{ height: held.length * PITCH }}>
+      <div
+        ref={frame}
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        className="relative touch-none select-none overflow-hidden outline-none"
+        style={{
+          height: VISIBLE * ROW,
+          cursor: "grab",
+          // the wheel's edges fall into the dark
+          maskImage: "linear-gradient(to bottom, transparent, black 22%, black 78%, transparent)",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent, black 22%, black 78%, transparent)",
+        }}
+      >
+        {/* the ring's line */}
         <span aria-hidden className="absolute inset-y-0 left-[6px] w-px" style={{ background: "var(--line)" }} />
-        {held.map((h, i) => {
-          const lit = litOf(pool, h)
-          const turns = turnsOf(h)
-          const isHand = i === hand
-          const ink = lit ? "var(--ember)" : isHand || turns ? "var(--ink)" : "var(--dim)"
-          return (
-            <motion.button
-              key={keyOf(h)}
-              type="button"
-              onMouseEnter={() => setHand(i)}
-              onFocus={() => setHand(i)}
-              onClick={() => (isHand ? turn(h, pool, canToggle) : setHand(i))}
-              className={`absolute left-[6px] flex h-[34px] items-center gap-2 whitespace-nowrap text-left ${turns ? "" : "cursor-default"}`}
-              style={{ top: i * PITCH, color: ink, transformOrigin: "0% 50%" }}
-              initial={false}
-              animate={{ x: isHand ? 14 : 0, scale: isHand ? 1.12 : 1 }}
-              transition={reduced ? { duration: 0 } : SNAP}
-            >
-              {/* the stem, from the line to the mark; it reaches further for the key in hand */}
-              <motion.span
-                aria-hidden
-                className="block h-px"
-                style={{ background: lit ? "var(--ember)" : "var(--line)", marginLeft: isHand ? -14 : 0 }}
-                animate={{ width: isHand ? 24 : 10 }}
-                transition={reduced ? { duration: 0 } : SNAP}
-              />
-              <Mark name={h.name} size={26} turned={lit} />
-              <span className="mv-data text-[10px] uppercase tracking-[0.12em]">
-                {h.name}
-                {h.label !== undefined && <span className="normal-case tracking-normal" style={{ color: "var(--dim)" }}> ({h.label})</span>}
-              </span>
-            </motion.button>
-          )
-        })}
+        {held.map((h, i) => (
+          <WheelKey key={keyOf(h)} h={h} i={i} offset={offset} lit={litOf(pool, h)} turns={turnsOf(h)} onTap={() => onTap(i, h)} />
+        ))}
       </div>
       {/* the door: what the key in hand opens */}
       <div className="min-w-0 border-l pl-6" style={{ borderColor: "var(--line)" }}>
-        {inHand ? <InHand h={inHand} pool={pool} canToggle={canToggle} /> : <div className="min-h-[76px]" />}
+        <InHand h={inHand} pool={pool} canToggle={canToggle} />
       </div>
     </div>
   )
@@ -397,5 +503,5 @@ export function MeritsAudition({
 }) {
   const canToggle = pool.state === "idle" || pool.state === "building"
   if (variant === "A") return <Ring held={held} pool={pool} canToggle={canToggle} pitch={82} spread={[8, 3, 0]} namesAtRest />
-  return <Column held={held} pool={pool} canToggle={canToggle} />
+  return <Wheel held={held} pool={pool} canToggle={canToggle} />
 }
