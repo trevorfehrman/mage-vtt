@@ -123,7 +123,7 @@ const MARKS: Partial<Record<MeritName, ReactNode>> = {
   Contacts: <><path d="M6 17 L12 7 L18 17 Z" /><circle cx="6" cy="17" r="1.3" fill="currentColor" stroke="none" /><circle cx="18" cy="17" r="1.3" fill="currentColor" stroke="none" /><circle cx="12" cy="7" r="1.3" fill="currentColor" stroke="none" /></>,
 }
 
-function Mark({ name, size, turned }: { name: MeritName; size: number; turned: boolean }) {
+function Mark({ name, size, turned }: { name: MeritName; size: number | "100%"; turned: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -355,6 +355,15 @@ function Ring({
 
 const ROW = 36 // one key's height on the wheel
 const VISIBLE = 7 // rows in the frame, the key in hand at the middle
+// the key in hand stands out: its neighbors give it this much air on each
+// side, its mark grows from MARK to MARK_IN_HAND, its name from NAME to
+// NAME_IN_HAND — every one of these a function of the wheel's offset, so
+// the growth is as continuous as the scroll and never a frame behind it
+const PART = 7
+const MARK = 26
+const MARK_IN_HAND = 36
+const NAME = 10
+const NAME_IN_HAND = 12.5
 const wrapIndex = (n: number, i: number) => ((i % n) + n) % n
 /** Signed distance of a position from the offset, wrapped into one period. */
 const periodic = (period: number, d: number) => {
@@ -384,10 +393,16 @@ function RingKey({
   // comes round the other side — outside the frame, since the period is
   // longer than the frame
   const dist = useTransform(offset, (o) => periodic(period, position - o))
-  const y = useTransform(dist, (d) => d * ROW)
-  const x = useTransform(dist, (d) => Math.max(0, 1 - Math.abs(d)) * 12)
-  const stem = useTransform(dist, (d) => 10 + Math.max(0, 1 - Math.abs(d)) * 14)
+  // how far this row is "in hand": 1 at the middle, 0 a row away
+  const lift = useTransform(dist, (d) => Math.max(0, 1 - Math.abs(d)))
+  // rows a key or more from the middle step PART aside, so the key in hand
+  // has air; a row on its way in slides the same distance it has come
+  const y = useTransform(dist, (d) => d * ROW + Math.sign(d) * Math.min(Math.abs(d), 1) * PART)
+  const x = useTransform(lift, (l) => l * 12)
+  const stem = useTransform(lift, (l) => 10 + l * 14)
   const stemMargin = useTransform(stem, (w) => 10 - w)
+  const markSize = useTransform(lift, (l) => MARK + l * (MARK_IN_HAND - MARK))
+  const nameSize = useTransform(lift, (l) => NAME + l * (NAME_IN_HAND - NAME))
   const [near, setNear] = useState(Math.abs(dist.get()) < 0.5)
   useMotionValueEvent(dist, "change", (d) => setNear(Math.abs(d) < 0.5))
   const lit = litOf(pool, h)
@@ -404,11 +419,13 @@ function RingKey({
         style={{ x, color: ink }}
       >
         <motion.span aria-hidden className="block h-px" style={{ width: stem, marginLeft: stemMargin, background: lit ? "var(--ember)" : "var(--line)" }} />
-        <Mark name={h.name} size={26} turned={lit} />
-        <span className="mv-data text-[10px] uppercase tracking-[0.12em]">
+        <motion.span className="grid shrink-0 place-items-center" style={{ width: markSize, height: markSize }}>
+          <Mark name={h.name} size="100%" turned={lit} />
+        </motion.span>
+        <motion.span className="mv-data uppercase tracking-[0.12em]" style={{ fontSize: nameSize }}>
           {h.name}
           {h.label !== undefined && <span className="normal-case tracking-normal" style={{ color: "var(--dim)" }}> ({h.label})</span>}
-        </span>
+        </motion.span>
       </motion.button>
     </motion.div>
   )
