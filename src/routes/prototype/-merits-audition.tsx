@@ -342,16 +342,29 @@ function Ring({
 }
 
 // ── The wheel: key and door ──────────────────────────────────────────────────
+//
+// Motion's own picker recipe (motion.dev/docs/react-transitions, "Inertia"):
+// a value decelerates from its release velocity toward a precalculated
+// target, and `modifyTarget` snaps that target to the grid — so the wheel
+// lands exactly on a key, never between two, and `timeConstant` sets how
+// crisply it stops. The ring wraps: every key's distance from the middle is
+// taken modulo the ring, so the first key follows the last.
 
 const ROW = 36 // one key's height on the wheel
 const VISIBLE = 7 // rows in the frame, the key in hand at the middle
-const SNAP_SPRING = { type: "spring", stiffness: 320, damping: 36, mass: 0.8 } as const
+const wrapIndex = (n: number, i: number) => ((i % n) + n) % n
+/** Signed distance around the ring, in (-n/2, n/2]. */
+const ringDistance = (n: number, d: number) => {
+  const w = wrapIndex(n, d)
+  return w > n / 2 ? w - n : w
+}
 
 /** One key on the wheel: its place is a pure function of the wheel's
  * offset (a motion value, in rows), so scrolling never re-renders it. */
 function WheelKey({
   h,
   i,
+  count,
   offset,
   lit,
   turns,
@@ -359,18 +372,20 @@ function WheelKey({
 }: {
   h: HeldMerit
   i: number
+  count: number
   offset: MotionValue<number>
   lit: boolean
   turns: boolean
   onTap: () => void
 }) {
-  const dist = useTransform(offset, (o) => i - o)
+  const dist = useTransform(offset, (o) => ringDistance(count, i - o))
   const y = useTransform(dist, (d) => d * ROW)
   // the drum: keys away from the middle recede a little to the left and
   // shrink, so the column reads as a wheel's face, not a list
   const x = useTransform(dist, (d) => 14 - Math.min(14, d * d * 2.2) + Math.max(0, 1 - Math.abs(d)) * 10)
   const scale = useTransform(dist, (d) => 1.12 - Math.min(0.3, Math.abs(d) * 0.13))
-  const opacity = useTransform(dist, (d) => Math.max(0.18, 1 - Math.abs(d) * 0.22))
+  // gone before it wraps from one edge of the frame to the other
+  const opacity = useTransform(dist, (d) => (Math.abs(d) > 3.2 ? 0 : Math.max(0.18, 1 - Math.abs(d) * 0.22)))
   const stem = useTransform(dist, (d) => 10 + Math.max(0, 1 - Math.abs(d)) * 14)
   const stemMargin = useTransform(stem, (w) => 10 - w)
   const [near, setNear] = useState(false)
@@ -395,39 +410,56 @@ function WheelKey({
 
 function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool: Pool; canToggle: boolean }) {
   const reduced = useReducedMotion() ?? false
-  const last = held.length - 1
-  // the wheel's position, in rows: 0 = the first key at the middle
+  const count = held.length
+  // the wheel's position, in rows, unbounded: the ring wraps
   const offset = useMotionValue(0)
   const [hand, setHand] = useState(0)
   useMotionValueEvent(offset, "change", (o) => {
-    const i = Math.max(0, Math.min(last, Math.round(o)))
+    const i = wrapIndex(count, Math.round(o))
     if (i !== hand) setHand(i)
   })
-  const clamp = (o: number) => Math.max(0, Math.min(last, o))
-  const settle = (target: number, velocity = 0) =>
-    animate(offset, clamp(Math.round(target)), reduced ? { duration: 0 } : { ...SNAP_SPRING, velocity })
 
-  // the wheel: a non-passive listener, so the page does not scroll with it
+  /** Coast from the current velocity and land exactly on a key. */
+  const coast = (velocity: number) =>
+    animate(offset, offset.get(), reduced
+      ? { duration: 0 }
+      : { type: "inertia", velocity, power: 0.4, timeConstant: 160, modifyTarget: Math.round, restDelta: 0.002 })
+  /** Go straight to a key (a click, a notch, an arrow): the short way round. */
+  const goTo = (target: number) =>
+    animate(offset, target, reduced ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 42, mass: 0.7 })
+  const step = (by: number) => goTo(Math.round(offset.get()) + by)
+  const goToIndex = (i: number) => goTo(offset.get() + ringDistance(count, i - offset.get()))
+
+  // the wheel: a non-passive listener, so the page does not scroll with it.
+  // A mouse wheel's notch steps exactly one key; a trackpad's fine deltas
+  // turn the wheel continuously and it coasts to a key when they stop.
   const frame = useRef<HTMLDivElement>(null)
   const settling = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastNotch = useRef(0)
   useEffect(() => {
     const el = frame.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      const o = offset.get() + e.deltaY / ROW
-      // rubber-band past the ends
-      offset.set(o < 0 ? o * 0.35 : o > last ? last + (o - last) * 0.35 : o)
+      const now = Date.now()
+      if (Math.abs(e.deltaY) >= 40 && now - lastNotch.current > 70) {
+        lastNotch.current = now
+        step(Math.sign(e.deltaY))
+        return
+      }
+      offset.set(offset.get() + e.deltaY / ROW)
       if (settling.current) clearTimeout(settling.current)
-      settling.current = setTimeout(() => settle(offset.get()), 90)
+      settling.current = setTimeout(() => coast(offset.getVelocity()), 80)
     }
     el.addEventListener("wheel", onWheel, { passive: false })
     return () => el.removeEventListener("wheel", onWheel)
   })
 
-  // drag: the wheel follows the pointer, then settles with its velocity
+  // drag: the wheel follows the pointer, then coasts with its velocity
   const drag = useRef<{ startY: number; startOffset: number; moved: boolean } | null>(null)
+  const suppressClick = useRef(false)
   const onPointerDown = (e: React.PointerEvent) => {
+    offset.stop()
     drag.current = { startY: e.clientY, startOffset: offset.get(), moved: false }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
@@ -435,27 +467,23 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
     if (!drag.current) return
     const dy = drag.current.startY - e.clientY
     if (Math.abs(dy) > 4) drag.current.moved = true
-    const o = drag.current.startOffset + dy / ROW
-    offset.set(o < 0 ? o * 0.35 : o > last ? last + (o - last) * 0.35 : o)
+    offset.set(drag.current.startOffset + dy / ROW)
   }
   const onPointerUp = () => {
     if (!drag.current) return
-    const v = offset.getVelocity()
-    // a flick carries the wheel on: project a little past where it is
-    settle(offset.get() + v * 0.12, v)
     const moved = drag.current.moved
     drag.current = null
+    coast(offset.getVelocity())
     if (moved) suppressClick.current = true
   }
-  const suppressClick = useRef(false)
   const onTap = (i: number, h: HeldMerit) => {
     if (suppressClick.current) { suppressClick.current = false; return }
-    if (i !== hand) { settle(i); return }
+    if (i !== hand) { goToIndex(i); return }
     turn(h, pool, canToggle)
   }
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown") { e.preventDefault(); settle(hand + 1) }
-    if (e.key === "ArrowUp") { e.preventDefault(); settle(hand - 1) }
+    if (e.key === "ArrowDown") { e.preventDefault(); step(1) }
+    if (e.key === "ArrowUp") { e.preventDefault(); step(-1) }
   }
 
   const inHand = held[hand]!
@@ -481,7 +509,7 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
         {/* the ring's line */}
         <span aria-hidden className="absolute inset-y-0 left-[6px] w-px" style={{ background: "var(--line)" }} />
         {held.map((h, i) => (
-          <WheelKey key={keyOf(h)} h={h} i={i} offset={offset} lit={litOf(pool, h)} turns={turnsOf(h)} onTap={() => onTap(i, h)} />
+          <WheelKey key={keyOf(h)} h={h} i={i} count={count} offset={offset} lit={litOf(pool, h)} turns={turnsOf(h)} onTap={() => onTap(i, h)} />
         ))}
       </div>
       {/* the door: what the key in hand opens */}
