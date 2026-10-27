@@ -245,14 +245,13 @@ that can be written can always be read back.
 _Avoid_: Stat block, character record.
 
 **Sheet header**:
-The top of the Character Sheet (MAG-52): the mage name, the Nimbus sentence
-beneath it when written (MAG-61), then HEALTH over the track with Will · Mana
+The top of the Character Sheet (MAG-52): the mage name with the halo beside
+it when any of the words are written (MAG-61), then HEALTH over the track with Will · Mana
 and Mana-a-turn (MAG-57, a cycle arrow and the number) beside it, then WISDOM
 over its meter (MAG-56: ten cells, filled in the rank's own color, no numeral
 — the number is in the tooltip); opposite, Gnosis with Defense · Initiative ·
 Speed beneath it and the unspent XP (MAG-57) under those; then Path | Order |
-ruling Arcana | Virtue | Vice, Cabal and Consilium when written (MAG-61), and
-the Magical Tool switch at its corner. On your own sheet (and any sheet for
+ruling Arcana | Virtue | Vice, and the Magical Tool switch at its corner. On your own sheet (and any sheet for
 the ST) the track and the meter are live: see **Mark**. Each player's depletables also ride their Video tile.
 _Avoid_: Masthead, resource strip (the rail-foot HUD it replaced).
 
@@ -271,17 +270,19 @@ _Avoid_: edit (the hand edit is the Storyteller's repair; a mark is the player's
 **Skill Specialty**:
 A narrow focus inside a Skill (MAG-58; WoD p. 54), written "Occult (Goetia)"
 on the book's sheet: +1 die when the roll falls inside it — the player's
-judgment, so the sheet shows a focus mark (a ring with a point) beside the
-skill, and once the skill is in the pool the mark is the toggle for the +1,
-named "Specialty: Goetia" among the pool's modifiers and lit ember when armed.
-Distinct from the **Rote Specialty**.
+judgment, so the sheet only names it, bolted to the skill as the book writes
+it — "Occult (Goetia)" — and the tray offers a chip ("Goetia +1") whenever the
+skill is in the pool, the toggle for the +1, named "Specialty: Goetia" among
+the pool's modifiers. Distinct from the **Rote Specialty**.
 
 **Legacy**:
 The mage's one specialization (MAG-61; Mage p. 93), chosen at Gnosis 3 or
 higher, with up to three attainments opening at Gnosis 3, 5 and 7. A small
 section between Arcana and Rotes, the reached attainments in ink and the rest
 dim; absent until chosen. Nimbus (the signature of the mage's magic, a
-sentence), Cabal and Consilium (names) ride the title card with it.
+sentence), Cabal (the mage's own group) and Consilium (the local mage
+council) live behind the **halo**, a small radiant ring beside the mage's
+name whose tooltip lists all three (owner, 2026-10-27).
 
 **Hand edit**:
 A direct, free-form change to a Character Sheet value made outside any game

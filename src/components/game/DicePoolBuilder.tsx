@@ -1,7 +1,7 @@
 import type { KeyboardEvent } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { WILLPOWER_BONUS_DICE } from "#/domain/willpower-economy";
-import type { CharacterSheet } from "#/domain/character";
+import { skillDisplayName, specialtyComponent, type CharacterSheet } from "#/domain/character";
 import { GateButton } from "#/components/ui/gate-button";
 import { UnifiedDie } from "./UnifiedDie";
 import { Felt } from "./Felt";
@@ -326,6 +326,26 @@ export function DicePoolBuilder({
                 >
                   {OPTION_WORDS.rote}
                 </button>
+                {/* Skill Specialties (MAG-58): one chip per specialty whose
+                    skill is in the pool — the +1 the player arms when the
+                    roll falls inside it; the sheet only names it */}
+                {(character?.specialties ?? [])
+                  .filter((sp) => pool.isComponentActive("skill", skillDisplayName(sp.skill)))
+                  .map((sp) => {
+                    const component = specialtyComponent(sp);
+                    const on = pool.isComponentActive(component.type, component.name);
+                    return (
+                      <button
+                        key={sp.skill}
+                        onClick={() => pool.toggleComponent(component)}
+                        disabled={!canInteract}
+                        className={`mv-mini grow whitespace-nowrap disabled:opacity-40 ${on ? "mv-mini-on" : ""}`}
+                        title="Specialty · +1 die"
+                      >
+                        {sp.label} +1
+                      </button>
+                    );
+                  })}
                 <button
                   onClick={() =>
                     pool.setVisibility(

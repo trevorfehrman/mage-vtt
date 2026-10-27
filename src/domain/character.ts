@@ -270,6 +270,10 @@ export const SkillKey = Schema.Literals([
 ])
 export type SkillKey = typeof SkillKey.Type
 
+/** A skill key as the sheet and the pool name it: "animalKen" → "Animal Ken". */
+export const skillDisplayName = (key: SkillKey): string =>
+  key.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase())
+
 /**
  * A Skill Specialty (MAG-58; WoD p. 54, written "Occult (Goetia)" on the
  * book's sheet): a narrow focus inside a Skill worth +1 die when the roll

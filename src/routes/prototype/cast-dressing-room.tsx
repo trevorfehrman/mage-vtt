@@ -604,7 +604,7 @@ function DressingRoom() {
         workingSlot={
           <WorkingSlot
             mode={slot.mode}
-            tray={<DicePoolBuilder pool={pool} />}
+            tray={<DicePoolBuilder pool={pool} character={shownSheet ?? undefined} />}
             message={
               <MessageBox
                 people={people}

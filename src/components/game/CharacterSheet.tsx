@@ -1,8 +1,9 @@
-import { type CSSProperties, type ReactNode } from "react"
+import { Fragment, type CSSProperties, type ReactNode } from "react"
 import { Option } from "effect"
 import {
   attainmentGates,
   rulingArcanaOf,
+  skillDisplayName,
   specialtyComponent,
   type ArcanumName,
   type CharacterSheet as CharacterSheetData,
@@ -30,7 +31,7 @@ import { RoteBook } from "./RoteBook"
 import { TraitSky } from "./TraitSky"
 import { Separator } from "#/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
-import { DOT_RATING_WIDTH, DotRating } from "./DotRating"
+import { DotRating } from "./DotRating"
 import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { ToolSwitch } from "./ToolSwitch"
 import { PoolNumerals } from "./CastHeaderStats"
@@ -109,21 +110,15 @@ export function CharacterSheet({
       <div className="mv-cornered mv-panel grid gap-4 p-4">
         <div className="flex items-start justify-between gap-6">
           <div className="grid gap-3">
-            <h2 className="mv-h text-[30px] leading-none">
-              {character.shadowName ?? character.name}
-            </h2>
-            {/* the nimbus (MAG-61; Mage p. 90): the signature of the mage's
-                magic, a sentence in the player's words under the name */}
-            {character.nimbus !== undefined && (
-              <Eyebrowed label="Nimbus">
-                <p
-                  className="max-w-[46ch] text-[13px] italic leading-snug"
-                  style={{ color: "var(--dim)" }}
-                >
-                  {character.nimbus}
-                </p>
-              </Eyebrowed>
-            )}
+            <span className="flex items-center gap-3">
+              <h2 className="mv-h text-[30px] leading-none">
+                {character.shadowName ?? character.name}
+              </h2>
+              {/* the record's words (MAG-61; owner 2026-10-27): the nimbus,
+                  cabal and consilium behind one halo beside the name, read
+                  on hover or focus — present only when any is written */}
+              <WordsHalo character={character} />
+            </span>
             {/* the depletables under eyebrows in the emblem row's grammar
                 (owner, 2026-10-27): HEALTH over the track and its penalty,
                 Will · Mana beside them on the same baseline, WISDOM over
@@ -268,24 +263,6 @@ export function CharacterSheet({
                 name={character.vice}
               />
             </EmblemGroup>
-            {/* the company the mage keeps (MAG-61): names only, in the same
-                row, present only when written */}
-            {character.cabal !== undefined && (
-              <>
-                <Separator orientation="vertical" className="!h-auto self-stretch" />
-                <EmblemGroup label="Cabal">
-                  <Emblem name={character.cabal} />
-                </EmblemGroup>
-              </>
-            )}
-            {character.consilium !== undefined && (
-              <>
-                <Separator orientation="vertical" className="!h-auto self-stretch" />
-                <EmblemGroup label="Consilium">
-                  <Emblem name={character.consilium} />
-                </EmblemGroup>
-              </>
-            )}
           </div>
           {/* the standing tool fact (issue #107) at the corner: the viewer's
               own sheet flips it; anyone else's states it when it holds */}
@@ -324,7 +301,6 @@ export function CharacterSheet({
       >
         <div className="relative">
           <TraitSky pool={pool} traitColumns={traitColumnsOf(character)} />
-          <TooltipProvider>
           <div className="mv-sky-halo relative z-10 grid grid-cols-3 gap-x-6">
             {SHEET_CATEGORIES.map((category) => (
               <CategoryColumn
@@ -336,7 +312,7 @@ export function CharacterSheet({
                 skills={(Object.entries(character.skills[category]) as [SkillKey, number][])
                   .filter(([, dots]) => dots > 0)
                   .map(([key, dots]) => ({
-                    name: formatSkillName(key),
+                    name: skillDisplayName(key),
                     dots,
                     specialty: Option.getOrUndefined(character.specialtyFor(key)),
                   }))}
@@ -347,7 +323,6 @@ export function CharacterSheet({
               />
             ))}
           </div>
-          </TooltipProvider>
         </div>
       </Section>
 
@@ -458,7 +433,67 @@ function EmblemGroup({ label, children }: { label: string; children: ReactNode }
   )
 }
 
-function Emblem({ glyph, name }: { glyph?: ReactNode; name: string }) {
+/**
+ * The halo (MAG-61; owner 2026-10-27): one small radiant ring beside the
+ * mage's name holding the record's words — the nimbus (Mage p. 90, the
+ * signature of the mage's magic, so the glyph is a nimbus: a ring with
+ * rays), the cabal and the consilium — in one tooltip on hover or focus.
+ * Nothing when none is written.
+ */
+function WordsHalo({ character }: { character: CharacterSheetData }) {
+  const lines = [
+    ...(character.nimbus !== undefined ? [["Nimbus", character.nimbus] as const] : []),
+    ...(character.cabal !== undefined ? [["Cabal", character.cabal] as const] : []),
+    ...(character.consilium !== undefined ? [["Consilium", character.consilium] as const] : []),
+  ]
+  if (lines.length === 0) return null
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            tabIndex={0}
+            aria-label={lines.map(([label, text]) => `${label}: ${text}`).join(". ")}
+            className="inline-flex"
+            style={{ color: "var(--accent)" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+              <circle cx="9" cy="9" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.3" />
+              {/* eight rays, the nimbus's flare */}
+              {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+                <line
+                  key={deg}
+                  x1="9"
+                  y1="1.6"
+                  x2="9"
+                  y2="3.8"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                  transform={`rotate(${deg} 9 9)`}
+                />
+              ))}
+            </svg>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" align="start" sideOffset={6} className="max-w-[44ch]">
+          {/* two columns so the three texts share one left edge whatever
+              their labels' widths; rows on a common baseline */}
+          <span className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-1.5 py-0.5">
+            {lines.map(([label, text]) => (
+              <Fragment key={label}>
+                <span className="mv-eyebrow">{label}</span>
+                <span className="leading-snug">{text}</span>
+              </Fragment>
+            ))}
+          </span>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+function Emblem({ glyph, name }: { glyph: ReactNode; name: string }) {
   return (
     <span className="inline-flex items-center gap-1.5">
       {glyph}
@@ -529,7 +564,7 @@ function HealthTrack({
               aria-label={`Health box ${i + 1}: ${box.resistant ? "Resistant" : "not Resistant"}. Click to toggle.`}
               aria-pressed={box.resistant}
             >
-              <ResistantDot resistant={box.resistant} />
+              <ResistantDot resistant={box.resistant} slot={box.severity !== "empty"} />
             </button>
           ) : (
             <span className="absolute left-1/2 top-full mt-[2px] flex -translate-x-1/2">
@@ -590,8 +625,8 @@ function traitColumnsOf(character: CharacterSheetData): Record<string, number> {
       ...CATEGORY_ATTRIBUTES[category].map(
         ([name]): [string, number] => [name, column],
       ),
-      ...Object.keys(character.skills[category]).map(
-        (key): [string, number] => [formatSkillName(key), column],
+      ...(Object.keys(character.skills[category]) as SkillKey[]).map(
+        (key): [string, number] => [skillDisplayName(key), column],
       ),
     ]),
   )
@@ -646,38 +681,35 @@ function CategoryColumn({
     traits.map(({ name, dots, specialty }) => {
       const active = isActive(type, name)
       const component = specialty && specialtyComponent(specialty)
-      const specialtyActive = component !== undefined && isActive(component.type, component.name)
       return (
-        <div key={name} className="relative">
-          <TraitRow
-            interactive={interactive}
-            canToggle={canToggle}
-            active={active}
-            onToggle={() => {
-              onToggle({ type, name, dots })
-              // the specialty rides its skill: toggling the skill off takes
-              // the +1 with it, since a specialty without its skill is nothing
-              if (active && specialtyActive && component) onToggle(component)
-            }}
-            className="mv-sky-row -mx-2 flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
-          >
-            <span
-              className="whitespace-nowrap text-[14px]"
-              style={color ? { color } : undefined}
-            >
+        <TraitRow
+          key={name}
+          interactive={interactive}
+          canToggle={canToggle}
+          active={active}
+          onToggle={() => {
+            onToggle({ type, name, dots })
+            // the specialty's +1 (armed on the tray) rides its skill: toggling
+            // the skill off takes it along, since a specialty without its
+            // skill is nothing
+            if (active && component && isActive(component.type, component.name)) onToggle(component)
+          }}
+          className="mv-sky-row -mx-2 flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
+        >
+          <span className="flex min-w-0 items-baseline gap-1.5">
+            <span className="whitespace-nowrap text-[14px]" style={color ? { color } : undefined}>
               {name}
             </span>
-            <DotRating current={dots} active={active} {...(color ? { color } : {})} />
-          </TraitRow>
-          {specialty && component && (
-            <SpecialtyMark
-              specialty={specialty}
-              armable={interactive && canToggle && active}
-              armed={specialtyActive}
-              onToggle={() => onToggle(component)}
-            />
-          )}
-        </div>
+            {/* the specialty (MAG-58), bolted on as the book writes it —
+                "Occult (Goetia)" — the +1 is armed on the tray */}
+            {specialty && (
+              <span className="truncate text-[12px]" style={{ color: "var(--dim)" }}>
+                ({specialty.label})
+              </span>
+            )}
+          </span>
+          <DotRating current={dots} active={active} {...(color ? { color } : {})} />
+        </TraitRow>
       )
     })
 
@@ -698,69 +730,6 @@ interface SkillEntry {
   name: string
   dots: number
   specialty?: SkillSpecialty | undefined
-}
-
-/**
- * The specialty's mark (MAG-58; WoD p. 54): a focus — a ring with a point
- * at its center — floating between the skill's name and its dots, outside
- * the row's button so the two stay separate controls. Inert on a read-only
- * sheet and while the skill is out of the pool; once the skill is in, the
- * mark is the toggle for the +1 (the player's call whether the roll falls
- * inside the specialty), lit ember when armed like every armed selection.
- */
-function SpecialtyMark({
-  specialty,
-  armable,
-  armed,
-  onToggle,
-}: {
-  specialty: SkillSpecialty
-  armable: boolean
-  armed: boolean
-  onToggle: () => void
-}) {
-  const color = armed ? "var(--ember)" : armable ? "var(--accent)" : "var(--dim)"
-  const words = `Specialty: ${specialty.label} · +1 die when the roll falls inside it`
-  const glyph = (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden style={{ color }}>
-      <circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" strokeWidth="1.2" />
-      <circle cx="7" cy="7" r="1.6" fill="currentColor" />
-    </svg>
-  )
-  // floats just left of the row's dots: the rating's width plus the row's
-  // right padding and a breath
-  const place: CSSProperties = { right: DOT_RATING_WIDTH + 9 }
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        {armable ? (
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-pressed={armed}
-            aria-label={words}
-            className="absolute top-1/2 grid size-5 -translate-y-1/2 cursor-pointer place-items-center rounded-full"
-            style={place}
-          >
-            {glyph}
-          </button>
-        ) : (
-          <span
-            tabIndex={0}
-            aria-label={words}
-            className="absolute top-1/2 grid size-5 -translate-y-1/2 place-items-center"
-            style={place}
-          >
-            {glyph}
-          </span>
-        )}
-      </TooltipTrigger>
-      <TooltipContent side="top" sideOffset={4}>
-        {words}
-        {armable && (armed ? " · in the pool" : " · click to add it")}
-      </TooltipContent>
-    </Tooltip>
-  )
 }
 
 /** The fixed canonical layout: 5 columns = 5 Supernal Realms, each column its
@@ -868,9 +837,3 @@ function ArcanaDashboard({
   )
 }
 
-/** Convert camelCase skill keys to display names: "animalKen" → "Animal Ken" */
-function formatSkillName(key: string): string {
-  return key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (c) => c.toUpperCase())
-}
