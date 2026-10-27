@@ -423,7 +423,10 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
   /** Coast from a velocity (rows per second) and land exactly on a key:
    * Motion's inertia with the target snapped to the grid. */
   const coast = (velocity: number) =>
-    animate(offset, offset.get(), reduced
+    // the inertia generator coasts from the origin and ignores the target,
+    // but animate() skips an animation whose target equals the value — so
+    // a nominal target one row on, in the direction of travel
+    animate(offset, offset.get() + (velocity >= 0 ? 1 : -1), reduced
       ? { duration: 0 }
       : { type: "inertia", velocity, power: 0.4, timeConstant: 200, modifyTarget: Math.round, restDelta: 0.002 })
   /** Go straight to a key (a click, an arrow): a short, clicky ease-out. */
