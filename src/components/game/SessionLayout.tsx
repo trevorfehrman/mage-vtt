@@ -18,6 +18,7 @@ import {
 } from "#/components/ui/tooltip"
 import { Button } from "#/components/ui/button"
 import { useSessionShortcuts } from "#/hooks/use-session-shortcuts"
+import { ClientOnly } from "@tanstack/react-router"
 
 /**
  * The settled 4-section grid (docs/ui-direction.md), rendered in reduced form
@@ -95,11 +96,6 @@ export function SessionLayout({
     onToggleRight: animatedToggleRight,
   })
 
-  const mainLayout = useDefaultLayout({
-    id: "session-layout-v4",
-    storage: localStorage,
-  })
-
   const animClass = isAnimating
     ? "[&>[data-slot=resizable-panel]]:transition-[flex-basis,flex-grow] [&>[data-slot=resizable-panel]]:duration-200 [&>[data-slot=resizable-panel]]:ease-out"
     : ""
@@ -166,78 +162,108 @@ export function SessionLayout({
           so the panels draw no border of their own on either side. While a
           live cast is framed, the lines beside its frame hand over to it
           (styles.css, the live zone). */}
-      <ResizablePanelGroup
-        orientation="horizontal"
-        defaultLayout={mainLayout.defaultLayout}
-        onLayoutChanged={mainLayout.onLayoutChanged}
-        className={`relative h-full ${animClass}`}
-      >
-        {videoRail && (
-          <>
-            <ResizablePanel
-              id="left"
-              panelRef={leftPanelRef}
-              defaultSize={13}
-              minSize={9}
-              collapsedSize={0}
-              collapsible
-              className="mv-panel mv-floor border-0"
-            >
-              <div className="h-full overflow-y-auto">{videoRail}</div>
-            </ResizablePanel>
-            <ResizableHandle />
-          </>
-        )}
+      {/* MAG-43: the group mounts only once the browser owns the page. Its
+          saved layout lives in localStorage, which the server doesn't have,
+          and a server-rendered group without it disagrees with the client's
+          — a hydration mismatch React refuses to patch (the first attempt,
+          6009907, squashed every returning visitor's columns). The chrome
+          above and the band below still server-render; the group's area
+          stands empty until hydration. */}
+      <ClientOnly>
+        <SessionGroup className={`relative h-full ${animClass}`}>
+          {/* Sizes are percentage strings: on react-resizable-panels 4.x a
+              bare number is pixels (13 = 13px). */}
+          {videoRail && (
+            <>
+              <ResizablePanel
+                id="left"
+                panelRef={leftPanelRef}
+                defaultSize="13%"
+                minSize="9%"
+                collapsedSize="0%"
+                collapsible
+                className="mv-panel mv-floor border-0"
+              >
+                <div className="h-full overflow-y-auto">{videoRail}</div>
+              </ResizablePanel>
+              <ResizableHandle />
+            </>
+          )}
 
-        <ResizablePanel id="center" defaultSize={57} minSize={40} className="mv-floor">
-          <div className="h-full overflow-y-auto p-4">
-            {characterSheet ?? (
-              <div className="flex h-full items-center justify-center" style={{ color: "var(--dim)" }}>
-                <p className="text-sm">No character in this session yet.</p>
-              </div>
-            )}
-          </div>
-        </ResizablePanel>
-
-        {/* the rail's seam — it yields to a live cast's frame (styles.css) */}
-        <ResizableHandle className="mv-rail-seam" />
-
-        <ResizablePanel
-          id="right"
-          panelRef={rightPanelRef}
-          defaultSize={30}
-          minSize={20}
-          collapsedSize={0}
-          collapsible
-          className="mv-panel border-0"
-        >
-          <div className="flex h-full flex-col">
-            {/* The feed — one thing (MAG-48), the working zone below
-                another. */}
-            <div className="mv-rail-feed flex min-h-0 flex-1 flex-col">
-              {/* Activity log — fills available space */}
-              <div className="min-h-0 flex-1 overflow-hidden">{activityLog}</div>
+          <ResizablePanel id="center" defaultSize="57%" minSize="40%" className="mv-floor">
+            <div className="h-full overflow-y-auto p-4">
+              {characterSheet ?? (
+                <div className="flex h-full items-center justify-center" style={{ color: "var(--dim)" }}>
+                  <p className="text-sm">No character in this session yet.</p>
+                </div>
+              )}
             </div>
-            {/* The working slot (MAG-53) — the message box and the dice
-                tray — stands above a live cast on every seat (owner,
-                2026-10-25): the memory/judgment boundary (styles.css), the
-                slot on the void, postures in the mv-stage frame. */}
-            <div className="mv-stage-ground shrink-0">{workingSlot}</div>
-            {/* The live zone, the foot of the rail. A live cast stands in it
-                on every seat (MAG-48): full width, framed whole in the live
-                zone's red, so the table reads "pause — something that touches
-                everyone is happening". It takes the height it needs and never
-                scrolls inside itself (owner, 2026-10-25): the Chronicle above
-                is what shrinks. */}
-            {liveCasts && <div className="mv-live-zone shrink-0">{liveCasts}</div>}
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+          </ResizablePanel>
+
+          {/* the rail's seam — it yields to a live cast's frame (styles.css) */}
+          <ResizableHandle className="mv-rail-seam" />
+
+          <ResizablePanel
+            id="right"
+            panelRef={rightPanelRef}
+            defaultSize="30%"
+            minSize="20%"
+            collapsedSize="0%"
+            collapsible
+            className="mv-panel border-0"
+          >
+            <div className="flex h-full flex-col">
+              {/* The feed — one thing (MAG-48), the working zone below
+                  another. */}
+              <div className="mv-rail-feed flex min-h-0 flex-1 flex-col">
+                {/* Activity log — fills available space */}
+                <div className="min-h-0 flex-1 overflow-hidden">{activityLog}</div>
+              </div>
+              {/* The working slot (MAG-53) — the message box and the dice
+                  tray — stands above a live cast on every seat (owner,
+                  2026-10-25): the memory/judgment boundary (styles.css), the
+                  slot on the void, postures in the mv-stage frame. */}
+              <div className="mv-stage-ground shrink-0">{workingSlot}</div>
+              {/* The live zone, the foot of the rail. A live cast stands in it
+                  on every seat (MAG-48): full width, framed whole in the live
+                  zone's red, so the table reads "pause — something that touches
+                  everyone is happening". It takes the height it needs and never
+                  scrolls inside itself (owner, 2026-10-25): the Chronicle above
+                  is what shrinks. */}
+              {liveCasts && <div className="mv-live-zone shrink-0">{liveCasts}</div>}
+            </div>
+          </ResizablePanel>
+        </SessionGroup>
+      </ClientOnly>
       </div>
 
       {/* Bottom band — the FFX tick timeline (issue #60), full width */}
       {combatTracker}
     </div>
+  )
+}
+
+/**
+ * The resizable group with its remembered layout (MAG-43). `useDefaultLayout`
+ * reads `storage.getItem` during render, so this component is the one place
+ * the hook runs — and SessionLayout mounts it inside the router's ClientOnly,
+ * where `localStorage` exists. The layout id is the saved layout's key:
+ * bumping it forgets every browser's remembered sizes.
+ */
+function SessionGroup({ className, children }: { className: string; children: ReactNode }) {
+  const mainLayout = useDefaultLayout({
+    id: "session-layout-v4",
+    storage: localStorage,
+  })
+  return (
+    <ResizablePanelGroup
+      orientation="horizontal"
+      defaultLayout={mainLayout.defaultLayout}
+      onLayoutChanged={mainLayout.onLayoutChanged}
+      className={className}
+    >
+      {children}
+    </ResizablePanelGroup>
   )
 }
 
