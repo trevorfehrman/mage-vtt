@@ -35,7 +35,9 @@ import {
   useMotionValue,
   useMotionValueEvent,
   useReducedMotion,
+  useSpring,
   useTransform,
+  useVelocity,
   type MotionValue,
 } from "motion/react"
 import { merit, type HeldMerit, type MeritName } from "#/domain/merits"
@@ -387,6 +389,12 @@ const KEYHOLE = 26
 const REACH_SHORT = 22
 const MARK = 26
 const MARK_IN_HAND = 36
+// keys hang from the ring, so they lag it: while the wheel moves every key
+// leans against the motion, pivoting where its stem meets the ring, and
+// swings back once it stops. LEAN is degrees per row-per-second of wheel
+// speed, capped at LEAN_MAX; zero either to switch it off.
+const LEAN = 0.3
+const LEAN_MAX = 6
 const NAME = 10
 const NAME_IN_HAND = 12.5
 const wrapIndex = (n: number, i: number) => ((i % n) + n) % n
@@ -401,6 +409,7 @@ function RingKey({
   position,
   period,
   offset,
+  lean,
   pool,
   onTap,
   seam,
@@ -410,6 +419,8 @@ function RingKey({
   position: number
   period: number
   offset: MotionValue<number>
+  /** the keys' lean against the wheel's motion, degrees */
+  lean: MotionValue<number>
   pool: Pool
   onTap: (position: number) => void
   seam: boolean
@@ -441,7 +452,7 @@ function RingKey({
         type="button"
         onClick={() => onTap(position)}
         className={`absolute left-[6px] top-0 flex h-[36px] items-center gap-2 whitespace-nowrap text-left ${turns ? "" : "cursor-default"}`}
-        style={{ x, color: ink }}
+        style={{ x, rotate: lean, transformOrigin: "0 50%", color: ink }}
       >
         <motion.span aria-hidden className="block h-px" style={{ width: stem, marginLeft: stemMargin, background: lit ? "var(--ember)" : "var(--line)" }} />
         {/* the mark and the name wear the sheet's background, so a key
@@ -467,6 +478,12 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
   const period = count * copies
   // the wheel's position, in rows, unbounded
   const offset = useMotionValue(0)
+  // the keys' lag: the wheel's speed, as a lean, smoothed on a spring so
+  // the keys swing back and settle when the wheel stops. The ring pulls a
+  // key up (offset growing), so its free end trails down: a positive turn.
+  const velocity = useVelocity(offset)
+  const leanRaw = useTransform(velocity, (v) => (reduced ? 0 : Math.max(-LEAN_MAX, Math.min(LEAN_MAX, v * LEAN))))
+  const lean = useSpring(leanRaw, { stiffness: 320, damping: 18 })
   const [hand, setHand] = useState(0)
   useMotionValueEvent(offset, "change", (o) => {
     const i = wrapIndex(count, Math.round(o))
@@ -616,6 +633,7 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
               position={i + c * count}
               period={period}
               offset={offset}
+              lean={lean}
               pool={pool}
               onTap={onTap}
               seam={i === 0}
