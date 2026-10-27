@@ -28,7 +28,7 @@ import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { ToolSwitch } from "./ToolSwitch"
 import { PoolNumerals } from "./CastHeaderStats"
 import { woundPenalty } from "#/domain/health"
-import { WisdomMeter, WisdomStairs, WisdomTrack, WisdomTwin, type WisdomLook } from "./WisdomMark"
+import { WisdomMeter } from "./WisdomMark"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
@@ -54,11 +54,6 @@ interface CharacterSheetProps {
   /** Flips the standing tool fact (issue #107). Present only on the
    * viewer's own sheet; a refusal speaks at the switch. */
   onSetMagicalTool?: ((hasMagicalTool: boolean) => Promise<unknown>) | undefined
-  /** AUDITION KNOB (MAG-56, remove once the owner picks): which Wisdom look
-   * the title card wears (see WisdomMark.tsx). Each look brings its own
-   * home — heat and ladder stand beneath Gnosis, rail, word and scales take
-   * a row of their own. The session passes nothing and gets heat. */
-  wisdomLook?: WisdomLook | undefined
 }
 
 
@@ -73,7 +68,6 @@ export function CharacterSheet({
   pendingMana = 0,
   pendingWillpower = 0,
   onSetMagicalTool,
-  wisdomLook = "track",
 }: CharacterSheetProps) {
   const penalty = woundPenalty(character.healthTrack)
   const canToggle =
@@ -105,23 +99,28 @@ export function CharacterSheet({
             <h2 className="mv-h text-[30px] leading-none">
               {character.shadowName ?? character.name}
             </h2>
-            <div className="mv-data flex flex-wrap items-center gap-x-5 gap-y-2 whitespace-nowrap">
-              {/* the depletables: the health track and its penalty first,
-                  then Will · Mana */}
-              <span className="flex items-center gap-2">
-                <span title="Health" className="flex">
-                  <HealthTrack track={character.healthTrack} />
-                </span>
-                {penalty < 0 && (
-                  <span
-                    className="text-[13px] leading-none font-bold"
-                    style={{ color: "var(--bad)" }}
-                    title="Wound penalty — it rides every roll"
-                  >
-                    {penalty}
+            {/* the depletables under eyebrows in the emblem row's grammar
+                (owner, 2026-10-27): HEALTH over the track and its penalty,
+                Will · Mana beside them on the same baseline, WISDOM over
+                the meter beneath at the row's full width */}
+            <div className="mv-data flex flex-wrap items-end gap-x-5 gap-y-2 whitespace-nowrap">
+              <div className="grid content-start gap-1.5">
+                <span className="mv-eyebrow">Health</span>
+                <span className="flex items-center gap-2" style={{ height: 20 }}>
+                  <span className="flex">
+                    <HealthTrack track={character.healthTrack} />
                   </span>
-                )}
-              </span>
+                  {penalty < 0 && (
+                    <span
+                      className="text-[13px] leading-none font-bold"
+                      style={{ color: "var(--bad)" }}
+                      title="Wound penalty — it rides every roll"
+                    >
+                      {penalty}
+                    </span>
+                  )}
+                </span>
+              </div>
               {/* Will · Mana: a pending spend shows what would be left,
                   in ember */}
               <span className="flex items-center" style={{ height: 20 }}>
@@ -133,9 +132,13 @@ export function CharacterSheet({
                 />
               </span>
             </div>
-            {/* Wisdom (MAG-56), the look that twins the health track: the
-                body's row above, the soul's row beneath, the same width */}
-            {wisdomLook === "twin" && <WisdomTwin wisdom={character.wisdom} />}
+            {/* Wisdom (MAG-56): the meter, beneath the body's row at its
+                width — the held cells filled in the rank's own color, the
+                lost ones hollow; the number lives in its tooltip */}
+            <div className="grid content-start gap-1.5">
+              <span className="mv-eyebrow">Wisdom</span>
+              <WisdomMeter wisdom={character.wisdom} />
+            </div>
           </div>
           <div className="mv-data grid shrink-0 justify-items-end gap-3 text-right">
             <span className="flex items-baseline gap-2 leading-none">
@@ -153,11 +156,6 @@ export function CharacterSheet({
             </TooltipProvider>
           </div>
         </div>
-        {/* Wisdom (MAG-56), the looks that take a row of their own: the
-            mage's conscience between who they are and what kind of mage */}
-        {wisdomLook === "track" && <WisdomTrack wisdom={character.wisdom} />}
-        {wisdomLook === "meter" && <WisdomMeter wisdom={character.wisdom} />}
-        {wisdomLook === "stairs" && <WisdomStairs wisdom={character.wisdom} />}
         <div className="flex items-end justify-between gap-6">
           <div className="flex flex-wrap items-stretch gap-x-4 gap-y-3">
             <EmblemGroup label="Path">

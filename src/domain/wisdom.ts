@@ -33,33 +33,6 @@ const ACTS_OF_HUBRIS: Record<WisdomRank, string> = {
 
 export const actsOfHubris = (wisdom: WisdomRank): string => ACTS_OF_HUBRIS[wisdom]
 
-// --- Bands (MAG-56): the drama of the number, in the sheet's words ---
-
-/**
- * Where a Wisdom stands, as a mage would feel it: 10 is serene, 8–9 clear,
- * 6–7 steady (a new mage's 7 is here), 4–5 faltering, 2–3 blind (the book's
- * "acts of blindness"), 1 lost to Endless Night. The names are the app's,
- * the thresholds follow the book's effects: the ±1 with spirits and Abyssal
- * things turn at 9 and 2, Paradox durations lengthen below 5.
- */
-export const WisdomBand = Schema.Literals(["serene", "clear", "steady", "faltering", "blind", "lost"])
-export type WisdomBand = typeof WisdomBand.Type
-
-const BAND_BY_RANK: Record<WisdomRank, WisdomBand> = {
-  10: "serene",
-  9: "clear",
-  8: "clear",
-  7: "steady",
-  6: "steady",
-  5: "faltering",
-  4: "faltering",
-  3: "blind",
-  2: "blind",
-  1: "lost",
-}
-
-export const wisdomBand = (wisdom: WisdomRank): WisdomBand => BAND_BY_RANK[wisdom]
-
 // --- Degeneration dice pool by Wisdom (pages 79-80, Mage) ---
 
 const DEGENERATION_POOL: Record<WisdomRank, number> = {

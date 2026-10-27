@@ -44,7 +44,6 @@ import { CastCard } from "#/components/game/CastCard"
 import { CastMount } from "#/components/game/CastMount"
 import { isUnresolved } from "#/domain/cast"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
-import type { WisdomLook } from "#/components/game/WisdomMark"
 import { pooledDice } from "#/machines/dice-pool"
 import { MessageBox } from "#/components/game/MessageBox"
 import { ChronicleSwitch, WorkingSlot } from "#/components/game/WorkingSlot"
@@ -96,18 +95,14 @@ const isSeat = (v: unknown): v is RigSeat =>
 const isGrammar = (v: unknown): v is RigGrammar =>
   typeof v === "string" && (GRAMMAR_ORDER as ReadonlyArray<string>).includes(v)
 
-// MAG-56: two Wisdom knobs. `wisdom` swaps the caster across the owner's
-// four cases — 10 amazing, 7 fine, 5 sketchy, 2 really bad — and the
-// resolved rung's aftermath follows (a Havoc that runs true at 10 and 7, a
-// Bedlam held one scene at 5 and 24 hours at 2); `look` swaps the Wisdom
-// treatment on the title card (WisdomMark.tsx) so the owner can judge them.
+// MAG-56: the Wisdom knob swaps the caster across the owner's four cases —
+// 10 amazing, 7 fine, 5 sketchy, 2 really bad — and the resolved rung's
+// aftermath follows (a Havoc that runs true at 10 and 7, a Bedlam held one
+// scene at 5 and 24 hours at 2).
 const WISDOM_ORDER = [10, 7, 5, 2] as const
 type RigWisdom = (typeof WISDOM_ORDER)[number]
-const LOOK_ORDER: ReadonlyArray<WisdomLook> = ["track", "meter", "stairs", "twin"]
 const isWisdom = (v: unknown): v is RigWisdom =>
   (WISDOM_ORDER as ReadonlyArray<unknown>).includes(typeof v === "string" ? Number(v) : v)
-const isLook = (v: unknown): v is WisdomLook =>
-  typeof v === "string" && (LOOK_ORDER as ReadonlyArray<string>).includes(v)
 
 export const Route = createFileRoute("/prototype/cast-dressing-room")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -116,7 +111,6 @@ export const Route = createFileRoute("/prototype/cast-dressing-room")({
     grammar: isGrammar(search.grammar) ? search.grammar : ("merge" as RigGrammar),
     hurt: search.hurt === true || search.hurt === "true",
     wisdom: isWisdom(search.wisdom) ? (Number(search.wisdom) as RigWisdom) : (7 as RigWisdom),
-    look: isLook(search.look) ? search.look : ("track" as WisdomLook),
   }),
   component: DressingRoom,
 })
@@ -385,7 +379,7 @@ const SEAT_VIEW: Record<
 // ── The rig ──────────────────────────────────────────────────────────────────
 
 function DressingRoom() {
-  const { rung, seat, grammar, hurt, wisdom, look } = Route.useSearch()
+  const { rung, seat, grammar, hurt, wisdom } = Route.useSearch()
   const casterNow = hurt ? hurtArctusSheet : arctusSheet
   // MAG-52: the sheet's tool switch flips a local copy (no server here).
   const [toolInHand, setToolInHand] = useState(false)
@@ -576,7 +570,6 @@ function DressingRoom() {
               // a pending spend, so the header's ember is judged too
               pendingMana={2}
               pendingWillpower={1}
-              wisdomLook={look}
               onSetMagicalTool={(next) => {
                 setToolInHand(next)
                 return Promise.resolve()
@@ -660,22 +653,6 @@ function DressingRoom() {
               title="MAG-56: the caster's Wisdom — 10 amazing, 7 fine, 5 sketchy, 2 really bad; the resolved aftermath follows"
             >
               W{w}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1">
-          {LOOK_ORDER.map((l) => (
-            <button
-              key={l}
-              onClick={() =>
-                void navigate({ search: (prev) => ({ ...prev, look: l }), replace: true })
-              }
-              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                l === look ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
-              }`}
-              title="MAG-56: the Wisdom look on the title card (WisdomMark.tsx)"
-            >
-              {l}
             </button>
           ))}
         </div>

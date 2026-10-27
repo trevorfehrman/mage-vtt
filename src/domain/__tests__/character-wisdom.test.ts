@@ -2,7 +2,7 @@ import { Schema } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import { CharacterSheet, decodeSheet } from "../character"
 import { makeAldousSheet } from "../testing/fixtures"
-import { actsOfHubris, STARTING_WISDOM, wisdomBand } from "../wisdom"
+import { actsOfHubris, STARTING_WISDOM } from "../wisdom"
 
 /**
  * Wisdom on the sheet (MAG-56): the morality trait rides the sheet as a
@@ -37,20 +37,5 @@ describe("CharacterSheet.wisdom (MAG-56)", () => {
     expect(actsOfHubris(10)).toContain("magic where the mundane would do")
     expect(actsOfHubris(7)).toContain("laying a curse")
     expect(actsOfHubris(1)).toContain("stealing a soul")
-  })
-})
-
-describe("wisdomBand (MAG-56: the drama of the number)", () => {
-  it("10 is serene, 8–9 clear, 6–7 steady, 4–5 faltering, 2–3 blind, 1 lost", () => {
-    expect(wisdomBand(10)).toBe("serene")
-    expect(wisdomBand(9)).toBe("clear")
-    expect(wisdomBand(8)).toBe("clear")
-    expect(wisdomBand(7)).toBe("steady")
-    expect(wisdomBand(6)).toBe("steady")
-    expect(wisdomBand(5)).toBe("faltering")
-    expect(wisdomBand(4)).toBe("faltering")
-    expect(wisdomBand(3)).toBe("blind")
-    expect(wisdomBand(2)).toBe("blind")
-    expect(wisdomBand(1)).toBe("lost")
   })
 })
