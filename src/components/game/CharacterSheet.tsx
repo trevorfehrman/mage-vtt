@@ -1,8 +1,9 @@
 import { type CSSProperties, type ReactNode } from "react"
+import { Option } from "effect"
 import {
-  attainmentGnosis,
+  attainmentGates,
   rulingArcanaOf,
-  specialtyComponentName,
+  specialtyComponent,
   type ArcanumName,
   type CharacterSheet as CharacterSheetData,
   type SkillKey,
@@ -29,7 +30,7 @@ import { RoteBook } from "./RoteBook"
 import { TraitSky } from "./TraitSky"
 import { Separator } from "#/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
-import { DotRating } from "./DotRating"
+import { DOT_RATING_WIDTH, DotRating } from "./DotRating"
 import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { ToolSwitch } from "./ToolSwitch"
 import { PoolNumerals } from "./CastHeaderStats"
@@ -323,6 +324,7 @@ export function CharacterSheet({
       >
         <div className="relative">
           <TraitSky pool={pool} traitColumns={traitColumnsOf(character)} />
+          <TooltipProvider>
           <div className="mv-sky-halo relative z-10 grid grid-cols-3 gap-x-6">
             {SHEET_CATEGORIES.map((category) => (
               <CategoryColumn
@@ -336,7 +338,7 @@ export function CharacterSheet({
                   .map(([key, dots]) => ({
                     name: formatSkillName(key),
                     dots,
-                    specialty: character.specialtyFor(key),
+                    specialty: Option.getOrUndefined(character.specialtyFor(key)),
                   }))}
                 onToggle={toggle}
                 isActive={isActive}
@@ -345,6 +347,7 @@ export function CharacterSheet({
               />
             ))}
           </div>
+          </TooltipProvider>
         </div>
       </Section>
 
@@ -362,18 +365,17 @@ export function CharacterSheet({
           <div className="mv-panel grid gap-3 rounded-[3px] p-4">
             <span className="mv-h text-[22px] leading-none">{character.legacy.name}</span>
             <ol className="grid gap-1.5">
-              {character.legacy.attainments.map((attainment, i) => {
-                const at = attainmentGnosis(i)
-                const reached = character.gnosis >= at
+              {attainmentGates(character.legacy).map(({ name, gnosis }) => {
+                const reached = character.gnosis >= gnosis
                 return (
-                  <li key={attainment} className="flex items-baseline gap-3 text-[14px]">
+                  <li key={name} className="flex items-baseline gap-3 text-[14px]">
                     <span
                       className="mv-data w-[5.5em] shrink-0 text-[11px] uppercase tracking-wider"
                       style={{ color: reached ? "var(--accent)" : "var(--dim)" }}
                     >
-                      Gnosis {at}
+                      Gnosis {gnosis}
                     </span>
-                    <span style={{ color: reached ? "var(--ink)" : "var(--dim)" }}>{attainment}</span>
+                    <span style={{ color: reached ? "var(--ink)" : "var(--dim)" }}>{name}</span>
                   </li>
                 )
               })}
@@ -504,7 +506,7 @@ function HealthTrack({
               onClick={() => onMark(replacing(i, cycleBox(box)))}
               className={`${boxClass} cursor-pointer`}
               style={boxStyle(box)}
-              title="Click to mark the wound: clear → bashing → lethal → aggravated"
+              title="Click: next wound (clear → bashing → lethal → aggravated)"
               aria-label={`Health box ${i + 1}: ${box.severity}. Click to mark the next wound.`}
             >
               {healthBoxGlyph(box.severity)}
@@ -523,13 +525,7 @@ function HealthTrack({
               onClick={() => onMark(replacing(i, toggleResistant(box)))}
               disabled={box.severity === "empty"}
               className="absolute left-1/2 top-full flex h-[9px] w-5 -translate-x-1/2 cursor-pointer items-start justify-center pt-[2px] disabled:cursor-default"
-              title={
-                box.severity === "empty"
-                  ? "Resistant marks a wound; this box is clear"
-                  : box.resistant
-                    ? "Resistant — heals only naturally. Click to clear the dot."
-                    : "Click to mark this wound Resistant (heals only naturally)"
-              }
+              title={box.severity === "empty" ? undefined : "Resistant (heals only naturally) · click to toggle"}
               aria-label={`Health box ${i + 1}: ${box.resistant ? "Resistant" : "not Resistant"}. Click to toggle.`}
               aria-pressed={box.resistant}
             >
@@ -649,11 +645,7 @@ function CategoryColumn({
   const zone = (type: PoolComponentType, traits: ReadonlyArray<SkillEntry>, color?: string) =>
     traits.map(({ name, dots, specialty }) => {
       const active = isActive(type, name)
-      const component = specialty && {
-        type: "modifier" as const,
-        name: specialtyComponentName(specialty),
-        dots: 1,
-      }
+      const component = specialty && specialtyComponent(specialty)
       const specialtyActive = component !== undefined && isActive(component.type, component.name)
       return (
         <div key={name} className="relative">
@@ -735,36 +727,39 @@ function SpecialtyMark({
       <circle cx="7" cy="7" r="1.6" fill="currentColor" />
     </svg>
   )
+  // floats just left of the row's dots: the rating's width plus the row's
+  // right padding and a breath
+  const place: CSSProperties = { right: DOT_RATING_WIDTH + 9 }
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          {armable ? (
-            <button
-              type="button"
-              onClick={onToggle}
-              aria-pressed={armed}
-              aria-label={words}
-              className="absolute top-1/2 right-[52px] grid size-5 -translate-y-1/2 cursor-pointer place-items-center rounded-full"
-            >
-              {glyph}
-            </button>
-          ) : (
-            <span
-              tabIndex={0}
-              aria-label={words}
-              className="absolute top-1/2 right-[52px] grid size-5 -translate-y-1/2 place-items-center"
-            >
-              {glyph}
-            </span>
-          )}
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={4}>
-          {words}
-          {armable && (armed ? " · in the pool" : " · click to add it")}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {armable ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-pressed={armed}
+            aria-label={words}
+            className="absolute top-1/2 grid size-5 -translate-y-1/2 cursor-pointer place-items-center rounded-full"
+            style={place}
+          >
+            {glyph}
+          </button>
+        ) : (
+          <span
+            tabIndex={0}
+            aria-label={words}
+            className="absolute top-1/2 grid size-5 -translate-y-1/2 place-items-center"
+            style={place}
+          >
+            {glyph}
+          </span>
+        )}
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={4}>
+        {words}
+        {armable && (armed ? " · in the pool" : " · click to add it")}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

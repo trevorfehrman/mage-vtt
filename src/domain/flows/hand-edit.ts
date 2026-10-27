@@ -1,7 +1,6 @@
-import { Effect, Schema } from "effect"
+import { Effect, Option, Schema } from "effect"
 import {
   getSessionScopedSheet,
-  requireMember,
   requireRepairAuthority,
   requireSessionCharacter,
 } from "../authz"
@@ -12,19 +11,26 @@ import {
   normalizeHealthTrack,
   type HealthBox,
 } from "../damage"
-import { CharacterId, SessionId } from "../ids"
+import { CharacterId, PlayerId, SessionId } from "../ids"
 import { tableName } from "../membership"
+import { CurrentActor } from "../ports/current-actor"
 import { GameStore, type SheetPatch } from "../ports/game-store"
 import { Experience, Mana, Willpower } from "../quantities"
 import { WisdomRank } from "../wisdom"
 
 /**
+ * The sheet's three doors outside any game action: `handEditSheet`, the
+ * Storyteller's repair; `markSheet`, the player's own mark (MAG-63); and
+ * `setMagicalTool`, the standing tool fact. The first two share one body
+ * (`recordSheetChange`) and differ in their ladder and their verb.
+ *
  * `handEditSheet` — the fudge/repair path (PRD #11, issue #19): a direct,
  * free-form change to a Character Sheet's current-state values, made outside
  * any game action.
  *
  * The authority ladder is **inverted** (`requireRepairAuthority`): the owning
- * Player is rejected — players change their sheet only through actions — and
+ * Player is rejected — a player's own marks go through `markSheet`, their
+ * other changes through actions — and
  * only the session's Storyteller or a Dev pass, every accepted edit stamped
  * with a `repair` Override (ADR-0006) and narrated as one system Activity
  * entry (ADR-0003/0009). The editable surface is exactly the narrow
@@ -120,6 +126,43 @@ const describeChanges = (
       : []),
   ].join(", ")
 
+/** Who made the change, as the Activity entry names them. */
+interface SheetChangeBy {
+  readonly userId: PlayerId
+  readonly tableName: string
+}
+
+/**
+ * The body both doors share once their ladder has passed: the track keeps
+ * its box count (capacity is shape), the patch lands, and one system
+ * Activity entry narrates it in the actor's name with the door's verb — the
+ * write helper stamps any recorded Override structurally (ADR-0006).
+ */
+const recordSheetChange = Effect.fn("Flows.handEdit.recordSheetChange")(function* (
+  sheet: CharacterSheet,
+  by: SheetChangeBy,
+  verb: string,
+  patch: SheetPatch,
+) {
+  if (
+    patch.healthTrack !== undefined &&
+    patch.healthTrack.length !== sheet.healthTrack.length
+  ) {
+    return yield* new InvalidHandEdit({
+      message: `The health track has ${sheet.healthTrack.length} boxes.`,
+    })
+  }
+  const store = yield* GameStore
+  const changes = describeChanges(sheet, patch)
+  yield* store.patchSheet(sheet.id, patch)
+  return yield* store.insertMessage({
+    sessionId: sheet.sessionId,
+    sender: { userId: by.userId, displayName: by.tableName },
+    text: `${by.tableName} ${verb} ${sheet.name}: ${changes}`,
+    visibility: "system",
+  })
+})
+
 export const handEditSheet = Effect.fn("Flows.handEdit.handEditSheet")(function* (
   args: HandEditArgs,
 ) {
@@ -156,8 +199,6 @@ export const handEditSheet = Effect.fn("Flows.handEdit.handEditSheet")(function*
     return yield* new InvalidHandEdit({ message: "Nothing to edit." })
   }
 
-  const store = yield* GameStore
-
   const sheet = yield* getSessionScopedSheet(
     SessionId.make(args.sessionId),
     CharacterId.make(args.characterId),
@@ -166,8 +207,9 @@ export const handEditSheet = Effect.fn("Flows.handEdit.handEditSheet")(function*
   // The inverted ladder: owner rejected, ST/Dev pass, repair Override recorded.
   const editor = yield* requireRepairAuthority(SessionId.make(args.sessionId))
 
-  // Capacity is shape: pools fill to their printed size, the track keeps its
-  // box count — a hand edit fills the form, it doesn't resize it.
+  // Capacity is shape: pools fill to their printed size — a hand edit fills
+  // the form, it doesn't resize it (the track's box count is checked by the
+  // shared body).
   if (patch.manaCurrent !== undefined && patch.manaCurrent > sheet.maxMana) {
     return yield* new InvalidHandEdit({
       message: `Mana holds at most ${sheet.maxMana} at Gnosis ${sheet.gnosis}.`,
@@ -181,26 +223,8 @@ export const handEditSheet = Effect.fn("Flows.handEdit.handEditSheet")(function*
       message: `Willpower holds at most ${sheet.willpower}.`,
     })
   }
-  if (
-    patch.healthTrack !== undefined &&
-    patch.healthTrack.length !== sheet.healthTrack.length
-  ) {
-    return yield* new InvalidHandEdit({
-      message: `The health track has ${sheet.healthTrack.length} boxes.`,
-    })
-  }
 
-  const changes = describeChanges(sheet, patch)
-  yield* store.patchSheet(sheet.id, patch)
-
-  // One system Activity entry, attributed to the editor — the write helper
-  // stamps the recorded Override structurally (ADR-0006).
-  return yield* store.insertMessage({
-    sessionId: sheet.sessionId,
-    sender: { userId: editor.userId, displayName: editor.tableName },
-    text: `${editor.tableName} hand-edited ${sheet.name}: ${changes}`,
-    visibility: "system",
-  })
+  return yield* recordSheetChange(sheet, editor, "hand-edited", patch)
 })
 
 // --- The mark-sheet door (MAG-63) ---
@@ -257,7 +281,6 @@ export const markSheet = Effect.fn("Flows.handEdit.markSheet")(function* (
     return yield* new InvalidHandEdit({ message: "Nothing to mark." })
   }
 
-  const store = yield* GameStore
   const sessionId = SessionId.make(args.sessionId)
 
   // The normal ladder: the owner, or an ST/Dev in their stead (Override-recorded).
@@ -265,26 +288,21 @@ export const markSheet = Effect.fn("Flows.handEdit.markSheet")(function* (
     sessionId,
     CharacterId.make(args.characterId),
   )
-  const marker = yield* requireMember(sessionId)
 
-  if (
-    patch.healthTrack !== undefined &&
-    patch.healthTrack.length !== sheet.healthTrack.length
-  ) {
-    return yield* new InvalidHandEdit({
-      message: `The health track has ${sheet.healthTrack.length} boxes.`,
-    })
+  // The entry's name: the actor's table name, or — for a Dev who is no
+  // member at all, whom the ladder admits — their id, as the repair door does.
+  const actor = yield* CurrentActor
+  const store = yield* GameStore
+  const membership = yield* store.getMembership(sessionId, actor.userId).pipe(Effect.option)
+  const by: SheetChangeBy = {
+    userId: actor.userId,
+    tableName: Option.match(membership, {
+      onNone: () => actor.userId,
+      onSome: tableName,
+    }),
   }
 
-  const changes = describeChanges(sheet, patch)
-  yield* store.patchSheet(sheet.id, patch)
-
-  return yield* store.insertMessage({
-    sessionId: sheet.sessionId,
-    sender: { userId: marker.userId, displayName: tableName(marker) },
-    text: `${tableName(marker)} marked ${sheet.name}: ${changes}`,
-    visibility: "system",
-  })
+  return yield* recordSheetChange(sheet, by, "marked", patch)
 })
 
 export const SetMagicalToolArgs = Schema.Struct({

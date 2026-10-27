@@ -1,10 +1,11 @@
-import { Effect, Result, Schema } from "effect"
+import { Array as Arr, Effect, Option, Result, Schema } from "effect"
 import {
   HealthTrack,
   healthBox,
   normalizeHealthTrack,
   type HealthBox,
 } from "./damage"
+import { type PoolComponentInput } from "./dice"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "./ids"
 import { manaPerTurnByGnosis, toGnosisRank } from "./mana-economy"
 import { Dots, Experience, Mana, Willpower } from "./quantities"
@@ -286,19 +287,36 @@ export const specialtyComponentName = (specialty: SkillSpecialty): string =>
   `Specialty: ${specialty.label}`
 
 /**
- * A Legacy (MAG-61; Mage p. 93): the mage's one specialization, chosen at
- * Gnosis 3 or higher, granting up to three attainments as Gnosis climbs.
+ * The +1 the pool offers for a specialty: a one-die modifier named after
+ * it. Offered only for a skill that carries one — `specialtyComponentFor`
+ * on the sheet says which — and only toggled by the player, since whether
+ * the roll falls inside the specialty is their judgment.
  */
-export const Legacy = Schema.Struct({
-  name: Schema.String,
-  attainments: Schema.Array(Schema.String),
+export const specialtyComponent = (specialty: SkillSpecialty): PoolComponentInput => ({
+  type: "modifier",
+  name: specialtyComponentName(specialty),
+  dots: 1,
 })
-export type Legacy = typeof Legacy.Type
 
 /** The Gnosis each attainment opens at (p. 93): the first at 3, then 5, then 7. */
 const ATTAINMENT_GNOSIS = [3, 5, 7] as const
-export const attainmentGnosis = (index: number): number =>
-  ATTAINMENT_GNOSIS[Math.min(index, ATTAINMENT_GNOSIS.length - 1)]
+
+/**
+ * A Legacy (MAG-61; Mage p. 93): the mage's one specialization, chosen at
+ * Gnosis 3 or higher, granting up to three attainments as Gnosis climbs —
+ * three, so the list is bounded by the book and the gates are total.
+ */
+export const Legacy = Schema.Struct({
+  name: Schema.String,
+  attainments: Schema.Array(Schema.String).check(Schema.isMaxLength(ATTAINMENT_GNOSIS.length)),
+})
+export type Legacy = typeof Legacy.Type
+
+/** Each attainment with the Gnosis it opens at: the first at 3, then 5, then 7. */
+export const attainmentGates = (
+  legacy: Legacy,
+): ReadonlyArray<{ name: string; gnosis: number }> =>
+  Arr.zipWith(legacy.attainments, ATTAINMENT_GNOSIS, (name, gnosis) => ({ name, gnosis }))
 
 const SheetSkills = Schema.Struct({
   mental: Schema.Struct({
@@ -430,9 +448,14 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
     return this.skillSpecialties ?? []
   }
 
-  /** The specialty a skill carries, if any (a skill carries at most one on this sheet). */
-  specialtyFor(skill: SkillKey): SkillSpecialty | undefined {
-    return this.specialties.find((s) => s.skill === skill)
+  /** The specialty a skill carries (a skill carries at most one on this sheet). */
+  specialtyFor(skill: SkillKey): Option.Option<SkillSpecialty> {
+    return Arr.findFirst(this.specialties, (s) => s.skill === skill)
+  }
+
+  /** The pool's +1 for a skill's specialty, when the skill carries one. */
+  specialtyComponentFor(skill: SkillKey): Option.Option<PoolComponentInput> {
+    return Option.map(this.specialtyFor(skill), specialtyComponent)
   }
 
   /** Mana this mage may spend in one turn (MAG-57; Mage p. 76): Gnosis's own number, 10 at Gnosis 9, 15 at 10. */

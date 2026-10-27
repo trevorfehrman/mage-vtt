@@ -11,6 +11,9 @@ interface DotRatingProps {
   color?: string
 }
 
+/** The rating's rendered width: five 7px dots and four 2px gaps — what sits beside it aligns on this. */
+export const DOT_RATING_WIDTH = 5 * 7 + 4 * 2
+
 export function DotRating({
   current,
   max = 5,

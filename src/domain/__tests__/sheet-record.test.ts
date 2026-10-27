@@ -1,5 +1,7 @@
+import { Effect, Option, Random } from "effect"
 import { describe, expect, it } from "@effect/vitest"
-import { attainmentGnosis, SkillKey, specialtyComponentName } from "../character"
+import { attainmentGates, SkillKey, specialtyComponent, specialtyComponentName } from "../character"
+import { buildPool, rollPool } from "../dice"
 import { cycleBox, toggleResistant } from "../health"
 import { makeAldousSheet } from "../testing/fixtures"
 
@@ -41,8 +43,8 @@ describe("CharacterSheet: Skill Specialties (MAG-58)", () => {
     const sheet = makeAldousSheet({
       skillSpecialties: [{ skill: "occult", label: "Goetia" }],
     })
-    expect(sheet.specialtyFor("occult")).toEqual({ skill: "occult", label: "Goetia" })
-    expect(sheet.specialtyFor("science")).toBeUndefined()
+    expect(Option.getOrUndefined(sheet.specialtyFor("occult"))).toEqual({ skill: "occult", label: "Goetia" })
+    expect(Option.isNone(sheet.specialtyFor("science"))).toBe(true)
   })
 
   it("a specialty naming no skill of the sheet's is refused", () => {
@@ -53,7 +55,32 @@ describe("CharacterSheet: Skill Specialties (MAG-58)", () => {
 
   it("the pool names the +1 after the specialty", () => {
     expect(specialtyComponentName({ skill: "occult", label: "Goetia" })).toBe("Specialty: Goetia")
+    expect(specialtyComponent({ skill: "occult", label: "Goetia" })).toEqual({
+      type: "modifier",
+      name: "Specialty: Goetia",
+      dots: 1,
+    })
   })
+
+  it("the +1 is offered only for a skill that carries a specialty", () => {
+    const sheet = makeAldousSheet({ skillSpecialties: [{ skill: "occult", label: "Goetia" }] })
+    expect(Option.isSome(sheet.specialtyComponentFor("occult"))).toBe(true)
+    expect(Option.isNone(sheet.specialtyComponentFor("science"))).toBe(true)
+    expect(Option.isNone(makeAldousSheet().specialtyComponentFor("occult"))).toBe(true)
+  })
+
+  it.effect("toggled in, the specialty is one more die in the built pool", () =>
+    Effect.gen(function* () {
+      const sheet = makeAldousSheet({ skillSpecialties: [{ skill: "occult", label: "Goetia" }] })
+      const skill = { type: "skill" as const, name: "Occult", dots: 4 }
+      const plus = Option.getOrThrow(sheet.specialtyComponentFor("occult"))
+      const without = yield* buildPool([skill])
+      const withIt = yield* buildPool([skill, plus])
+      expect(withIt.size - without.size).toBe(1)
+      const roll = yield* rollPool(withIt).pipe(Random.withSeed("goetia"))
+      expect(roll.rolls).toHaveLength(5)
+    }),
+  )
 })
 
 describe("CharacterSheet: the words (MAG-61)", () => {
@@ -74,10 +101,16 @@ describe("CharacterSheet: the words (MAG-61)", () => {
     expect(sheet.consilium).toBe("The Narrows")
   })
 
-  it("attainments open at Gnosis 3, 5 and 7 (p. 93)", () => {
-    expect(attainmentGnosis(0)).toBe(3)
-    expect(attainmentGnosis(1)).toBe(5)
-    expect(attainmentGnosis(2)).toBe(7)
+  it("attainments open at Gnosis 3, 5 and 7 (p. 93), and a Legacy holds at most three", () => {
+    expect(attainmentGates({ name: "Bokor", attainments: ["Eyes", "Bind", "Command"] })).toEqual([
+      { name: "Eyes", gnosis: 3 },
+      { name: "Bind", gnosis: 5 },
+      { name: "Command", gnosis: 7 },
+    ])
+    expect(attainmentGates({ name: "Bokor", attainments: ["Eyes"] })).toEqual([{ name: "Eyes", gnosis: 3 }])
+    expect(() =>
+      makeAldousSheet({ legacy: { name: "Bokor", attainments: ["a", "b", "c", "d"] } }),
+    ).toThrow()
   })
 })
 

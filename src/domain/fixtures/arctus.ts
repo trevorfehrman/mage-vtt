@@ -2,7 +2,7 @@
  * Arctus — pre-built Moros/Mysterium character for seeding.
  * Matches the test fixture from character.test.ts.
  */
-import type { SkillKey } from "../character"
+import type { SkillSpecialty } from "../character"
 
 export const arctusData = {
   name: "Arctus",
@@ -64,7 +64,7 @@ export const arctusData = {
     { skill: "occult", label: "Goetia" },
     { skill: "investigation", label: "Crime Scenes" },
     { skill: "larceny", label: "Locks" },
-  ] as { skill: SkillKey; label: string }[],
+  ] as SkillSpecialty[],
   nimbus: "A cold draught and the smell of wet iron; shadows lean toward him.",
   legacy: {
     name: "Bokor",

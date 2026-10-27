@@ -568,6 +568,23 @@ describe("Flows.handEdit.markSheet (MAG-63)", () => {
     }),
   )
 
+  it.effect("a Dev who is no member marks in the owner's stead — admitted, Override-recorded, named by id", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: DEV_USER, isDev: true })
+
+      yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        wisdom: 4,
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.wisdom).toBe(4)
+      const entry = store.messages[0]!
+      expect(entry.override).not.toBeNull()
+      expect(entry.text).toContain(`${DEV_USER} marked Aldous`)
+    }),
+  )
+
   it.effect("a member who is neither owner nor Storyteller is refused, sheet untouched", () =>
     Effect.gen(function* () {
       const store = seed({ userId: OTHER_PLAYER })

@@ -48,4 +48,7 @@ by taste:
   the rule's number (`wisdom`: a row without it is a new mage's 7, p. 69).
 - **Absence means none** → `Schema.optionalKey` plus a getter that says so
   (`knownRotes` → `rotes` is `[]`; `hasMagicalTool` → `magicalTool` is
-  `false`).
+  `false`). The getter earns its keep when "none" has a shape readers compute
+  with (an empty list, a zero, a false); a plain optional whose absence only
+  means "nothing to show" (`nimbus`, `legacy`, `cabal`, `consilium`, MAG-61)
+  stays `optionalKey` and readers test for it directly.

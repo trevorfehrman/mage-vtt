@@ -206,13 +206,12 @@ export function HandEditForm({
                 </form.Field>
 
                 {/* Unspent experience (MAG-57): a record, not a pool — no
-                    printed ceiling, so the stepper's max is nominal. */}
+                    printed ceiling. */}
                 <form.Field name="experienceUnspent">
                   {(field) => (
                     <Stepper
                       label="XP"
                       value={field.state.value}
-                      max={999}
                       onChange={field.handleChange}
                       dirty={dirty.experience}
                       errors={field.state.meta.errors}
@@ -298,7 +297,8 @@ function Stepper({
   value: number
   /** The floor the stepper clamps to: 0 for a pool, 1 for a rank like Wisdom. */
   min?: number
-  max: number
+  /** The ceiling, when the value has a printed one; a record like XP has none. */
+  max?: number
   onChange: (n: number) => void
   dirty: boolean
   /** Standard Schema issues from field.state.meta.errors — the steppers
@@ -324,7 +324,7 @@ function Stepper({
           {value}
         </span>
         <button
-          onClick={() => onChange(Math.min(max, value + 1))}
+          onClick={() => onChange(max === undefined ? value + 1 : Math.min(max, value + 1))}
           className="mv-btn grid size-6 place-items-center rounded-[3px] text-[13px] leading-none"
         >
           +

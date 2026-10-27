@@ -377,8 +377,9 @@ function SessionPage() {
               : undefined
           }
         />
-        {/* The hand-edit panel (issue #19): ST-only, on any sheet — the one
-            edit affordance in the app; players never see edit controls. */}
+        {/* The hand-edit panel (issue #19): ST-only, on any sheet — the
+            repair door (Mana, Will, XP, the track, Wisdom); players mark
+            their own track and Wisdom on the sheet itself (MAG-63). */}
         {isStoryteller && (
           <HandEditForm
             key={`${sheet.id}:${sheet.manaCurrent}:${sheet.willpowerCurrent}:${sheet.wisdom}:${sheet.experience}:${trackKey(sheet.healthTrack)}`}
