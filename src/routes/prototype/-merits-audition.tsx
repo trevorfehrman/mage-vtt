@@ -147,6 +147,28 @@ function Mark({ name, size, turned }: { name: MeritName; size: number | "100%"; 
   )
 }
 
+/** The keyhole: the one iconic shape, a round over a tapered slot, in the
+ * marks' stroke. Lit, the round fills ember and glows — the key is turned. */
+function Keyhole({ size, lit }: { size: number; lit: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      style={{ filter: lit ? "drop-shadow(0 0 5px var(--ember-glow))" : undefined, transition: "filter 0.3s" }}
+    >
+      <path d="M14.3 12.3 L16 20 H8 L9.7 12.3 A4.6 4.6 0 1 1 14.3 12.3 Z" />
+      <circle cx="12" cy="8.6" r="1.6" fill="currentColor" stroke="none" style={{ opacity: lit ? 1 : 0, transition: "opacity 0.3s" }} />
+    </svg>
+  )
+}
+
 /** The purse's pips: `size` of them, the first `spent` burning ember. */
 function Pips({ size, spent }: { size: number; spent: number }) {
   return (
@@ -360,6 +382,9 @@ const VISIBLE = 7 // rows in the frame, the key in hand at the middle
 // NAME_IN_HAND — every one of these a function of the wheel's offset, so
 // the growth is as continuous as the scroll and never a frame behind it
 const PART = 7
+/** the keyhole on the door's edge, and how far short of it a still key stops */
+const KEYHOLE = 26
+const REACH_SHORT = 22
 const MARK = 26
 const MARK_IN_HAND = 36
 const NAME = 10
@@ -419,10 +444,12 @@ function RingKey({
         style={{ x, color: ink }}
       >
         <motion.span aria-hidden className="block h-px" style={{ width: stem, marginLeft: stemMargin, background: lit ? "var(--ember)" : "var(--line)" }} />
-        <motion.span className="grid shrink-0 place-items-center" style={{ width: markSize, height: markSize }}>
+        {/* the mark and the name wear the sheet's background, so a key
+            strung on the reach line sits on it rather than behind it */}
+        <motion.span className="grid shrink-0 place-items-center rounded-full" style={{ width: markSize, height: markSize, background: "var(--bg)" }}>
           <Mark name={h.name} size="100%" turned={lit} />
         </motion.span>
-        <motion.span className="mv-data uppercase tracking-[0.12em]" style={{ fontSize: nameSize }}>
+        <motion.span className="mv-data uppercase tracking-[0.12em]" style={{ fontSize: nameSize, background: "var(--bg)", paddingInline: 3 }}>
           {h.name}
           {h.label !== undefined && <span className="normal-case tracking-normal" style={{ color: "var(--dim)" }}> ({h.label})</span>}
         </motion.span>
@@ -541,8 +568,27 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
   }
 
   const inHand = held[hand]!
+  const inHandLit = litOf(pool, inHand)
+  const inHandTurns = turnsOf(inHand)
+  const reaches = inHandTurns || mechanicOf(inHand).kind === "gate"
+  const reachInk = inHandLit ? "var(--ember)" : reaches ? "var(--ink)" : "var(--line)"
+  const middle = (VISIBLE * ROW) / 2
   return (
-    <div className="grid grid-cols-[minmax(0,15rem)_1fr] gap-x-8">
+    <div className="relative grid grid-cols-[minmax(0,15rem)_1fr] gap-x-8">
+      {/* the reach: one line from the ring across the gap to the keyhole;
+          the key in hand is strung on it. A key that opens something on
+          this table reaches the lock; a key that only opens things in the
+          story stops short of it. */}
+      <span
+        aria-hidden
+        className="absolute left-[6px] h-px"
+        style={{
+          top: middle,
+          width: `calc(15rem + 2rem - 6px - ${reaches ? KEYHOLE / 2 : REACH_SHORT}px)`,
+          background: reachInk,
+          transition: "background 0.3s, width 0.25s ease",
+        }}
+      />
       <div
         ref={frame}
         tabIndex={0}
@@ -577,8 +623,21 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
           )),
         )}
       </div>
-      {/* the door: what the key in hand opens */}
-      <div className="min-w-0 border-l pl-6" style={{ borderColor: "var(--line)" }}>
+      {/* the door: what the key in hand opens. Its edge is a line broken
+          around the keyhole; the keyhole is the turn. */}
+      <div className="relative min-w-0 pl-6">
+        <span aria-hidden className="absolute left-0 top-0 w-px" style={{ height: middle - KEYHOLE / 2 - 4, background: "var(--line)" }} />
+        <span aria-hidden className="absolute left-0 bottom-0 w-px" style={{ top: middle + KEYHOLE / 2 + 4, background: "var(--line)" }} />
+        <button
+          type="button"
+          disabled={!canToggle || !inHandTurns}
+          onClick={() => turn(inHand, pool, canToggle)}
+          aria-label={inHandLit ? `Let ${inHand.name} go` : `Turn ${inHand.name}`}
+          className={`absolute grid place-items-center ${inHandTurns ? "" : "cursor-default"}`}
+          style={{ left: -KEYHOLE / 2, top: middle - KEYHOLE / 2, width: KEYHOLE, height: KEYHOLE, color: reachInk, transition: "color 0.3s" }}
+        >
+          <Keyhole size={KEYHOLE} lit={inHandLit} />
+        </button>
         <InHand h={inHand} pool={pool} canToggle={canToggle} />
       </div>
     </div>
