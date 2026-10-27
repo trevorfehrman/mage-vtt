@@ -5,6 +5,7 @@ import { useMachine } from "@xstate/react"
 import { AnimatePresence, useReducedMotion } from "motion/react"
 import type { CastEntry } from "#/domain/activity"
 import {
+  aftermathWords,
   castPoolAfterParadox,
   containmentCap,
   containmentOutlook,
@@ -1872,6 +1873,10 @@ function Resolution({ cast }: { cast: CastEntry }) {
   const successes = cast.castSuccesses ?? 0
   const won = successes > 0
   const manifested = cast.severity !== undefined && cast.severity !== "none"
+  // The aftermath Wisdom governs (MAG-56): how long the Paradox holds, or
+  // what the Havoc Wisdom roll made of the loose spell — beside the severity,
+  // in the record's own small voice; rows before the stamps say nothing.
+  const aftermath = aftermathWords(cast)
   return (
     <div className="mt-2 grid justify-items-center gap-1.5">
       {(cast.castIsDramaticFailure || cast.castIsExceptionalSuccess) && (
@@ -1911,6 +1916,19 @@ function Resolution({ cast }: { cast: CastEntry }) {
               }}
             >
               {cast.severity}
+            </span>
+          )}
+          {manifested && aftermath !== null && (
+            <span
+              className="mv-data normal-case tracking-normal"
+              style={{ color: "var(--dim)", fontSize: 13 }}
+              title={
+                cast.severity === "havoc"
+                  ? `The caster rolled Wisdom ${cast.wisdom ?? ""}: ${cast.havocSuccesses ?? 0} successes`
+                  : `Paradox duration at Wisdom ${cast.wisdom ?? ""} (Mage p. 268)`
+              }
+            >
+              {aftermath}
             </span>
           )}
         </div>

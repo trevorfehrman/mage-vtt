@@ -203,7 +203,8 @@ export class InvalidPoolComponent extends Schema.TaggedError<InvalidPoolComponen
 // (pure rules leaves, ADR-0014).
 
 const SUCCESS_THRESHOLD = 8
-const EXCEPTIONAL_THRESHOLD = 5
+/** Five successes make any roll exceptional (WoD p. 125); the Havoc Wisdom roll reads it too. */
+export const EXCEPTIONAL_THRESHOLD = 5
 const CHANCE_DIE_SUCCESS = 10
 const CHANCE_DIE_DRAMATIC_FAILURE = 1
 

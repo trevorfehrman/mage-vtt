@@ -395,6 +395,72 @@ describe("Flows.vulgarCast — the whole handshake (ADR-0022)", () => {
       expect(store.rolls).toHaveLength(0)
       expect(store.casts[0]!.castRolls).toBeDefined()
       expect(store.casts[0]!.severity).toBe("bedlam")
+      // The aftermath Wisdom governs (MAG-56, p. 268): a Wisdom-7 caster's
+      // Bedlam holds for one scene; the Wisdom that decided it rides the card.
+      expect(store.casts[0]!.wisdom).toBe(7)
+      expect(store.casts[0]!.paradoxSpan).toBe("scene")
+      expect(store.casts[0]!.havocSuccesses).toBeUndefined()
+    }),
+  )
+
+  it.effect("a low-Wisdom caster's Bedlam lasts the table's 24 hours (MAG-56, p. 268)", () =>
+    Effect.gen(function* () {
+      const store = seed({
+        sheet: makeSheet({ wisdom: 2 }),
+        casts: [castAt("paradox", { paradoxSuccesses: 2, paradoxIsDramaticFailure: false })],
+      })
+
+      yield* releaseCast({
+        sessionId: SESSION,
+        castId: CastId.make("cast-prior"),
+        containedSuccesses: 0,
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      expect(store.casts[0]!.severity).toBe("bedlam")
+      expect(store.casts[0]!.wisdom).toBe(2)
+      expect(store.casts[0]!.paradoxSpan).toBe("day")
+    }),
+  )
+
+  it.effect("a Havoc rolls the caster's Wisdom inside the one commitment — the successes stamp the card, no span (MAG-56)", () =>
+    Effect.gen(function* () {
+      const store = seed({
+        casts: [castAt("paradox", { paradoxSuccesses: 1, paradoxIsDramaticFailure: false })],
+      })
+
+      yield* releaseCast({
+        sessionId: SESSION,
+        castId: CastId.make("cast-prior"),
+        containedSuccesses: 0,
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      const resolved = store.casts[0]!
+      expect(resolved.severity).toBe("havoc")
+      expect(resolved.wisdom).toBe(7)
+      // Seven Wisdom dice: between none and all of them land, never a chance die.
+      expect(resolved.havocSuccesses).toBeGreaterThanOrEqual(0)
+      expect(resolved.havocSuccesses).toBeLessThanOrEqual(7 * 2)
+      expect(resolved.paradoxSpan).toBeUndefined()
+      // The Wisdom roll is part of the record, never a roll entry of its own.
+      expect(store.rolls).toHaveLength(0)
+    }).pipe(Random.withSeed("havoc-seed")),
+  )
+
+  it.effect("no Paradox, nothing for Wisdom to govern: no span, no Havoc roll (MAG-56)", () =>
+    Effect.gen(function* () {
+      const store = seed({
+        casts: [castAt("paradox", { paradoxSuccesses: 1, paradoxIsDramaticFailure: false })],
+      })
+
+      yield* releaseCast({
+        sessionId: SESSION,
+        castId: CastId.make("cast-prior"),
+        containedSuccesses: 1,
+      }).pipe(as(PLAYER), Effect.provide(store.layer))
+
+      expect(store.casts[0]!.severity).toBe("none")
+      expect(store.casts[0]!.paradoxSpan).toBeUndefined()
+      expect(store.casts[0]!.havocSuccesses).toBeUndefined()
     }),
   )
 

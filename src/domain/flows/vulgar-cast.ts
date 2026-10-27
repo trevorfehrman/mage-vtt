@@ -1,4 +1,4 @@
-import { Effect, Option, Schema } from "effect"
+import { Effect, Match, Option, Schema } from "effect"
 import { tableName } from "../membership"
 import {
   NotYourCharacter,
@@ -34,9 +34,11 @@ import {
   modifierComplaint,
   ParadoxPoolModifier,
   resolveParadox,
+  type ParadoxSeverity,
 } from "../paradox"
+import { paradoxSpan } from "../paradox-effects"
 import { CurrentActor } from "../ports/current-actor"
-import { GameStore } from "../ports/game-store"
+import { GameStore, type CastPatch } from "../ports/game-store"
 import { DocumentNotFound } from "../ports/errors"
 import { Mana, Willpower } from "../quantities"
 import { requireVulgarSpell, resolveRotePool } from "../rote-cast"
@@ -47,6 +49,7 @@ import {
   calculateRotePool,
 } from "../spellcasting"
 import { spendWillpower, WILLPOWER_BONUS_DICE } from "../willpower-economy"
+import type { WisdomRank } from "../wisdom"
 import {
   ArcanumTooWeak,
   factorPenaltyComponents,
@@ -1078,6 +1081,34 @@ export type ReleaseCastArgs = typeof ReleaseCastArgs.Type
  * filled the last box — surfaces the full-bashing-track unconsciousness rule
  * for the Storyteller to adjudicate.
  */
+/**
+ * The aftermath Wisdom governs (MAG-56, Mage p. 268): a Havoc rolls the
+ * caster's Wisdom to learn whether the loose spell turns on its purpose — the
+ * successes stamp the card and the outcome derives from them; the four lasting
+ * severities take their span off the Wisdom table; no Paradox means nothing
+ * to stamp. Rolled here, inside the one Cast commitment, so the record is
+ * whole the moment the card resolves.
+ */
+const paradoxAftermath = Effect.fn("Flows.vulgarCast.paradoxAftermath")(function* (
+  severity: ParadoxSeverity,
+  wisdom: WisdomRank,
+) {
+  return yield* Match.value(severity).pipe(
+    Match.when("none", () => Effect.succeed<CastPatch>({})),
+    Match.when("havoc", () =>
+      Effect.gen(function* () {
+        const pool = yield* buildPool([{ type: "modifier", name: "Wisdom", dots: wisdom }])
+        const roll = yield* rollPool(pool)
+        return { havocSuccesses: roll.successes } satisfies CastPatch
+      }),
+    ),
+    Match.whenOr("bedlam", "anomaly", "branding", "manifestation", (kind) =>
+      Effect.succeed<CastPatch>({ paradoxSpan: paradoxSpan(kind, wisdom) }),
+    ),
+    Match.exhaustive,
+  )
+})
+
 export const releaseCast = Effect.fn("Flows.vulgarCast.releaseCast")(function* (
   args: ReleaseCastArgs,
 ) {
@@ -1122,6 +1153,7 @@ export const releaseCast = Effect.fn("Flows.vulgarCast.releaseCast")(function* (
   const result = yield* rollPool(dicePool)
 
   const severity = resolveParadox(uncontained).severity
+  const aftermath = yield* paradoxAftermath(severity, sheet.wisdom)
   yield* store.patchCast(castId, {
     status: "resolved",
     containedSuccesses: contained,
@@ -1134,6 +1166,8 @@ export const releaseCast = Effect.fn("Flows.vulgarCast.releaseCast")(function* (
     castIsDramaticFailure: result.isDramaticFailure,
     castIsExceptionalSuccess: result.isExceptionalSuccess,
     severity,
+    wisdom: sheet.wisdom,
+    ...aftermath,
   })
 
   const member = yield* casterMembership(cast)

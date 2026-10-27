@@ -365,7 +365,7 @@ function SessionPage() {
             edit affordance in the app; players never see edit controls. */}
         {isStoryteller && (
           <HandEditForm
-            key={`${sheet.id}:${sheet.manaCurrent}:${sheet.willpowerCurrent}:${trackKey(sheet.healthTrack)}`}
+            key={`${sheet.id}:${sheet.manaCurrent}:${sheet.willpowerCurrent}:${sheet.wisdom}:${trackKey(sheet.healthTrack)}`}
             sessionId={sessionId}
             characterId={viewed._id}
             character={sheet}

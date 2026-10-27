@@ -145,6 +145,9 @@ export const CharacterSeedData = Schema.Struct({
   path: Schema.String,
   order: Schema.String,
   gnosis: Schema.Number,
+  // Wisdom (MAG-56): optional column — rows written before it existed read as
+  // the book's starting 7 at the sheet decode; new ingests always carry it.
+  wisdom: Schema.optionalKey(Schema.Number),
   attributes: Schema.Struct({
     mental: Schema.Struct({
       intelligence: Schema.Number,
@@ -354,6 +357,12 @@ export const CastDoc = Schema.Struct({
   castIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
   castIsExceptionalSuccess: Schema.optionalKey(Schema.Boolean),
   severity: Schema.optionalKey(Schema.String),
+  // The aftermath Wisdom governs (MAG-56, page 268): the caster's Wisdom as
+  // the sheet stood at release; the duration a lasting Paradox takes off the
+  // Wisdom table; the Wisdom roll's successes when a Havoc runs loose.
+  wisdom: Schema.optionalKey(Schema.Number),
+  paradoxSpan: Schema.optionalKey(Schema.String),
+  havocSuccesses: Schema.optionalKey(Schema.Number),
   // Legacy negotiation columns — seven-rung rows only; no new writes.
   sleeperWitnesses: Schema.optionalKey(Schema.Boolean),
   witnessCount: Schema.optionalKey(Schema.Number),

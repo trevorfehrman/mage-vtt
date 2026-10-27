@@ -5,6 +5,7 @@ import { api } from "../../../convex/_generated/api"
 import type { CharacterSheet as CharacterSheetData } from "#/domain/character"
 import { BoxSeverity, HealthBox } from "#/domain/damage"
 import { Mana, Willpower } from "#/domain/quantities"
+import { WisdomRank } from "#/domain/wisdom"
 import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { seamErrorMessage } from "#/lib/seam-errors"
 import { issueMessages, standardSchemaFor, submitErrorMessage } from "#/lib/form"
@@ -32,6 +33,8 @@ const HandEditWorkingCopy = Schema.Struct({
   manaCurrent: Mana,
   willpowerCurrent: Willpower,
   healthTrack: Schema.Array(HealthBox),
+  // Wisdom (MAG-56): degeneration and recovery, the Storyteller's to record.
+  wisdom: WisdomRank,
 })
 
 const handEditStandard = standardSchemaFor(HandEditWorkingCopy)
@@ -69,7 +72,8 @@ const diffWorkingCopy = (values: WorkingCopy, defaults: WorkingCopy) => {
   const track = values.healthTrack.some(
     (box, i) => !sameBox(box, defaults.healthTrack[i]!),
   )
-  return { mana, willpower, track, any: mana || willpower || track }
+  const wisdom = values.wisdom !== defaults.wisdom
+  return { mana, willpower, track, wisdom, any: mana || willpower || track || wisdom }
 }
 
 export function HandEditForm({
@@ -89,6 +93,7 @@ export function HandEditForm({
     manaCurrent: character.manaCurrent,
     willpowerCurrent: character.willpowerCurrent,
     healthTrack: character.healthTrack,
+    wisdom: character.wisdom,
   }
 
   const form = useForm({
@@ -110,6 +115,7 @@ export function HandEditForm({
             ...(dirty.track
               ? { healthTrack: decoded.healthTrack.map((box) => ({ ...box })) }
               : {}),
+            ...(dirty.wisdom ? { wisdom: decoded.wisdom } : {}),
           })
           // The edit lands on the sheet and in the Activity Log,
           // Override-stamped; the route's remount key resets this form.
@@ -184,6 +190,22 @@ export function HandEditForm({
                     />
                   )}
                 </form.Field>
+                {/* Wisdom (MAG-56): a trait, not a pool — it runs 1 to 10 and
+                    moves only when the Storyteller rules a degeneration or
+                    the mage buys a dot back. */}
+                <form.Field name="wisdom">
+                  {(field) => (
+                    <Stepper
+                      label="Wisdom"
+                      value={field.state.value}
+                      min={1}
+                      max={10}
+                      onChange={(n) => field.handleChange(n as WisdomRank)}
+                      dirty={dirty.wisdom}
+                      errors={field.state.meta.errors}
+                    />
+                  )}
+                </form.Field>
 
                 <form.Field name="healthTrack">
                   {(field) => (
@@ -254,6 +276,7 @@ export function HandEditForm({
 function Stepper({
   label,
   value,
+  min = 0,
   max,
   onChange,
   dirty,
@@ -261,6 +284,8 @@ function Stepper({
 }: {
   label: string
   value: number
+  /** The floor the stepper clamps to: 0 for a pool, 1 for a rank like Wisdom. */
+  min?: number
   max: number
   onChange: (n: number) => void
   dirty: boolean
@@ -275,7 +300,7 @@ function Stepper({
       <div className="flex items-center gap-1.5">
         <span className="mv-eyebrow">{label}</span>
         <button
-          onClick={() => onChange(Math.max(0, value - 1))}
+          onClick={() => onChange(Math.max(min, value - 1))}
           className="mv-btn grid size-6 place-items-center rounded-[3px] text-[13px] leading-none"
         >
           −

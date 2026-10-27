@@ -44,7 +44,7 @@ Full audit of both rulebooks against implemented domain modules. Originally cond
 
 ### Paradox Details
 
-17. **Paradox duration by Wisdom** (p.268) — Bedlam/Anomaly/Branding/Manifestation duration tables
+17. **Paradox duration by Wisdom** (p.268) — Bedlam/Anomaly/Branding/Manifestation duration tables. _Corrected under MAG-56 (2026-10-26): the first implementation stored invented minute counts that did not match the printed table; `paradoxSpan` now returns the book's own spans (one scene at Wisdom 5+, then the two columns down to two days / one month)._
 18. **Paradox backlash** (p.124) — convert Paradox successes to Resistant bashing, one-for-one
 19. **Havoc resolution** (p.268) — Wisdom roll, failure reverses spell
 20. **Bedlam derangement severity** (p.268) — Arcanum 1-3 = mild, 4-5 = severe, per-Arcanum table

@@ -334,6 +334,38 @@ describe("Flows.handEdit.handEditSheet (issue #19)", () => {
     }),
   )
 
+  it.effect("Wisdom is hand-editable and narrated — degeneration is the Storyteller's to record (MAG-56)", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: ST_USER })
+
+      yield* handEditSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        wisdom: 6,
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.wisdom).toBe(6)
+      expect(store.sheetPatches).toEqual([{ characterId: CHARACTER, patch: { wisdom: 6 } }])
+      expect(store.messages[0]!.text).toContain("Wisdom 7 → 6")
+    }),
+  )
+
+  it.effect("a Wisdom the rank cannot hold is refused InvalidHandEdit, untouched", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: ST_USER })
+
+      const exit = yield* handEditSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        wisdom: 11,
+      }).pipe(Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("InvalidHandEdit")
+      expect(store.sheetPatches).toHaveLength(0)
+      expect(store.sheets.get(CHARACTER)!.wisdom).toBe(7)
+    }),
+  )
+
   it.effect("an empty edit is refused InvalidHandEdit", () =>
     Effect.gen(function* () {
       const store = seed({ userId: ST_USER })

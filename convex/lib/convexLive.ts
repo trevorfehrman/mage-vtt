@@ -243,6 +243,7 @@ export const convexLive = (
             ...(patch.healthTrack !== undefined
               ? { healthTrack: patch.healthTrack.map((box) => ({ ...box })) }
               : {}),
+            ...(patch.wisdom !== undefined ? { wisdom: patch.wisdom } : {}),
           }),
         )
       }),
@@ -483,6 +484,11 @@ export const convexLive = (
               ? { castIsExceptionalSuccess: patch.castIsExceptionalSuccess }
               : {}),
             ...(patch.severity !== undefined ? { severity: patch.severity } : {}),
+            ...(patch.wisdom !== undefined ? { wisdom: patch.wisdom } : {}),
+            ...(patch.paradoxSpan !== undefined ? { paradoxSpan: patch.paradoxSpan } : {}),
+            ...(patch.havocSuccesses !== undefined
+              ? { havocSuccesses: patch.havocSuccesses }
+              : {}),
             ...(marker ? { override: marker } : {}),
             updatedAt,
           }),

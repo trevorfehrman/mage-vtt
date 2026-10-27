@@ -11,6 +11,7 @@ import { RoteArcanumName, RotePool } from "./rote-pool"
 // Value-only imports; rote-cast's import of this module is type-only, so the
 // module graph stays acyclic at runtime.
 import { ORDER_ROTE_SKILLS, SpellAspect } from "./rote-cast"
+import { STARTING_WISDOM, WisdomRank } from "./wisdom"
 
 // --- Constrained number types ---
 //
@@ -351,6 +352,11 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   path: PathName,
   order: OrderName,
   gnosis: SheetDots,
+  // Wisdom (MAG-56): the morality trait, 1–10, read by Paradox durations and
+  // the Havoc roll. Rows stored before the column existed decode as a new
+  // mage's 7 (page 69) — the book's own starting value, not a guess — until
+  // a hand edit or re-ingest writes the truth; the Type side is never absent.
+  wisdom: WisdomRank.pipe(Schema.withDecodingDefaultKey(Effect.succeed(STARTING_WISDOM))),
   attributes: SheetAttributes,
   skills: SheetSkills,
   arcana: SheetArcana,

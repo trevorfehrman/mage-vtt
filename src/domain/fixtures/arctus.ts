@@ -11,6 +11,7 @@ export const arctusData = {
   path: "Moros" as const,
   order: "Mysterium" as const,
   gnosis: 1,
+  wisdom: 7,
   attributes: {
     mental: { intelligence: 3, wits: 2, resolve: 2 },
     physical: { strength: 2, dexterity: 2, stamina: 2 },

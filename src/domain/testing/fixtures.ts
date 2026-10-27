@@ -26,6 +26,7 @@ export const makeAldousSheet = (
     path: "Moros",
     order: "Mysterium",
     gnosis: 1,
+    wisdom: 7,
     attributes: {
       mental: { intelligence: 3, wits: 2, resolve: 2 },
       physical: { strength: 2, dexterity: 2, stamina: 2 },
@@ -64,6 +65,7 @@ export const makeCorvinSheet = (
     path: "Moros",
     order: "Mysterium",
     gnosis: 2,
+    wisdom: 7,
     attributes: {
       mental: { intelligence: 3, wits: 2, resolve: 3 },
       physical: { strength: 2, dexterity: 3, stamina: 2 },

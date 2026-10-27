@@ -5,6 +5,7 @@ import { containOnTrack, isIncapacitated, woundPenalty } from "./health"
 import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "./ids"
 import { GnosisRank, manaPerTurnByGnosis } from "./mana-economy"
 import { ParadoxPoolModifier, ParadoxSeverity } from "./paradox"
+import { havocOutcome, havocWords, ParadoxSpan, spanWords } from "./paradox-effects"
 
 /**
  * The Cast (issue #43, PRD #39, ADR-0016 as amended by ADR-0022): a declared
@@ -189,8 +190,43 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   castIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
   castIsExceptionalSuccess: Schema.optionalKey(Schema.Boolean),
   severity: Schema.optionalKey(ParadoxSeverity),
+  // The aftermath Wisdom governs (MAG-56, page 268), stamped at release: the
+  // caster's Wisdom as the sheet stood; the span a lasting Paradox holds for
+  // (Bedlam, Anomaly, Branding, Manifestation); the Wisdom roll's successes
+  // when a Havoc runs loose — its outcome derives from them.
+  wisdom: Schema.optionalKey(Schema.Number),
+  paradoxSpan: Schema.optionalKey(ParadoxSpan),
+  havocSuccesses: Schema.optionalKey(Schema.Number),
   updatedAt: Schema.Number,
 }) {}
+
+/**
+ * What the resolved record says beside its severity (MAG-56, p. 268): a
+ * lasting Paradox's span off the Wisdom table, or the Havoc Wisdom roll's
+ * verdict. Structural over the raw feed entry — rows resolved before the
+ * stamps existed, and rows with no Paradox, say nothing (null).
+ */
+export const aftermathWords = (cast: {
+  severity?: string | undefined
+  paradoxSpan?: string | undefined
+  havocSuccesses?: number | undefined
+}): string | null =>
+  Match.value(cast.severity).pipe(
+    Match.when("havoc", () =>
+      Option.fromUndefinedOr(cast.havocSuccesses).pipe(
+        Option.map((successes) => havocWords(havocOutcome(successes))),
+        Option.getOrNull,
+      ),
+    ),
+    Match.whenOr("bedlam", "anomaly", "branding", "manifestation", () =>
+      Option.fromUndefinedOr(cast.paradoxSpan).pipe(
+        Option.filter(Schema.is(ParadoxSpan)),
+        Option.map(spanWords),
+        Option.getOrNull,
+      ),
+    ),
+    Match.orElse(() => null),
+  )
 
 /** Downtime's Tides: no Scene, so no witnesses, circumstances or pips. */
 export const CALM_TIDES: TidesSnapshot = {

@@ -132,6 +132,9 @@ export interface StoredCast {
   readonly castIsDramaticFailure?: boolean
   readonly castIsExceptionalSuccess?: boolean
   readonly severity?: Cast["severity"]
+  readonly wisdom?: number
+  readonly paradoxSpan?: Cast["paradoxSpan"]
+  readonly havocSuccesses?: number
   readonly override: OverrideMarker | null
   readonly createdAt: number
   readonly updatedAt: number
@@ -271,6 +274,7 @@ export const makeInMemory = (seed: {
               ...(patch.healthTrack !== undefined
                 ? { healthTrack: patch.healthTrack }
                 : {}),
+              ...(patch.wisdom !== undefined ? { wisdom: patch.wisdom } : {}),
             }),
           )
         }

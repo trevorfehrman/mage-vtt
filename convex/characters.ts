@@ -67,6 +67,8 @@ export const handEdit = enforcedMutation({
     // hand-editable like everything the sheet can represent (ADR-0011). The
     // validator is bridge-derived from the one box vocabulary (ADR-0005).
     healthTrack: v.optional(schemaToConvexValidator(Schema.Array(HealthBox))),
+    // Wisdom (MAG-56): degeneration and recovery, the Storyteller's to record.
+    wisdom: v.optional(v.number()),
   },
   flow: handEditSheetFlow,
 })

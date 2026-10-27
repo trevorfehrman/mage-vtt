@@ -15,12 +15,14 @@ import {
   type RollId,
 } from "../ids"
 import { ParadoxPoolModifier, ParadoxSeverity } from "../paradox"
+import { ParadoxSpan } from "../paradox-effects"
 import { Membership } from "../membership"
 import type { NotAMember } from "../authz"
 import { Mana, Willpower } from "../quantities"
 import type { SpellRef } from "../rote-cast"
 import type { RoteArcanumName } from "../rote-pool"
 import type { Scene } from "../scene"
+import { WisdomRank } from "../wisdom"
 import type { DocumentNotFound } from "./errors"
 
 /**
@@ -65,6 +67,9 @@ export const SheetPatch = Schema.Struct({
   /** The standing tool fact (issue #107) — the one identity column a flow
    * may flip; everything else here is current state. */
   hasMagicalTool: Schema.optionalKey(Schema.Boolean),
+  /** Wisdom (MAG-56): a trait, not current state — widened deliberately so the
+   * Storyteller's hand-edit door can record degeneration and recovery. */
+  wisdom: Schema.optionalKey(WisdomRank),
 })
 export type SheetPatch = typeof SheetPatch.Type
 
@@ -158,6 +163,10 @@ export const CastPatch = Schema.Struct({
   castIsDramaticFailure: Schema.optionalKey(Schema.Boolean),
   castIsExceptionalSuccess: Schema.optionalKey(Schema.Boolean),
   severity: Schema.optionalKey(ParadoxSeverity),
+  /** The aftermath Wisdom governs (MAG-56): stamped with the resolution. */
+  wisdom: Schema.optionalKey(Schema.Number),
+  paradoxSpan: Schema.optionalKey(ParadoxSpan),
+  havocSuccesses: Schema.optionalKey(Schema.Number),
 })
 export type CastPatch = typeof CastPatch.Type
 

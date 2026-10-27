@@ -3,6 +3,7 @@ import { Schema } from "effect"
 import type { GnosisRank } from "../mana-economy"
 import {
   Cast,
+  aftermathWords,
   castPoolAfterParadox,
   containmentCap,
   containmentOutlook,
@@ -543,5 +544,26 @@ describe("toGnosisRank", () => {
     expect(toGnosisRank(3)).toBe(3)
     expect(toGnosisRank(0)).toBe(1)
     expect(toGnosisRank(10)).toBe(10)
+  })
+})
+
+describe("aftermathWords (MAG-56: what the record says beside its severity)", () => {
+  it("a lasting Paradox speaks its span off the Wisdom table", () => {
+    expect(aftermathWords({ severity: "bedlam", paradoxSpan: "scene" })).toBe("one scene")
+    expect(aftermathWords({ severity: "anomaly", paradoxSpan: "month" })).toBe("one month")
+  })
+
+  it("a Havoc speaks the Wisdom roll's verdict", () => {
+    expect(aftermathWords({ severity: "havoc", havocSuccesses: 0 })).toBe("reversed")
+    expect(aftermathWords({ severity: "havoc", havocSuccesses: 2 })).toBe("runs true")
+    expect(aftermathWords({ severity: "havoc", havocSuccesses: 5 })).toBe("runs true · +2 to dispel")
+  })
+
+  it("says nothing when no Paradox manifested, when the row predates the stamps, or when the stamp is unreadable", () => {
+    expect(aftermathWords({ severity: "none" })).toBeNull()
+    expect(aftermathWords({})).toBeNull()
+    expect(aftermathWords({ severity: "bedlam" })).toBeNull()
+    expect(aftermathWords({ severity: "havoc" })).toBeNull()
+    expect(aftermathWords({ severity: "bedlam", paradoxSpan: "fortnight" })).toBeNull()
   })
 })

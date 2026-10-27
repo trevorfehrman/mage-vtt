@@ -1,12 +1,17 @@
-import { Schema } from "effect"
+import { Match, Schema } from "effect"
+import { EXCEPTIONAL_THRESHOLD } from "./dice"
 import { WisdomRank } from "./wisdom"
 
-// Pure rules leaves (ADR-0014): plain functions; the duration table is total
-// over its severity-kind × Wisdom-rank vocabularies, so no lookup can miss.
+// Pure rules leaves (ADR-0014): plain functions; the duration tables are total
+// over the Wisdom-rank vocabulary, so no lookup can miss.
 
 // --- Paradox Duration by Wisdom (page 268) ---
 
-/** The Paradox severities that persist long enough to have a duration. */
+/**
+ * The Paradox severities that outlast the casting and so take a duration off
+ * the Wisdom table. Havoc is not among them: a Havoc runs exactly as long as
+ * the spell it hijacks (page 268).
+ */
 export const ParadoxDurationKind = Schema.Literals([
   "bedlam",
   "anomaly",
@@ -15,13 +20,103 @@ export const ParadoxDurationKind = Schema.Literals([
 ])
 export type ParadoxDurationKind = typeof ParadoxDurationKind.Type
 
-const DURATION_TABLE: Record<ParadoxDurationKind, Record<WisdomRank, number>> = {
-  // Wisdom → minutes
-  bedlam: { 10: 30, 9: 60, 8: 60, 7: 120, 6: 120, 5: 360, 4: 720, 3: 1440, 2: 2880, 1: 2880 },
-  anomaly: { 10: 60, 9: 120, 8: 360, 7: 720, 6: 1440, 5: 1440, 4: 1440, 3: 4320, 2: 10080, 1: 43200 },
-  branding: { 10: 60, 9: 120, 8: 360, 7: 720, 6: 1440, 5: 1440, 4: 1440, 3: 4320, 2: 10080, 1: 43200 },
-  manifestation: { 10: 60, 9: 120, 8: 360, 7: 720, 6: 1440, 5: 1440, 4: 1440, 3: 4320, 2: 10080, 1: 43200 },
+/**
+ * How long a Paradox lasts, in the book's own units (page 268). A scene has
+ * no clock, so the span is a closed vocabulary rather than a minute count —
+ * the table before MAG-56 invented minutes the book never printed.
+ */
+export const ParadoxSpan = Schema.Literals([
+  "scene",
+  "twoHours",
+  "twelveHours",
+  "day",
+  "twoDays",
+  "week",
+  "month",
+])
+export type ParadoxSpan = typeof ParadoxSpan.Type
+
+const BEDLAM_SPAN: Record<WisdomRank, ParadoxSpan> = {
+  10: "scene",
+  9: "scene",
+  8: "scene",
+  7: "scene",
+  6: "scene",
+  5: "scene",
+  4: "twoHours",
+  3: "twelveHours",
+  2: "day",
+  1: "twoDays",
 }
+
+/** Anomaly, Branding and Manifestation share one column of the table. */
+const LASTING_SPAN: Record<WisdomRank, ParadoxSpan> = {
+  10: "scene",
+  9: "scene",
+  8: "scene",
+  7: "scene",
+  6: "scene",
+  5: "scene",
+  4: "day",
+  3: "twoDays",
+  2: "week",
+  1: "month",
+}
+
+export const paradoxSpan = (kind: ParadoxDurationKind, wisdom: WisdomRank): ParadoxSpan =>
+  Match.value(kind).pipe(
+    Match.when("bedlam", () => BEDLAM_SPAN[wisdom]),
+    Match.when("anomaly", () => LASTING_SPAN[wisdom]),
+    Match.when("branding", () => LASTING_SPAN[wisdom]),
+    Match.when("manifestation", () => LASTING_SPAN[wisdom]),
+    Match.exhaustive,
+  )
+
+/** The span as the book prints it: "one scene", "24 hours", "one month". */
+export const spanWords = (span: ParadoxSpan): string =>
+  Match.value(span).pipe(
+    Match.when("scene", () => "one scene"),
+    Match.when("twoHours", () => "two hours"),
+    Match.when("twelveHours", () => "12 hours"),
+    Match.when("day", () => "24 hours"),
+    Match.when("twoDays", () => "two days"),
+    Match.when("week", () => "one week"),
+    Match.when("month", () => "one month"),
+    Match.exhaustive,
+  )
+
+// --- Havoc: the Wisdom roll (page 268) ---
+
+/**
+ * What the caster's Wisdom roll does to a Havoc spell: a failure (dramatic
+ * or plain) reverses its effect — a blessing curses, an attack heals; any
+ * success leaves it as cast; an exceptional success also hands the mage +2
+ * dice on any attempt to dispel it.
+ */
+export const HavocOutcome = Schema.Literals(["reversed", "unaltered", "unalteredDispelBonus"])
+export type HavocOutcome = typeof HavocOutcome.Type
+
+export const havocOutcome = (successes: number): HavocOutcome =>
+  Match.value(successes).pipe(
+    Match.when(
+      (n) => n >= EXCEPTIONAL_THRESHOLD,
+      () => "unalteredDispelBonus" as const,
+    ),
+    Match.when(
+      (n) => n > 0,
+      () => "unaltered" as const,
+    ),
+    Match.orElse(() => "reversed" as const),
+  )
+
+/** The outcome in the card's words: what the loose spell now does. */
+export const havocWords = (outcome: HavocOutcome): string =>
+  Match.value(outcome).pipe(
+    Match.when("reversed", () => "reversed"),
+    Match.when("unaltered", () => "runs true"),
+    Match.when("unalteredDispelBonus", () => "runs true · +2 to dispel"),
+    Match.exhaustive,
+  )
 
 // --- Branding severity by arcanum dots (pages 272-273) ---
 
@@ -35,12 +130,6 @@ const BRANDING_TABLE = [
 
 // --- Types ---
 
-export class ParadoxDuration extends Schema.Class<ParadoxDuration>("ParadoxDuration")({
-  type: Schema.String,
-  wisdom: Schema.Number.check(Schema.isInt()),
-  minutes: Schema.Number.check(Schema.isInt()),
-}) {}
-
 export class BacklashResult extends Schema.Class<BacklashResult>("BacklashResult")({
   resistantBashingDamage: Schema.Number.check(Schema.isInt()),
   paradoxContained: Schema.Boolean,
@@ -53,12 +142,6 @@ export class BrandingInfo extends Schema.Class<BrandingInfo>("BrandingInfo")({
 }) {}
 
 // --- Public API ---
-
-export const paradoxDuration = (
-  type: ParadoxDurationKind,
-  wisdom: WisdomRank,
-): ParadoxDuration =>
-  new ParadoxDuration({ type, wisdom, minutes: DURATION_TABLE[type][wisdom] })
 
 export const paradoxBacklash = (paradoxSuccesses: number): BacklashResult =>
   new BacklashResult({

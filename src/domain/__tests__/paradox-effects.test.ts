@@ -1,16 +1,73 @@
 import { describe, expect, it } from "@effect/vitest"
 import {
-  paradoxDuration,
-  paradoxBacklash,
-  brandingSeverity,
   anomalyArea,
+  brandingSeverity,
+  havocOutcome,
+  havocWords,
+  paradoxBacklash,
+  paradoxSpan,
+  spanWords,
 } from "../paradox-effects"
+import { WisdomRank } from "../wisdom"
 
 describe("Paradox Effects", () => {
-  it("paradox duration varies by wisdom", () => {
-    const high = paradoxDuration("bedlam", 7)
-    const low = paradoxDuration("bedlam", 2)
-    expect(low.minutes).toBeGreaterThan(high.minutes)
+  describe("the duration table (Mage p. 268, MAG-56)", () => {
+    it("Wisdom 5 and above holds every lasting Paradox to one scene", () => {
+      for (const wisdom of [5, 6, 7, 8, 9, 10] as const) {
+        expect(paradoxSpan("bedlam", wisdom)).toBe("scene")
+        expect(paradoxSpan("anomaly", wisdom)).toBe("scene")
+        expect(paradoxSpan("branding", wisdom)).toBe("scene")
+        expect(paradoxSpan("manifestation", wisdom)).toBe("scene")
+      }
+    })
+
+    it("Bedlam's column: two hours, 12 hours, 24 hours, two days as Wisdom falls 4 → 1", () => {
+      expect(paradoxSpan("bedlam", 4)).toBe("twoHours")
+      expect(paradoxSpan("bedlam", 3)).toBe("twelveHours")
+      expect(paradoxSpan("bedlam", 2)).toBe("day")
+      expect(paradoxSpan("bedlam", 1)).toBe("twoDays")
+    })
+
+    it("Anomaly, Branding and Manifestation share the longer column: 24 hours, two days, a week, a month", () => {
+      for (const kind of ["anomaly", "branding", "manifestation"] as const) {
+        expect(paradoxSpan(kind, 4)).toBe("day")
+        expect(paradoxSpan(kind, 3)).toBe("twoDays")
+        expect(paradoxSpan(kind, 2)).toBe("week")
+        expect(paradoxSpan(kind, 1)).toBe("month")
+      }
+    })
+
+    it("the table is total over every Wisdom rank", () => {
+      for (const wisdom of WisdomRank.literals) {
+        expect(spanWords(paradoxSpan("bedlam", wisdom))).toMatch(/\S/)
+      }
+    })
+
+    it("speaks the book's words", () => {
+      expect(spanWords("scene")).toBe("one scene")
+      expect(spanWords("twoHours")).toBe("two hours")
+      expect(spanWords("twelveHours")).toBe("12 hours")
+      expect(spanWords("day")).toBe("24 hours")
+      expect(spanWords("twoDays")).toBe("two days")
+      expect(spanWords("week")).toBe("one week")
+      expect(spanWords("month")).toBe("one month")
+    })
+  })
+
+  describe("the Havoc Wisdom roll (Mage p. 268, MAG-56)", () => {
+    it("no successes reverse the spell; any success leaves it as cast; five hand +2 to dispel", () => {
+      expect(havocOutcome(0)).toBe("reversed")
+      expect(havocOutcome(1)).toBe("unaltered")
+      expect(havocOutcome(4)).toBe("unaltered")
+      expect(havocOutcome(5)).toBe("unalteredDispelBonus")
+      expect(havocOutcome(7)).toBe("unalteredDispelBonus")
+    })
+
+    it("speaks each outcome", () => {
+      expect(havocWords("reversed")).toBe("reversed")
+      expect(havocWords("unaltered")).toBe("runs true")
+      expect(havocWords("unalteredDispelBonus")).toBe("runs true · +2 to dispel")
+    })
   })
 
   it("backlash converts paradox successes to resistant bashing", () => {

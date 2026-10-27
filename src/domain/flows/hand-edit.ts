@@ -14,6 +14,7 @@ import {
 import { CharacterId, SessionId } from "../ids"
 import { GameStore, type SheetPatch } from "../ports/game-store"
 import { Mana, Willpower } from "../quantities"
+import { WisdomRank } from "../wisdom"
 
 /**
  * `handEditSheet` — the fudge/repair path (PRD #11, issue #19): a direct,
@@ -49,6 +50,9 @@ export const HandEditArgs = Schema.Struct({
       Schema.Struct({ severity: Schema.String, resistant: Schema.Boolean }),
     ),
   ),
+  /** Wisdom (MAG-56): degeneration and recovery are the Storyteller's to
+   * record — rare, and the one trait this door reaches. */
+  wisdom: Schema.optionalKey(Schema.Number),
 })
 export type HandEditArgs = typeof HandEditArgs.Type
 
@@ -69,6 +73,7 @@ const HandEditPatch = Schema.Struct({
   manaCurrent: Schema.optionalKey(Mana),
   willpowerCurrent: Schema.optionalKey(Willpower),
   healthTrack: Schema.optionalKey(HealthTrack),
+  wisdom: Schema.optionalKey(WisdomRank),
 })
 
 /** "clear" | "1 bashing" | "2 lethal (1 resistant), 1 aggravated" — the
@@ -103,6 +108,7 @@ const describeChanges = (
     ...(patch.healthTrack !== undefined
       ? [`Health ${describeTrack(sheet.healthTrack)} → ${describeTrack(patch.healthTrack)}`]
       : []),
+    ...(patch.wisdom !== undefined ? [`Wisdom ${sheet.wisdom} → ${patch.wisdom}`] : []),
   ].join(", ")
 
 export const handEditSheet = Effect.fn("Flows.handEdit.handEditSheet")(function* (
@@ -114,6 +120,7 @@ export const handEditSheet = Effect.fn("Flows.handEdit.handEditSheet")(function*
       ? { willpowerCurrent: args.willpowerCurrent }
       : {}),
     ...(args.healthTrack !== undefined ? { healthTrack: args.healthTrack } : {}),
+    ...(args.wisdom !== undefined ? { wisdom: args.wisdom } : {}),
   }).pipe(
     Effect.mapError(
       () => new InvalidHandEdit({ message: "That value doesn't fit the sheet." }),
@@ -130,7 +137,8 @@ export const handEditSheet = Effect.fn("Flows.handEdit.handEditSheet")(function*
   if (
     patch.manaCurrent === undefined &&
     patch.willpowerCurrent === undefined &&
-    patch.healthTrack === undefined
+    patch.healthTrack === undefined &&
+    patch.wisdom === undefined
   ) {
     return yield* new InvalidHandEdit({ message: "Nothing to edit." })
   }

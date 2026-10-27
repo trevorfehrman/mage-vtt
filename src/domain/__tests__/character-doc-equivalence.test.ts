@@ -112,6 +112,8 @@ const widenedColumns = {
 // `hasMagicalTool` (the standing tool fact): issue #107.
 const addedColumns = {
   hasMagicalTool: v.optional(v.boolean()),
+  // `wisdom` (MAG-56): the morality trait; absent rows read as the book's 7.
+  wisdom: v.optional(v.number()),
   knownRotes: v.optional(
     v.array(
       v.object({

@@ -33,7 +33,11 @@ and caps spellcasting.
 The spendable magical-energy resource. Maximum is set by Gnosis.
 
 **Wisdom**:
-The mage's morality/integrity trait, rated 0–10.
+The mage's morality/integrity trait. On the sheet it is a rank of 1–10 (a new
+mage starts at 7; 0 exists only as the Storyteller's indefinite-Paradox edge
+case, p. 268). Falls through acts of hubris and failed degeneration rolls;
+rises only through experience. Governs how long a Paradox lasts and the Havoc
+roll (MAG-56).
 _Avoid_: Morality, Humanity, Sanity (those belong to other splats).
 
 **Virtue / Vice**:
