@@ -41,7 +41,7 @@ import {
   type MotionValue,
 } from "motion/react"
 import { Match } from "effect"
-import { merit, type HeldMerit, type MeritName, type MeritRating } from "#/domain/merits"
+import { merit, type HeldMerit, type MeritName } from "#/domain/merits"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 import { DotRating } from "#/components/game/DotRating"
 
@@ -198,28 +198,16 @@ function Pips({ size, spent }: { size: number; spent: number }) {
 // ── The key in hand: its sentence and its verb ───────────────────────────────
 
 const dots = (n: number) => "•".repeat(n)
-/** The rating as the book writes it beside the name. */
-const ratingWords = (r: MeritRating): string =>
-  Match.value(r).pipe(
-    Match.tag("fixed", ({ dots: d }) => dots(d)),
-    Match.tag("range", ({ min, max }) => `${dots(min)} to ${dots(max)}`),
-    Match.tag("either", ({ low, high }) => `${dots(low)} or ${dots(high)}`),
-    Match.tag("atLeast", ({ min }) => `${dots(min)} or higher`),
-    Match.exhaustive,
-  )
 const FAMILY_WORD = { mental: "Mental", physical: "Physical", social: "Social", awakened: "Awakened" } as const
-const BOOK_WORD = { mage: "Mage", wod: "WoD" } as const
 
-/** The eyebrow: the family, how the Merit is held, and where the paragraph is. */
-function Eyebrow({ name }: { name: MeritName }) {
+/** The eyebrow: the family, and what the key opens. */
+function Eyebrow({ name, mech }: { name: MeritName; mech: Mechanic }) {
   const def = merit(name)
   return (
     <span className="mv-data flex items-center gap-2.5 text-[9.5px] uppercase tracking-[0.14em]" style={{ color: "var(--dim)" }}>
       <span>{FAMILY_WORD[def.family]}</span>
       <span aria-hidden className="h-[9px] w-px" style={{ background: "var(--line)" }} />
-      <span className="normal-case tracking-[0.08em]">{ratingWords(def.rating)}</span>
-      <span aria-hidden className="h-[9px] w-px" style={{ background: "var(--line)" }} />
-      <span className="normal-case tracking-normal">{BOOK_WORD[def.page.book]} p. {def.page.page}</span>
+      <span>{opensWords(mech)}</span>
     </span>
   )
 }
@@ -246,12 +234,24 @@ function Ladder({ h }: { h: HeldMerit }) {
   )
 }
 
-function InHand({ h, pool, canToggle }: { h: HeldMerit; pool: Pool; canToggle: boolean }) {
+/** What the key opens, in a few words: the eyebrow's second half. */
+const opensWords = (mech: Mechanic): string =>
+  Match.value(mech).pipe(
+    Match.when({ kind: "dice" }, () => "Opens a roll"),
+    Match.when({ kind: "purse" }, () => "A purse of dice"),
+    Match.when({ kind: "gate" }, () => "Opens the cast"),
+    Match.when({ kind: "none" }, () => "Opens the story"),
+    Match.exhaustive,
+  )
+
+/** The door's page: the eyebrow, the name and its dots, the sentence, the
+ * ladder. It scrolls when it is taller than the door. */
+function DoorPage({ h, pool }: { h: HeldMerit; pool: Pool }) {
   const mech = mechanicOf(h)
-  const lit = mech.kind === "purse" ? spentOf(pool, h) > 0 : isLit(pool, h)
+  const lit = litOf(pool, h)
   return (
-    <div className="grid min-h-[76px] content-start gap-2">
-      <Eyebrow name={h.name} />
+    <div className="grid content-start gap-2">
+      <Eyebrow name={h.name} mech={mech} />
       <div className="flex items-baseline justify-between gap-3">
         <span className="flex items-baseline gap-2">
           <span className="mv-h text-[18px] leading-none" style={{ color: lit ? "var(--ember)" : "var(--ink)" }}>
@@ -273,50 +273,85 @@ function InHand({ h, pool, canToggle }: { h: HeldMerit; pool: Pool; canToggle: b
         {merit(h.name).effect}
       </p>
       <Ladder h={h} />
-      {/* the verb — the recitation line's place */}
-      {mech.kind === "dice" && (
-        <button
-          type="button"
-          disabled={!canToggle}
-          onClick={() => toggleDice(pool, h, mech.dice)}
-          className={`mv-trait ${lit ? "mv-trait-on" : ""} flex items-center justify-between rounded-[3px] px-2 py-1 text-left`}
-        >
-          <span className="text-[13px]">{lit ? "Turned" : "Turn"}</span>
-          <span className="mv-data text-[12px]" style={{ color: lit ? "var(--ember)" : "var(--ink)" }}>
-            {lit ? "in the pool" : `${mech.dice} ${mech.dice === 1 ? "die" : "dice"}`}
+    </div>
+  )
+}
+
+/** The door's foot: the verb, full width — the door's act — and beneath
+ * it the line that holds across every key: what is turned. */
+function DoorFoot({ h, held, pool, canToggle }: { h: HeldMerit; held: ReadonlyArray<HeldMerit>; pool: Pool; canToggle: boolean }) {
+  const mech = mechanicOf(h)
+  const lit = litOf(pool, h)
+  const turned = held.filter((k) => litOf(pool, k))
+  const dice = turned.reduce((n, k) => n + spentOf(pool, k), 0)
+  return (
+    <div className="grid gap-2">
+      <div className="min-h-[30px]">
+        {mech.kind === "dice" && (
+          <button
+            type="button"
+            disabled={!canToggle}
+            onClick={() => toggleDice(pool, h, mech.dice)}
+            className={`mv-trait ${lit ? "mv-trait-on" : ""} flex w-full items-center justify-between rounded-[3px] px-2.5 py-1.5 text-left`}
+          >
+            <span className="text-[13px]">{lit ? "Turned" : "Turn"}</span>
+            <span className="mv-data text-[12px]" style={{ color: lit ? "var(--ember)" : "var(--ink)" }}>
+              {lit ? "in the pool" : `${mech.dice} ${mech.dice === 1 ? "die" : "dice"}`}
+            </span>
+          </button>
+        )}
+        {mech.kind === "purse" && (
+          <div className="flex items-center justify-between gap-3 px-2.5 py-1.5">
+            <span className="text-[13px]">{spentOf(pool, h) > 0 ? "Turned" : "Turn"}</span>
+            <span className="flex gap-1">
+              {Array.from({ length: mech.size }, (_, i) => {
+                const on = i < spentOf(pool, h)
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    disabled={!canToggle}
+                    onClick={() => spend(pool, h, on && i === spentOf(pool, h) - 1 ? i : i + 1)}
+                    className="grid size-[16px] place-items-center rounded-full"
+                    title={on ? "Take it back" : `Spend ${i + 1}`}
+                  >
+                    <span
+                      className="inline-block size-[9px] rounded-full"
+                      style={{ background: on ? "var(--ember)" : "transparent", boxShadow: on ? undefined : "inset 0 0 0 1px var(--accent)" }}
+                    />
+                  </button>
+                )
+              })}
+            </span>
+          </div>
+        )}
+        {mech.kind === "gate" && (
+          <span className="block px-2.5 py-1.5 text-[11px] italic" style={{ color: "var(--dim)" }}>
+            Declared with the cast.
           </span>
-        </button>
-      )}
-      {mech.kind === "purse" && (
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-[13px]">{spentOf(pool, h) > 0 ? "Turned" : "Turn"}</span>
-          <span className="flex gap-1">
-            {Array.from({ length: mech.size }, (_, i) => {
-              const on = i < spentOf(pool, h)
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  disabled={!canToggle}
-                  onClick={() => spend(pool, h, on && i === spentOf(pool, h) - 1 ? i : i + 1)}
-                  className="grid size-[16px] place-items-center rounded-full"
-                  title={on ? "Take it back" : `Spend ${i + 1}`}
-                >
-                  <span
-                    className="inline-block size-[9px] rounded-full"
-                    style={{ background: on ? "var(--ember)" : "transparent", boxShadow: on ? undefined : "inset 0 0 0 1px var(--accent)" }}
-                  />
-                </button>
-              )
-            })}
-          </span>
-        </div>
-      )}
-      {mech.kind === "gate" && (
-        <span className="text-[11px] italic" style={{ color: "var(--dim)" }}>
-          Declared with the cast.
-        </span>
-      )}
+        )}
+      </div>
+      <div className="mv-data flex items-baseline justify-between gap-3 border-t pt-2 text-[10px] uppercase tracking-[0.12em]" style={{ borderColor: "var(--line)", color: "var(--dim)" }}>
+        {turned.length === 0 ? (
+          <span>Nothing turned</span>
+        ) : (
+          <>
+            <span className="min-w-0 truncate">
+              <span>Turned </span>
+              {turned.map((k, i) => (
+                <span key={keyOf(k)} style={{ color: "var(--ember)" }}>
+                  {i > 0 && <span style={{ color: "var(--dim)" }}> · </span>}
+                  {ringName(k.name)}
+                  {mechanicOf(k).kind === "purse" && <span className="normal-case tracking-normal"> {spentOf(pool, k)}</span>}
+                </span>
+              ))}
+            </span>
+            <span className="shrink-0 normal-case tracking-normal" style={{ color: "var(--ink)" }}>
+              {dice} {dice === 1 ? "die" : "dice"} in the pool
+            </span>
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -414,7 +449,10 @@ function Ring({
         </div>
       </div>
       {inHand ? (
-        <InHand h={inHand} pool={pool} canToggle={canToggle} />
+        <div className="grid gap-3">
+          <DoorPage h={inHand} pool={pool} />
+          <DoorFoot h={inHand} held={held} pool={pool} canToggle={canToggle} />
+        </div>
       ) : (
         <div className="min-h-[76px]" />
       )}
@@ -719,7 +757,7 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
       </div>
       {/* the door: what the key in hand opens. Its edge is a line broken
           around the keyhole; the keyhole is the turn. */}
-      <div className="relative min-w-0 pl-6">
+      <div className="relative grid min-w-0 grid-rows-[minmax(0,1fr)_auto] gap-3 pl-6" style={{ height: VISIBLE * ROW }}>
         <span aria-hidden className="absolute left-0 top-0 w-px" style={{ height: middle - KEYHOLE / 2 - 4, background: "var(--line)" }} />
         <span aria-hidden className="absolute left-0 bottom-0 w-px" style={{ top: middle + KEYHOLE / 2 + 4, background: "var(--line)" }} />
         <button
@@ -733,12 +771,12 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
           <Keyhole size={KEYHOLE} lit={inHandLit} />
         </button>
         {/* the sigil: the door bears the mark of the key that opens it —
-            low in the bottom-right corner, clipping the door's edge as the
-            rote book's device does, and lifting while the key is turned */}
-        <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+            whole, anchored in the bottom-right corner, lifting while the
+            key is turned */}
+        <span aria-hidden className="pointer-events-none absolute inset-0">
           <motion.span
             key={keyOf(inHand)}
-            className="absolute -bottom-8 -right-10"
+            className="absolute bottom-0 right-0"
             style={{ color: inHandLit ? "var(--ember)" : "var(--ink)", transition: "color 0.3s" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: inHandLit ? SIGIL_OPACITY_TURNED : SIGIL_OPACITY }}
@@ -747,8 +785,11 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
             <Mark name={inHand.name} size={SIGIL} turned={inHandLit} />
           </motion.span>
         </span>
+        <div className="relative min-h-0 overflow-y-auto pr-2">
+          <DoorPage h={inHand} pool={pool} />
+        </div>
         <div className="relative">
-          <InHand h={inHand} pool={pool} canToggle={canToggle} />
+          <DoorFoot h={inHand} held={held} pool={pool} canToggle={canToggle} />
         </div>
       </div>
     </div>
