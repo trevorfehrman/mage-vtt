@@ -387,6 +387,11 @@ const PART = 7
 /** the keyhole on the door's edge, and how far short of it a still key stops */
 const KEYHOLE = 26
 const REACH_SHORT = 22
+/** the ring's clasp: the loop on the ring's line where it starts over */
+const CLASP = 7
+/** the sigil: the key in hand's mark, large and faint, on the door */
+const SIGIL = 150
+const SIGIL_OPACITY = 0.07
 const MARK = 26
 const MARK_IN_HAND = 36
 // keys hang from the ring, so they lag it: while the wheel moves every key
@@ -449,8 +454,15 @@ function RingKey({
   const ink = lit ? "var(--ember)" : near || turns ? "var(--ink)" : "var(--dim)"
   return (
     <motion.div className="absolute inset-x-0 top-1/2 -mt-[18px] h-[36px]" style={{ y }}>
-      {/* the seam: where the ring starts over */}
-      {seam && <span aria-hidden className="absolute inset-x-0 top-0 h-px" style={{ background: "var(--line)" }} />}
+      {/* the clasp: where the ring starts over, a loop on the ring's line
+          rather than a cut across the row */}
+      {seam && (
+        <span
+          aria-hidden
+          className="absolute rounded-full"
+          style={{ left: 6 - CLASP / 2, top: -CLASP / 2, width: CLASP, height: CLASP, boxShadow: "inset 0 0 0 1px var(--line)", background: "var(--bg)" }}
+        />
+      )}
       <motion.button
         type="button"
         onClick={() => onTap(position)}
@@ -662,7 +674,21 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
         >
           <Keyhole size={KEYHOLE} lit={inHandLit} />
         </button>
-        <InHand h={inHand} pool={pool} canToggle={canToggle} />
+        {/* the sigil: the door bears the mark of the key that opens it */}
+        <motion.span
+          key={keyOf(inHand)}
+          aria-hidden
+          className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2"
+          style={{ color: inHandLit ? "var(--ember)" : "var(--ink)", transition: "color 0.3s" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: SIGIL_OPACITY }}
+          transition={reduced ? { duration: 0 } : { duration: 0.35 }}
+        >
+          <Mark name={inHand.name} size={SIGIL} turned={inHandLit} />
+        </motion.span>
+        <div className="relative">
+          <InHand h={inHand} pool={pool} canToggle={canToggle} />
+        </div>
       </div>
     </div>
   )
