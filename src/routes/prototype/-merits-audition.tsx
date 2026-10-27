@@ -343,56 +343,56 @@ function Ring({
 
 // ── The wheel: key and door ──────────────────────────────────────────────────
 //
-// Motion's own picker recipe (motion.dev/docs/react-transitions, "Inertia"):
-// a value decelerates from its release velocity toward a precalculated
-// target, and `modifyTarget` snaps that target to the grid — so the wheel
-// lands exactly on a key, never between two, and `timeConstant` sets how
-// crisply it stops. The ring wraps: every key's distance from the middle is
-// taken modulo the ring, so the first key follows the last.
+// An infinite list. Every key is positioned purely from the wheel's offset
+// (a motion value, in rows) by modulo — the marquee pattern: an item's place
+// wraps from one end of the period to the other where it cannot be seen, so
+// no React state ever decides where a row is, and nothing can be a frame
+// out of step. The period is the ring's length (or a few rings' worth when
+// the ring is short, so the frame is always full). Landing is Motion's
+// inertia with the target snapped to the grid; a wheel notch moves a target
+// the wheel chases on a spring, so quick notches accelerate it and it stops
+// dead on a key.
 
 const ROW = 36 // one key's height on the wheel
 const VISIBLE = 7 // rows in the frame, the key in hand at the middle
-const SLOTS = [-4, -3, -2, -1, 0, 1, 2, 3, 4] // rows rendered, around the middle
 const wrapIndex = (n: number, i: number) => ((i % n) + n) % n
+/** Signed distance of a position from the offset, wrapped into one period. */
+const periodic = (period: number, d: number) => {
+  const w = ((d + period / 2) % period + period) % period
+  return w - period / 2
+}
 
-/**
- * One row of the wheel. The wheel is an infinite list: row `k` sits `k`
- * rows from the integer position `base`, and shows whichever key the
- * modulo gives `base + k`. When the wheel passes an integer, `base` moves
- * on and every row takes the next key — at the same place on screen it
- * was already at, so nothing jumps. Its place is a transform of the
- * wheel's offset (a motion value), so scrolling never re-renders it.
- */
-function Slot({
-  k,
-  base,
-  count,
+function RingKey({
+  h,
+  position,
+  period,
   offset,
-  held,
   pool,
   onTap,
+  seam,
 }: {
-  k: number
-  base: number
-  count: number
+  h: HeldMerit
+  /** this copy's home row; copies of one key sit a ring's length apart */
+  position: number
+  period: number
   offset: MotionValue<number>
-  held: ReadonlyArray<HeldMerit>
   pool: Pool
   onTap: (position: number) => void
+  seam: boolean
 }) {
-  const position = base + k
-  const h = held[wrapIndex(count, position)]!
-  const dist = useTransform(offset, (o) => position - o)
-  const y = useTransform(offset, (o) => (position - o) * ROW)
-  const x = useTransform(offset, (o) => Math.max(0, 1 - Math.abs(position - o)) * 12)
-  const stem = useTransform(offset, (o) => 10 + Math.max(0, 1 - Math.abs(position - o)) * 14)
+  // the row's distance from the middle, wrapped: beyond half a period it
+  // comes round the other side — outside the frame, since the period is
+  // longer than the frame
+  const dist = useTransform(offset, (o) => periodic(period, position - o))
+  const y = useTransform(dist, (d) => d * ROW)
+  const x = useTransform(dist, (d) => Math.max(0, 1 - Math.abs(d)) * 12)
+  const stem = useTransform(dist, (d) => 10 + Math.max(0, 1 - Math.abs(d)) * 14)
   const stemMargin = useTransform(stem, (w) => 10 - w)
-  const [near, setNear] = useState(Math.abs(position - offset.get()) < 0.5)
+  const [near, setNear] = useState(Math.abs(dist.get()) < 0.5)
   useMotionValueEvent(dist, "change", (d) => setNear(Math.abs(d) < 0.5))
   const lit = litOf(pool, h)
   const turns = turnsOf(h)
   const ink = lit ? "var(--ember)" : near || turns ? "var(--ink)" : "var(--dim)"
-  const seam = wrapIndex(count, position) === 0
   return (
     <motion.div className="absolute inset-x-0 top-1/2 -mt-[18px] h-[36px]" style={{ y }}>
       {/* the seam: where the ring starts over */}
@@ -417,38 +417,38 @@ function Slot({
 function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool: Pool; canToggle: boolean }) {
   const reduced = useReducedMotion() ?? false
   const count = held.length
-  // the wheel's position, in rows, unbounded: the ring wraps
+  // enough copies of the ring that the period outruns the frame, so a
+  // copy only ever wraps where it cannot be seen
+  const copies = Math.max(1, Math.ceil((VISIBLE + 1) / count))
+  const period = count * copies
+  // the wheel's position, in rows, unbounded
   const offset = useMotionValue(0)
   const [hand, setHand] = useState(0)
-  // the integer position the rows hang from; moves once per row
-  const [base, setBase] = useState(0)
   useMotionValueEvent(offset, "change", (o) => {
     const i = wrapIndex(count, Math.round(o))
     if (i !== hand) setHand(i)
-    const b = Math.floor(o)
-    if (b !== base) setBase(b)
   })
 
-  /** Coast from a velocity (rows per second) and land exactly on a key:
-   * Motion's inertia with the target snapped to the grid. */
+  /** Coast from a velocity (rows per second) and land exactly on a key. */
   const coast = (velocity: number) =>
-    // the inertia generator coasts from the origin and ignores the target,
-    // but animate() skips an animation whose target equals the value — so
-    // a nominal target one row on, in the direction of travel
     animate(offset, offset.get() + (velocity >= 0 ? 1 : -1), reduced
       ? { duration: 0 }
       : { type: "inertia", velocity, power: 0.4, timeConstant: 200, modifyTarget: Math.round, restDelta: 0.002 })
-  /** Go straight to a key (a click, an arrow): a short, clicky ease-out. */
-  const goTo = (target: number) =>
-    animate(offset, target, reduced ? { duration: 0 } : { duration: 0.26, ease: [0.22, 1, 0.36, 1] })
-  const step = (by: number) => goTo(Math.round(offset.get()) + by)
+  /** Chase a key on a spring: quick pushes move the target further and the
+   * wheel accelerates after it; it stops dead on the key. */
+  const chase = (target: number) =>
+    animate(offset, target, reduced ? { duration: 0 } : { type: "spring", stiffness: 260, damping: 30, mass: 0.9 })
+  // the target the notches push; it rests on the wheel's own position
+  const target = useRef(0)
+  const push = (by: number) => {
+    const resting = Math.abs(offset.getVelocity()) < 0.05
+    target.current = (resting ? Math.round(offset.get()) : target.current) + by
+    chase(target.current)
+  }
 
   // the wheel: a non-passive listener, so the page does not scroll with it.
-  // A mouse wheel's notch is a push on a spinning wheel: it adds to the
-  // wheel's velocity, so repeated notches accelerate it and it coasts and
-  // sticks on a key when the pushing stops (one notch alone lands one key
-  // on). A trackpad's fine deltas turn the wheel directly and it coasts to
-  // a key when they stop.
+  // A mouse wheel's notch pushes the target one key on; a trackpad's fine
+  // deltas turn the wheel directly and it coasts to a key when they stop.
   const frame = useRef<HTMLDivElement>(null)
   const settling = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastNotch = useRef(0)
@@ -458,11 +458,11 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       const now = Date.now()
-      if (Math.abs(e.deltaY) >= 40 && now - lastNotch.current > 40) {
-        lastNotch.current = now
-        const push = Math.sign(e.deltaY) * 3.2
-        const carried = Math.sign(offset.getVelocity()) === Math.sign(push) ? offset.getVelocity() : 0
-        coast(carried + push)
+      if (Math.abs(e.deltaY) >= 40) {
+        if (now - lastNotch.current > 40) {
+          lastNotch.current = now
+          push(Math.sign(e.deltaY))
+        }
         return
       }
       offset.set(offset.get() + e.deltaY / ROW)
@@ -473,36 +473,49 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
     return () => el.removeEventListener("wheel", onWheel)
   })
 
-  // drag: the wheel follows the pointer, then coasts with its velocity
-  const drag = useRef<{ startY: number; startOffset: number; moved: boolean } | null>(null)
+  // drag: the wheel follows the pointer once it has moved, then coasts
+  // with its velocity. The pointer is captured only once a drag is real,
+  // so a plain click still reaches the key beneath it.
+  const drag = useRef<{ pointerId: number; startY: number; startOffset: number; moved: boolean } | null>(null)
   const suppressClick = useRef(false)
   const onPointerDown = (e: React.PointerEvent) => {
     offset.stop()
     suppressClick.current = false
-    drag.current = { startY: e.clientY, startOffset: offset.get(), moved: false }
-    e.currentTarget.setPointerCapture(e.pointerId)
+    drag.current = { pointerId: e.pointerId, startY: e.clientY, startOffset: offset.get(), moved: false }
   }
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!drag.current) return
-    const dy = drag.current.startY - e.clientY
-    if (Math.abs(dy) > 4) drag.current.moved = true
-    offset.set(drag.current.startOffset + dy / ROW)
+    const d = drag.current
+    if (!d) return
+    const dy = d.startY - e.clientY
+    if (!d.moved) {
+      if (Math.abs(dy) <= 4) return
+      d.moved = true
+      e.currentTarget.setPointerCapture(d.pointerId)
+    }
+    offset.set(d.startOffset + dy / ROW)
   }
   const onPointerUp = () => {
-    if (!drag.current) return
-    const moved = drag.current.moved
+    const d = drag.current
+    if (!d) return
     drag.current = null
+    if (!d.moved) return
+    suppressClick.current = true
     coast(offset.getVelocity())
-    if (moved) suppressClick.current = true
   }
   const onTap = (position: number) => {
     if (suppressClick.current) { suppressClick.current = false; return }
-    if (position !== Math.round(offset.get())) { goTo(position); return }
+    const here = Math.round(offset.get())
+    if (position !== here) {
+      // the short way round the ring
+      target.current = here + periodic(count, position - here)
+      chase(target.current)
+      return
+    }
     turn(held[wrapIndex(count, position)]!, pool, canToggle)
   }
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown") { e.preventDefault(); step(1) }
-    if (e.key === "ArrowUp") { e.preventDefault(); step(-1) }
+    if (e.key === "ArrowDown") { e.preventDefault(); push(1) }
+    if (e.key === "ArrowUp") { e.preventDefault(); push(-1) }
   }
 
   const inHand = held[hand]!
@@ -527,9 +540,20 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
       >
         {/* the ring's line */}
         <span aria-hidden className="absolute inset-y-0 left-[6px] w-px" style={{ background: "var(--line)" }} />
-        {SLOTS.map((k) => (
-          <Slot key={k} k={k} base={base} count={count} offset={offset} held={held} pool={pool} onTap={onTap} />
-        ))}
+        {Array.from({ length: copies }, (_, c) =>
+          held.map((h, i) => (
+            <RingKey
+              key={`${keyOf(h)}#${c}`}
+              h={h}
+              position={i + c * count}
+              period={period}
+              offset={offset}
+              pool={pool}
+              onTap={onTap}
+              seam={i === 0}
+            />
+          )),
+        )}
       </div>
       {/* the door: what the key in hand opens */}
       <div className="min-w-0 border-l pl-6" style={{ borderColor: "var(--line)" }}>
