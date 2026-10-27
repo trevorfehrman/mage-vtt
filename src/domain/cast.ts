@@ -6,6 +6,7 @@ import { CastId, CharacterId, PlayerId, SceneId, SessionId } from "./ids"
 import { GnosisRank, manaPerTurnByGnosis } from "./mana-economy"
 import { ParadoxPoolModifier, ParadoxSeverity } from "./paradox"
 import { havocOutcome, havocWords, ParadoxSpan, spanWords } from "./paradox-effects"
+import { WisdomRank } from "./wisdom"
 
 /**
  * The Cast (issue #43, PRD #39, ADR-0016 as amended by ADR-0022): a declared
@@ -194,23 +195,32 @@ export class Cast extends Schema.Class<Cast>("Cast")({
   // caster's Wisdom as the sheet stood; the span a lasting Paradox holds for
   // (Bedlam, Anomaly, Branding, Manifestation); the Wisdom roll's successes
   // when a Havoc runs loose — its outcome derives from them.
-  wisdom: Schema.optionalKey(Schema.Number),
+  wisdom: Schema.optionalKey(WisdomRank),
   paradoxSpan: Schema.optionalKey(ParadoxSpan),
   havocSuccesses: Schema.optionalKey(Schema.Number),
   updatedAt: Schema.Number,
 }) {}
 
 /**
+ * The aftermath stamps as the raw feed entry carries them (MAG-56): the
+ * record's projection speaks strings and bare numbers (ADR-0011), and rows
+ * resolved before the stamps existed carry none of them.
+ */
+export const CastAftermath = Schema.Struct({
+  severity: Schema.optionalKey(Schema.String),
+  wisdom: Schema.optionalKey(Schema.Number),
+  paradoxSpan: Schema.optionalKey(Schema.String),
+  havocSuccesses: Schema.optionalKey(Schema.Number),
+})
+export type CastAftermath = typeof CastAftermath.Type
+
+/**
  * What the resolved record says beside its severity (MAG-56, p. 268): a
  * lasting Paradox's span off the Wisdom table, or the Havoc Wisdom roll's
- * verdict. Structural over the raw feed entry — rows resolved before the
- * stamps existed, and rows with no Paradox, say nothing (null).
+ * verdict. Rows resolved before the stamps existed, and rows with no
+ * Paradox, say nothing (null).
  */
-export const aftermathWords = (cast: {
-  severity?: string | undefined
-  paradoxSpan?: string | undefined
-  havocSuccesses?: number | undefined
-}): string | null =>
+export const aftermathWords = (cast: CastAftermath): string | null =>
   Match.value(cast.severity).pipe(
     Match.when("havoc", () =>
       Option.fromUndefinedOr(cast.havocSuccesses).pipe(
@@ -226,6 +236,16 @@ export const aftermathWords = (cast: {
       ),
     ),
     Match.orElse(() => null),
+  )
+
+/** The longer sentence behind the aftermath words — where the number came from. */
+export const aftermathTitle = (cast: CastAftermath): string =>
+  Match.value(cast.severity).pipe(
+    Match.when(
+      "havoc",
+      () => `The caster rolled Wisdom ${cast.wisdom ?? "?"}: ${cast.havocSuccesses ?? 0} successes`,
+    ),
+    Match.orElse(() => `Paradox duration at Wisdom ${cast.wisdom ?? "?"} (Mage p. 268)`),
   )
 
 /** Downtime's Tides: no Scene, so no witnesses, circumstances or pips. */

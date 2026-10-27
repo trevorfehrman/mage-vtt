@@ -5,6 +5,7 @@ import { useMachine } from "@xstate/react"
 import { AnimatePresence, useReducedMotion } from "motion/react"
 import type { CastEntry } from "#/domain/activity"
 import {
+  aftermathTitle,
   aftermathWords,
   castPoolAfterParadox,
   containmentCap,
@@ -1922,11 +1923,7 @@ function Resolution({ cast }: { cast: CastEntry }) {
             <span
               className="mv-data normal-case tracking-normal"
               style={{ color: "var(--dim)", fontSize: 13 }}
-              title={
-                cast.severity === "havoc"
-                  ? `The caster rolled Wisdom ${cast.wisdom ?? ""}: ${cast.havocSuccesses ?? 0} successes`
-                  : `Paradox duration at Wisdom ${cast.wisdom ?? ""} (Mage p. 268)`
-              }
+              title={aftermathTitle(cast)}
             >
               {aftermath}
             </span>

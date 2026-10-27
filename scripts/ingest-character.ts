@@ -95,6 +95,16 @@ const program = Effect.gen(function* () {
     catch: (error) => refuse("persisted shape", error),
   })
 
+  // Wisdom (MAG-56): the column is optional on the table so rows written
+  // before it existed still validate (they read as the book's 7), but a new
+  // ingest must say it — a file that leaves it out is a file that forgot.
+  if (data.wisdom === undefined) {
+    return yield* refuse(
+      "wisdom",
+      "character.wisdom is required (1–10; a new mage starts at 7, less if dots were traded at creation).",
+    )
+  }
+
   // Representability pre-flight: the exact decode every adapter read runs.
   // Linkage ids are branded strings underneath, so placeholders suffice.
   const sheet = yield* Effect.try({

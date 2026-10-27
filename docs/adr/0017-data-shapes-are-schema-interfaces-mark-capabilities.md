@@ -36,3 +36,16 @@ describes nothing an interface doesn't, with extra ceremony.
   their intent — TS stays structural over Schema-derived types; their doc
   comments move to the Schema.
 - Branding rides along for free wherever a swept shape has a branded field.
+
+## Amendment (2026-10-26, MAG-56): two idioms for an optional column
+
+A column added after rows already exist is optional on the table. Which
+Schema idiom the sheet uses for it is decided by what absence *means*, not
+by taste:
+
+- **Absence has a book-given value** → `Schema.withDecodingDefaultKey` on
+  the sheet field, so the Type side is never absent and every reader gets
+  the rule's number (`wisdom`: a row without it is a new mage's 7, p. 69).
+- **Absence means none** → `Schema.optionalKey` plus a getter that says so
+  (`knownRotes` → `rotes` is `[]`; `hasMagicalTool` → `magicalTool` is
+  `false`).

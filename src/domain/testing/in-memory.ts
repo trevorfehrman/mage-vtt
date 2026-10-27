@@ -132,7 +132,7 @@ export interface StoredCast {
   readonly castIsDramaticFailure?: boolean
   readonly castIsExceptionalSuccess?: boolean
   readonly severity?: Cast["severity"]
-  readonly wisdom?: number
+  readonly wisdom?: Cast["wisdom"]
   readonly paradoxSpan?: Cast["paradoxSpan"]
   readonly havocSuccesses?: number
   readonly override: OverrideMarker | null

@@ -66,9 +66,7 @@ const LASTING_SPAN: Record<WisdomRank, ParadoxSpan> = {
 export const paradoxSpan = (kind: ParadoxDurationKind, wisdom: WisdomRank): ParadoxSpan =>
   Match.value(kind).pipe(
     Match.when("bedlam", () => BEDLAM_SPAN[wisdom]),
-    Match.when("anomaly", () => LASTING_SPAN[wisdom]),
-    Match.when("branding", () => LASTING_SPAN[wisdom]),
-    Match.when("manifestation", () => LASTING_SPAN[wisdom]),
+    Match.whenOr("anomaly", "branding", "manifestation", () => LASTING_SPAN[wisdom]),
     Match.exhaustive,
   )
 

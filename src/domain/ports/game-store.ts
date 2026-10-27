@@ -164,7 +164,7 @@ export const CastPatch = Schema.Struct({
   castIsExceptionalSuccess: Schema.optionalKey(Schema.Boolean),
   severity: Schema.optionalKey(ParadoxSeverity),
   /** The aftermath Wisdom governs (MAG-56): stamped with the resolution. */
-  wisdom: Schema.optionalKey(Schema.Number),
+  wisdom: Schema.optionalKey(WisdomRank),
   paradoxSpan: Schema.optionalKey(ParadoxSpan),
   havocSuccesses: Schema.optionalKey(Schema.Number),
 })
