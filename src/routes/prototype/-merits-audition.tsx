@@ -87,20 +87,20 @@ const MECHANIC: Partial<Record<MeritName, (dots: number) => Mechanic>> = {
   Destiny: (dots) => ({ kind: "purse", size: dots * 2 }),
   "High Speech": () => ({ kind: "gate" }),
 }
-const mechanicOf = (h: HeldMerit): Mechanic => MECHANIC[h.name]?.(h.dots) ?? { kind: "none" }
+export const mechanicOf = (h: HeldMerit): Mechanic => MECHANIC[h.name]?.(h.dots) ?? { kind: "none" }
 
-const keyOf = (h: HeldMerit) => `${h.name}${h.label === undefined ? "" : ` (${h.label})`}`
+export const keyOf = (h: HeldMerit) => `${h.name}${h.label === undefined ? "" : ` (${h.label})`}`
 /** The name on the ring: short, the door says the whole of it. */
-const ringName = (name: MeritName) => name.replace(/^Fighting Style: /, "")
+export const ringName = (name: MeritName) => name.replace(/^Fighting Style: /, "")
 
-type Pool = ReturnType<typeof useDicePool>
+export type Pool = ReturnType<typeof useDicePool>
 
 const isLit = (pool: Pool, h: HeldMerit): boolean => pool.isComponentActive("modifier", keyOf(h))
-const toggleDice = (pool: Pool, h: HeldMerit, dice: number) =>
+export const toggleDice = (pool: Pool, h: HeldMerit, dice: number) =>
   pool.toggleComponent({ type: "modifier", name: keyOf(h), dots: dice })
-const spentOf = (pool: Pool, h: HeldMerit): number =>
+export const spentOf = (pool: Pool, h: HeldMerit): number =>
   pool.context.components.find((c) => c.type === "modifier" && c.name === keyOf(h))?.dots ?? 0
-const spend = (pool: Pool, h: HeldMerit, k: number) => {
+export const spend = (pool: Pool, h: HeldMerit, k: number) => {
   const idx = pool.context.components.findIndex((c) => c.type === "modifier" && c.name === keyOf(h))
   if (idx >= 0) pool.removeComponent(idx)
   if (k > 0) pool.addComponent({ type: "modifier", name: keyOf(h), dots: k })
@@ -110,7 +110,7 @@ const spend = (pool: Pool, h: HeldMerit, k: number) => {
 // (24-box, round caps, a bindi or barb as signature). Eight for the audition;
 // the other forty-five are drawn only if the marks carry it.
 
-const MARKS: Partial<Record<MeritName, ReactNode>> = {
+export const MARKS: Partial<Record<MeritName, ReactNode>> = {
   // the Atlantean tongue — a tongue of flame rising from parted lips
   "High Speech": <><path d="M6 15 Q12 20 18 15" /><path d="M12 14.5 C9.8 11.5 13.4 9.4 12 5.6" /><circle cx="12" cy="4" r="1.2" fill="currentColor" stroke="none" /></>,
   // the lidded eye, a barb of warning above it
@@ -131,7 +131,7 @@ const MARKS: Partial<Record<MeritName, ReactNode>> = {
   Contacts: <><path d="M6 17 L12 7 L18 17 Z" /><circle cx="6" cy="17" r="1.3" fill="currentColor" stroke="none" /><circle cx="18" cy="17" r="1.3" fill="currentColor" stroke="none" /><circle cx="12" cy="7" r="1.3" fill="currentColor" stroke="none" /></>,
 }
 
-function Mark({ name, size, turned }: { name: MeritName; size: number | "100%"; turned: boolean }) {
+export function Mark({ name, size, turned }: { name: MeritName; size: number | "100%"; turned: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -303,15 +303,15 @@ function DoorFoot({ h, pool, canToggle }: { h: HeldMerit; pool: Pool; canToggle:
  * reads as fluid rather than as a sequence of animations. */
 const SNAP = { type: "spring", stiffness: 900, damping: 42, mass: 0.6 } as const
 
-const litOf = (pool: Pool, h: HeldMerit) => {
+export const litOf = (pool: Pool, h: HeldMerit) => {
   const mech = mechanicOf(h)
   return mech.kind === "purse" ? spentOf(pool, h) > 0 : isLit(pool, h)
 }
-const turnsOf = (h: HeldMerit) => {
+export const turnsOf = (h: HeldMerit) => {
   const k = mechanicOf(h).kind
   return k === "dice" || k === "purse"
 }
-const turn = (h: HeldMerit, pool: Pool, canToggle: boolean) => {
+export const turn = (h: HeldMerit, pool: Pool, canToggle: boolean) => {
   const mech = mechanicOf(h)
   if (!canToggle) return
   if (mech.kind === "dice") toggleDice(pool, h, mech.dice)
@@ -423,7 +423,7 @@ const VISIBLE = 7 // rows in the frame, the key in hand at the middle
 // the growth is as continuous as the scroll and never a frame behind it
 const PART = 7
 /** the keyhole on the door's edge, and how far short of it a still key stops */
-const KEYHOLE = 26
+export const KEYHOLE = 26
 const REACH_SHORT = 22
 /** the ring's clasp: the loop on the ring's line where it starts over */
 const CLASP = 11
@@ -436,7 +436,7 @@ const HINGE = -16
 /** below this wheel speed (rows per second) a key change swings the page at once */
 const SWING_SPEED = 3
 const MARK = 26
-const MARK_IN_HAND = 36
+export const MARK_IN_HAND = 36
 // keys hang from the ring, so they lag it: while the wheel moves every key
 // leans against the motion, pivoting where its stem meets the ring, and
 // swings back once it stops. LEAN is degrees per row-per-second of wheel
@@ -444,7 +444,7 @@ const MARK_IN_HAND = 36
 const LEAN = 0.3
 const LEAN_MAX = 6
 const NAME = 10
-const NAME_IN_HAND = 12.5
+export const NAME_IN_HAND = 12.5
 const wrapIndex = (n: number, i: number) => ((i % n) + n) % n
 /** Signed distance of a position from the offset, wrapped into one period. */
 const periodic = (period: number, d: number) => {
@@ -668,45 +668,10 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
   }
 
   const inHand = held[hand]!
-  // whether the page has more below the fold
-  const [more, setMore] = useState(false)
-  const measure = (el: HTMLElement) => setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 4)
-  useEffect(() => {
-    if (page.current) measure(page.current)
-  }, [hand])
-  const inHandLit = litOf(pool, inHand)
-  const inHandTurns = turnsOf(inHand)
-  const reaches = inHandTurns || mechanicOf(inHand).kind === "gate"
-  // the reach is always ink (ember when turned); a still key is told by
-  // the line stopping short and the keyhole dim, not by the line fading
-  const reachInk = inHandLit ? "var(--ember)" : "var(--ink)"
-  // the keyhole too stays ink: a still key's line stopping short says it
   const middle = (VISIBLE * ROW) / 2
   return (
     <div className="relative grid grid-cols-[minmax(0,15rem)_1fr] gap-x-8">
-      {/* the reach: one line from the ring across the gap to the keyhole;
-          the key in hand is strung on it. A key that opens something on
-          this table reaches the lock; a key that only opens things in the
-          story stops short of it. */}
-      <span
-        aria-hidden
-        className="absolute left-[6px] h-px"
-        style={{
-          top: middle,
-          width: `calc(15rem + 2rem - 6px - ${reaches ? KEYHOLE / 2 : REACH_SHORT}px)`,
-          background: "var(--ink)",
-          transition: "width 0.25s ease",
-        }}
-      >
-        {/* the turn runs down the line: ember from the ring to the lock */}
-        <motion.span
-          className="absolute inset-0"
-          style={{ background: "var(--ember)", transformOrigin: "0 50%", boxShadow: "0 0 6px var(--ember-glow)" }}
-          initial={false}
-          animate={{ scaleX: inHandLit ? 1 : 0 }}
-          transition={reduced ? { duration: 0 } : inHandLit ? { duration: 0.24, ease: "easeOut" } : { duration: 0.18, ease: "easeIn" }}
-        />
-      </span>
+      <Reach h={inHand} pool={pool} middle={middle} />
       <div
         ref={frame}
         tabIndex={0}
@@ -742,63 +707,129 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
           )),
         )}
       </div>
-      {/* the door: what the key in hand opens. Its edge is a line broken
-          around the keyhole; the keyhole is the turn. */}
-      <div className="relative grid min-w-0 grid-rows-[minmax(0,1fr)_auto] gap-3 pl-6" style={{ height: VISIBLE * ROW }}>
-        {/* light through the door: once the key is turned, ember spills
-            from the keyhole across the door's edge */}
-        <motion.span
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{ background: `radial-gradient(260px 200px at 0 ${middle}px, color-mix(in srgb, var(--ember) 16%, transparent), transparent 70%)` }}
-          initial={false}
-          animate={{ opacity: inHandLit ? 1 : 0 }}
-          transition={reduced ? { duration: 0 } : inHandLit ? { duration: 0.5, delay: 0.2 } : { duration: 0.3 }}
-        />
-        <span aria-hidden className="absolute left-0 top-0 w-px" style={{ height: middle - KEYHOLE / 2 - 4, background: "var(--line)" }} />
-        <span aria-hidden className="absolute left-0 bottom-0 w-px" style={{ top: middle + KEYHOLE / 2 + 4, background: "var(--line)" }} />
-        <button
-          type="button"
-          disabled={!canToggle || !inHandTurns}
-          onClick={() => turn(inHand, pool, canToggle)}
-          aria-label={inHandLit ? `Let ${inHand.name} go` : `Turn ${inHand.name}`}
-          className={`absolute grid place-items-center ${inHandTurns ? "" : "cursor-default"}`}
-          style={{ left: -KEYHOLE / 2, top: middle - KEYHOLE / 2, width: KEYHOLE, height: KEYHOLE, color: reachInk, transition: "color 0.3s" }}
+      <Door h={inHand} pool={pool} canToggle={canToggle} middle={middle} pageRef={page} />
+    </div>
+  )
+}
+
+/** The reach: one line from the ring across the gap to the keyhole; the key
+ * in hand is strung on it. A key that opens something on this table reaches
+ * the lock; a key that only opens things in the story stops short of it.
+ * Turned, ember runs down it from the ring to the lock. Positioned in a
+ * `relative` grid of [15rem ring | 2rem gap | door]. */
+export function Reach({ h, pool, middle }: { h: HeldMerit; pool: Pool; middle: number }) {
+  const reduced = useReducedMotion() ?? false
+  const lit = litOf(pool, h)
+  const reaches = turnsOf(h) || mechanicOf(h).kind === "gate"
+  return (
+    <span
+      aria-hidden
+      className="absolute left-[6px] h-px"
+      style={{
+        top: middle,
+        width: `calc(15rem + 2rem - 6px - ${reaches ? KEYHOLE / 2 : REACH_SHORT}px)`,
+        background: "var(--ink)",
+        transition: "width 0.25s ease",
+      }}
+    >
+      <motion.span
+        className="absolute inset-0"
+        style={{ background: "var(--ember)", transformOrigin: "0 50%", boxShadow: "0 0 6px var(--ember-glow)" }}
+        initial={false}
+        animate={{ scaleX: lit ? 1 : 0 }}
+        transition={reduced ? { duration: 0 } : lit ? { duration: 0.24, ease: "easeOut" } : { duration: 0.18, ease: "easeIn" }}
+      />
+    </span>
+  )
+}
+
+/** The door: what the key in hand opens. Its edge is a line broken around
+ * the keyhole, and the keyhole is the turn. Light spills through the edge
+ * once the key is turned; the door bears the key's mark as its sigil; the
+ * page scrolls inside the door's fixed height and fades at its foot while
+ * there is more; the act sits at the bottom right. `pageRef` lets the wheel
+ * swing the page on its hinge. */
+export function Door({
+  h,
+  pool,
+  canToggle,
+  middle,
+  pageRef,
+  height = VISIBLE * ROW,
+}: {
+  h: HeldMerit
+  pool: Pool
+  canToggle: boolean
+  /** the keyhole's height from the door's top */
+  middle: number
+  pageRef?: React.RefObject<HTMLDivElement | null>
+  height?: number
+}) {
+  const reduced = useReducedMotion() ?? false
+  const own = useRef<HTMLDivElement>(null)
+  const page = pageRef ?? own
+  // whether the page has more below the fold
+  const [more, setMore] = useState(false)
+  const measure = (el: HTMLElement) => setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 4)
+  useEffect(() => {
+    if (page.current) measure(page.current)
+  }, [h])
+  const lit = litOf(pool, h)
+  const turns = turnsOf(h)
+  // the reach and the keyhole are ink (ember when turned); a still key's
+  // line stopping short says it, nothing else fades
+  const ink = lit ? "var(--ember)" : "var(--ink)"
+  return (
+    <div className="relative grid min-w-0 grid-rows-[minmax(0,1fr)_auto] gap-3 pl-6" style={{ height }}>
+      {/* light through the door */}
+      <motion.span
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{ background: `radial-gradient(260px 200px at 0 ${middle}px, color-mix(in srgb, var(--ember) 16%, transparent), transparent 70%)` }}
+        initial={false}
+        animate={{ opacity: lit ? 1 : 0 }}
+        transition={reduced ? { duration: 0 } : lit ? { duration: 0.5, delay: 0.2 } : { duration: 0.3 }}
+      />
+      <span aria-hidden className="absolute left-0 top-0 w-px" style={{ height: middle - KEYHOLE / 2 - 4, background: "var(--line)" }} />
+      <span aria-hidden className="absolute left-0 bottom-0 w-px" style={{ top: middle + KEYHOLE / 2 + 4, background: "var(--line)" }} />
+      <button
+        type="button"
+        disabled={!canToggle || !turns}
+        onClick={() => turn(h, pool, canToggle)}
+        aria-label={lit ? `Let ${h.name} go` : `Turn ${h.name}`}
+        className={`absolute grid place-items-center ${turns ? "" : "cursor-default"}`}
+        style={{ left: -KEYHOLE / 2, top: middle - KEYHOLE / 2, width: KEYHOLE, height: KEYHOLE, color: ink, transition: "color 0.3s" }}
+      >
+        <Keyhole size={KEYHOLE} lit={lit} />
+      </button>
+      {/* the sigil: whole, anchored in the bottom-right corner, lifting
+          while the key is turned */}
+      <span aria-hidden className="pointer-events-none absolute inset-0">
+        <span
+          className="absolute bottom-0 right-0"
+          style={{ color: lit ? "var(--ember)" : "var(--ink)", opacity: lit ? SIGIL_OPACITY_TURNED : SIGIL_OPACITY, transition: "color 0.3s, opacity 0.4s" }}
         >
-          <Keyhole size={KEYHOLE} lit={inHandLit} />
-        </button>
-        {/* the sigil: the door bears the mark of the key that opens it —
-            whole, anchored in the bottom-right corner, lifting while the
-            key is turned */}
-        <span aria-hidden className="pointer-events-none absolute inset-0">
-          <span
-            className="absolute bottom-0 right-0"
-            style={{ color: inHandLit ? "var(--ember)" : "var(--ink)", opacity: inHandLit ? SIGIL_OPACITY_TURNED : SIGIL_OPACITY, transition: "color 0.3s, opacity 0.4s" }}
-          >
-            <Mark name={inHand.name} size={SIGIL} turned={inHandLit} />
-          </span>
+          <Mark name={h.name} size={SIGIL} turned={lit} />
         </span>
-        {/* the page, swung on its hinge (see doSwing); it fades at its foot
-            while there is more of it to scroll */}
-        <div
-          ref={page}
-          onScroll={(e) => measure(e.currentTarget)}
-          className="relative min-h-0 overflow-y-auto pr-2"
-          style={{
-            transformOrigin: "0 50%",
-            perspective: 900,
-            maskImage: more ? "linear-gradient(to bottom, black calc(100% - 36px), transparent)" : undefined,
-            WebkitMaskImage: more ? "linear-gradient(to bottom, black calc(100% - 36px), transparent)" : undefined,
-          }}
-        >
-          <DoorPage h={inHand} pool={pool} />
-        </div>
-        {turnsOf(inHand) && (
-          <div className="relative flex justify-end">
-            <DoorFoot h={inHand} pool={pool} canToggle={canToggle} />
-          </div>
-        )}
+      </span>
+      <div
+        ref={page}
+        onScroll={(e) => measure(e.currentTarget)}
+        className="relative min-h-0 overflow-y-auto pr-2"
+        style={{
+          transformOrigin: "0 50%",
+          perspective: 900,
+          maskImage: more ? "linear-gradient(to bottom, black calc(100% - 36px), transparent)" : undefined,
+          WebkitMaskImage: more ? "linear-gradient(to bottom, black calc(100% - 36px), transparent)" : undefined,
+        }}
+      >
+        <DoorPage h={h} pool={pool} />
       </div>
+      {turns && (
+        <div className="relative flex justify-end">
+          <DoorFoot h={h} pool={pool} canToggle={canToggle} />
+        </div>
+      )}
     </div>
   )
 }
