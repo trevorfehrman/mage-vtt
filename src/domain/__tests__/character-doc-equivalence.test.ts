@@ -114,6 +114,13 @@ const addedColumns = {
   hasMagicalTool: v.optional(v.boolean()),
   // `wisdom` (MAG-56): the morality trait; absent rows read as the book's 7.
   wisdom: v.optional(v.number()),
+  // MAG-57/58/61: the record's optional columns; absence means none.
+  experienceUnspent: v.optional(v.number()),
+  skillSpecialties: v.optional(v.array(v.object({ skill: v.string(), label: v.string() }))),
+  nimbus: v.optional(v.string()),
+  legacy: v.optional(v.object({ name: v.string(), attainments: v.array(v.string()) })),
+  cabal: v.optional(v.string()),
+  consilium: v.optional(v.string()),
   knownRotes: v.optional(
     v.array(
       v.object({

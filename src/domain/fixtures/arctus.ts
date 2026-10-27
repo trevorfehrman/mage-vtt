@@ -2,6 +2,8 @@
  * Arctus — pre-built Moros/Mysterium character for seeding.
  * Matches the test fixture from character.test.ts.
  */
+import type { SkillKey } from "../character"
+
 export const arctusData = {
   name: "Arctus",
   shadowName: "The Little Bear",
@@ -54,4 +56,20 @@ export const arctusData = {
     matter: 2,
     prime: 1,
   },
+  // MAG-57/58/61: the record beyond the ratings, so the rig and the seed show
+  // every row the sheet can carry.
+  experienceUnspent: 3,
+  // plain arrays (not `as const` tuples): the seed mutation's arg wants them mutable
+  skillSpecialties: [
+    { skill: "occult", label: "Goetia" },
+    { skill: "investigation", label: "Crime Scenes" },
+    { skill: "larceny", label: "Locks" },
+  ] as { skill: SkillKey; label: string }[],
+  nimbus: "A cold draught and the smell of wet iron; shadows lean toward him.",
+  legacy: {
+    name: "Bokor",
+    attainments: ["Eyes of the Dead", "Bind the Shade", "Command the Grave"] as string[],
+  },
+  cabal: "The Hollow Choir",
+  consilium: "Consilium of the Narrows",
 } as const

@@ -602,10 +602,5 @@ export const containmentOutlook = (input: {
   }
 }
 
-/**
- * The sheet stores Gnosis as 0–10 dots (representability, ADR-0011); the
- * Paradox table speaks rules-legal ranks 1–10. Clamp at the boundary — a
- * fudged Gnosis 0 sheet still gets a rank-1 Paradox pool rather than a crash.
- */
-export const toGnosisRank = (gnosis: number): GnosisRank =>
-  Math.min(10, Math.max(1, Math.round(gnosis))) as GnosisRank
+// toGnosisRank lives beside GnosisRank in mana-economy.ts (MAG-57); re-exported for its callers here.
+export { toGnosisRank } from "./mana-economy"

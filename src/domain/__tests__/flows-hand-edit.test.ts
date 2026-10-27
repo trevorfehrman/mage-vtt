@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import { healthBox } from "../damage"
-import { handEditSheet, setMagicalTool } from "../flows/hand-edit"
+import { handEditSheet, markSheet, setMagicalTool } from "../flows/hand-edit"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "../ids"
 import { Membership } from "../membership"
 import { failureTag, makeAldousSheet as makeSheet } from "../testing/fixtures"
@@ -460,6 +460,172 @@ describe("Flows.handEdit.handEditSheet (issue #19)", () => {
 
       expect(failureTag(exit)).toBe("DocumentNotFound")
       expect(store.sheetPatches).toHaveLength(0)
+    }),
+  )
+})
+
+describe("Flows.handEdit.handEditSheet: unspent experience (MAG-57)", () => {
+  it.effect("the Storyteller records a balance, narrated old → new", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: ST_USER })
+
+      yield* handEditSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        experienceUnspent: 12,
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.experience).toBe(12)
+      expect(store.messages[0]!.text).toContain("Experience 0 → 12")
+    }),
+  )
+
+  it.effect("a negative balance doesn't fit the sheet", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: ST_USER })
+
+      const exit = yield* handEditSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        experienceUnspent: -1,
+      }).pipe(Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("InvalidHandEdit")
+      expect(store.sheetPatches).toHaveLength(0)
+    }),
+  )
+})
+
+/**
+ * The mark-sheet door (MAG-63): the paper gesture. The ladder is the normal
+ * one — the owner marks their own sheet plainly, an ST or Dev in their stead
+ * is Override-recorded, and a stranger is refused — the inverse of the hand
+ * edit above.
+ */
+describe("Flows.handEdit.markSheet (MAG-63)", () => {
+  const twoLethal = [
+    healthBox("lethal"),
+    healthBox("lethal", true),
+    healthBox("empty"),
+    healthBox("empty"),
+    healthBox("empty"),
+    healthBox("empty"),
+    healthBox("empty"),
+  ]
+
+  it.effect("the owning Player marks their own track: applied, no Override, a system entry in their name", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: PLAYER })
+
+      yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        healthTrack: twoLethal,
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.healthTrack[0]!.severity).toBe("lethal")
+      expect(store.sheets.get(CHARACTER)!.healthTrack[1]!.resistant).toBe(true)
+      expect(store.messages).toHaveLength(1)
+      const entry = store.messages[0]!
+      expect(entry.visibility).toBe("system")
+      expect(entry.senderId).toBe(PLAYER)
+      expect(entry.override).toBeNull()
+      expect(entry.text).toContain("Aldous marked Aldous")
+      expect(entry.text).toContain("Health clear → 2 lethal (1 resistant)")
+    }),
+  )
+
+  it.effect("the owning Player sets their own Wisdom", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: PLAYER })
+
+      yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        wisdom: 6,
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.wisdom).toBe(6)
+      expect(store.messages[0]!.text).toContain("Wisdom 7 → 6")
+    }),
+  )
+
+  it.effect("the Storyteller marks a player's sheet in their stead — Override-recorded", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: ST_USER })
+
+      yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        wisdom: 5,
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.wisdom).toBe(5)
+      const entry = store.messages[0]!
+      expect(entry.senderId).toBe(ST_USER)
+      expect(entry.override).not.toBeNull()
+      expect(entry.text).toContain("Stella marked Aldous")
+    }),
+  )
+
+  it.effect("a member who is neither owner nor Storyteller is refused, sheet untouched", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: OTHER_PLAYER })
+
+      const exit = yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        wisdom: 5,
+      }).pipe(Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("NotYourCharacter")
+      expect(store.sheetPatches).toHaveLength(0)
+      expect(store.sheets.get(CHARACTER)!.wisdom).toBe(7)
+    }),
+  )
+
+  it.effect("an empty mark, a track of the wrong length, and a Wisdom off the rank are refused", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: PLAYER })
+
+      const empty = yield* markSheet({ sessionId: SESSION, characterId: CHARACTER }).pipe(
+        Effect.provide(store.layer),
+        Effect.exit,
+      )
+      expect(failureTag(empty)).toBe("InvalidHandEdit")
+
+      const short = yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        healthTrack: twoLethal.slice(0, 3),
+      }).pipe(Effect.provide(store.layer), Effect.exit)
+      expect(failureTag(short)).toBe("InvalidHandEdit")
+
+      const off = yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        wisdom: 11,
+      }).pipe(Effect.provide(store.layer), Effect.exit)
+      expect(failureTag(off)).toBe("InvalidHandEdit")
+
+      expect(store.sheetPatches).toHaveLength(0)
+    }),
+  )
+
+  it.effect("a Resistant dot under an empty box collapses at the door (#118)", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: PLAYER })
+
+      yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        healthTrack: [
+          { severity: "empty", resistant: true },
+          ...twoLethal.slice(1).map((box) => ({ ...box })),
+        ],
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.healthTrack[0]!.resistant).toBe(false)
     }),
   )
 })

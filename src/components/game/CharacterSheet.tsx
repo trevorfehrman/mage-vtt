@@ -1,10 +1,16 @@
 import { type CSSProperties, type ReactNode } from "react"
 import {
+  attainmentGnosis,
   rulingArcanaOf,
+  specialtyComponentName,
   type ArcanumName,
   type CharacterSheet as CharacterSheetData,
+  type SkillKey,
+  type SkillSpecialty,
 } from "#/domain/character"
+import type { HealthBox } from "#/domain/damage"
 import type { PoolComponentInput, PoolComponentType } from "#/domain/dice"
+import type { SheetMark } from "#/domain/flows/hand-edit"
 import {
   ArcanaGlyph,
   OrderGlyph,
@@ -27,7 +33,7 @@ import { DotRating } from "./DotRating"
 import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { ToolSwitch } from "./ToolSwitch"
 import { PoolNumerals } from "./CastHeaderStats"
-import { woundPenalty } from "#/domain/health"
+import { cycleBox, toggleResistant, woundPenalty } from "#/domain/health"
 import { WisdomMeter } from "./WisdomMeter"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
@@ -54,6 +60,10 @@ interface CharacterSheetProps {
   /** Flips the standing tool fact (issue #107). Present only on the
    * viewer's own sheet; a refusal speaks at the switch. */
   onSetMagicalTool?: ((hasMagicalTool: boolean) => Promise<unknown>) | undefined
+  /** The paper gesture (MAG-63): mark the track or set Wisdom from the sheet.
+   * Present on your own sheet and, for the Storyteller, on anyone's; the
+   * server's ladder decides and a refusal speaks at the mark. */
+  onMarkSheet?: ((mark: SheetMark) => Promise<unknown>) | undefined
 }
 
 
@@ -68,6 +78,7 @@ export function CharacterSheet({
   pendingMana = 0,
   pendingWillpower = 0,
   onSetMagicalTool,
+  onMarkSheet,
 }: CharacterSheetProps) {
   const penalty = woundPenalty(character.healthTrack)
   const canToggle =
@@ -100,6 +111,18 @@ export function CharacterSheet({
             <h2 className="mv-h text-[30px] leading-none">
               {character.shadowName ?? character.name}
             </h2>
+            {/* the nimbus (MAG-61; Mage p. 90): the signature of the mage's
+                magic, a sentence in the player's words under the name */}
+            {character.nimbus !== undefined && (
+              <Eyebrowed label="Nimbus">
+                <p
+                  className="max-w-[46ch] text-[13px] italic leading-snug"
+                  style={{ color: "var(--dim)" }}
+                >
+                  {character.nimbus}
+                </p>
+              </Eyebrowed>
+            )}
             {/* the depletables under eyebrows in the emblem row's grammar
                 (owner, 2026-10-27): HEALTH over the track and its penalty,
                 Will · Mana beside them on the same baseline, WISDOM over
@@ -108,7 +131,12 @@ export function CharacterSheet({
               <Eyebrowed label="Health">
                 <span className="flex items-center gap-2" style={{ height: 20 }}>
                   <span className="flex">
-                    <HealthTrack track={character.healthTrack} />
+                    <HealthTrack
+                      track={character.healthTrack}
+                      onMark={
+                        onMarkSheet ? (healthTrack) => void onMarkSheet({ healthTrack }) : undefined
+                      }
+                    />
                   </span>
                   {penalty < 0 && (
                     <span
@@ -129,6 +157,7 @@ export function CharacterSheet({
                   pendingMana={pendingMana}
                   pendingWillpower={pendingWillpower}
                   size={15}
+                  manaPerTurn
                 />
               </span>
             </div>
@@ -137,7 +166,10 @@ export function CharacterSheet({
                 lost ones hollow; the number lives in its tooltip */}
             <Eyebrowed label="Wisdom">
               <TooltipProvider>
-                <WisdomMeter wisdom={character.wisdom} />
+                <WisdomMeter
+                  wisdom={character.wisdom}
+                  onSet={onMarkSheet ? (wisdom) => void onMarkSheet({ wisdom }) : undefined}
+                />
               </TooltipProvider>
             </Eyebrowed>
           </div>
@@ -154,6 +186,24 @@ export function CharacterSheet({
                 <Rating label="Initiative" stat="initiative" value={character.initiative} />
                 <Rating label="Speed" stat="speed" value={character.speed} />
               </div>
+              {/* unspent experience (MAG-57): the one advancement number the
+                  sheet keeps so it isn't on paper; the Storyteller's to edit */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    tabIndex={0}
+                    className="flex items-baseline gap-1.5 leading-none"
+                    style={{ fontSize: 15 }}
+                    aria-label={`${character.experience} experience unspent`}
+                  >
+                    <span style={{ color: "var(--dim)" }}>XP</span>
+                    <span style={{ color: "var(--ink)" }}>{character.experience}</span>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={4}>
+                  {character.experience} experience unspent
+                </TooltipContent>
+              </Tooltip>
             </TooltipProvider>
           </div>
         </div>
@@ -219,6 +269,24 @@ export function CharacterSheet({
                 name={character.vice}
               />
             </EmblemGroup>
+            {/* the company the mage keeps (MAG-61): names only, in the same
+                row, present only when written */}
+            {character.cabal !== undefined && (
+              <>
+                <Separator orientation="vertical" className="!h-auto self-stretch" />
+                <EmblemGroup label="Cabal">
+                  <Emblem name={character.cabal} />
+                </EmblemGroup>
+              </>
+            )}
+            {character.consilium !== undefined && (
+              <>
+                <Separator orientation="vertical" className="!h-auto self-stretch" />
+                <EmblemGroup label="Consilium">
+                  <Emblem name={character.consilium} />
+                </EmblemGroup>
+              </>
+            )}
           </div>
           {/* the standing tool fact (issue #107) at the corner: the viewer's
               own sheet flips it; anyone else's states it when it holds */}
@@ -265,9 +333,13 @@ export function CharacterSheet({
                 attributes={CATEGORY_ATTRIBUTES[category].map(
                   ([name, pick]): [string, number] => [name, pick(character)],
                 )}
-                skills={(Object.entries(character.skills[category]) as [string, number][])
+                skills={(Object.entries(character.skills[category]) as [SkillKey, number][])
                   .filter(([, dots]) => dots > 0)
-                  .map(([key, dots]): [string, number] => [formatSkillName(key), dots])}
+                  .map(([key, dots]) => ({
+                    name: formatSkillName(key),
+                    dots,
+                    specialty: character.specialtyFor(key),
+                  }))}
                 onToggle={toggle}
                 isActive={isActive}
                 canToggle={canToggle}
@@ -282,6 +354,35 @@ export function CharacterSheet({
       <Section title="Arcana">
         <ArcanaDashboard arcana={character.arcana} ruling={ruling} cast={cast} />
       </Section>
+
+      {/* Legacy (MAG-61; Mage p. 93) — the mage's one specialization, its
+          attainments opening at Gnosis 3, 5 and 7: the reached ones in ink,
+          the rest waiting in the dim. Absent until chosen, and then a small
+          section of its own between the Arcana it grows from and the Rotes. */}
+      {character.legacy !== undefined && (
+        <Section title="Legacy">
+          <div className="mv-panel grid gap-3 rounded-[3px] p-4">
+            <span className="mv-h text-[22px] leading-none">{character.legacy.name}</span>
+            <ol className="grid gap-1.5">
+              {character.legacy.attainments.map((attainment, i) => {
+                const at = attainmentGnosis(i)
+                const reached = character.gnosis >= at
+                return (
+                  <li key={attainment} className="flex items-baseline gap-3 text-[14px]">
+                    <span
+                      className="mv-data w-[5.5em] shrink-0 text-[11px] uppercase tracking-wider"
+                      style={{ color: reached ? "var(--accent)" : "var(--dim)" }}
+                    >
+                      Gnosis {at}
+                    </span>
+                    <span style={{ color: reached ? "var(--ink)" : "var(--dim)" }}>{attainment}</span>
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
+        </Section>
+      )}
 
       {/* Rotes — the character's book (issue #89), directly under the Arcana
           it belongs to: the sheet's magic stays contiguous (owner call
@@ -357,7 +458,7 @@ function EmblemGroup({ label, children }: { label: string; children: ReactNode }
   )
 }
 
-function Emblem({ glyph, name }: { glyph: ReactNode; name: string }) {
+function Emblem({ glyph, name }: { glyph?: ReactNode; name: string }) {
   return (
     <span className="inline-flex items-center gap-1.5">
       {glyph}
@@ -371,30 +472,76 @@ function Emblem({ glyph, name }: { glyph: ReactNode; name: string }) {
 /**
  * The health track — the body's row of boxes, living in the header's number
  * column since the Vitals fold-in. Resistant dots hang beneath their boxes.
+ *
+ * With `onMark` (MAG-63) it is the paper sheet: click a box to cycle its
+ * wound (clear → bashing → lethal → aggravated → clear), click beneath it to
+ * toggle the Resistant dot — the rules are the domain's (`cycleBox`,
+ * `toggleResistant`), the same the Storyteller's form uses. Each click
+ * sends the whole track as it will show. Without it, the track is the
+ * read-only record it was.
  */
-function HealthTrack({ track }: { track: CharacterSheetData["healthTrack"] }) {
+function HealthTrack({
+  track,
+  onMark,
+}: {
+  track: CharacterSheetData["healthTrack"]
+  onMark?: ((track: ReadonlyArray<HealthBox>) => void) | undefined
+}) {
+  const boxStyle = (box: HealthBox): CSSProperties => ({
+    borderColor: box.severity === "empty" ? "var(--line)" : "var(--accent)",
+    background:
+      box.severity === "empty" || box.severity === "bashing" ? "transparent" : "var(--glow)",
+    color: "var(--accent)",
+  })
+  const boxClass =
+    "mv-data grid size-5 place-items-center rounded-[2px] border text-[10px] font-bold"
+  const replacing = (i: number, next: HealthBox) => track.map((b, j) => (j === i ? next : b))
   return (
     <span className="flex gap-1">
       {track.map((box, i) => (
         <span key={i} className="relative">
-          <span
-            className="mv-data grid size-5 place-items-center rounded-[2px] border text-[10px] font-bold"
-            style={{
-              borderColor: box.severity === "empty" ? "var(--line)" : "var(--accent)",
-              background:
-                box.severity === "empty" || box.severity === "bashing"
-                  ? "transparent"
-                  : "var(--glow)",
-              color: "var(--accent)",
-            }}
-          >
-            {healthBoxGlyph(box.severity)}
-          </span>
+          {onMark ? (
+            <button
+              type="button"
+              onClick={() => onMark(replacing(i, cycleBox(box)))}
+              className={`${boxClass} cursor-pointer`}
+              style={boxStyle(box)}
+              title="Click to mark the wound: clear → bashing → lethal → aggravated"
+              aria-label={`Health box ${i + 1}: ${box.severity}. Click to mark the next wound.`}
+            >
+              {healthBoxGlyph(box.severity)}
+            </button>
+          ) : (
+            <span className={boxClass} style={boxStyle(box)}>
+              {healthBoxGlyph(box.severity)}
+            </span>
+          )}
           {/* the Resistant mark hangs below its box like a diacritic — out of
-              the layout, so the track aligns by its boxes alone */}
-          <span className="absolute left-1/2 top-full mt-[2px] flex -translate-x-1/2">
-            <ResistantDot resistant={box.resistant} />
-          </span>
+              the layout, so the track aligns by its boxes alone; with onMark
+              the slot beneath is the toggle (a wound only — #118) */}
+          {onMark ? (
+            <button
+              type="button"
+              onClick={() => onMark(replacing(i, toggleResistant(box)))}
+              disabled={box.severity === "empty"}
+              className="absolute left-1/2 top-full flex h-[9px] w-5 -translate-x-1/2 cursor-pointer items-start justify-center pt-[2px] disabled:cursor-default"
+              title={
+                box.severity === "empty"
+                  ? "Resistant marks a wound; this box is clear"
+                  : box.resistant
+                    ? "Resistant — heals only naturally. Click to clear the dot."
+                    : "Click to mark this wound Resistant (heals only naturally)"
+              }
+              aria-label={`Health box ${i + 1}: ${box.resistant ? "Resistant" : "not Resistant"}. Click to toggle.`}
+              aria-pressed={box.resistant}
+            >
+              <ResistantDot resistant={box.resistant} />
+            </button>
+          ) : (
+            <span className="absolute left-1/2 top-full mt-[2px] flex -translate-x-1/2">
+              <ResistantDot resistant={box.resistant} />
+            </span>
+          )}
         </span>
       ))}
     </span>
@@ -495,36 +642,52 @@ function CategoryColumn({
 }: {
   label: string
   attributes: [string, number][]
-  skills: [string, number][]
+  skills: ReadonlyArray<SkillEntry>
   onToggle: (component: PoolComponentInput) => void
   isActive: (type: PoolComponentType, name: string) => boolean
   canToggle: boolean
   interactive: boolean
 }) {
-  const zone = (
-    type: PoolComponentType,
-    traits: [string, number][],
-    color?: string,
-  ) =>
-    traits.map(([name, dots]) => {
+  const zone = (type: PoolComponentType, traits: ReadonlyArray<SkillEntry>, color?: string) =>
+    traits.map(({ name, dots, specialty }) => {
       const active = isActive(type, name)
+      const component = specialty && {
+        type: "modifier" as const,
+        name: specialtyComponentName(specialty),
+        dots: 1,
+      }
+      const specialtyActive = component !== undefined && isActive(component.type, component.name)
       return (
-        <TraitRow
-          key={name}
-          interactive={interactive}
-          canToggle={canToggle}
-          active={active}
-          onToggle={() => onToggle({ type, name, dots })}
-          className="mv-sky-row -mx-2 flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
-        >
-          <span
-            className="whitespace-nowrap text-[14px]"
-            style={color ? { color } : undefined}
+        <div key={name} className="relative">
+          <TraitRow
+            interactive={interactive}
+            canToggle={canToggle}
+            active={active}
+            onToggle={() => {
+              onToggle({ type, name, dots })
+              // the specialty rides its skill: toggling the skill off takes
+              // the +1 with it, since a specialty without its skill is nothing
+              if (active && specialtyActive && component) onToggle(component)
+            }}
+            className="mv-sky-row -mx-2 flex items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
           >
-            {name}
-          </span>
-          <DotRating current={dots} active={active} {...(color ? { color } : {})} />
-        </TraitRow>
+            <span
+              className="whitespace-nowrap text-[14px]"
+              style={color ? { color } : undefined}
+            >
+              {name}
+            </span>
+            <DotRating current={dots} active={active} {...(color ? { color } : {})} />
+          </TraitRow>
+          {specialty && component && (
+            <SpecialtyMark
+              specialty={specialty}
+              armable={interactive && canToggle && active}
+              armed={specialtyActive}
+              onToggle={() => onToggle(component)}
+            />
+          )}
+        </div>
       )
     })
 
@@ -533,10 +696,77 @@ function CategoryColumn({
       <span className="mv-data text-[11px] uppercase tracking-wider" style={{ color: "var(--dim)" }}>
         {label}
       </span>
-      {zone("attribute", attributes, "var(--zone-attr)")}
+      {zone("attribute", attributes.map(([name, dots]) => ({ name, dots })), "var(--zone-attr)")}
       {skills.length > 0 && <span aria-hidden className="h-2" />}
       {zone("skill", skills, "var(--zone-skill)")}
     </div>
+  )
+}
+
+/** A matrix row: a trait's display name and dots, and for a skill, its specialty if it carries one. */
+interface SkillEntry {
+  name: string
+  dots: number
+  specialty?: SkillSpecialty | undefined
+}
+
+/**
+ * The specialty's mark (MAG-58; WoD p. 54): a focus — a ring with a point
+ * at its center — floating between the skill's name and its dots, outside
+ * the row's button so the two stay separate controls. Inert on a read-only
+ * sheet and while the skill is out of the pool; once the skill is in, the
+ * mark is the toggle for the +1 (the player's call whether the roll falls
+ * inside the specialty), lit ember when armed like every armed selection.
+ */
+function SpecialtyMark({
+  specialty,
+  armable,
+  armed,
+  onToggle,
+}: {
+  specialty: SkillSpecialty
+  armable: boolean
+  armed: boolean
+  onToggle: () => void
+}) {
+  const color = armed ? "var(--ember)" : armable ? "var(--accent)" : "var(--dim)"
+  const words = `Specialty: ${specialty.label} · +1 die when the roll falls inside it`
+  const glyph = (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden style={{ color }}>
+      <circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="7" cy="7" r="1.6" fill="currentColor" />
+    </svg>
+  )
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {armable ? (
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-pressed={armed}
+              aria-label={words}
+              className="absolute top-1/2 right-[52px] grid size-5 -translate-y-1/2 cursor-pointer place-items-center rounded-full"
+            >
+              {glyph}
+            </button>
+          ) : (
+            <span
+              tabIndex={0}
+              aria-label={words}
+              className="absolute top-1/2 right-[52px] grid size-5 -translate-y-1/2 place-items-center"
+            >
+              {glyph}
+            </span>
+          )}
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={4}>
+          {words}
+          {armable && (armed ? " · in the pool" : " · click to add it")}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 

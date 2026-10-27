@@ -150,6 +150,7 @@ function SessionPage() {
   )
 
   const setMagicalTool = useMutation(api.characters.setMagicalTool)
+  const markSheet = useMutation(api.characters.markSheet)
 
   // The live cast holds the ST's working zone (the card takeover, owner
   // ruling 2026-07-19, superseding #110's postures; the live zone, MAG-48):
@@ -360,12 +361,27 @@ function SessionPage() {
                   setMagicalTool({ sessionId, characterId: viewed._id, hasMagicalTool })
               : undefined
           }
+          // the paper gesture (MAG-63): your own track and Wisdom, or any
+          // sheet's for the ST (the server ladder decides; this mirrors it)
+          onMarkSheet={
+            mayDrivePool
+              ? (mark) =>
+                  markSheet({
+                    sessionId,
+                    characterId: viewed._id,
+                    ...(mark.healthTrack !== undefined
+                      ? { healthTrack: mark.healthTrack.map((box) => ({ ...box })) }
+                      : {}),
+                    ...(mark.wisdom !== undefined ? { wisdom: mark.wisdom } : {}),
+                  })
+              : undefined
+          }
         />
         {/* The hand-edit panel (issue #19): ST-only, on any sheet — the one
             edit affordance in the app; players never see edit controls. */}
         {isStoryteller && (
           <HandEditForm
-            key={`${sheet.id}:${sheet.manaCurrent}:${sheet.willpowerCurrent}:${sheet.wisdom}:${trackKey(sheet.healthTrack)}`}
+            key={`${sheet.id}:${sheet.manaCurrent}:${sheet.willpowerCurrent}:${sheet.wisdom}:${sheet.experience}:${trackKey(sheet.healthTrack)}`}
             sessionId={sessionId}
             characterId={viewed._id}
             character={sheet}

@@ -1,5 +1,5 @@
 import { Array as Arr, Effect, Match, Option, Schema } from "effect"
-import { healthBox, type BoxSeverity, type DamageType, type HealthBox, type HealthTrack } from "./damage"
+import { BoxSeverity, healthBox, type DamageType, type HealthBox, type HealthTrack } from "./damage"
 
 // Pure rules leaves (ADR-0014): damage application, healing, and wound
 // penalties are plain functions over the shared health-box vocabulary
@@ -12,6 +12,25 @@ export class HealthTrackError extends Schema.TaggedError<HealthTrackError>()(
   "HealthTrackError",
   { message: Schema.String },
 ) {}
+
+// --- The sheet's two marking gestures (issue #41, MAG-63) ---
+
+// The one box vocabulary, in its declared order — never a parallel copy.
+const BOX_CYCLE: ReadonlyArray<BoxSeverity> = BoxSeverity.literals
+
+/**
+ * Click cycles the wound: clear → bashing → lethal → aggravated → clear. The
+ * box invariant (#118, owner ruling 2026-07-19): the Resistant dot marks a
+ * property of the wound IN the box, so cycling around to empty drops it.
+ */
+export const cycleBox = (box: HealthBox): HealthBox => {
+  const severity = BOX_CYCLE[(BOX_CYCLE.indexOf(box.severity) + 1) % BOX_CYCLE.length]!
+  return { severity, resistant: severity === "empty" ? false : box.resistant }
+}
+
+/** Toggle the Resistant dot beneath a wound; an empty box can't carry one (#118). */
+export const toggleResistant = (box: HealthBox): HealthBox =>
+  box.severity === "empty" ? box : { ...box, resistant: !box.resistant }
 
 // --- Damage severity for ordering ---
 

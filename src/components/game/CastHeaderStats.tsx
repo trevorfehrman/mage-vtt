@@ -20,10 +20,18 @@ const PoolNumeralsProps = Schema.Struct({
   pendingWillpower: Schema.Number,
   /** Font size in px; the Cast header's 13 by default. */
   size: Schema.optionalKey(Schema.Number),
+  /** Show Mana a turn beside the purse (MAG-57) — the sheet's header only. */
+  manaPerTurn: Schema.optionalKey(Schema.Boolean),
 })
 
 /** Will · Mana as numerals; a pending spend shows what would be left, in ember. */
-export function PoolNumerals({ sheet, pendingMana, pendingWillpower, size = 13 }: typeof PoolNumeralsProps.Type) {
+export function PoolNumerals({
+  sheet,
+  pendingMana,
+  pendingWillpower,
+  size = 13,
+  manaPerTurn = false,
+}: typeof PoolNumeralsProps.Type) {
   return (
     <TooltipProvider>
       <span className="mv-data flex items-baseline gap-3 leading-none" style={{ fontSize: size }}>
@@ -41,8 +49,54 @@ export function PoolNumerals({ sheet, pendingMana, pendingWillpower, size = 13 }
           max={sheet.maxMana}
           pending={pendingMana}
         />
+        {/* Mana a turn (MAG-57; Mage p. 76): the speed limit on spending,
+            set by Gnosis — a cycle arrow and the number, right beside the
+            purse it governs (owner, 2026-10-27). */}
+        {manaPerTurn && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                tabIndex={0}
+                aria-label={`${sheet.manaPerTurn} Mana a turn`}
+                className="flex items-baseline gap-1"
+                style={{ color: "var(--dim)" }}
+              >
+                <span style={{ color: "var(--mana)" }}><CycleArrow /></span>
+                <span>{sheet.manaPerTurn}</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={4}>
+              {sheet.manaPerTurn} Mana a turn at Gnosis {sheet.gnosis}
+            </TooltipContent>
+          </Tooltip>
+        )}
       </span>
     </TooltipProvider>
+  )
+}
+
+/**
+ * The cycle arrow ↻ — a turn, drawn in the Lozenge's manner (sized in em,
+ * dropped to the numerals' center line) so it sits in a run of text.
+ */
+function CycleArrow() {
+  return (
+    <svg
+      width="0.8em"
+      height="0.8em"
+      viewBox="0 0 10 10"
+      aria-hidden
+      style={{ display: "inline-block", verticalAlign: "-0.05em", flexShrink: 0 }}
+    >
+      <path
+        d="M8.2 5.6 A3.3 3.3 0 1 1 7.3 2.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.2}
+        strokeLinecap="round"
+      />
+      <path d="M6.2 1.4 L8.3 2.4 L7.2 4.4 Z" fill="currentColor" />
+    </svg>
   )
 }
 

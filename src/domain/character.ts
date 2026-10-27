@@ -6,7 +6,8 @@ import {
   type HealthBox,
 } from "./damage"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "./ids"
-import { Dots, Mana, Willpower } from "./quantities"
+import { manaPerTurnByGnosis, toGnosisRank } from "./mana-economy"
+import { Dots, Experience, Mana, Willpower } from "./quantities"
 import { RoteArcanumName, RotePool } from "./rote-pool"
 // Value-only imports; rote-cast's import of this module is type-only, so the
 // module graph stays acyclic at runtime.
@@ -257,6 +258,48 @@ const SheetAttributes = Schema.Struct({
   social: Schema.Struct({ presence: SheetDots, manipulation: SheetDots, composure: SheetDots }),
 })
 
+/**
+ * The sheet's skill keys (MAG-58): the one vocabulary a Skill Specialty may
+ * name. A test pins it to `SheetSkills`' own keys so the two cannot drift.
+ */
+export const SkillKey = Schema.Literals([
+  "academics", "computer", "crafts", "investigation", "medicine", "occult", "politics", "science",
+  "athletics", "brawl", "drive", "firearms", "larceny", "stealth", "survival", "weaponry",
+  "animalKen", "empathy", "expression", "intimidation", "persuasion", "socialize", "streetwise", "subterfuge",
+])
+export type SkillKey = typeof SkillKey.Type
+
+/**
+ * A Skill Specialty (MAG-58; WoD p. 54, written "Occult (Goetia)" on the
+ * book's sheet): a narrow focus inside a Skill worth +1 die when the roll
+ * falls inside it — a judgment the player makes, so the pool offers it as
+ * an opt-in component rather than adding it.
+ */
+export const SkillSpecialty = Schema.Struct({
+  skill: SkillKey,
+  label: Schema.String,
+})
+export type SkillSpecialty = typeof SkillSpecialty.Type
+
+/** What the pool calls the specialty's +1 when the player toggles it in. */
+export const specialtyComponentName = (specialty: SkillSpecialty): string =>
+  `Specialty: ${specialty.label}`
+
+/**
+ * A Legacy (MAG-61; Mage p. 93): the mage's one specialization, chosen at
+ * Gnosis 3 or higher, granting up to three attainments as Gnosis climbs.
+ */
+export const Legacy = Schema.Struct({
+  name: Schema.String,
+  attainments: Schema.Array(Schema.String),
+})
+export type Legacy = typeof Legacy.Type
+
+/** The Gnosis each attainment opens at (p. 93): the first at 3, then 5, then 7. */
+const ATTAINMENT_GNOSIS = [3, 5, 7] as const
+export const attainmentGnosis = (index: number): number =>
+  ATTAINMENT_GNOSIS[Math.min(index, ATTAINMENT_GNOSIS.length - 1)]
+
 const SheetSkills = Schema.Struct({
   mental: Schema.Struct({
     academics: SheetDots, computer: SheetDots, crafts: SheetDots,
@@ -365,7 +408,38 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   manaCurrent: Mana,
   knownRotes: Schema.optionalKey(Schema.Array(KnownRote)),
   hasMagicalTool: Schema.optionalKey(Schema.Boolean),
+  // Unspent experience (MAG-57): absent means none recorded — optionalKey
+  // plus a getter, per ADR-0017's optional-column idioms.
+  experienceUnspent: Schema.optionalKey(Experience),
+  // Skill Specialties (MAG-58): absent means none.
+  skillSpecialties: Schema.optionalKey(Schema.Array(SkillSpecialty)),
+  // The record's words (MAG-61): the nimbus sentence, the Legacy, the cabal
+  // and consilium names. None change a roll; all absent until written.
+  nimbus: Schema.optionalKey(Schema.String),
+  legacy: Schema.optionalKey(Legacy),
+  cabal: Schema.optionalKey(Schema.String),
+  consilium: Schema.optionalKey(Schema.String),
 }) {
+  /** Unspent experience (MAG-57), absent-column-safe: none recorded is 0. */
+  get experience(): number {
+    return this.experienceUnspent ?? 0
+  }
+
+  /** Skill Specialties (MAG-58), absent-column-safe. */
+  get specialties(): ReadonlyArray<SkillSpecialty> {
+    return this.skillSpecialties ?? []
+  }
+
+  /** The specialty a skill carries, if any (a skill carries at most one on this sheet). */
+  specialtyFor(skill: SkillKey): SkillSpecialty | undefined {
+    return this.specialties.find((s) => s.skill === skill)
+  }
+
+  /** Mana this mage may spend in one turn (MAG-57; Mage p. 76): Gnosis's own number, 10 at Gnosis 9, 15 at 10. */
+  get manaPerTurn(): number {
+    return manaPerTurnByGnosis(toGnosisRank(this.gnosis))
+  }
+
   /** Known Rotes, absent-column-safe: rows stored before issue #16 have none. */
   get rotes(): ReadonlyArray<KnownRote> {
     return this.knownRotes ?? []

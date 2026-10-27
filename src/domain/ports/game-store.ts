@@ -18,7 +18,7 @@ import { ParadoxPoolModifier, ParadoxSeverity } from "../paradox"
 import { ParadoxSpan } from "../paradox-effects"
 import { Membership } from "../membership"
 import type { NotAMember } from "../authz"
-import { Mana, Willpower } from "../quantities"
+import { Experience, Mana, Willpower } from "../quantities"
 import type { SpellRef } from "../rote-cast"
 import type { RoteArcanumName } from "../rote-pool"
 import type { Scene } from "../scene"
@@ -70,6 +70,8 @@ export const SheetPatch = Schema.Struct({
   /** Wisdom (MAG-56): a trait, not current state — widened deliberately so the
    * Storyteller's hand-edit door can record degeneration and recovery. */
   wisdom: Schema.optionalKey(WisdomRank),
+  /** Unspent experience (MAG-57): a record the Storyteller keeps through the hand-edit door. */
+  experienceUnspent: Schema.optionalKey(Experience),
 })
 export type SheetPatch = typeof SheetPatch.Type
 

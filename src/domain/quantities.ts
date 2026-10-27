@@ -29,6 +29,13 @@ export const Mana = Schema.Number.check(
 ).pipe(Schema.brand("Mana"))
 export type Mana = typeof Mana.Type
 
+/** Unspent experience points (MAG-57): a record, never negative; spending it is out of the app's reach for now. */
+export const Experience = Schema.Number.check(
+  Schema.isInt(),
+  Schema.isGreaterThanOrEqualTo(0),
+).pipe(Schema.brand("Experience"))
+export type Experience = typeof Experience.Type
+
 /** Willpower points in the sheet's pool box: never negative, capped by rating at layer 3. */
 export const Willpower = Schema.Number.check(
   Schema.isInt(),

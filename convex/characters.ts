@@ -9,6 +9,7 @@ import { castSpell as castSpellFlow } from "../src/domain/flows/casting"
 import { castRote as castRoteFlow } from "../src/domain/flows/rote-cast"
 import {
   handEditSheet as handEditSheetFlow,
+  markSheet as markSheetFlow,
   setMagicalTool as setMagicalToolFlow,
 } from "../src/domain/flows/hand-edit"
 import { schemaToConvexValidator } from "../src/domain/schema-bridge"
@@ -69,8 +70,24 @@ export const handEdit = enforcedMutation({
     healthTrack: v.optional(schemaToConvexValidator(Schema.Array(HealthBox))),
     // Wisdom (MAG-56): degeneration and recovery, the Storyteller's to record.
     wisdom: v.optional(v.number()),
+    // Unspent experience (MAG-57): the Storyteller's record.
+    experienceUnspent: v.optional(v.number()),
   },
   flow: handEditSheetFlow,
+})
+
+// The paper-sheet gesture (MAG-63): the owner marks their own health track and
+// Wisdom from the sheet itself; an ST/Dev marking in their stead walks the
+// normal ladder and is Override-recorded. Representability and the Activity
+// entry live in the domain flow; this file supplies only the args.
+export const markSheet = enforcedMutation({
+  args: {
+    sessionId: v.id("sessions"),
+    characterId: v.id("characters"),
+    healthTrack: v.optional(schemaToConvexValidator(Schema.Array(HealthBox))),
+    wisdom: v.optional(v.number()),
+  },
+  flow: markSheetFlow,
 })
 
 // The standing tool fact (issue #107): a magical tool in hand, −1 Paradox die

@@ -275,6 +275,9 @@ export const makeInMemory = (seed: {
                 ? { healthTrack: patch.healthTrack }
                 : {}),
               ...(patch.wisdom !== undefined ? { wisdom: patch.wisdom } : {}),
+              ...(patch.experienceUnspent !== undefined
+                ? { experienceUnspent: patch.experienceUnspent }
+                : {}),
             }),
           )
         }

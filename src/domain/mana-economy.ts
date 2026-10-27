@@ -9,6 +9,14 @@ import { Mana } from "./quantities"
 export const GnosisRank = Schema.Literals([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 export type GnosisRank = typeof GnosisRank.Type
 
+/**
+ * The sheet stores Gnosis as 0–10 dots (representability, ADR-0011); the
+ * rules tables speak rules-legal ranks 1–10. Clamp at the boundary — a
+ * fudged Gnosis 0 sheet still gets a rank-1 table row rather than a crash.
+ */
+export const toGnosisRank = (gnosis: number): GnosisRank =>
+  Math.min(10, Math.max(1, Math.round(gnosis))) as GnosisRank
+
 // --- Gnosis → Mana per turn (page 76) ---
 
 const MANA_PER_TURN: Record<GnosisRank, number> = {

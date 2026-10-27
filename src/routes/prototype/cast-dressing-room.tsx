@@ -34,6 +34,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { withheldFrom, type CastEntry, type MessageEntry, type RollEntry } from "#/domain/activity"
 import type { ParadoxPoolModifier } from "#/domain/paradox"
 import { decodeSheet } from "#/domain/character"
+import type { SheetMark } from "#/domain/flows/hand-edit"
 import { initialCurrentState } from "#/domain/character"
 import { arctusData } from "#/domain/fixtures/arctus"
 import { useDicePool } from "#/hooks/use-dice-pool"
@@ -384,10 +385,20 @@ function DressingRoom() {
   // MAG-52: the sheet's tool switch flips a local copy (no server here).
   const [toolInHand, setToolInHand] = useState(false)
   // MAG-56: the Wisdom knob rides the shown sheet too, so the meter and the
-  // resolved card agree on the caster.
+  // resolved card agree on the caster. MAG-63: the sheet's own marks (the
+  // track, Wisdom) land in local state here — no server — so the owner can
+  // click the boxes and the meter and watch them move; the knob resets them.
+  const [marks, setMarks] = useState<SheetMark>({})
+  useEffect(() => setMarks({}), [wisdom])
   const shownSheet = useMemo(
-    () => decodeSheet({ ...ARCTUS_INPUT, hasMagicalTool: toolInHand, wisdom }),
-    [toolInHand, wisdom],
+    () =>
+      decodeSheet({
+        ...ARCTUS_INPUT,
+        hasMagicalTool: toolInHand,
+        wisdom: marks.wisdom ?? wisdom,
+        ...(marks.healthTrack !== undefined ? { healthTrack: marks.healthTrack } : {}),
+      }),
+    [toolInHand, wisdom, marks],
   )
   const navigate = Route.useNavigate()
   const pool = useDicePool(SESSION_ID)
@@ -567,11 +578,18 @@ function DressingRoom() {
           shownSheet ? (
             <CharacterSheet
               character={shownSheet}
+              // the rig's own pool, so the matrix toggles and the specialty
+              // marks (MAG-58) arm — rolling has no server here
+              pool={pool}
               // a pending spend, so the header's ember is judged too
               pendingMana={2}
               pendingWillpower={1}
               onSetMagicalTool={(next) => {
                 setToolInHand(next)
+                return Promise.resolve()
+              }}
+              onMarkSheet={(mark) => {
+                setMarks((prev) => ({ ...prev, ...mark }))
                 return Promise.resolve()
               }}
             />

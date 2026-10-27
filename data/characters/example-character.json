@@ -49,6 +49,15 @@
       }
     },
     "arcana": { "death": 2, "matter": 3, "prime": 1 },
+    "experienceUnspent": 0,
+    "skillSpecialties": [
+      { "skill": "occult", "label": "Relics" },
+      { "skill": "science", "label": "Metallurgy" },
+      { "skill": "academics", "label": "Accounting" }
+    ],
+    "nimbus": "Ledgers of frost crawl across every surface; the air rings like struck coin.",
+    "cabal": "The Hollow Choir",
+    "consilium": "Consilium of the Narrows",
     "healthTrack": ["empty", "empty", "empty", "empty", "empty", "empty", "empty"],
     "willpowerCurrent": 6,
     "manaCurrent": 11,

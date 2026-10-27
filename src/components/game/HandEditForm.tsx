@@ -3,8 +3,9 @@ import { useMutation } from "convex/react"
 import { Schema } from "effect"
 import { api } from "../../../convex/_generated/api"
 import type { CharacterSheet as CharacterSheetData } from "#/domain/character"
-import { BoxSeverity, HealthBox } from "#/domain/damage"
-import { Mana, Willpower } from "#/domain/quantities"
+import { HealthBox } from "#/domain/damage"
+import { cycleBox, toggleResistant } from "#/domain/health"
+import { Experience, Mana, Willpower } from "#/domain/quantities"
 import { WisdomRank } from "#/domain/wisdom"
 import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { seamErrorMessage } from "#/lib/seam-errors"
@@ -35,32 +36,19 @@ const HandEditWorkingCopy = Schema.Struct({
   healthTrack: Schema.Array(HealthBox),
   // Wisdom (MAG-56): degeneration and recovery, the Storyteller's to record.
   wisdom: WisdomRank,
+  // Unspent experience (MAG-57): the Storyteller's record.
+  experienceUnspent: Experience,
 })
 
 const handEditStandard = standardSchemaFor(HandEditWorkingCopy)
-
-// The one box vocabulary, in its declared order — never a parallel copy.
-const HEALTH_CYCLE: ReadonlyArray<BoxSeverity> = BoxSeverity.literals
 
 const sameBox = (a: HealthBox, b: HealthBox) =>
   a.severity === b.severity && a.resistant === b.resistant
 
 // Two orthogonal axes, two gestures (issue #41): click cycles the wound
-// severity; shift-click toggles the Resistant dot beneath the box. The box
-// invariant (#118, owner ruling 2026-07-19): the dot marks a property of the
-// wound IN the box, so an empty box can never carry one — cycling around to
-// empty drops the dot, and shift-click on an empty box is a no-op.
-const cycleSeverity = (box: HealthBox): HealthBox => {
-  const severity =
-    HEALTH_CYCLE[(HEALTH_CYCLE.indexOf(box.severity) + 1) % HEALTH_CYCLE.length]!
-  return {
-    severity,
-    resistant: severity === "empty" ? false : box.resistant,
-  }
-}
-
-const toggleResistant = (box: HealthBox): HealthBox =>
-  box.severity === "empty" ? box : { ...box, resistant: !box.resistant }
+// severity; shift-click toggles the Resistant dot beneath the box. The rules
+// are the domain's (`cycleBox`, `toggleResistant` in health.ts), shared with
+// the sheet's own track since MAG-63.
 
 type WorkingCopy = typeof HandEditWorkingCopy.Encoded
 
@@ -73,7 +61,15 @@ const diffWorkingCopy = (values: WorkingCopy, defaults: WorkingCopy) => {
     (box, i) => !sameBox(box, defaults.healthTrack[i]!),
   )
   const wisdom = values.wisdom !== defaults.wisdom
-  return { mana, willpower, track, wisdom, any: mana || willpower || track || wisdom }
+  const experience = values.experienceUnspent !== defaults.experienceUnspent
+  return {
+    mana,
+    willpower,
+    track,
+    wisdom,
+    experience,
+    any: mana || willpower || track || wisdom || experience,
+  }
 }
 
 export function HandEditForm({
@@ -94,6 +90,7 @@ export function HandEditForm({
     willpowerCurrent: character.willpowerCurrent,
     healthTrack: character.healthTrack,
     wisdom: character.wisdom,
+    experienceUnspent: character.experience,
   }
 
   const form = useForm({
@@ -116,6 +113,7 @@ export function HandEditForm({
               ? { healthTrack: decoded.healthTrack.map((box) => ({ ...box })) }
               : {}),
             ...(dirty.wisdom ? { wisdom: decoded.wisdom } : {}),
+            ...(dirty.experience ? { experienceUnspent: decoded.experienceUnspent } : {}),
           })
           // The edit lands on the sheet and in the Activity Log,
           // Override-stamped; the route's remount key resets this form.
@@ -207,6 +205,20 @@ export function HandEditForm({
                   )}
                 </form.Field>
 
+                {/* Unspent experience (MAG-57): a record, not a pool — no
+                    printed ceiling, so the stepper's max is nominal. */}
+                <form.Field name="experienceUnspent">
+                  {(field) => (
+                    <Stepper
+                      label="XP"
+                      value={field.state.value}
+                      max={999}
+                      onChange={field.handleChange}
+                      dirty={dirty.experience}
+                      errors={field.state.meta.errors}
+                    />
+                  )}
+                </form.Field>
                 <form.Field name="healthTrack">
                   {(field) => (
                     <div className="flex items-center gap-1.5">
@@ -219,7 +231,7 @@ export function HandEditForm({
                               field.handleChange(
                                 field.state.value.map((b, j) =>
                                   j === i
-                                    ? (e.shiftKey ? toggleResistant : cycleSeverity)(b)
+                                    ? (e.shiftKey ? toggleResistant : cycleBox)(b)
                                     : b,
                                 ),
                               )

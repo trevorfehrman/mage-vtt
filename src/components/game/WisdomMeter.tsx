@@ -52,36 +52,55 @@ const GLOW_BY_RANK: Partial<Record<WisdomRank, string>> = {
   1: "0 0 16px color-mix(in srgb, var(--paradox) 80%, transparent)",
 }
 
-export function WisdomMeter({ wisdom }: { wisdom: WisdomRank }) {
+/**
+ * `onSet` (MAG-63; owner's call 2026-10-27: players mark their own Wisdom):
+ * when present each cell is a button that sets the rank to its own number —
+ * the paper gesture of filling or erasing a dot. Absent, the meter is the
+ * read-only record it was.
+ */
+export function WisdomMeter({
+  wisdom,
+  onSet,
+}: {
+  wisdom: WisdomRank
+  onSet?: ((rank: WisdomRank) => void) | undefined
+}) {
   const fill = FILL_BY_RANK[wisdom]
   const glow = GLOW_BY_RANK[wisdom]
+  const cellStyle = (held: boolean) => ({
+    background: held ? fill : "transparent",
+    boxShadow: held ? glow : "inset 0 0 0 1px var(--line)",
+    transition: `background-color ${SHIFT}, box-shadow ${SHIFT}`,
+  })
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <span
-          tabIndex={0}
+          tabIndex={onSet ? undefined : 0}
           className="grid w-full grid-cols-10 gap-[3px]"
           style={{ height: 12 }}
           aria-label={`Wisdom ${wisdom}`}
         >
-          {WisdomRank.literals.map((rank) => {
-            const held = rank <= wisdom
-            return (
-              <span
+          {WisdomRank.literals.map((rank) =>
+            onSet ? (
+              <button
                 key={rank}
-                className="block rounded-[2px]"
-                style={{
-                  background: held ? fill : "transparent",
-                  boxShadow: held ? glow : "inset 0 0 0 1px var(--line)",
-                  transition: `background-color ${SHIFT}, box-shadow ${SHIFT}`,
-                }}
+                type="button"
+                onClick={() => onSet(rank)}
+                aria-label={`Set Wisdom ${rank}`}
+                aria-pressed={rank === wisdom}
+                className="block cursor-pointer rounded-[2px]"
+                style={cellStyle(rank <= wisdom)}
               />
-            )
-          })}
+            ) : (
+              <span key={rank} className="block rounded-[2px]" style={cellStyle(rank <= wisdom)} />
+            ),
+          )}
         </span>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={4}>
         Wisdom {wisdom} · degeneration {degenerationDicePool(wisdom)} dice
+        {onSet && " · click a cell to set it"}
       </TooltipContent>
     </Tooltip>
   )

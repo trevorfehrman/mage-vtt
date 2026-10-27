@@ -148,6 +148,19 @@ export const CharacterSeedData = Schema.Struct({
   // Wisdom (MAG-56): optional column — rows written before it existed read as
   // the book's starting 7 at the sheet decode; new ingests always carry it.
   wisdom: Schema.optionalKey(Schema.Number),
+  // Unspent experience (MAG-57), Skill Specialties (MAG-58), and the record's
+  // words (MAG-61): all optional columns — absent on rows written before each
+  // existed, and absence means none. Raw primitives (ADR-0011).
+  experienceUnspent: Schema.optionalKey(Schema.Number),
+  skillSpecialties: Schema.optionalKey(
+    Schema.Array(Schema.Struct({ skill: Schema.String, label: Schema.String })),
+  ),
+  nimbus: Schema.optionalKey(Schema.String),
+  legacy: Schema.optionalKey(
+    Schema.Struct({ name: Schema.String, attainments: Schema.Array(Schema.String) }),
+  ),
+  cabal: Schema.optionalKey(Schema.String),
+  consilium: Schema.optionalKey(Schema.String),
   attributes: Schema.Struct({
     mental: Schema.Struct({
       intelligence: Schema.Number,

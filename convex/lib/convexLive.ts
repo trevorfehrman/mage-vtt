@@ -244,6 +244,9 @@ export const convexLive = (
               ? { healthTrack: patch.healthTrack.map((box) => ({ ...box })) }
               : {}),
             ...(patch.wisdom !== undefined ? { wisdom: patch.wisdom } : {}),
+            ...(patch.experienceUnspent !== undefined
+              ? { experienceUnspent: patch.experienceUnspent }
+              : {}),
           }),
         )
       }),
