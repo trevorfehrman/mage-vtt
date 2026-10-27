@@ -380,10 +380,9 @@ function WheelKey({
 }) {
   const dist = useTransform(offset, (o) => ringDistance(count, i - o))
   const y = useTransform(dist, (d) => d * ROW)
-  // the drum: keys away from the middle recede a little to the left and
-  // shrink, so the column reads as a wheel's face, not a list
-  const x = useTransform(dist, (d) => 14 - Math.min(14, d * d * 2.2) + Math.max(0, 1 - Math.abs(d)) * 10)
-  const scale = useTransform(dist, (d) => 1.12 - Math.min(0.3, Math.abs(d) * 0.13))
+  // flat (owner, round seven): no drum — nothing scales or recedes, so no
+  // key ever lies over another. The key in hand only steps toward the door.
+  const x = useTransform(dist, (d) => Math.max(0, 1 - Math.abs(d)) * 12)
   // gone before it wraps from one edge of the frame to the other
   const opacity = useTransform(dist, (d) => (Math.abs(d) > 3.2 ? 0 : Math.max(0.18, 1 - Math.abs(d) * 0.22)))
   const stem = useTransform(dist, (d) => 10 + Math.max(0, 1 - Math.abs(d)) * 14)
@@ -396,7 +395,7 @@ function WheelKey({
       type="button"
       onClick={onTap}
       className={`absolute left-[6px] top-1/2 -mt-[18px] flex h-[36px] items-center gap-2 whitespace-nowrap text-left ${turns ? "" : "cursor-default"}`}
-      style={{ y, x, scale, opacity, color: ink, transformOrigin: "0% 50%" }}
+      style={{ y, x, opacity, color: ink }}
     >
       <motion.span aria-hidden className="block h-px" style={{ width: stem, marginLeft: stemMargin, background: lit ? "var(--ember)" : "var(--line)" }} />
       <Mark name={h.name} size={26} turned={lit} />
