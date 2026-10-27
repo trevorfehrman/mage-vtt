@@ -14,11 +14,19 @@
 // has picked, and build the winner properly (typed mechanic in the catalog,
 // TDD'd leaves). The `-` prefix keeps this out of the route tree.
 //
-//   A — Line: the keys hang in one line across the section, names in the
-//       trait rows' face, dots beneath.
-//   B — Cluster: a tighter hang, the marks dominating, names in the small
-//       mono face the zone labels use.
-import { useState, type ReactNode } from "react"
+// Third round: fingering through the keys. One key is in hand at a time;
+// the others sit to either side, smaller and dim; sliding through them
+// (click, drag, wheel, arrow keys) is the kinesthetic act of picking the
+// right key. The key in hand shows its sentence and its verb beneath — the
+// Rote Book's "the verb lives on the page" — and tapping the key in hand
+// turns it (ember; the dice follow); tapping again lets it go. Turned keys
+// stay lit wherever they sit on the ring. A fixed frame, so flipping never
+// reflows the sheet (the book's rule).
+//   A — In hand: a straight strip, the key in hand risen at the center.
+//   B — Fan: the keys splayed on an arc as if the ring were held up, the key
+//       in hand at the crown.
+import { useRef, useState, type ReactNode } from "react"
+import { motion, useReducedMotion } from "motion/react"
 import { merit, type HeldMerit, type MeritName } from "#/domain/merits"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 import { DotRating } from "#/components/game/DotRating"
@@ -30,8 +38,8 @@ export const isMeritsAuditionVariant = (v: unknown): v is MeritsAuditionVariant 
 
 export const AUDITION_VARIANT_NAMES: Record<MeritsAuditionVariant, string> = {
   off: "the branch's own section",
-  A: "Keys, in a line — names in the trait face",
-  B: "Keys, clustered — the marks dominate",
+  A: "In hand — a strip, the key in hand risen at the center",
+  B: "Fan — the keys splayed on an arc, the key in hand at the crown",
 }
 
 /** The rig's Arctus holds two more Merits for the audition, so there is
@@ -146,107 +154,226 @@ function Pips({ size, spent }: { size: number; spent: number }) {
   )
 }
 
-// ── One key on the ring ──────────────────────────────────────────────────────
+// ── The key in hand: its sentence and its verb ───────────────────────────────
 
-interface KeyProps {
-  h: HeldMerit
-  pool: Pool
-  canToggle: boolean
-  read: boolean
-  onRead: () => void
-  markSize: number
-  nameClass: string
-  stem: number
-  width: number
-}
-
-function Key({ h, pool, canToggle, read, onRead, markSize, nameClass, stem, width }: KeyProps) {
+function InHand({ h, pool, canToggle }: { h: HeldMerit; pool: Pool; canToggle: boolean }) {
   const mech = mechanicOf(h)
-  const turns = mech.kind === "dice" || mech.kind === "purse"
   const lit = mech.kind === "purse" ? spentOf(pool, h) > 0 : isLit(pool, h)
-  const onTap = () => {
-    onRead()
-    if (!turns || !canToggle) return
-    if (mech.kind === "dice") toggleDice(pool, h, mech.dice)
-    if (mech.kind === "purse") spend(pool, h, (spentOf(pool, h) + 1) % (mech.size + 1))
-  }
-  const ink = lit ? "var(--ember)" : read ? "var(--ink)" : turns ? "var(--ink)" : "var(--dim)"
   return (
-    <button
-      type="button"
-      onClick={onTap}
-      className={`group grid justify-items-center gap-1 text-center ${turns ? "" : "cursor-default"}`}
-      style={{ width }}
-    >
-      {/* the hang: a stem from the ring's line to the mark */}
-      <span aria-hidden className="block w-px" style={{ height: stem, background: lit ? "var(--ember)" : "var(--line)" }} />
-      <span style={{ color: ink }} className={turns ? "transition-colors group-hover:text-[var(--ink)]" : ""}>
-        <Mark name={h.name} size={markSize} turned={lit} />
-      </span>
-      <span className={`${nameClass} leading-tight`} style={{ color: ink }}>
-        {h.name}
-        {h.label !== undefined && (
-          <span className="block whitespace-nowrap text-[11px] normal-case tracking-normal" style={{ color: "var(--dim)" }}>
-            ({h.label})
+    <div className="grid min-h-[76px] content-start gap-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="flex items-baseline gap-2">
+          <span className="mv-h text-[18px] leading-none" style={{ color: lit ? "var(--ember)" : "var(--ink)" }}>
+            {h.name}
           </span>
+          {h.label !== undefined && (
+            <span className="text-[12px]" style={{ color: "var(--dim)" }}>
+              ({h.label})
+            </span>
+          )}
+        </span>
+        {mech.kind === "purse" ? (
+          <Pips size={mech.size} spent={spentOf(pool, h)} />
+        ) : (
+          <DotRating current={h.dots} max={Math.max(5, h.dots)} active={lit} />
         )}
-      </span>
-      {mech.kind === "purse" ? (
-        <Pips size={mech.size} spent={spentOf(pool, h)} />
-      ) : (
-        <DotRating current={h.dots} max={Math.max(5, h.dots)} active={lit} />
+      </div>
+      <p className="text-[12px] leading-snug" style={{ color: "var(--dim)" }}>
+        {merit(h.name).effect}
+      </p>
+      {/* the verb — the recitation line's place */}
+      {mech.kind === "dice" && (
+        <button
+          type="button"
+          disabled={!canToggle}
+          onClick={() => toggleDice(pool, h, mech.dice)}
+          className={`mv-trait ${lit ? "mv-trait-on" : ""} flex items-center justify-between rounded-[3px] px-2 py-1 text-left`}
+        >
+          <span className="text-[13px]">{lit ? "Turned" : "Turn"}</span>
+          <span className="mv-data text-[12px]" style={{ color: lit ? "var(--ember)" : "var(--ink)" }}>
+            {lit ? "in the pool" : `${mech.dice} ${mech.dice === 1 ? "die" : "dice"}`}
+          </span>
+        </button>
       )}
-    </button>
+      {mech.kind === "purse" && (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[13px]">{spentOf(pool, h) > 0 ? "Turned" : "Turn"}</span>
+          <span className="flex gap-1">
+            {Array.from({ length: mech.size }, (_, i) => {
+              const on = i < spentOf(pool, h)
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  disabled={!canToggle}
+                  onClick={() => spend(pool, h, on && i === spentOf(pool, h) - 1 ? i : i + 1)}
+                  className="grid size-[16px] place-items-center rounded-full"
+                  title={on ? "Take it back" : `Spend ${i + 1}`}
+                >
+                  <span
+                    className="inline-block size-[9px] rounded-full"
+                    style={{ background: on ? "var(--ember)" : "transparent", boxShadow: on ? undefined : "inset 0 0 0 1px var(--accent)" }}
+                  />
+                </button>
+              )
+            })}
+          </span>
+        </div>
+      )}
+      {mech.kind === "gate" && (
+        <span className="text-[11px] italic" style={{ color: "var(--dim)" }}>
+          Declared with the cast.
+        </span>
+      )}
+    </div>
   )
 }
 
-// ── The ring ─────────────────────────────────────────────────────────────────
+// ── Fingering through the ring ───────────────────────────────────────────────
 
-function Ring({
-  held,
-  pool,
-  canToggle,
-  markSize,
-  nameClass,
-  stem,
-  width,
-  gap,
-}: {
-  held: ReadonlyArray<HeldMerit>
-  pool: Pool
-  canToggle: boolean
-  markSize: number
-  nameClass: string
-  stem: number
-  width: number
-  gap: string
-}) {
-  const [reading, setReading] = useState<string | null>(null)
-  const readMerit = held.find((h) => keyOf(h) === reading)
+const SPRING = { type: "spring", stiffness: 420, damping: 34 } as const
+
+function useHand(count: number) {
+  const [hand, setHand] = useState(0)
+  const step = (d: number) => setHand((i) => Math.max(0, Math.min(count - 1, i + d)))
+  const wheelAt = useRef(0)
+  const onWheel = (e: React.WheelEvent) => {
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+    const now = Date.now()
+    if (Math.abs(d) < 8 || now - wheelAt.current < 180) return
+    wheelAt.current = now
+    step(d > 0 ? 1 : -1)
+  }
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowRight") { e.preventDefault(); step(1) }
+    if (e.key === "ArrowLeft") { e.preventDefault(); step(-1) }
+  }
+  return { hand, setHand, step, onWheel, onKeyDown }
+}
+
+const litOf = (pool: Pool, h: HeldMerit) => {
+  const mech = mechanicOf(h)
+  return mech.kind === "purse" ? spentOf(pool, h) > 0 : isLit(pool, h)
+}
+const turnsOf = (h: HeldMerit) => {
+  const k = mechanicOf(h).kind
+  return k === "dice" || k === "purse"
+}
+
+/** Tap the key in hand to turn it; tap any other key to bring it to hand. */
+const tapKey = (i: number, hand: number, setHand: (i: number) => void, h: HeldMerit, pool: Pool, canToggle: boolean) => {
+  if (i !== hand) { setHand(i); return }
+  const mech = mechanicOf(h)
+  if (!canToggle) return
+  if (mech.kind === "dice") toggleDice(pool, h, mech.dice)
+  if (mech.kind === "purse") spend(pool, h, (spentOf(pool, h) + 1) % (mech.size + 1))
+}
+
+// A — the strip
+const KEY_W = 84
+function Strip({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool: Pool; canToggle: boolean }) {
+  const { hand, setHand, step, onWheel, onKeyDown } = useHand(held.length)
+  const reduced = useReducedMotion() ?? false
+  const inHand = held[hand]!
   return (
     <div className="grid gap-3">
-      {/* the ring: one line the keys hang from */}
-      <div className="-mt-2" style={{ height: 1, background: "var(--line)" }} />
-      <div className={`-mt-3 flex flex-wrap items-start ${gap}`}>
-        {held.map((h) => (
-          <Key
-            key={keyOf(h)}
-            h={h}
-            pool={pool}
-            canToggle={canToggle}
-            read={reading === keyOf(h)}
-            onRead={() => setReading(reading === keyOf(h) ? null : keyOf(h))}
-            markSize={markSize}
-            nameClass={nameClass}
-            stem={stem}
-            width={width}
-          />
-        ))}
+      <div
+        tabIndex={0}
+        onWheel={onWheel}
+        onKeyDown={onKeyDown}
+        className="relative h-[112px] overflow-hidden rounded-[3px] outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+      >
+        {/* the ring's line, behind the keys */}
+        <span aria-hidden className="absolute inset-x-0 top-[10px] h-px" style={{ background: "var(--line)" }} />
+        <motion.div
+          className="absolute top-[10px] left-1/2 flex items-start"
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.18}
+          onDragEnd={(_, info) => {
+            const by = Math.round(-info.offset.x / KEY_W) || (Math.abs(info.velocity.x) > 300 ? (info.velocity.x < 0 ? 1 : -1) : 0)
+            step(by)
+          }}
+          animate={{ x: -(hand + 0.5) * KEY_W }}
+          transition={reduced ? { duration: 0 } : SPRING}
+        >
+          {held.map((h, i) => {
+            const lit = litOf(pool, h)
+            const turns = turnsOf(h)
+            const isHand = i === hand
+            const ink = lit ? "var(--ember)" : isHand ? "var(--ink)" : turns ? "var(--ink)" : "var(--dim)"
+            return (
+              <motion.button
+                key={keyOf(h)}
+                type="button"
+                onClick={() => tapKey(i, hand, setHand, h, pool, canToggle)}
+                className="grid shrink-0 justify-items-center gap-1 text-center"
+                style={{ width: KEY_W, color: ink, transformOrigin: "50% 0%" }}
+                animate={{ scale: isHand ? 1 : 0.66, opacity: isHand ? 1 : lit ? 0.9 : 0.5, y: isHand ? 4 : 0 }}
+                transition={reduced ? { duration: 0 } : SPRING}
+              >
+                <span aria-hidden className="block w-px" style={{ height: isHand ? 18 : 12, background: lit ? "var(--ember)" : "var(--line)" }} />
+                <Mark name={h.name} size={34} turned={lit} />
+                <span className="mv-data text-[9px] uppercase tracking-[0.12em] leading-tight whitespace-nowrap">{h.name}</span>
+              </motion.button>
+            )
+          })}
+        </motion.div>
       </div>
-      {/* the caption: the read key's sentence, one line beneath the ring */}
-      <p className="min-h-[2.4em] text-[12px] leading-snug" style={{ color: "var(--dim)" }}>
-        {readMerit ? merit(readMerit.name).effect : ""}
-      </p>
+      <InHand h={inHand} pool={pool} canToggle={canToggle} />
+    </div>
+  )
+}
+
+// B — the fan
+const FAN_STEP = 13 // degrees between keys
+const FAN_RADIUS = 300
+function Fan({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool: Pool; canToggle: boolean }) {
+  const { hand, setHand, step, onWheel, onKeyDown } = useHand(held.length)
+  const reduced = useReducedMotion() ?? false
+  const inHand = held[hand]!
+  return (
+    <div className="grid gap-2">
+      <div
+        tabIndex={0}
+        onWheel={onWheel}
+        onKeyDown={onKeyDown}
+        className="relative h-[124px] overflow-hidden rounded-[3px] outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+      >
+        <motion.div
+          className="absolute inset-0"
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.12}
+          onDragEnd={(_, info) => {
+            const by = Math.round(-info.offset.x / 70) || (Math.abs(info.velocity.x) > 300 ? (info.velocity.x < 0 ? 1 : -1) : 0)
+            step(by)
+          }}
+        >
+          {held.map((h, i) => {
+            const lit = litOf(pool, h)
+            const turns = turnsOf(h)
+            const isHand = i === hand
+            const ink = lit ? "var(--ember)" : isHand ? "var(--ink)" : turns ? "var(--ink)" : "var(--dim)"
+            return (
+              <motion.button
+                key={keyOf(h)}
+                type="button"
+                onClick={() => tapKey(i, hand, setHand, h, pool, canToggle)}
+                className="absolute left-1/2 top-[14px] grid justify-items-center gap-1 text-center"
+                style={{ width: 90, marginLeft: -45, color: ink, transformOrigin: `50% ${FAN_RADIUS}px` }}
+                animate={{ rotate: (i - hand) * FAN_STEP, scale: isHand ? 1 : 0.72, opacity: isHand ? 1 : lit ? 0.9 : 0.5, y: isHand ? -6 : 0 }}
+                transition={reduced ? { duration: 0 } : SPRING}
+              >
+                <Mark name={h.name} size={34} turned={lit} />
+                <span className="mv-data text-[9px] uppercase tracking-[0.12em] leading-tight whitespace-nowrap">{h.name}</span>
+                <span aria-hidden className="block w-px" style={{ height: 10, background: lit ? "var(--ember)" : "var(--line)" }} />
+              </motion.button>
+            )
+          })}
+        </motion.div>
+      </div>
+      <InHand h={inHand} pool={pool} canToggle={canToggle} />
     </div>
   )
 }
@@ -261,12 +388,6 @@ export function MeritsAudition({
   pool: Pool
 }) {
   const canToggle = pool.state === "idle" || pool.state === "building"
-  if (variant === "A") {
-    return (
-      <Ring held={held} pool={pool} canToggle={canToggle} markSize={28} nameClass="text-[13px]" stem={14} width={82} gap="gap-x-0 gap-y-4 justify-between" />
-    )
-  }
-  return (
-    <Ring held={held} pool={pool} canToggle={canToggle} markSize={34} nameClass="mv-data text-[9px] uppercase tracking-[0.12em]" stem={10} width={94} gap="gap-x-0 gap-y-3" />
-  )
+  if (variant === "A") return <Strip held={held} pool={pool} canToggle={canToggle} />
+  return <Fan held={held} pool={pool} canToggle={canToggle} />
 }
