@@ -40,7 +40,8 @@ import {
   useVelocity,
   type MotionValue,
 } from "motion/react"
-import { merit, type HeldMerit, type MeritName } from "#/domain/merits"
+import { Match } from "effect"
+import { merit, type HeldMerit, type MeritName, type MeritRating } from "#/domain/merits"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 import { DotRating } from "#/components/game/DotRating"
 
@@ -66,6 +67,7 @@ export const AUDITION_MERITS: ReadonlyArray<HeldMerit> = [
   { name: "Library", dots: 2 },
   { name: "Occultation", dots: 1 },
   { name: "Contacts", dots: 1 },
+  { name: "Fighting Style: Boxing", dots: 2 },
 ]
 
 // ── A stand-in for the typed mechanic the catalog will carry ─────────────────
@@ -88,6 +90,8 @@ const MECHANIC: Partial<Record<MeritName, (dots: number) => Mechanic>> = {
 const mechanicOf = (h: HeldMerit): Mechanic => MECHANIC[h.name]?.(h.dots) ?? { kind: "none" }
 
 const keyOf = (h: HeldMerit) => `${h.name}${h.label === undefined ? "" : ` (${h.label})`}`
+/** The name on the ring: short, the door says the whole of it. */
+const ringName = (name: MeritName) => name.replace(/^Fighting Style: /, "")
 
 type Pool = ReturnType<typeof useDicePool>
 
@@ -121,6 +125,8 @@ const MARKS: Partial<Record<MeritName, ReactNode>> = {
   Library: <><path d="M6 5 V19" /><path d="M6 5 H18 M6 9.5 H18 M6 14 H18 M6 18.5 H13" /><circle cx="17" cy="18.5" r="1.1" fill="currentColor" stroke="none" /></>,
   // the eclipse — a disc veiled by a second, the hidden self a sliver
   Occultation: <><circle cx="12" cy="12" r="7" /><path d="M9.5 5.5 A7 7 0 0 1 9.5 18.5" /><circle cx="7.6" cy="12" r="1.1" fill="currentColor" stroke="none" /></>,
+  // the guard — a chevron brought down, the blow landed beneath it
+  "Fighting Style: Boxing": <><path d="M5.5 7.5 L12 14 L18.5 7.5" /><path d="M12 14 V19.5" /><circle cx="12" cy="4.4" r="1.2" fill="currentColor" stroke="none" /></>,
   // the web — three knots and the threads between them
   Contacts: <><path d="M6 17 L12 7 L18 17 Z" /><circle cx="6" cy="17" r="1.3" fill="currentColor" stroke="none" /><circle cx="18" cy="17" r="1.3" fill="currentColor" stroke="none" /><circle cx="12" cy="7" r="1.3" fill="currentColor" stroke="none" /></>,
 }
@@ -191,11 +197,61 @@ function Pips({ size, spent }: { size: number; spent: number }) {
 
 // ── The key in hand: its sentence and its verb ───────────────────────────────
 
+const dots = (n: number) => "•".repeat(n)
+/** The rating as the book writes it beside the name. */
+const ratingWords = (r: MeritRating): string =>
+  Match.value(r).pipe(
+    Match.tag("fixed", ({ dots: d }) => dots(d)),
+    Match.tag("range", ({ min, max }) => `${dots(min)} to ${dots(max)}`),
+    Match.tag("either", ({ low, high }) => `${dots(low)} or ${dots(high)}`),
+    Match.tag("atLeast", ({ min }) => `${dots(min)} or higher`),
+    Match.exhaustive,
+  )
+const FAMILY_WORD = { mental: "Mental", physical: "Physical", social: "Social", awakened: "Awakened" } as const
+const BOOK_WORD = { mage: "Mage", wod: "WoD" } as const
+
+/** The eyebrow: the family, how the Merit is held, and where the paragraph is. */
+function Eyebrow({ name }: { name: MeritName }) {
+  const def = merit(name)
+  return (
+    <span className="mv-data flex items-center gap-2.5 text-[9.5px] uppercase tracking-[0.14em]" style={{ color: "var(--dim)" }}>
+      <span>{FAMILY_WORD[def.family]}</span>
+      <span aria-hidden className="h-[9px] w-px" style={{ background: "var(--line)" }} />
+      <span className="normal-case tracking-[0.08em]">{ratingWords(def.rating)}</span>
+      <span aria-hidden className="h-[9px] w-px" style={{ background: "var(--line)" }} />
+      <span className="normal-case tracking-normal">{BOOK_WORD[def.page.book]} p. {def.page.page}</span>
+    </span>
+  )
+}
+
+/** The ladder: a Fighting Style's rungs, the held ones in ink, the rest dim. */
+function Ladder({ h }: { h: HeldMerit }) {
+  const tiers = merit(h.name).tiers
+  if (tiers === undefined) return null
+  return (
+    <ol className="grid gap-1.5">
+      {tiers.map((t) => {
+        const held = t.dots <= h.dots
+        return (
+          <li key={t.dots} className="grid grid-cols-[2.6rem_1fr] gap-x-2 text-[11.5px] leading-snug" style={{ color: held ? "var(--ink)" : "var(--dim)", opacity: held ? 1 : 0.7 }}>
+            <span className="mv-data text-[10px] tracking-[0.1em]">{dots(t.dots)}</span>
+            <span>
+              <span className="mv-h text-[12.5px]">{t.name}</span>
+              <span style={{ color: "var(--dim)" }}> — {t.effect}</span>
+            </span>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
 function InHand({ h, pool, canToggle }: { h: HeldMerit; pool: Pool; canToggle: boolean }) {
   const mech = mechanicOf(h)
   const lit = mech.kind === "purse" ? spentOf(pool, h) > 0 : isLit(pool, h)
   return (
     <div className="grid min-h-[76px] content-start gap-2">
+      <Eyebrow name={h.name} />
       <div className="flex items-baseline justify-between gap-3">
         <span className="flex items-baseline gap-2">
           <span className="mv-h text-[18px] leading-none" style={{ color: lit ? "var(--ember)" : "var(--ink)" }}>
@@ -216,6 +272,7 @@ function InHand({ h, pool, canToggle }: { h: HeldMerit; pool: Pool; canToggle: b
       <p className="text-[12px] leading-snug" style={{ color: "var(--dim)" }}>
         {merit(h.name).effect}
       </p>
+      <Ladder h={h} />
       {/* the verb — the recitation line's place */}
       {mech.kind === "dice" && (
         <button
@@ -388,10 +445,11 @@ const PART = 7
 const KEYHOLE = 26
 const REACH_SHORT = 22
 /** the ring's clasp: the loop on the ring's line where it starts over */
-const CLASP = 7
+const CLASP = 11
 /** the sigil: the key in hand's mark, large and faint, on the door */
-const SIGIL = 150
-const SIGIL_OPACITY = 0.07
+const SIGIL = 220
+const SIGIL_OPACITY = 0.06
+const SIGIL_OPACITY_TURNED = 0.2
 const MARK = 26
 const MARK_IN_HAND = 36
 // keys hang from the ring, so they lag it: while the wheel moves every key
@@ -460,7 +518,7 @@ function RingKey({
         <span
           aria-hidden
           className="absolute rounded-full"
-          style={{ left: 6 - CLASP / 2, top: -CLASP / 2, width: CLASP, height: CLASP, boxShadow: "inset 0 0 0 1px var(--line)", background: "var(--bg)" }}
+          style={{ left: 6 - CLASP / 2, top: -CLASP / 2, width: CLASP, height: CLASP, boxShadow: "inset 0 0 0 1.5px var(--dim)", background: "var(--bg)" }}
         />
       )}
       <motion.button
@@ -476,7 +534,7 @@ function RingKey({
           <Mark name={h.name} size="100%" turned={lit} />
         </motion.span>
         <motion.span className="mv-data uppercase tracking-[0.12em]" style={{ fontSize: nameSize, background: "var(--bg)", paddingInline: 3 }}>
-          {h.name}
+          {ringName(h.name)}
           {h.label !== undefined && <span className="normal-case tracking-normal" style={{ color: "var(--dim)" }}> ({h.label})</span>}
         </motion.span>
       </motion.button>
@@ -606,7 +664,7 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
   // the reach is always ink (ember when turned); a still key is told by
   // the line stopping short and the keyhole dim, not by the line fading
   const reachInk = inHandLit ? "var(--ember)" : "var(--ink)"
-  const keyholeInk = inHandLit ? "var(--ember)" : reaches ? "var(--ink)" : "var(--line)"
+  // the keyhole too stays ink: a still key's line stopping short says it
   const middle = (VISIBLE * ROW) / 2
   return (
     <div className="relative grid grid-cols-[minmax(0,15rem)_1fr] gap-x-8">
@@ -670,22 +728,25 @@ function Wheel({ held, pool, canToggle }: { held: ReadonlyArray<HeldMerit>; pool
           onClick={() => turn(inHand, pool, canToggle)}
           aria-label={inHandLit ? `Let ${inHand.name} go` : `Turn ${inHand.name}`}
           className={`absolute grid place-items-center ${inHandTurns ? "" : "cursor-default"}`}
-          style={{ left: -KEYHOLE / 2, top: middle - KEYHOLE / 2, width: KEYHOLE, height: KEYHOLE, color: keyholeInk, transition: "color 0.3s" }}
+          style={{ left: -KEYHOLE / 2, top: middle - KEYHOLE / 2, width: KEYHOLE, height: KEYHOLE, color: reachInk, transition: "color 0.3s" }}
         >
           <Keyhole size={KEYHOLE} lit={inHandLit} />
         </button>
-        {/* the sigil: the door bears the mark of the key that opens it */}
-        <motion.span
-          key={keyOf(inHand)}
-          aria-hidden
-          className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2"
-          style={{ color: inHandLit ? "var(--ember)" : "var(--ink)", transition: "color 0.3s" }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: SIGIL_OPACITY }}
-          transition={reduced ? { duration: 0 } : { duration: 0.35 }}
-        >
-          <Mark name={inHand.name} size={SIGIL} turned={inHandLit} />
-        </motion.span>
+        {/* the sigil: the door bears the mark of the key that opens it —
+            low in the bottom-right corner, clipping the door's edge as the
+            rote book's device does, and lifting while the key is turned */}
+        <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <motion.span
+            key={keyOf(inHand)}
+            className="absolute -bottom-8 -right-10"
+            style={{ color: inHandLit ? "var(--ember)" : "var(--ink)", transition: "color 0.3s" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: inHandLit ? SIGIL_OPACITY_TURNED : SIGIL_OPACITY }}
+            transition={reduced ? { duration: 0 } : { duration: 0.4 }}
+          >
+            <Mark name={inHand.name} size={SIGIL} turned={inHandLit} />
+          </motion.span>
+        </span>
         <div className="relative">
           <InHand h={inHand} pool={pool} canToggle={canToggle} />
         </div>
