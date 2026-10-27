@@ -43,7 +43,8 @@ import { MessageItem, RollItem } from "#/components/game/ActivityLog"
 import { CastCard } from "#/components/game/CastCard"
 import { CastMount } from "#/components/game/CastMount"
 import { isUnresolved } from "#/domain/cast"
-import { CharacterSheet, type WisdomPlacement } from "#/components/game/CharacterSheet"
+import { CharacterSheet } from "#/components/game/CharacterSheet"
+import type { WisdomLook } from "#/components/game/WisdomMark"
 import { pooledDice } from "#/machines/dice-pool"
 import { MessageBox } from "#/components/game/MessageBox"
 import { ChronicleSwitch, WorkingSlot } from "#/components/game/WorkingSlot"
@@ -95,17 +96,18 @@ const isSeat = (v: unknown): v is RigSeat =>
 const isGrammar = (v: unknown): v is RigGrammar =>
   typeof v === "string" && (GRAMMAR_ORDER as ReadonlyArray<string>).includes(v)
 
-// MAG-56: two Wisdom knobs. `wisdom` swaps the caster between a steady 7
-// (the resolved rung's Havoc runs true) and a faltering 2 (the same release
-// turns Bedlam, and the Wisdom table holds it 24 hours); `wisdomAt` moves the
-// Wisdom rail around the title card so the owner can judge the placements.
-const WISDOM_ORDER = [7, 2] as const
+// MAG-56: two Wisdom knobs. `wisdom` swaps the caster across the owner's
+// four cases — 10 amazing, 7 fine, 5 sketchy, 2 really bad — and the
+// resolved rung's aftermath follows (a Havoc that runs true at 10 and 7, a
+// Bedlam held one scene at 5 and 24 hours at 2); `look` swaps the Wisdom
+// treatment on the title card (WisdomMark.tsx) so the owner can judge them.
+const WISDOM_ORDER = [10, 7, 5, 2] as const
 type RigWisdom = (typeof WISDOM_ORDER)[number]
-const WISDOM_AT_ORDER: ReadonlyArray<WisdomPlacement> = ["row", "health", "gnosis"]
+const LOOK_ORDER: ReadonlyArray<WisdomLook> = ["heat", "word", "scales", "ladder", "rail"]
 const isWisdom = (v: unknown): v is RigWisdom =>
   (WISDOM_ORDER as ReadonlyArray<unknown>).includes(typeof v === "string" ? Number(v) : v)
-const isWisdomAt = (v: unknown): v is WisdomPlacement =>
-  typeof v === "string" && (WISDOM_AT_ORDER as ReadonlyArray<string>).includes(v)
+const isLook = (v: unknown): v is WisdomLook =>
+  typeof v === "string" && (LOOK_ORDER as ReadonlyArray<string>).includes(v)
 
 export const Route = createFileRoute("/prototype/cast-dressing-room")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -114,7 +116,7 @@ export const Route = createFileRoute("/prototype/cast-dressing-room")({
     grammar: isGrammar(search.grammar) ? search.grammar : ("merge" as RigGrammar),
     hurt: search.hurt === true || search.hurt === "true",
     wisdom: isWisdom(search.wisdom) ? (Number(search.wisdom) as RigWisdom) : (7 as RigWisdom),
-    wisdomAt: isWisdomAt(search.wisdomAt) ? search.wisdomAt : ("row" as WisdomPlacement),
+    look: isLook(search.look) ? search.look : ("heat" as WisdomLook),
   }),
   component: DressingRoom,
 })
@@ -290,7 +292,9 @@ const resolved: CastEntry = {
 // at 2 the caster contains nothing, both successes run loose as Bedlam, and
 // the table holds it 24 hours.
 const RESOLVED_BY_WISDOM: Record<RigWisdom, Partial<CastEntry>> = {
+  10: { wisdom: 10, havocSuccesses: 5 },
   7: { wisdom: 7, havocSuccesses: 3 },
+  5: { wisdom: 5, containedSuccesses: 0, severity: "bedlam", paradoxSpan: "scene" },
   2: { wisdom: 2, containedSuccesses: 0, severity: "bedlam", paradoxSpan: "day" },
 }
 
@@ -381,7 +385,7 @@ const SEAT_VIEW: Record<
 // ── The rig ──────────────────────────────────────────────────────────────────
 
 function DressingRoom() {
-  const { rung, seat, grammar, hurt, wisdom, wisdomAt } = Route.useSearch()
+  const { rung, seat, grammar, hurt, wisdom, look } = Route.useSearch()
   const casterNow = hurt ? hurtArctusSheet : arctusSheet
   // MAG-52: the sheet's tool switch flips a local copy (no server here).
   const [toolInHand, setToolInHand] = useState(false)
@@ -572,7 +576,7 @@ function DressingRoom() {
               // a pending spend, so the header's ember is judged too
               pendingMana={2}
               pendingWillpower={1}
-              wisdomPlacement={wisdomAt}
+              wisdomLook={look}
               onSetMagicalTool={(next) => {
                 setToolInHand(next)
                 return Promise.resolve()
@@ -653,29 +657,25 @@ function DressingRoom() {
               className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
                 w === wisdom ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
               }`}
-              title={
-                w === 7
-                  ? "MAG-56: a steady mage — the resolved Havoc runs true"
-                  : "MAG-56: a faltering mage — the same release turns Bedlam, held 24 hours"
-              }
+              title="MAG-56: the caster's Wisdom — 10 amazing, 7 fine, 5 sketchy, 2 really bad; the resolved aftermath follows"
             >
               W{w}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-1">
-          {WISDOM_AT_ORDER.map((at) => (
+          {LOOK_ORDER.map((l) => (
             <button
-              key={at}
+              key={l}
               onClick={() =>
-                void navigate({ search: (prev) => ({ ...prev, wisdomAt: at }), replace: true })
+                void navigate({ search: (prev) => ({ ...prev, look: l }), replace: true })
               }
               className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                at === wisdomAt ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
+                l === look ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
               }`}
-              title={`MAG-56: Wisdom placed ${at === "row" ? "on a row of its own" : at === "health" ? "beneath the health track" : "beneath Gnosis"}`}
+              title="MAG-56: the Wisdom look on the title card (WisdomMark.tsx)"
             >
-              {at}
+              {l}
             </button>
           ))}
         </div>

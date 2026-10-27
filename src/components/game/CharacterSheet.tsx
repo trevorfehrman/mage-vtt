@@ -28,7 +28,14 @@ import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { ToolSwitch } from "./ToolSwitch"
 import { PoolNumerals } from "./CastHeaderStats"
 import { woundPenalty } from "#/domain/health"
-import { actsOfHubris, degenerationDicePool, WisdomRank } from "#/domain/wisdom"
+import {
+  WisdomHeat,
+  WisdomLadder,
+  WisdomRail,
+  WisdomScales,
+  WisdomWord,
+  type WisdomLook,
+} from "./WisdomMark"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
@@ -54,13 +61,12 @@ interface CharacterSheetProps {
   /** Flips the standing tool fact (issue #107). Present only on the
    * viewer's own sheet; a refusal speaks at the switch. */
   onSetMagicalTool?: ((hasMagicalTool: boolean) => Promise<unknown>) | undefined
-  /** AUDITION KNOB (MAG-56, remove once the owner picks): where Wisdom
-   * sits in the title card — a third row of its own, beneath the health
-   * track, or beneath Gnosis. The session passes nothing and gets the row. */
-  wisdomPlacement?: WisdomPlacement | undefined
+  /** AUDITION KNOB (MAG-56, remove once the owner picks): which Wisdom look
+   * the title card wears (see WisdomMark.tsx). Each look brings its own
+   * home — heat and ladder stand beneath Gnosis, rail, word and scales take
+   * a row of their own. The session passes nothing and gets heat. */
+  wisdomLook?: WisdomLook | undefined
 }
-
-export type WisdomPlacement = "row" | "health" | "gnosis"
 
 
 /**
@@ -74,7 +80,7 @@ export function CharacterSheet({
   pendingMana = 0,
   pendingWillpower = 0,
   onSetMagicalTool,
-  wisdomPlacement = "row",
+  wisdomLook = "heat",
 }: CharacterSheetProps) {
   const penalty = woundPenalty(character.healthTrack)
   const canToggle =
@@ -134,10 +140,6 @@ export function CharacterSheet({
                 />
               </span>
             </div>
-            {/* audition: the soul's track beneath the body's */}
-            {wisdomPlacement === "health" && (
-              <WisdomRail wisdom={character.wisdom} align="start" />
-            )}
           </div>
           <div className="mv-data grid shrink-0 justify-items-end gap-3 text-right">
             <span className="flex items-baseline gap-2 leading-none">
@@ -153,18 +155,17 @@ export function CharacterSheet({
                 <Rating label="Speed" stat="speed" value={character.speed} />
               </div>
             </TooltipProvider>
-            {/* audition: the soul's measure beneath the mind's */}
-            {wisdomPlacement === "gnosis" && (
-              <WisdomRail wisdom={character.wisdom} align="end" />
-            )}
+            {/* Wisdom (MAG-56), the looks that stand beneath Gnosis: the two
+                numbers that define a mage, stacked */}
+            {wisdomLook === "heat" && <WisdomHeat wisdom={character.wisdom} />}
+            {wisdomLook === "ladder" && <WisdomLadder wisdom={character.wisdom} />}
           </div>
         </div>
-        {/* Wisdom (MAG-56): the mage's conscience, between who they are and
-            what kind of mage — a row of its own by default. The audition
-            knob moves it beneath the health track or beneath Gnosis. */}
-        {wisdomPlacement === "row" && (
-          <WisdomRail wisdom={character.wisdom} align="start" hubris />
-        )}
+        {/* Wisdom (MAG-56), the looks that take a row of their own: the
+            mage's conscience between who they are and what kind of mage */}
+        {wisdomLook === "rail" && <WisdomRail wisdom={character.wisdom} />}
+        {wisdomLook === "word" && <WisdomWord wisdom={character.wisdom} />}
+        {wisdomLook === "scales" && <WisdomScales wisdom={character.wisdom} />}
         <div className="flex items-end justify-between gap-6">
           <div className="flex flex-wrap items-stretch gap-x-4 gap-y-3">
             <EmblemGroup label="Path">
@@ -316,70 +317,6 @@ function Section({ title, children }: { title: ReactNode; children: ReactNode })
       </div>
       {children}
     </section>
-  )
-}
-
-/**
- * Wisdom (MAG-56): the morality trait as the book draws it — ten pips, the
- * ones the mage still holds filled, the ones lost hollow — with the numeral,
- * and on hover or focus what the number means in play: how many dice a
- * degeneration roll gets and the mildest act of hubris that threatens the
- * next dot (pages 79-80). Read-only on every sheet; degeneration is the
- * Storyteller's to record through the hand-edit door.
- */
-function WisdomRail({
-  wisdom,
-  align,
-  hubris = false,
-}: {
-  wisdom: WisdomRank
-  align: "start" | "end"
-  /** The row placement has room to speak the hubris line in the open. */
-  hubris?: boolean
-}) {
-  const dice = degenerationDicePool(wisdom)
-  const sin = actsOfHubris(wisdom)
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            tabIndex={0}
-            className={`mv-data flex flex-wrap items-center gap-x-3 gap-y-1 leading-none ${
-              align === "end" ? "justify-end" : ""
-            }`}
-            style={{ fontSize: 15 }}
-            aria-label={`Wisdom ${wisdom}`}
-          >
-            <span style={{ color: "var(--dim)" }}>WISDOM</span>
-            <span className="flex items-center gap-[3px]">
-              {WisdomRank.literals.map((rank) => (
-                <span
-                  key={rank}
-                  className="inline-block size-[7px] rounded-full"
-                  style={{
-                    background: rank <= wisdom ? "var(--ink)" : "transparent",
-                    boxShadow:
-                      rank <= wisdom ? undefined : "inset 0 0 0 1px var(--line)",
-                  }}
-                />
-              ))}
-            </span>
-            <span className="font-semibold" style={{ color: "var(--ink)" }}>
-              {wisdom}
-            </span>
-            {hubris && (
-              <span className="text-[12px]" style={{ color: "var(--dim)" }}>
-                hubris: {sin}
-              </span>
-            )}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={4}>
-          Wisdom {wisdom} · degeneration rolls {dice} dice · the mildest hubris: {sin}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
   )
 }
 
