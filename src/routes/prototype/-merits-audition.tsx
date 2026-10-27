@@ -1,42 +1,41 @@
-// PROTOTYPE — the Merits-area audition for MAG-59 (2026-10-27). Three
-// structurally different Merits sections, mounted into the real sheet on the
-// dressing room by its ?merits= knob (off | A | B | C). Throwaway: delete when
-// the owner has picked, and rebuild the winner properly (typed mechanic in the
-// catalog, TDD'd leaves). The `-` prefix keeps this out of the route tree.
+// PROTOTYPE — the Merits-area audition for MAG-59, second round (2026-10-27).
+// The owner's concept: Merits are a ring of keys — each one unique, everyone
+// has their own ring, keys are added to it, and keys open things to do. Key-
+// ness is gestured, never drawn (no teeth, no tags): the ring is a line the
+// Merits hang from; each key is unique by its mark, a line glyph in the
+// Arcana glyphs' stroke; turning is the one motion — a key that opens
+// something on this table tilts on tap and burns ember, and the dice follow;
+// a key that only opens things in the story hangs still; the sentence is a
+// caption beneath the ring, one tap away. Dots are dots.
 //
-// The question: how does the Merits area, without explanation, (1) show which
-// Merits activate and which don't, (2) activate one with a tap so its dice
-// land in the pool under its name, (3) open what each one does, and (4) carry
-// Destiny's purse of pips?
+// Two renderings, mounted into the real sheet on the dressing room by its
+// ?merits= knob (off | A | B) through a clearly-marked prototype slot on
+// CharacterSheet. Throwaway: delete with the knob and the slot when the owner
+// has picked, and build the winner properly (typed mechanic in the catalog,
+// TDD'd leaves). The `-` prefix keeps this out of the route tree.
 //
-//   A — Drawers: uniform rows; tap a row and it opens beneath to its sentence
-//       and, if it has one, its verb (the Rote Book's "the verb lives on the
-//       page"). Nothing activates from the closed row.
-//   B — Two shelves: the Merits that act are trait-style toggle rows with the
-//       sentence always under the name; the rest are a dim inline run of
-//       names, each tapped to read its sentence in a caption line.
-//   C — Gloss tiles: every Merit is a small tile with its sentence always
-//       visible; a tile that acts has a body (panel + border) and lights
-//       ember when tapped; a tile that doesn't is bare text on the sky.
+//   A — Line: the keys hang in one line across the section, names in the
+//       trait rows' face, dots beneath.
+//   B — Cluster: a tighter hang, the marks dominating, names in the small
+//       mono face the zone labels use.
 import { useState, type ReactNode } from "react"
 import { merit, type HeldMerit, type MeritName } from "#/domain/merits"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 import { DotRating } from "#/components/game/DotRating"
 
-export const MERITS_AUDITION_ORDER = ["off", "A", "B", "C"] as const
+export const MERITS_AUDITION_ORDER = ["off", "A", "B"] as const
 export type MeritsAuditionVariant = (typeof MERITS_AUDITION_ORDER)[number]
 export const isMeritsAuditionVariant = (v: unknown): v is MeritsAuditionVariant =>
   typeof v === "string" && (MERITS_AUDITION_ORDER as ReadonlyArray<string>).includes(v)
 
 export const AUDITION_VARIANT_NAMES: Record<MeritsAuditionVariant, string> = {
   off: "the branch's own section",
-  A: "Drawers — uniform rows; the verb lives inside the opened row",
-  B: "Two shelves — acting Merits as toggle rows; the rest a dim run of names",
-  C: "Gloss tiles — sentence at rest; a tile that acts has a body",
+  A: "Keys, in a line — names in the trait face",
+  B: "Keys, clustered — the marks dominate",
 }
 
 /** The rig's Arctus holds two more Merits for the audition, so there is
- * something to activate and a purse to spend. */
+ * something to turn and a purse to spend. */
 export const AUDITION_MERITS: ReadonlyArray<HeldMerit> = [
   { name: "High Speech", dots: 1 },
   { name: "Danger Sense", dots: 2 },
@@ -71,12 +70,6 @@ const keyOf = (h: HeldMerit) => `${h.name}${h.label === undefined ? "" : ` (${h.
 
 type Pool = ReturnType<typeof useDicePool>
 
-interface VariantProps {
-  held: ReadonlyArray<HeldMerit>
-  pool: Pool
-  canToggle: boolean
-}
-
 const isLit = (pool: Pool, h: HeldMerit): boolean => pool.isComponentActive("modifier", keyOf(h))
 const toggleDice = (pool: Pool, h: HeldMerit, dice: number) =>
   pool.toggleComponent({ type: "modifier", name: keyOf(h), dots: dice })
@@ -88,250 +81,175 @@ const spend = (pool: Pool, h: HeldMerit, k: number) => {
   if (k > 0) pool.addComponent({ type: "modifier", name: keyOf(h), dots: k })
 }
 
-/** The purse: `size` pips, the first `spent` burning ember. Tap the nth pip
- * to spend n; tap the last lit one to take it back. */
-function Pips({
-  size,
-  spent,
-  onSpend,
-  disabled,
-}: {
-  size: number
-  spent: number
-  onSpend: (k: number) => void
-  disabled: boolean
-}) {
+// ── The marks: one line glyph per Merit, in the Arcana glyphs' stroke ────────
+// (24-box, round caps, a bindi or barb as signature). Eight for the audition;
+// the other forty-five are drawn only if the marks carry it.
+
+const MARKS: Partial<Record<MeritName, ReactNode>> = {
+  // the Atlantean tongue — a tongue of flame rising from parted lips
+  "High Speech": <><path d="M6 15 Q12 20 18 15" /><path d="M12 14.5 C9.8 11.5 13.4 9.4 12 5.6" /><circle cx="12" cy="4" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the lidded eye, a barb of warning above it
+  "Danger Sense": <><path d="M4 12.5 Q12 5.5 20 12.5 Q12 19.5 4 12.5 Z" /><circle cx="12" cy="12.5" r="1.6" fill="currentColor" stroke="none" /><path d="M12 5.5 V2.6 M12 2.6 L10.8 3.8 M12 2.6 L13.2 3.8" /></>,
+  // the compass star, a point of fate at its heart
+  Destiny: <><path d="M12 3 L13.5 10.5 L21 12 L13.5 13.5 L12 21 L10.5 13.5 L3 12 L10.5 10.5 Z" /><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the crest — a chevron over its bar, the standing marked at the peak
+  Status: <><path d="M5 16 L12 6.5 L19 16" /><path d="M7.5 19.5 H16.5" /><circle cx="12" cy="4.4" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the arch — a doorway over its threshold, a hearth within
+  Sanctum: <><path d="M6 20 V11 A6 6 0 0 1 18 11 V20" /><path d="M3.5 20 H20.5" /><circle cx="12" cy="14.5" r="1.3" fill="currentColor" stroke="none" /></>,
+  // the stacked tome — its spine and leaves, one leaf turned
+  Library: <><path d="M6 5 V19" /><path d="M6 5 H18 M6 9.5 H18 M6 14 H18 M6 18.5 H13" /><circle cx="17" cy="18.5" r="1.1" fill="currentColor" stroke="none" /></>,
+  // the eclipse — a disc veiled by a second, the hidden self a sliver
+  Occultation: <><circle cx="12" cy="12" r="7" /><path d="M9.5 5.5 A7 7 0 0 1 9.5 18.5" /><circle cx="7.6" cy="12" r="1.1" fill="currentColor" stroke="none" /></>,
+  // the web — three knots and the threads between them
+  Contacts: <><path d="M6 17 L12 7 L18 17 Z" /><circle cx="6" cy="17" r="1.3" fill="currentColor" stroke="none" /><circle cx="18" cy="17" r="1.3" fill="currentColor" stroke="none" /><circle cx="12" cy="7" r="1.3" fill="currentColor" stroke="none" /></>,
+}
+
+function Mark({ name, size, turned }: { name: MeritName; size: number; turned: boolean }) {
   return (
-    <span className="flex items-center gap-1">
-      {Array.from({ length: size }, (_, i) => {
-        const lit = i < spent
-        return (
-          <button
-            key={i}
-            type="button"
-            disabled={disabled}
-            onClick={() => onSpend(lit && i === spent - 1 ? i : i + 1)}
-            className="grid size-[14px] place-items-center rounded-full disabled:opacity-50"
-            title={lit ? "Take it back" : `Spend ${i + 1}`}
-          >
-            <span
-              className="inline-block size-[9px] rounded-full"
-              style={{
-                background: lit ? "var(--ember)" : "transparent",
-                boxShadow: lit ? "0 0 6px var(--ember-glow)" : "inset 0 0 0 1px var(--accent)",
-              }}
-            />
-          </button>
-        )
-      })}
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      style={{
+        transform: turned ? "rotate(-22deg)" : "rotate(0deg)",
+        transformOrigin: "50% 50%",
+        transition: "transform 0.22s ease, filter 0.3s",
+        filter: turned ? "drop-shadow(0 0 5px var(--ember-glow))" : undefined,
+      }}
+    >
+      {MARKS[name] ?? <circle cx="12" cy="12" r="6" />}
+    </svg>
+  )
+}
+
+/** The purse's pips: `size` of them, the first `spent` burning ember. */
+function Pips({ size, spent }: { size: number; spent: number }) {
+  return (
+    <span className="flex gap-0.5">
+      {Array.from({ length: size }, (_, i) => (
+        <span
+          key={i}
+          className="inline-block size-[7px] rounded-full"
+          style={{
+            background: i < spent ? "var(--ember)" : "transparent",
+            boxShadow: i < spent ? undefined : "inset 0 0 0 1px var(--accent)",
+          }}
+        />
+      ))}
     </span>
   )
 }
 
-function Name({ h, lit }: { h: HeldMerit; lit?: boolean }) {
+// ── One key on the ring ──────────────────────────────────────────────────────
+
+interface KeyProps {
+  h: HeldMerit
+  pool: Pool
+  canToggle: boolean
+  read: boolean
+  onRead: () => void
+  markSize: number
+  nameClass: string
+  stem: number
+  width: number
+}
+
+function Key({ h, pool, canToggle, read, onRead, markSize, nameClass, stem, width }: KeyProps) {
+  const mech = mechanicOf(h)
+  const turns = mech.kind === "dice" || mech.kind === "purse"
+  const lit = mech.kind === "purse" ? spentOf(pool, h) > 0 : isLit(pool, h)
+  const onTap = () => {
+    onRead()
+    if (!turns || !canToggle) return
+    if (mech.kind === "dice") toggleDice(pool, h, mech.dice)
+    if (mech.kind === "purse") spend(pool, h, (spentOf(pool, h) + 1) % (mech.size + 1))
+  }
+  const ink = lit ? "var(--ember)" : read ? "var(--ink)" : turns ? "var(--ink)" : "var(--dim)"
   return (
-    <span className="flex min-w-0 items-baseline gap-1.5">
-      <span className="whitespace-nowrap text-[14px]" style={{ color: lit ? "var(--ember)" : "var(--ink)" }}>
-        {h.name}
+    <button
+      type="button"
+      onClick={onTap}
+      className={`group grid justify-items-center gap-1 text-center ${turns ? "" : "cursor-default"}`}
+      style={{ width }}
+    >
+      {/* the hang: a stem from the ring's line to the mark */}
+      <span aria-hidden className="block w-px" style={{ height: stem, background: lit ? "var(--ember)" : "var(--line)" }} />
+      <span style={{ color: ink }} className={turns ? "transition-colors group-hover:text-[var(--ink)]" : ""}>
+        <Mark name={h.name} size={markSize} turned={lit} />
       </span>
-      {h.label !== undefined && (
-        <span className="truncate text-[12px]" style={{ color: "var(--dim)" }}>
-          ({h.label})
-        </span>
-      )}
-    </span>
-  )
-}
-
-function Sentence({ h, className = "" }: { h: HeldMerit; className?: string }) {
-  return (
-    <p className={`text-[12px] leading-snug ${className}`} style={{ color: "var(--dim)" }}>
-      {merit(h.name).effect}
-    </p>
-  )
-}
-
-// ── A — Drawers ──────────────────────────────────────────────────────────────
-
-function Drawers({ held, pool, canToggle }: VariantProps) {
-  const [open, setOpen] = useState<string | null>(null)
-  return (
-    <div className="-mx-2 grid gap-0.5">
-      {held.map((h) => {
-        const key = keyOf(h)
-        const mech = mechanicOf(h)
-        const isOpen = open === key
-        const lit = isLit(pool, h)
-        return (
-          <div key={key} className="rounded-[3px]" style={isOpen ? { background: "var(--raise)" } : undefined}>
-            <button
-              type="button"
-              onClick={() => setOpen(isOpen ? null : key)}
-              className="mv-sky-row flex w-full items-center justify-between gap-2 rounded-[3px] px-2 py-1 text-left"
-            >
-              <Name h={h} lit={lit} />
-              <DotRating current={h.dots} max={Math.max(5, h.dots)} active={lit} />
-            </button>
-            {isOpen && (
-              <div className="grid gap-2 px-2 pb-2 pt-0.5">
-                <Sentence h={h} />
-                {mech.kind === "dice" && (
-                  <button
-                    type="button"
-                    disabled={!canToggle}
-                    onClick={() => toggleDice(pool, h, mech.dice)}
-                    className={`mv-trait ${lit ? "mv-trait-on" : ""} flex items-center justify-between rounded-[3px] px-2 py-1 text-left`}
-                  >
-                    <span className="text-[13px]">{lit ? "In the pool" : "Add to the pool"}</span>
-                    <span className="mv-data text-[12px]" style={{ color: lit ? "var(--ember)" : "var(--ink)" }}>
-                      {mech.dice} {mech.dice === 1 ? "die" : "dice"}
-                    </span>
-                  </button>
-                )}
-                {mech.kind === "purse" && (
-                  <div className="flex items-center justify-between gap-3 px-1">
-                    <span className="mv-eyebrow">This session</span>
-                    <Pips size={mech.size} spent={spentOf(pool, h)} onSpend={(k) => spend(pool, h, k)} disabled={!canToggle} />
-                  </div>
-                )}
-                {mech.kind === "gate" && (
-                  <span className="text-[11px] italic" style={{ color: "var(--dim)" }}>
-                    Declared with the cast.
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// ── B — Two shelves ──────────────────────────────────────────────────────────
-
-function Shelves({ held, pool, canToggle }: VariantProps) {
-  const acting = held.filter((h) => {
-    const k = mechanicOf(h).kind
-    return k === "dice" || k === "purse"
-  })
-  const record = held.filter((h) => !acting.includes(h))
-  const [shown, setShown] = useState<string | null>(null)
-  const shownMerit = record.find((h) => keyOf(h) === shown)
-  return (
-    <div className="grid gap-4">
-      <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-        {acting.map((h) => {
-          const mech = mechanicOf(h)
-          const lit = isLit(pool, h)
-          if (mech.kind === "purse") {
-            return (
-              <div key={keyOf(h)} className="-mx-2 grid gap-0.5 rounded-[3px] px-2 py-1">
-                <span className="flex items-center justify-between gap-2">
-                  <Name h={h} lit={spentOf(pool, h) > 0} />
-                  <Pips size={mech.size} spent={spentOf(pool, h)} onSpend={(k) => spend(pool, h, k)} disabled={!canToggle} />
-                </span>
-                <Sentence h={h} className="text-[11px]" />
-              </div>
-            )
-          }
-          return (
-            <button
-              key={keyOf(h)}
-              type="button"
-              disabled={!canToggle}
-              onClick={() => mech.kind === "dice" && toggleDice(pool, h, mech.dice)}
-              className={`mv-trait ${lit ? "mv-trait-on" : ""} -mx-2 grid gap-0.5 rounded-[3px] px-2 py-1 text-left`}
-            >
-              <span className="flex items-center justify-between gap-2">
-                <Name h={h} lit={lit} />
-                <DotRating current={h.dots} max={Math.max(5, h.dots)} active={lit} />
-              </span>
-              <Sentence h={h} className="text-[11px]" />
-            </button>
-          )
-        })}
-      </div>
-      <div className="grid gap-1.5">
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          {record.map((h) => {
-            const on = shown === keyOf(h)
-            return (
-              <button
-                key={keyOf(h)}
-                type="button"
-                onClick={() => setShown(on ? null : keyOf(h))}
-                className="flex items-baseline gap-1.5 text-left text-[13px]"
-                style={{ color: on ? "var(--ink)" : "var(--dim)" }}
-              >
-                <span className="whitespace-nowrap">
-                  {h.name}
-                  {h.label !== undefined && <span className="text-[11px]"> ({h.label})</span>}
-                </span>
-                <DotRating current={h.dots} max={h.dots} color={on ? "var(--ink)" : "var(--dim)"} className="translate-y-[-1px]" />
-              </button>
-            )
-          })}
-        </div>
-        {shownMerit && <Sentence h={shownMerit} />}
-      </div>
-    </div>
-  )
-}
-
-// ── C — Gloss tiles ──────────────────────────────────────────────────────────
-
-function Tiles({ held, pool, canToggle }: VariantProps) {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      {held.map((h) => {
-        const mech = mechanicOf(h)
-        const lit = isLit(pool, h)
-        const head = (right: ReactNode) => (
-          <span className="flex items-center justify-between gap-2">
-            <Name h={h} lit={lit || (mech.kind === "purse" && spentOf(pool, h) > 0)} />
-            {right}
+      <span className={`${nameClass} leading-tight`} style={{ color: ink }}>
+        {h.name}
+        {h.label !== undefined && (
+          <span className="block text-[11px] normal-case tracking-normal" style={{ color: "var(--dim)" }}>
+            ({h.label})
           </span>
-        )
-        if (mech.kind === "dice") {
-          return (
-            <button
-              key={keyOf(h)}
-              type="button"
-              disabled={!canToggle}
-              onClick={() => toggleDice(pool, h, mech.dice)}
-              className={`mv-trait ${lit ? "mv-trait-on" : ""} grid content-start gap-1 rounded-[4px] p-3 text-left`}
-              style={{ background: "var(--panel)", borderColor: "var(--line)" }}
-            >
-              {head(<DotRating current={h.dots} max={Math.max(5, h.dots)} active={lit} />)}
-              <Sentence h={h} className="text-[11px]" />
-            </button>
-          )
-        }
-        if (mech.kind === "purse") {
-          return (
-            <div
-              key={keyOf(h)}
-              className="grid content-start gap-1 rounded-[4px] p-3"
-              style={{ background: "var(--panel)", border: "1px solid var(--line)" }}
-            >
-              {head(<Pips size={mech.size} spent={spentOf(pool, h)} onSpend={(k) => spend(pool, h, k)} disabled={!canToggle} />)}
-              <Sentence h={h} className="text-[11px]" />
-            </div>
-          )
-        }
-        return (
-          <div key={keyOf(h)} className="grid content-start gap-1 rounded-[4px] border border-transparent p-3">
-            {head(<DotRating current={h.dots} max={Math.max(5, h.dots)} />)}
-            <Sentence h={h} className="text-[11px]" />
-          </div>
-        )
-      })}
-    </div>
+        )}
+      </span>
+      {mech.kind === "purse" ? (
+        <Pips size={mech.size} spent={spentOf(pool, h)} />
+      ) : (
+        <DotRating current={h.dots} max={Math.max(5, h.dots)} active={lit} />
+      )}
+    </button>
   )
 }
 
-// ── The switch ───────────────────────────────────────────────────────────────
+// ── The ring ─────────────────────────────────────────────────────────────────
+
+function Ring({
+  held,
+  pool,
+  canToggle,
+  markSize,
+  nameClass,
+  stem,
+  width,
+  gap,
+}: {
+  held: ReadonlyArray<HeldMerit>
+  pool: Pool
+  canToggle: boolean
+  markSize: number
+  nameClass: string
+  stem: number
+  width: number
+  gap: string
+}) {
+  const [reading, setReading] = useState<string | null>(null)
+  const readMerit = held.find((h) => keyOf(h) === reading)
+  return (
+    <div className="grid gap-3">
+      {/* the ring: one line the keys hang from */}
+      <div className="-mt-2" style={{ height: 1, background: "var(--line)" }} />
+      <div className={`-mt-3 flex flex-wrap items-start ${gap}`}>
+        {held.map((h) => (
+          <Key
+            key={keyOf(h)}
+            h={h}
+            pool={pool}
+            canToggle={canToggle}
+            read={reading === keyOf(h)}
+            onRead={() => setReading(reading === keyOf(h) ? null : keyOf(h))}
+            markSize={markSize}
+            nameClass={nameClass}
+            stem={stem}
+            width={width}
+          />
+        ))}
+      </div>
+      {/* the caption: the read key's sentence, one line beneath the ring */}
+      <p className="min-h-[2.4em] text-[12px] leading-snug" style={{ color: "var(--dim)" }}>
+        {readMerit ? merit(readMerit.name).effect : ""}
+      </p>
+    </div>
+  )
+}
 
 export function MeritsAudition({
   variant,
@@ -343,8 +261,12 @@ export function MeritsAudition({
   pool: Pool
 }) {
   const canToggle = pool.state === "idle" || pool.state === "building"
-  const props = { held, pool, canToggle }
-  if (variant === "A") return <Drawers {...props} />
-  if (variant === "B") return <Shelves {...props} />
-  return <Tiles {...props} />
+  if (variant === "A") {
+    return (
+      <Ring held={held} pool={pool} canToggle={canToggle} markSize={28} nameClass="text-[13px]" stem={14} width={82} gap="gap-x-0 gap-y-4 justify-between" />
+    )
+  }
+  return (
+    <Ring held={held} pool={pool} canToggle={canToggle} markSize={34} nameClass="mv-data text-[9px] uppercase tracking-[0.14em]" stem={10} width={72} gap="gap-x-1 gap-y-3" />
+  )
 }
