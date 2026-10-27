@@ -383,7 +383,7 @@ function DressingRoom() {
   const casterNow = hurt ? hurtArctusSheet : arctusSheet
   // MAG-52: the sheet's tool switch flips a local copy (no server here).
   const [toolInHand, setToolInHand] = useState(false)
-  // MAG-56: the Wisdom knob rides the shown sheet too, so the rail and the
+  // MAG-56: the Wisdom knob rides the shown sheet too, so the meter and the
   // resolved card agree on the caster.
   const shownSheet = useMemo(
     () => decodeSheet({ ...ARCTUS_INPUT, hasMagicalTool: toolInHand, wisdom }),

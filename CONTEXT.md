@@ -245,10 +245,12 @@ that can be written can always be read back.
 _Avoid_: Stat block, character record.
 
 **Sheet header**:
-The top of the Character Sheet (MAG-52): the mage name with Will · Mana and
-the health track beneath it, Gnosis with Defense · Initiative · Speed beneath
-it, then Path | Order | ruling Arcana | Virtue | Vice, and the Magical Tool
-switch at its corner. Each player's depletables also ride their Video tile.
+The top of the Character Sheet (MAG-52): the mage name, then HEALTH over the
+track with Will · Mana beside it, then WISDOM over its meter (MAG-56: ten
+cells, filled in the rank's own color, no numeral — the number is in the
+tooltip); opposite, Gnosis with Defense · Initiative · Speed beneath it; then
+Path | Order | ruling Arcana | Virtue | Vice, and the Magical Tool switch at
+its corner. Each player's depletables also ride their Video tile.
 _Avoid_: Masthead, resource strip (the rail-foot HUD it replaced).
 
 **Hand edit**:

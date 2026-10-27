@@ -28,7 +28,7 @@ import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { ToolSwitch } from "./ToolSwitch"
 import { PoolNumerals } from "./CastHeaderStats"
 import { woundPenalty } from "#/domain/health"
-import { WisdomMeter } from "./WisdomMark"
+import { WisdomMeter } from "./WisdomMeter"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
@@ -88,8 +88,9 @@ export function CharacterSheet({
     <div className="mx-auto grid w-full max-w-3xl gap-6">
       {/* Header — corner-ticked: one of the two "important" surfaces (MAG-52,
           owner 2026-10-24, from a rig audition). Who and what they carry: the
-          mage name, and beneath it the whole health track and Will · Mana;
-          opposite, Gnosis with the combat ratings beneath it. Then what kind
+          mage name, and beneath it HEALTH over the track with Will · Mana
+          beside it, then WISDOM over its meter (MAG-56); opposite, Gnosis
+          with the combat ratings beneath it. Then what kind
           of mage: Path | Order | ruling Arcana | Virtue | Vice, one emblem
           grammar, with the standing tool fact at the corner. The given name
           and concept line is gone (owner: players know who they are). */}
@@ -104,8 +105,7 @@ export function CharacterSheet({
                 Will · Mana beside them on the same baseline, WISDOM over
                 the meter beneath at the row's full width */}
             <div className="mv-data flex flex-wrap items-end gap-x-5 gap-y-2 whitespace-nowrap">
-              <div className="grid content-start gap-1.5">
-                <span className="mv-eyebrow">Health</span>
+              <Eyebrowed label="Health">
                 <span className="flex items-center gap-2" style={{ height: 20 }}>
                   <span className="flex">
                     <HealthTrack track={character.healthTrack} />
@@ -120,7 +120,7 @@ export function CharacterSheet({
                     </span>
                   )}
                 </span>
-              </div>
+              </Eyebrowed>
               {/* Will · Mana: a pending spend shows what would be left,
                   in ember */}
               <span className="flex items-center" style={{ height: 20 }}>
@@ -135,10 +135,11 @@ export function CharacterSheet({
             {/* Wisdom (MAG-56): the meter, beneath the body's row at its
                 width — the held cells filled in the rank's own color, the
                 lost ones hollow; the number lives in its tooltip */}
-            <div className="grid content-start gap-1.5">
-              <span className="mv-eyebrow">Wisdom</span>
-              <WisdomMeter wisdom={character.wisdom} />
-            </div>
+            <Eyebrowed label="Wisdom">
+              <TooltipProvider>
+                <WisdomMeter wisdom={character.wisdom} />
+              </TooltipProvider>
+            </Eyebrowed>
           </div>
           <div className="mv-data grid shrink-0 justify-items-end gap-3 text-right">
             <span className="flex items-baseline gap-2 leading-none">
@@ -338,12 +339,21 @@ function Rating({
   )
 }
 
-function EmblemGroup({ label, children }: { label: string; children: ReactNode }) {
+/** The title card's eyebrow shell: a small-caps label over whatever it names. */
+function Eyebrowed({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid content-start gap-1.5">
       <span className="mv-eyebrow">{label}</span>
-      <span className="flex items-center gap-4">{children}</span>
+      {children}
     </div>
+  )
+}
+
+function EmblemGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <Eyebrowed label={label}>
+      <span className="flex items-center gap-4">{children}</span>
+    </Eyebrowed>
   )
 }
 
