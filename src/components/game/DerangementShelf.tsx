@@ -14,6 +14,8 @@ import {
 import type { SheetMark } from "#/domain/flows/hand-edit"
 import type { SceneId } from "#/domain/ids"
 import { WisdomRank } from "#/domain/wisdom"
+import { ChevronDown } from "lucide-react"
+import { CollapsibleContent, CollapsibleTrigger } from "#/components/ui/collapsible"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
 import { DerangementGlyph } from "./DerangementGlyph"
 import { ParadoxGlyph } from "./ParadoxGlyph"
@@ -30,17 +32,25 @@ import { clockWords, shelfOrder } from "./derangement-shelf-look"
  * clicking on one toggles it on and then that should create the badge. the
  * badges are always visible the detailed view isn't."
  *
- * Two pieces share one `menu` the sheet holds: `DerangementSlots` is the
- * row of symbols in the meter's columns (a symbol under a lost cell, solid
- * when that dot carries one, unlit when it could); `DerangementPanel` is
- * the bordered section the sheet places beneath the title row at the
- * plate's full width — its header is the heading, the opener and the
- * badges; its body, folded open, is two-sided: the nine pairs as twin
- * chips on the left, mild beside severe, and on the right the one the
- * player is pointing at, detailed. The context is what the opener chose: a
- * dot's symbol opens the body *for that dot*, the heading opens it *for
- * Bedlam*, and the body's eyebrow says which. A chip tapped on hangs there
- * and its badge appears in the header; tapped off, it is put down.
+ * Three pieces share one `menu` the sheet holds, inside one shadcn
+ * Collapsible the sheet's title card is the root of: `DerangementSlots` is
+ * the row of symbols in the meter's columns (a symbol under a lost cell,
+ * solid when that dot carries one, unlit when it could); `DerangementHead`
+ * stands in the title row's left column beneath Wisdom in the same
+ * eyebrow grammar as Health and Wisdom — the heading, the collapsible's
+ * trigger (a chevron, the canonical opener) beside it, and the badges
+ * always beneath; `DerangementBody` is the collapsible's content, the
+ * panel the sheet places beneath the title row at the plate's full width,
+ * folded open two-sided: the nine pairs as twin chips on the left, mild
+ * beside severe, and on the right the one the player is pointing at,
+ * detailed. The context is what the opener chose: a dot's symbol opens the
+ * body *for that dot*, the trigger opens it *for Bedlam*, and the body's
+ * eyebrow says which. A chip tapped on hangs there and its badge appears
+ * under the heading; tapped off, it is put down. (Owner, 2026-10-28: "some
+ * kind of accordion pattern or something that keeps the derangements title
+ * aligned with health and wisdom, and shows the active debuffs at all
+ * times but still provides canonical ui to expand a panel showing
+ * everything else".)
  *
  * The fold animates `grid-template-rows`, a layout property; what made it
  * drop frames was never the body but the halo'd trait rows beneath the
@@ -126,30 +136,96 @@ export function DerangementSlots({
   )
 }
 
+/** Whether the menu is open, and what the trigger does: open for Bedlam, or shut. */
+export const menuFromOpen = (open: boolean): DerangementMenu => (open ? { _tag: "bedlam" } : { _tag: "closed" })
+
 /**
- * The bordered section beneath the title row: the heading as the opener,
- * the badges beside it always, and the two-sided body folded beneath.
+ * The heading in the title row's left column, in Health's and Wisdom's
+ * eyebrow grammar: the label, the trigger's chevron beside it, and the
+ * standing derangements as badges beneath, always.
  */
-export function DerangementPanel({
+export function DerangementHead({
   held,
   wisdom,
   activeSceneId,
   menu,
-  onMenu,
-  onMark,
+  canOpen,
+  onShed,
   onPoint,
 }: {
   held: ReadonlyArray<HeldDerangement>
   wisdom: WisdomRank
   activeSceneId?: SceneId | undefined
   menu: DerangementMenu
-  onMenu?: ((menu: DerangementMenu) => void) | undefined
-  onMark?: ((mark: SheetMark) => void) | undefined
+  canOpen: boolean
+  onShed?: ((name: DerangementName) => void) | undefined
   onPoint?: ((rank: WisdomRank | undefined) => void) | undefined
 }) {
   const at = useNow()
   const standing = standingNow(held, wisdom, activeSceneId, at)
-  const point = (rank: WisdomRank | undefined) => onPoint?.(rank)
+  const open = menu._tag !== "closed"
+  return (
+    <TooltipProvider>
+      <div className="grid content-start gap-1.5">
+        <span className="flex items-center gap-1.5">
+          <span className="mv-eyebrow" style={{ color: open ? "var(--ink)" : undefined }}>
+            Derangements
+          </span>
+          {canOpen && (
+            <CollapsibleTrigger
+              aria-label={open ? "Hide the derangements" : "Show all derangements"}
+              className="mv-key grid place-items-center transition-colors"
+              style={{ width: 14, height: 14, color: open ? "var(--ink)" : "var(--dim)" }}
+            >
+              <ChevronDown
+                size={11}
+                strokeWidth={1.5}
+                aria-hidden
+                style={{ transition: "transform 200ms", transform: open ? "rotate(180deg)" : "none" }}
+              />
+            </CollapsibleTrigger>
+          )}
+        </span>
+        {standing.length > 0 && (
+          <span className="mv-data flex flex-wrap items-center gap-1.5">
+            {standing.map((d) => (
+              <Badge
+                key={d.name}
+                held={d}
+                at={at}
+                onShed={onShed ? () => onShed(d.name) : undefined}
+                onPoint={(rank) => onPoint?.(rank)}
+              />
+            ))}
+          </span>
+        )}
+      </div>
+    </TooltipProvider>
+  )
+}
+
+/**
+ * The panel beneath the title row at the plate's full width, the
+ * collapsible's content: folded open, two-sided. It carries the plate's gap
+ * as its own top padding inside the fold, so shut it costs the plate nothing.
+ */
+export function DerangementBody({
+  held,
+  wisdom,
+  activeSceneId,
+  menu,
+  onClose,
+  onMark,
+}: {
+  held: ReadonlyArray<HeldDerangement>
+  wisdom: WisdomRank
+  activeSceneId?: SceneId | undefined
+  menu: DerangementMenu
+  onClose?: (() => void) | undefined
+  onMark?: ((mark: SheetMark) => void) | undefined
+}) {
+  const at = useNow()
+  const standing = standingNow(held, wisdom, activeSceneId, at)
   const open = menu._tag !== "closed"
   const bedlamGate = bedlamGateOf(wisdom, activeSceneId)
   const gate = menu._tag === "bedlam" ? bedlamGate : null
@@ -167,46 +243,19 @@ export function DerangementPanel({
     )
 
   return (
-    <TooltipProvider>
-      <div className="grid rounded-[2px]" style={{ boxShadow: "inset 0 0 0 1px var(--line)" }}>
-        <div className="flex items-center gap-3 px-3" style={{ minHeight: 30 }}>
-          {onMenu ? (
-            <button
-              type="button"
-              aria-expanded={open}
-              onClick={() => onMenu(open ? { _tag: "closed" } : { _tag: "bedlam" })}
-              className="mv-key mv-eyebrow flex items-center gap-1.5 transition-colors"
-              style={{ color: open ? "var(--ink)" : undefined }}
-            >
-              Derangements
-              <Chevron open={open} />
-            </button>
-          ) : (
-            <span className="mv-eyebrow">Derangements</span>
-          )}
-          <span className="mv-data flex flex-wrap items-center gap-1.5">
-            {standing.map((d) => (
-              <Badge
-                key={d.name}
-                held={d}
-                at={at}
-                onShed={onMark ? () => onMark({ shedDerangement: d.name }) : undefined}
-                onPoint={point}
-              />
-            ))}
-          </span>
-        </div>
-        <Fold open={open}>
-          <div className="grid gap-2 px-3 pb-3">
+    <CollapsibleContent forceMount>
+      <Fold open={open}>
+        <div className="pt-4">
+          <div className="grid gap-2 rounded-[2px] px-3 py-3" style={{ boxShadow: "inset 0 0 0 1px var(--line)" }}>
             <div className="flex items-center justify-between">
               <span className="mv-eyebrow" style={{ color: "var(--ink)" }}>
                 {context}
               </span>
-              {onMenu && (
+              {onClose && (
                 <button
                   type="button"
                   aria-label="Close the derangements"
-                  onClick={() => onMenu({ _tag: "closed" })}
+                  onClick={onClose}
                   className="mv-key mv-data text-[11px] leading-none"
                   style={{ color: "var(--dim)" }}
                 >
@@ -245,24 +294,9 @@ export function DerangementPanel({
               />
             </div>
           </div>
-        </Fold>
-      </div>
-    </TooltipProvider>
-  )
-}
-
-/** The opener's chevron: down shut, up open. */
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <svg
-      width={8}
-      height={8}
-      viewBox="0 0 8 8"
-      aria-hidden
-      style={{ transition: "transform 200ms", transform: open ? "rotate(180deg)" : "none" }}
-    >
-      <path d="M1 2.5 L4 5.5 L7 2.5" fill="none" stroke="currentColor" strokeWidth={1.2} />
-    </svg>
+        </div>
+      </Fold>
+    </CollapsibleContent>
   )
 }
 

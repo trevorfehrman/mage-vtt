@@ -42,7 +42,8 @@ import { ToolSwitch } from "./ToolSwitch"
 import { PoolNumerals } from "./CastHeaderStats"
 import { cycleBox, toggleResistant } from "#/domain/health"
 import { WisdomMeter } from "./WisdomMeter"
-import { DerangementPanel, DerangementSlots, type DerangementMenu } from "./DerangementShelf"
+import { Collapsible } from "#/components/ui/collapsible"
+import { DerangementBody, DerangementHead, DerangementSlots, menuFromOpen, type DerangementMenu } from "./DerangementShelf"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
@@ -122,138 +123,158 @@ export function CharacterSheet({
           of mage: Path | Order | ruling Arcana | Virtue | Vice, one emblem
           grammar, with the standing tool fact at the corner. The given name
           and concept line is gone (owner: players know who they are). */}
-      <div className="mv-cornered mv-panel grid gap-4 p-4">
-        <div className="flex items-start justify-between gap-6">
-          <div className="grid gap-3">
-            <span className="flex items-center gap-3">
-              <h2 className="mv-h text-[30px] leading-none">
-                {character.shadowName ?? character.name}
-              </h2>
-              {/* the record's words (MAG-61; owner 2026-10-27): the nimbus,
-                  cabal and consilium behind one halo beside the name, read
-                  on hover or focus — present only when any is written */}
-              <WordsHalo character={character} />
-            </span>
-            {/* the depletables under eyebrows in the emblem row's grammar
-                (owner, 2026-10-27): HEALTH over the track and its penalty,
-                Will · Mana beside them on the same baseline, WISDOM over
-                the meter beneath at the row's full width */}
-            <div className="mv-data flex flex-wrap items-end gap-x-5 gap-y-2 whitespace-nowrap">
-              <Eyebrowed label="Health">
-                <span className="flex items-center gap-2" style={{ height: 20 }}>
-                  <span className="flex">
-                    <HealthTrack
-                      track={character.healthTrack}
-                      onMark={
-                        onMarkSheet ? (healthTrack) => void onMarkSheet({ healthTrack }) : undefined
-                      }
-                    />
-                  </span>
-                  {penalty < 0 && (
-                    <span
-                      className="text-[13px] leading-none font-bold"
-                      style={{ color: "var(--bad)" }}
-                      title="Wound penalty — it rides every roll"
-                    >
-                      {penalty}
-                    </span>
-                  )}
-                </span>
-              </Eyebrowed>
-              {/* Will · Mana: a pending spend shows what would be left,
-                  in ember */}
-              <span className="flex items-center" style={{ height: 20 }}>
-                <PoolNumerals
-                  sheet={character}
-                  pendingMana={pendingMana}
-                  pendingWillpower={pendingWillpower}
-                  size={15}
-                  manaPerTurn
-                  // the purse mark (MAG-67): refill Willpower at the scene,
-                  // Mana by oblation, by your own hand
-                  onMarkPurse={
-                    onMarkSheet
-                      ? (purse, next) =>
-                          void onMarkSheet(
-                            purse === "willpower"
-                              ? { willpowerCurrent: Willpower.make(next) }
-                              : { manaCurrent: Mana.make(next) },
-                          )
-                      : undefined
-                  }
-                />
+      <Collapsible
+        className="mv-cornered mv-panel grid gap-4 p-4"
+        open={menu._tag !== "closed"}
+        onOpenChange={(open) => setMenu(menuFromOpen(open))}
+      >
+        {/* the title row and the Derangements body share one box: shut, the
+            body costs the plate no height and no gap */}
+        <div className="grid">
+          <div className="flex items-start justify-between gap-6">
+            <div className="grid gap-3">
+              <span className="flex items-center gap-3">
+                <h2 className="mv-h text-[30px] leading-none">
+                  {character.shadowName ?? character.name}
+                </h2>
+                {/* the record's words (MAG-61; owner 2026-10-27): the nimbus,
+                    cabal and consilium behind one halo beside the name, read
+                    on hover or focus — present only when any is written */}
+                <WordsHalo character={character} />
               </span>
-            </div>
-            {/* Wisdom (MAG-56): the meter, beneath the body's row at its
-                width — the held cells filled in the rank's own color, the
-                lost ones hollow; the number lives in its tooltip */}
-            <Eyebrowed label="Wisdom">
-              <WisdomMeter
-                wisdom={character.wisdom}
-                onSet={onMarkSheet ? (wisdom) => void onMarkSheet({ wisdom }) : undefined}
-                lit={litDot}
-              />
-              {/* Derangements (MAG-60): an unlit mark beneath each lost
-                  cell opens the panel for that dot */}
-              <DerangementSlots
-                held={character.derangementsHeld}
-                wisdom={character.wisdom}
-                activeSceneId={activeSceneId}
-                menu={menu}
-                onOpen={onMarkSheet ? setMenu : undefined}
-              />
-            </Eyebrowed>
-          </div>
-          <div className="mv-data grid shrink-0 justify-items-end gap-3 text-right">
-            <span className="flex items-baseline gap-2 leading-none">
-              <span className="text-[15px]" style={{ color: "var(--dim)" }}>GNOSIS</span>
-              <span className="mv-accent text-[32px] font-semibold">{character.gnosis}</span>
-            </span>
-            {/* the combat ratings in the depletables' grammar: a glyph for
-                the label, the numeral beside it (a tooltip names each) */}
-            <TooltipProvider>
-              <div className="flex items-center gap-4 leading-none" style={{ fontSize: 15, height: 20 }}>
-                <Rating label="Defense" stat="defense" value={character.defense} />
-                <Rating label="Initiative" stat="initiative" value={character.initiative} raisedBy={sourcesOf(character.meritsHeld, "initiative")} />
-                <Rating label="Speed" stat="speed" value={character.speed} raisedBy={sourcesOf(character.meritsHeld, "speed")} />
-              </div>
-              {/* unspent experience (MAG-57): the one advancement number the
-                  sheet keeps so it isn't on paper; the Storyteller's to edit */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    tabIndex={0}
-                    className="flex items-baseline gap-1.5 leading-none"
-                    style={{ fontSize: 15 }}
-                    aria-label={`${character.experience} experience unspent`}
-                  >
-                    <span style={{ color: "var(--dim)" }}>XP</span>
-                    <span style={{ color: "var(--ink)" }}>{character.experience}</span>
+              {/* the depletables under eyebrows in the emblem row's grammar
+                  (owner, 2026-10-27): HEALTH over the track and its penalty,
+                  Will · Mana beside them on the same baseline, WISDOM over
+                  the meter beneath at the row's full width */}
+              <div className="mv-data flex flex-wrap items-end gap-x-5 gap-y-2 whitespace-nowrap">
+                <Eyebrowed label="Health">
+                  <span className="flex items-center gap-2" style={{ height: 20 }}>
+                    <span className="flex">
+                      <HealthTrack
+                        track={character.healthTrack}
+                        onMark={
+                          onMarkSheet ? (healthTrack) => void onMarkSheet({ healthTrack }) : undefined
+                        }
+                      />
+                    </span>
+                    {penalty < 0 && (
+                      <span
+                        className="text-[13px] leading-none font-bold"
+                        style={{ color: "var(--bad)" }}
+                        title="Wound penalty — it rides every roll"
+                      >
+                        {penalty}
+                      </span>
+                    )}
                   </span>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={4}>
-                  {character.experience} experience unspent
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                </Eyebrowed>
+                {/* Will · Mana: a pending spend shows what would be left,
+                    in ember */}
+                <span className="flex items-center" style={{ height: 20 }}>
+                  <PoolNumerals
+                    sheet={character}
+                    pendingMana={pendingMana}
+                    pendingWillpower={pendingWillpower}
+                    size={15}
+                    manaPerTurn
+                    // the purse mark (MAG-67): refill Willpower at the scene,
+                    // Mana by oblation, by your own hand
+                    onMarkPurse={
+                      onMarkSheet
+                        ? (purse, next) =>
+                            void onMarkSheet(
+                              purse === "willpower"
+                                ? { willpowerCurrent: Willpower.make(next) }
+                                : { manaCurrent: Mana.make(next) },
+                            )
+                        : undefined
+                    }
+                  />
+                </span>
+              </div>
+              {/* Wisdom (MAG-56): the meter, beneath the body's row at its
+                  width — the held cells filled in the rank's own color, the
+                  lost ones hollow; the number lives in its tooltip */}
+              <Eyebrowed label="Wisdom">
+                <WisdomMeter
+                  wisdom={character.wisdom}
+                  onSet={onMarkSheet ? (wisdom) => void onMarkSheet({ wisdom }) : undefined}
+                  lit={litDot}
+                />
+                {/* Derangements (MAG-60): an unlit mark beneath each lost
+                    cell opens the panel for that dot */}
+                <DerangementSlots
+                  held={character.derangementsHeld}
+                  wisdom={character.wisdom}
+                  activeSceneId={activeSceneId}
+                  menu={menu}
+                  onOpen={onMarkSheet ? setMenu : undefined}
+                />
+              </Eyebrowed>
+              {/* Derangements (MAG-60; owner 2026-10-28): the heading in the
+                  same eyebrow grammar, the collapsible's chevron beside it,
+                  the standing ones as badges beneath, always. Absent on a
+                  read-only sheet that holds none. */}
+              {(character.derangementsHeld.length > 0 || onMarkSheet) && (
+                <DerangementHead
+                  held={character.derangementsHeld}
+                  wisdom={character.wisdom}
+                  activeSceneId={activeSceneId}
+                  menu={menu}
+                  canOpen={onMarkSheet !== undefined}
+                  onShed={onMarkSheet ? (name) => void onMarkSheet({ shedDerangement: name }) : undefined}
+                  onPoint={setLitDot}
+                />
+              )}
+            </div>
+            <div className="mv-data grid shrink-0 justify-items-end gap-3 text-right">
+              <span className="flex items-baseline gap-2 leading-none">
+                <span className="text-[15px]" style={{ color: "var(--dim)" }}>GNOSIS</span>
+                <span className="mv-accent text-[32px] font-semibold">{character.gnosis}</span>
+              </span>
+              {/* the combat ratings in the depletables' grammar: a glyph for
+                  the label, the numeral beside it (a tooltip names each) */}
+              <TooltipProvider>
+                <div className="flex items-center gap-4 leading-none" style={{ fontSize: 15, height: 20 }}>
+                  <Rating label="Defense" stat="defense" value={character.defense} />
+                  <Rating label="Initiative" stat="initiative" value={character.initiative} raisedBy={sourcesOf(character.meritsHeld, "initiative")} />
+                  <Rating label="Speed" stat="speed" value={character.speed} raisedBy={sourcesOf(character.meritsHeld, "speed")} />
+                </div>
+                {/* unspent experience (MAG-57): the one advancement number the
+                    sheet keeps so it isn't on paper; the Storyteller's to edit */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      tabIndex={0}
+                      className="flex items-baseline gap-1.5 leading-none"
+                      style={{ fontSize: 15 }}
+                      aria-label={`${character.experience} experience unspent`}
+                    >
+                      <span style={{ color: "var(--dim)" }}>XP</span>
+                      <span style={{ color: "var(--ink)" }}>{character.experience}</span>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={4}>
+                    {character.experience} experience unspent
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
+          {/* the body: the collapsible's content beneath the whole title row at
+              the plate's full width — the twins on the left, one detailed on
+              the right */}
+          {(character.derangementsHeld.length > 0 || onMarkSheet) && (
+            <DerangementBody
+              held={character.derangementsHeld}
+              wisdom={character.wisdom}
+              activeSceneId={activeSceneId}
+              menu={menu}
+              onClose={onMarkSheet ? () => setMenu({ _tag: "closed" }) : undefined}
+              onMark={onMarkSheet ? (mark) => void onMarkSheet(mark) : undefined}
+            />
+          )}
         </div>
-        {/* Derangements (MAG-60; owner 2026-10-28): the bordered section
-            beneath the title row at the plate's full width — its heading
-            the opener, the badges always beside it, and the two-sided body
-            folded open beneath: the twins on the left, one detailed on the
-            right. Absent on a read-only sheet that holds none. */}
-        {(character.derangementsHeld.length > 0 || onMarkSheet) && (
-          <DerangementPanel
-            held={character.derangementsHeld}
-            wisdom={character.wisdom}
-            activeSceneId={activeSceneId}
-            menu={menu}
-            onMenu={onMarkSheet ? setMenu : undefined}
-            onMark={onMarkSheet ? (mark) => void onMarkSheet(mark) : undefined}
-            onPoint={setLitDot}
-          />
-        )}
         <div className="flex items-end justify-between gap-6">
           <div className="flex flex-wrap items-stretch gap-x-4 gap-y-3">
             <EmblemGroup label="Path">
@@ -327,7 +348,7 @@ export function CharacterSheet({
             )}
           </span>
         </div>
-      </div>
+      </Collapsible>
 
       {/* The trait matrix — directly beneath the title card: the mundane
           traits paint the person before the magic does (owner call
