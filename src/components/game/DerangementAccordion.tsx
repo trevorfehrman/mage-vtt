@@ -169,6 +169,7 @@ export function DerangementAccordion({
                     severe={severe}
                     held={pairDepth(standing, mild)}
                     chosen={pair === mild}
+                    depth={depth}
                     onChoose={() => (pair === mild ? setDepth((d) => (d === "mild" ? "severe" : "mild")) : openOn(mild))}
                   />
                 ))}
@@ -230,18 +231,27 @@ function Name({ name, severity, ink, size }: { name: string; severity: Derangeme
   )
 }
 
-/** One pair in the list: "Depression / Melancholia", light and heavy; a second click on the chosen row turns the depth. */
+/**
+ * One pair in the list: the two names, light and heavy, parted by the
+ * spiral. The chosen row carries the depth the way the reading does (owner,
+ * 2026-10-28: "can that also have a toggle state based on which one is
+ * selected and can we separate those by the spiral too rather than a /"):
+ * its spiral turns with the depth and the form that is not live dims. A
+ * second click on the chosen row turns the depth.
+ */
 function PairRow({
   mild,
   severe,
   held,
   chosen,
+  depth,
   onChoose,
 }: {
   mild: DerangementName
   severe: DerangementName
   held: Option.Option<HeldDerangement>
   chosen: boolean
+  depth: DerangementSeverity
   onChoose: () => void
 }) {
   const heldInk = Option.map(held, (d) => inkOf(isBedlamHold(d.hold)))
@@ -252,7 +262,7 @@ function PairRow({
       type="button"
       aria-pressed={chosen}
       onClick={onChoose}
-      className="mv-key flex min-h-0 items-center gap-1.5 rounded-[2px] px-2 text-left transition-[box-shadow,opacity]"
+      className="mv-key flex min-h-0 items-center gap-2 rounded-[2px] px-2 text-left transition-[box-shadow,opacity]"
       style={{
         opacity: chosen || Option.isSome(held) ? 1 : 0.55,
         boxShadow: `inset 0 0 0 1px ${chosen ? "var(--ink)" : Option.getOrElse(Option.map(heldInk, (i) => `color-mix(in srgb, ${i} 45%, transparent)`), () => "var(--line)")}`,
@@ -262,11 +272,22 @@ function PairRow({
         }),
       }}
     >
-      <Name name={mild} severity="mild" ink={inkFor(mild)} size={13} />
-      <span className="mv-data text-[11px] leading-none" style={{ color: "var(--dim)" }}>
-        /
+      <span style={{ opacity: chosen && depth !== "mild" ? 0.4 : 1, transition: "opacity 200ms" }}>
+        <Name name={mild} severity="mild" ink={inkFor(mild)} size={13} />
       </span>
-      <Name name={severe} severity="severe" ink={inkFor(severe)} size={13} />
+      <span
+        className="grid place-items-center"
+        style={{
+          color: "var(--derange)",
+          transition: "transform 480ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+          transform: chosen && depth === "severe" ? "rotate(180deg)" : "none",
+        }}
+      >
+        <DerangementGlyph size={11} />
+      </span>
+      <span style={{ opacity: chosen && depth !== "severe" ? 0.4 : 1, transition: "opacity 200ms" }}>
+        <Name name={severe} severity="severe" ink={inkFor(severe)} size={13} />
+      </span>
     </button>
   )
 }
