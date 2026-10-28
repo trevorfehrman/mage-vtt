@@ -156,6 +156,25 @@ export const MARKS: Partial<Record<MeritName, ReactNode>> = {
   Retainer: <><circle cx="8.5" cy="8.5" r="1.8" fill="currentColor" stroke="none" /><circle cx="14.5" cy="14.5" r="4" /></>,
   // the drawn gaze — every line in the room comes to one point
   "Striking Looks": <><path d="M4 4 L9 9 M20 4 L15 9 M4 20 L9 15 M20 20 L15 15" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /></>,
+  // ── Awakened (MAG-68, batch 3) ──
+  // the pendant — a Supernal thing hung on the world by one thread
+  // (the sealed urn read as a bin at 26px)
+  Artifact: <><path d="M12 2.5 V8" /><path d="M12 8.5 L16 13 L12 17.5 L8 13 Z" /><circle cx="12" cy="20.5" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the sliver moon — a clue seen by its light
+  Dream: <><path d="M14.5 4 A8 8 0 1 0 14.5 20 A6.2 6.2 0 1 1 14.5 4 Z" /><circle cx="16.5" cy="12" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the braced square — a plain thing, reinforced
+  "Enhanced Item": <><path d="M5 5 H19 V19 H5 Z" /><path d="M5 19 L19 5" /><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the bond — two sparks, one thread between them
+  Familiar: <><path d="M6 16.5 Q10 3 18 8.5" /><circle cx="6" cy="17" r="1.5" fill="currentColor" stroke="none" /><circle cx="18.5" cy="8.5" r="1.5" fill="currentColor" stroke="none" /></>,
+  // the welling — Mana rising from the ground in rings (the basin on its
+  // foot was a smiling face at 26px)
+  Hallow: <><path d="M8 14.5 A4 4 0 0 0 16 14.5" /><path d="M4.5 11.5 A7.5 7.5 0 0 0 19.5 11.5" /><circle cx="12" cy="6" r="1.4" fill="currentColor" stroke="none" /></>,
+  // the set stone — a ring, and the spell set in it
+  "Imbued Item": <><circle cx="12" cy="13.5" r="5.5" /><circle cx="12" cy="7.5" r="1.4" fill="currentColor" stroke="none" /></>,
+  // the follower who sees — Retainer's ring, with its eye open
+  "Sleepwalker Retainer": <><circle cx="8.5" cy="8.5" r="1.8" fill="currentColor" stroke="none" /><circle cx="14.5" cy="14.5" r="4" /><circle cx="14.5" cy="14.5" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the held stone — another's soul stone, in the fist
+  Thrall: <><path d="M7 5.5 Q3.5 12 7 18.5" /><path d="M17 5.5 Q20.5 12 17 18.5" /><path d="M12 8.5 L15 12 L12 15.5 L9 12 Z" /><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" /></>,
   // ── Awakened and others ──
   // the Atlantean tongue — a tongue of flame rising from parted lips
   "High Speech": <><path d="M6 15 Q12 20 18 15" /><path d="M12 14.5 C9.8 11.5 13.4 9.4 12 5.6" /><circle cx="12" cy="4" r="1.2" fill="currentColor" stroke="none" /></>,
