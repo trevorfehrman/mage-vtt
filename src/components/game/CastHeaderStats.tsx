@@ -7,6 +7,7 @@ import { ArcanaGlyph, arcanumTint, isGrossArcanum } from "./ArcanaGlyph"
 import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { CycleArrow } from "./CycleArrow"
 import { Lozenge } from "./Lozenge"
+import { Nudge } from "./Nudge"
 
 /**
  * The Cast header's pieces (MAG-48, owner 2026-10-24): the caster's
@@ -25,6 +26,12 @@ const PoolNumeralsProps = Schema.Struct({
   manaPerTurn: Schema.optionalKey(Schema.Boolean),
 })
 
+/** The purse mark (MAG-67): a small − + beneath each numeral on your own
+ * sheet, each click a mark on what the purse holds. */
+interface PoolNumeralsHandlers {
+  onMarkPurse?: ((purse: "willpower" | "mana", next: number) => void) | undefined
+}
+
 /** Will · Mana as numerals; a pending spend shows what would be left, in ember. */
 export function PoolNumerals({
   sheet,
@@ -32,16 +39,18 @@ export function PoolNumerals({
   pendingWillpower,
   size = 13,
   manaPerTurn = false,
-}: typeof PoolNumeralsProps.Type) {
+  onMarkPurse,
+}: typeof PoolNumeralsProps.Type & PoolNumeralsHandlers) {
   return (
     <TooltipProvider>
-      <span className="mv-data flex items-baseline gap-3 leading-none" style={{ fontSize: size }}>
+      <span className="mv-data flex items-start gap-3 leading-none" style={{ fontSize: size }}>
         <Pool
           label="Willpower"
           color="var(--will)"
           current={sheet.willpowerCurrent}
           max={sheet.willpower}
           pending={pendingWillpower}
+          onNudge={onMarkPurse ? (next) => onMarkPurse("willpower", next) : undefined}
         />
         <Pool
           label="Mana"
@@ -49,6 +58,7 @@ export function PoolNumerals({
           current={sheet.manaCurrent}
           max={sheet.maxMana}
           pending={pendingMana}
+          onNudge={onMarkPurse ? (next) => onMarkPurse("mana", next) : undefined}
         />
         {/* Mana a turn (MAG-57; Mage p. 76): the speed limit on spending,
             set by Gnosis — a cycle arrow and the number, right beside the
@@ -84,23 +94,34 @@ const PoolProps = Schema.Struct({
   pending: Schema.Number,
 })
 
-function Pool({ label, color, current, max, pending }: typeof PoolProps.Type) {
+function Pool({
+  label,
+  color,
+  current,
+  max,
+  pending,
+  onNudge,
+}: typeof PoolProps.Type & { onNudge?: ((next: number) => void) | undefined }) {
   // A pending spend shows what would be left, in ember — no arrow.
   const shown = Math.max(0, current - pending)
   const name = pending > 0 ? `${label} · ${pending} pending` : label
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span tabIndex={0} aria-label={name} className="flex items-baseline gap-1">
-          <span style={{ color }}><Lozenge /></span>
-          <span style={{ color: pending > 0 ? "var(--ember)" : "var(--ink)" }}>{shown}</span>
-          <span style={{ color: "var(--dim)" }}>/{max}</span>
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="top" sideOffset={4}>
-        {name}
-      </TooltipContent>
-    </Tooltip>
+    <span className="grid justify-items-start gap-1">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} aria-label={name} className="flex items-baseline gap-1">
+            <span style={{ color }}><Lozenge /></span>
+            <span style={{ color: pending > 0 ? "var(--ember)" : "var(--ink)" }}>{shown}</span>
+            <span style={{ color: "var(--dim)" }}>/{max}</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={4}>
+          {name}
+        </TooltipContent>
+      </Tooltip>
+      {/* the purse mark (MAG-67): − + beneath, on your own sheet */}
+      {onNudge !== undefined && <Nudge label={label} current={current} max={max} onNudge={onNudge} />}
+    </span>
   )
 }
 

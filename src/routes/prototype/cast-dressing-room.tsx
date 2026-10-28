@@ -415,6 +415,8 @@ function DressingRoom() {
         ...(marks.healthTrack !== undefined ? { healthTrack: marks.healthTrack } : {}),
         // MAG-67: the Destiny mark lands here too, so the pips refill on the rig
         ...(marks.destinyCurrent !== undefined ? { destinyCurrent: marks.destinyCurrent } : {}),
+        ...(marks.willpowerCurrent !== undefined ? { willpowerCurrent: marks.willpowerCurrent } : {}),
+        ...(marks.manaCurrent !== undefined ? { manaCurrent: marks.manaCurrent } : {}),
         // MAG-59: the rig's Arctus holds a fuller ring than the fixture's
         // seven creation dots, so every kind of key hangs on it — one that
         // turns for dice, a purse, a gate, a raised number, a ladder, story keys

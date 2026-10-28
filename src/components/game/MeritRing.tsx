@@ -51,7 +51,8 @@ import type { SheetMark } from "#/domain/flows/hand-edit"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 import { DotRating } from "./DotRating"
 import { Keyhole, Mark } from "./merit-marks"
-import { periodic, pipStates, pipTap, ringName, wrapIndex, type Purse, type PurseLevel } from "./merit-ring-look"
+import { periodic, pipStates, ringName, wrapIndex, type Purse, type PurseLevel } from "./merit-ring-look"
+import { Nudge } from "./Nudge"
 
 export type Pool = ReturnType<typeof useDicePool>
 
@@ -191,53 +192,44 @@ function DoorPage({ h, lit }: { h: HeldMerit; lit: boolean }) {
   )
 }
 
-/** The purse's pips (MAG-67), three states in one row: in the purse
- * (verdigris ring), staged into this roll (ember), gone this chapter (dim,
- * hollow). Click-through both ways; a gone pip refills through itself by
- * the player's mark. */
-function Pips({ h, hand }: { h: HeldMerit; hand: Hand }) {
-  const purse = purseOfHand(hand)
-  const states = pipStates(purse)
-  const may = canToggle(hand)
-  const onTap = (i: number) =>
-    Match.value(pipTap(purse, i)).pipe(
-      Match.tag("stage", (t) => setStaged(hand, h, t.staged)),
-      Match.tag("refill", (t) => void hand.onMarkSheet?.({ destinyCurrent: Destiny.make(t.current) })),
-      Match.exhaustive,
-    )
+/** The purse's pips (MAG-67), three states in one row: staged into this
+ * roll (ember, from the left — the key's turn stages them), left in the
+ * purse (verdigris ring), gone this chapter (dim, hollow). The pips only
+ * show; the small − + beneath them is the player's mark on what the purse
+ * holds (a refill at the chapter, the bane's cost), present on their own
+ * sheet. */
+function Pips({ hand }: { hand: Hand }) {
+  const states = pipStates(purseOfHand(hand))
   return (
-    <span className="flex gap-1 py-1.5">
-      {states.map((state, i) => {
-        const refills = state === "gone"
-        const enabled = refills ? hand.onMarkSheet !== undefined : may
-        return (
-          <button
+    <span className="grid justify-items-end gap-1">
+      <span className="flex gap-1 py-1">
+        {states.map((state, i) => (
+          <span
             key={i}
-            type="button"
-            disabled={!enabled}
-            onClick={() => onTap(i)}
-            aria-label={
-              state === "purse" ? "Stage Destiny" : state === "staged" ? "Take Destiny back" : "Refill Destiny"
-            }
-            className={`mv-key grid size-[18px] place-items-center rounded-full ${enabled ? "" : "cursor-default"}`}
-          >
-            <span
-              className="inline-block size-[10px] rounded-full"
-              style={{
-                background: state === "staged" ? "var(--ember)" : "transparent",
-                boxShadow:
-                  state === "staged"
-                    ? "0 0 6px var(--ember-glow)"
-                    : state === "purse"
-                      ? "inset 0 0 0 1px var(--accent)"
-                      : "inset 0 0 0 1px var(--line)",
-                opacity: state === "gone" ? 0.7 : 1,
-                transition: "background 0.2s, box-shadow 0.2s",
-              }}
-            />
-          </button>
-        )
-      })}
+            aria-hidden
+            className="inline-block size-[10px] rounded-full"
+            style={{
+              background: state === "staged" ? "var(--ember)" : "transparent",
+              boxShadow:
+                state === "staged"
+                  ? "0 0 6px var(--ember-glow)"
+                  : state === "purse"
+                    ? "inset 0 0 0 1px var(--accent)"
+                    : "inset 0 0 0 1px var(--line)",
+              opacity: state === "gone" ? 0.7 : 1,
+              transition: "background 0.2s, box-shadow 0.2s",
+            }}
+          />
+        ))}
+      </span>
+      {hand.onMarkSheet !== undefined && (
+        <Nudge
+          label="Destiny"
+          current={hand.destiny.current}
+          max={hand.destiny.capacity}
+          onNudge={(next) => void hand.onMarkSheet?.({ destinyCurrent: Destiny.make(next) })}
+        />
+      )}
     </span>
   )
 }
@@ -263,7 +255,7 @@ function DoorFoot({ h, hand }: { h: HeldMerit; hand: Hand }) {
         </button>
       )
     }),
-    Match.tag("purse", () => <Pips h={h} hand={hand} />),
+    Match.tag("purse", () => <Pips hand={hand} />),
     Match.tag("derived", (m) => (
       <span
         className="mv-data rounded-[3px] px-2.5 py-1.5 text-[12px]"
@@ -395,7 +387,7 @@ function RingKey({
         type="button"
         onClick={() => onTap(position)}
         className={`mv-key absolute left-[6px] top-0 flex h-[36px] items-center gap-2 whitespace-nowrap text-left ${acts ? "" : "cursor-default"}`}
-        style={{ x, rotate: lean, transformOrigin: "0 50%", color: ink }}
+        style={{ x, rotate: lean, transformOrigin: "0 50%", color: ink, transition: "color 0.18s ease" }}
       >
         <motion.span
           aria-hidden
@@ -447,11 +439,11 @@ function Wheel({ held, hand }: { held: ReadonlyArray<HeldMerit>; hand: Hand }) {
 
   // the hinge: the door's page swings in when the key changes — but not
   // for every row a flick sends past the middle (that re-rasterized the
-  // page per row and dropped frames). A change while the wheel is slow
-  // swings at once; a change at speed owes a swing, paid when the wheel
-  // lands.
+  // page per row and dropped frames), and not when the wheel lands either
+  // (the owner, 2026-10-28: the page "refreshed" on settle — the page had
+  // already changed in flight, so a swing then is a flash, not a change).
+  // Only a change while the wheel is slow swings.
   const [page, swing] = useAnimate()
-  const owed = useRef(false)
   const mounted = useRef(false)
   const doSwing = () => {
     if (reduced || !page.current) return
@@ -467,17 +459,8 @@ function Wheel({ held, hand }: { held: ReadonlyArray<HeldMerit>; hand: Hand }) {
       return
     }
     if (Math.abs(offset.getVelocity()) < SWING_SPEED) doSwing()
-    else owed.current = true
     // the swing is owed to the key change alone
   }, [inHandIndex])
-  const land = () => {
-    const o = offset.get()
-    if (Math.abs(o - Math.round(o)) > 0.01) return
-    if (owed.current) {
-      owed.current = false
-      doSwing()
-    }
-  }
 
   /** Coast from a velocity (rows per second) and land exactly on a key.
    * animate() skips the inertia when the nominal target equals the current
@@ -489,11 +472,11 @@ function Wheel({ held, hand }: { held: ReadonlyArray<HeldMerit>; hand: Hand }) {
       reduced
         ? { duration: 0 }
         : { type: "inertia", velocity: v, power: 0.4, timeConstant: 200, modifyTarget: Math.round, restDelta: 0.002 },
-    ).then(land)
+    )
   /** Chase a key on a spring: quick pushes move the target further and the
    * wheel accelerates after it; it stops dead on the key. */
   const chase = (target: number) =>
-    animate(offset, target, reduced ? { duration: 0 } : { type: "spring", stiffness: 260, damping: 30, mass: 0.9 }).then(land)
+    animate(offset, target, reduced ? { duration: 0 } : { type: "spring", stiffness: 260, damping: 30, mass: 0.9 })
   // the target the notches push; it rests on the wheel's own position
   const target = useRef(0)
   const push = (by: number) => {

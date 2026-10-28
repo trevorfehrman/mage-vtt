@@ -28,6 +28,7 @@ import {
 } from "./ArcanaGlyph"
 import { ArcanaSubstance, hasSubstance } from "./ArcanaSubstance"
 import { sourcesOf, type RaisedBy } from "#/domain/merits"
+import { Mana, Willpower } from "#/domain/quantities"
 import { MeritRing } from "./MeritRing"
 import { RoteBook } from "./RoteBook"
 import { TraitSky } from "./TraitSky"
@@ -156,6 +157,18 @@ export function CharacterSheet({
                   pendingWillpower={pendingWillpower}
                   size={15}
                   manaPerTurn
+                  // the purse mark (MAG-67): refill Willpower at the scene,
+                  // Mana by oblation, by your own hand
+                  onMarkPurse={
+                    onMarkSheet
+                      ? (purse, next) =>
+                          void onMarkSheet(
+                            purse === "willpower"
+                              ? { willpowerCurrent: Willpower.make(next) }
+                              : { manaCurrent: Mana.make(next) },
+                          )
+                      : undefined
+                  }
                 />
               </span>
             </div>

@@ -1,4 +1,4 @@
-import { Match, Schema } from "effect"
+import { Schema } from "effect"
 import type { MeritName } from "#/domain/merits"
 
 // The ring's pure rules (MAG-59; ADR-0019): plain functions over Schema
@@ -49,31 +49,12 @@ export const PipState = Schema.Literals(["purse", "staged", "gone"])
 export type PipState = typeof PipState.Type
 
 /**
- * The pips left to right: in the purse (verdigris ring), staged into this
- * roll (ember — the rightmost of what is left, about to leave), gone this
- * chapter (dim, hollow).
+ * The pips left to right (owner, 2026-10-28: one job each — the pips only
+ * show): staged into this roll (ember, from the left, as the key turns),
+ * then what is left in the purse (verdigris ring), then gone this chapter
+ * (dim, hollow).
  */
 export const pipStates = (purse: Purse): ReadonlyArray<PipState> =>
   Array.from({ length: purse.capacity }, (_, i) =>
-    i >= purse.current ? "gone" : i >= purse.current - purse.staged ? "staged" : "purse",
-  )
-
-/** What a tap on a pip asks for: a new staging, or a refill through the pip (a mark). */
-export const PipTap = Schema.Union([
-  Schema.TaggedStruct("stage", { staged: Schema.Number }),
-  Schema.TaggedStruct("refill", { current: Schema.Number }),
-])
-export type PipTap = typeof PipTap.Type
-
-/**
- * Click-through, both ways: a purse pip stages itself and every purse pip
- * right of it; a staged pip takes itself and every staged pip left of it
- * back; a gone pip fills the purse through itself.
- */
-export const pipTap = (purse: Purse, i: number): PipTap =>
-  Match.value(pipStates(purse)[i] ?? "gone").pipe(
-    Match.when("purse", () => ({ _tag: "stage", staged: purse.current - i }) as const),
-    Match.when("staged", () => ({ _tag: "stage", staged: purse.current - i - 1 }) as const),
-    Match.when("gone", () => ({ _tag: "refill", current: i + 1 }) as const),
-    Match.exhaustive,
+    i < purse.staged ? "staged" : i < purse.current ? "purse" : "gone",
   )
