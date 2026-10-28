@@ -41,7 +41,7 @@ import { ToolSwitch } from "./ToolSwitch"
 import { PoolNumerals } from "./CastHeaderStats"
 import { cycleBox, toggleResistant } from "#/domain/health"
 import { WisdomMeter } from "./WisdomMeter"
-import { DerangementZone } from "./DerangementZone"
+import { DerangementAccordion } from "./DerangementAccordion"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
@@ -225,11 +225,12 @@ export function CharacterSheet({
             </TooltipProvider>
           </div>
         </div>
-        {/* Derangements (MAG-60; owner 2026-10-28): the zone — a band across
-            the plate beneath the title row, its eyebrow on Health's and
-            Wisdom's left edge; the marks and the ghost always, the picker
-            folded beneath. Absent on a read-only sheet that holds none. */}
-        <DerangementZone
+        {/* Derangements (MAG-60; owner 2026-10-28): the accordion beneath the
+            title row — the heading as its opener on Health's and Wisdom's
+            left edge, the chips or "You are not deranged." beneath it
+            always, the two-sided reading folded beneath. Absent on a
+            read-only sheet that holds none. */}
+        <DerangementAccordion
           held={character.derangementsHeld}
           wisdom={character.wisdom}
           activeSceneId={activeSceneId}

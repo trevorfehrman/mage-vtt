@@ -95,14 +95,21 @@ what it hangs from (ADR-0026): **lasting** (standing until put down by
 hand), the **Scene** it is bound to (a Bedlam at Wisdom 5+, over when the
 Scene closes), or the **clock** it runs out on (a Bedlam at Wisdom 4−, an
 expiry stamped from the Wisdom table). Whether it stands is derived against
-the moment, never cleaned up. It is drawn in the **Derangements zone**
-across the title card as a **mark** — the name in serif, its weight in mono
-("lasting"; "Bedlam · −1 Death · scene"), its bout in prose — under a fog of
-its ink: the wound's bruise for a lasting one, Paradox red for a Bedlam's.
-The **player marks it** through `markSheet` by name, as lasting or as a
-Bedlam's, and puts it down the same way. A pair is **one affliction at two
-depths**: taking the severe form over the mild **deepens** it, and the
-partner leaves the sheet with the mark.
+the moment, never cleaned up. It is drawn in the **Derangements
+accordion** beneath the title card's title row: the heading is the opener,
+beneath it the held ones as small **chips** (the name in serif, in its
+hold's ink — the wound's bruise for a lasting one, Paradox red for a
+Bedlam's — the full reading in a tooltip) or the sentence "You are not
+deranged."; folded beneath, the nine pairs as rows ("Depression /
+Melancholia") beside the chosen pair's two forms read whole, parted by the
+**turn** — a half-lit disc on the line, lit toward the live form — and the
+one button at the corner: **Derange** takes the live form, **Compose** puts
+it down (Resolve + Composure being what resists a derangement). The
+**player marks it** through `markSheet` by name — lasting from the sheet;
+`bedlam` is the door the cast card will pass later — and puts it down the
+same way. A pair is **one affliction at two depths**: taking the severe
+form over the mild **deepens** it, and the partner leaves the sheet with
+the mark.
 _Avoid_: Condition, Flaw (other editions' words); "source" / "duration" for
 the hold.
 

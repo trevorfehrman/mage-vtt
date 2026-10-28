@@ -396,5 +396,31 @@ export const weaknessWords = (weakness: BedlamWeakness): string =>
     Match.exhaustive,
   )
 
+/**
+ * The Bedlam weakness as the book's rule in one sentence (Mage pp. 269–271),
+ * for the picker's full reading: the dice off contesting or countering the
+ * magic and the dots off the Resistance Attribute against it, or the other
+ * debt the pair carries instead.
+ */
+export const weaknessSentence = (weakness: BedlamWeakness): string =>
+  Match.value(weakness).pipe(
+    Match.tag(
+      "arcanum",
+      (w) =>
+        `−${w.penalty} dice to contest or counter ${arcanumWord(w.arcanum)} magic, and −${w.penalty} to the Resistance Attribute against it.`,
+    ),
+    Match.tag(
+      "fearedSource",
+      (w) =>
+        `−${w.penalty} dice to contest or counter powers from the object of the fear, and −${w.penalty} to the Resistance Attribute against them.`,
+    ),
+    Match.tag("wisdomRolls", (w) => `−${w.penalty} dice on Wisdom rolls to resist gaining a derangement when Wisdom drops.`),
+    Match.tag("spellcastingElsewhere", (w) => `−${w.penalty} dice on any spellcasting that does not involve the fixation.`),
+    Match.tag("covertImprobable", () => "Covert spells are treated as Improbable, and Sleeper witnesses may disbelieve them."),
+    Match.tag("cannotTargetAvoided", () => "The avoided person, place or thing cannot be targeted with magic."),
+    Match.tag("none", () => "No added weakness; the mage may even cast spells while in the fugue."),
+    Match.exhaustive,
+  )
+
 const arcanumWord = (arcanum: ArcanumName): string =>
   arcanum.charAt(0).toUpperCase() + arcanum.slice(1)

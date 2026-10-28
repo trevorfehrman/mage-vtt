@@ -7,8 +7,13 @@ that's missing"). **Amended the same evening**: the owner tore the pip out —
 "i wanna tear out all the logic of assigning a derangement to a specific
 wisdom pip, i don't anticipate that these will happen often enough for the
 players to forget what they're associated with, we can cross that bridge if
-and when we come to it" — so a lasting one now simply stands, and the sheet
-draws the zone described in §2 as amended.
+and when we come to it" — so a lasting one now simply stands. **Amended
+again later that night**: the zone, its fog, its ghost and the "take as
+lasting | Bedlam" switch came out ("remove the zone, the ghost button,
+derangements becomes the header of an accordion … take away the symbol,
+take away the lasting vs bedlam toggle … the debuff on the sheet once
+selected is way too big"), so the sheet draws the accordion described in
+§2 as amended, and the mark from the sheet is always lasting.
 
 ## Context
 
@@ -38,22 +43,27 @@ own paper gesture (ADR-0025).
    adopted the lasting hold was `lostDot` with the Wisdom rank it cost,
    standing while that dot was lost; the owner withdrew the tie to the pip
    the same day, see above.)
-2. **The sheet draws derangements as a zone** across the title card beneath
-   its title row, its eyebrow on Health's and Wisdom's left edge, always
-   present. A held one is a *mark*: the name in the display serif (it is
-   fiction), one mono line of game weight beneath ("lasting"; "Bedlam ·
-   −1 Death · scene"), and the bout in prose, read, never hovered. A
-   lasting one wears the wound's bruise, a Bedlam one Paradox red, and
-   while anything is held the zone wears a fog of that ink. A ghost — a
-   dashed outline wearing the spiral, "unburdened" while nothing is held —
-   opens the picker: one card per pair, named for its mild form with the
-   severe form beneath as what it deepens to; a tap takes the mild form, a
-   second deepens it, a third puts it down. Two words say what a tap takes
-   it as: lasting, or a Bedlam's.
+2. **The sheet draws derangements as an accordion** beneath the title
+   card's title row, its heading — the opener, a caret beside it — on
+   Health's and Wisdom's left edge, always present. Beneath the heading,
+   always: the held ones as small chips, the name in the display serif (it
+   is fiction) in its hold's ink — the wound's bruise for a lasting one,
+   Paradox red for a Bedlam's — with the full reading in a tooltip on
+   hover; or, holding none, the sentence "You are not deranged." Either
+   opens the body; a chip opens it on its own pair at its own depth. The
+   body is two-sided: the nine pairs as rows that say both names, and the
+   chosen pair's two forms read whole — what sets it off and the roll that
+   resists, the bout, the Bedlam weakness — parted by a line with the
+   *turn* on it, a half-lit disc lit toward the live form, the other form
+   dimmed; a click on the turn or on the dimmed form turns it, the mild
+   form live by default. One button at the corner: *Derange* takes the
+   live form, *Compose* — Resolve + Composure being what resists a
+   derangement — puts a held one down.
 3. **The player marks it**, through `markSheet`: `derangement: { name,
    bedlam? }` — lasting unless `bedlam` is set, in which case the hold is
    the open Scene at Wisdom 5+ (refused when none is open) or the table's
-   clock below. `shedDerangement: name` is the mark in reverse. Which
+   clock below. The sheet's accordion never sets `bedlam`; that door
+   stays for the cast card's Bedlam rung to pass later. `shedDerangement: name` is the mark in reverse. Which
    derangement is chosen stays between player and Storyteller, as the book
    says. The Storyteller inherits the door through the normal ladder
    (Override-recorded), as with every mark.

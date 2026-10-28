@@ -14,6 +14,7 @@ import {
   partnerOf,
   severeFormOf,
   standingDerangements,
+  weaknessSentence,
   weaknessWords,
   withoutPair,
   type HeldDerangement,
@@ -153,5 +154,14 @@ describe("A held derangement (MAG-60)", () => {
     expect(weaknessWords(derangement("Depression").bedlam)).toBe("−1 Death")
     expect(weaknessWords(derangement("Hysteria").bedlam)).toBe("−2 vs the fear")
     expect(weaknessWords(derangement("Fugue").bedlam)).toBe("")
+  })
+
+  it("the weakness as the book's sentence", () => {
+    expect(weaknessSentence(derangement("Melancholia").bedlam)).toBe(
+      "−2 dice to contest or counter Death magic, and −2 to the Resistance Attribute against it.",
+    )
+    expect(weaknessSentence(derangement("Avoidance").bedlam)).toBe(
+      "The avoided person, place or thing cannot be targeted with magic.",
+    )
   })
 })
