@@ -31,10 +31,16 @@ export const periodic = (period: number, d: number): number => {
 
 // --- The purse's pips (MAG-67) ---
 
-/** The purse as the door shows it: what it holds, what is left this chapter, what is staged into this roll. */
-export const Purse = Schema.Struct({
-  capacity: Schema.Number,
+/** A purse's level on the sheet: what is left this chapter, and what it holds. */
+export const PurseLevel = Schema.Struct({
   current: Schema.Number,
+  capacity: Schema.Number,
+})
+export type PurseLevel = typeof PurseLevel.Type
+
+/** The purse as the door shows it: its level, and what is staged into this roll. */
+export const Purse = Schema.Struct({
+  ...PurseLevel.fields,
   staged: Schema.Number,
 })
 export type Purse = typeof Purse.Type

@@ -27,7 +27,7 @@ import {
   pathTint,
 } from "./ArcanaGlyph"
 import { ArcanaSubstance, hasSubstance } from "./ArcanaSubstance"
-import { sourcesOf } from "#/domain/merits"
+import { sourcesOf, type RaisedBy } from "#/domain/merits"
 import { MeritRing } from "./MeritRing"
 import { RoteBook } from "./RoteBook"
 import { TraitSky } from "./TraitSky"
@@ -409,7 +409,7 @@ function Section({ title, children }: { title: ReactNode; children: ReactNode })
 }
 
 /** The few words a raised number says of its source (MAG-59): "Fast Reflexes +2". */
-const raisedWords = (raisedBy: ReadonlyArray<{ held: { name: string }; bonus: number }>): string =>
+const raisedWords = (raisedBy: ReadonlyArray<RaisedBy>): string =>
   raisedBy.map((s) => `${s.held.name} +${s.bonus}`).join(", ")
 
 /** A combat rating in the numerals' grammar: its glyph, its number, and a
@@ -425,7 +425,7 @@ function Rating({
   value: number
   /** The Merits that raise this number (MAG-59): the numeral turns verdigris
    * and the tooltip names them in a few words — "Initiative · Fast Reflexes +2". */
-  raisedBy?: ReadonlyArray<{ held: { name: string }; bonus: number }>
+  raisedBy?: ReadonlyArray<RaisedBy>
 }) {
   const raised = raisedBy.length > 0
   return (

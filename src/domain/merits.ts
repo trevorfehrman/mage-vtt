@@ -14,8 +14,8 @@ import type { PoolComponentInput } from "./dice"
 // judgment (WoD p. 108: "special capabilities or knacks that add
 // individuality to your character"). The catalog records the paragraph's
 // mechanical sentence as `effect` and leaves the application to the table;
-// the few Merits the app enforces (High Speech's gate, the derived-number
-// bumps) dispatch on `MeritName` where they are enforced, not here.
+// the few Merits the app enforces carry a typed `mechanic` (below), and the
+// sheet, the tray and the flows read that — nothing in code names a Merit.
 
 // --- Vocabulary ---
 
@@ -156,6 +156,19 @@ const dice = (amount: MeritAmount): MeritMechanic => ({ _tag: "dice", amount })
 const derived = (number: DerivedNumber, amount: MeritAmount): MeritMechanic => ({ _tag: "derived", number, amount })
 const gate = (flow: GatedFlow): MeritMechanic => ({ _tag: "gate", flow })
 const purse = (amount: MeritAmount): MeritMechanic => ({ _tag: "purse", amount })
+
+/**
+ * One Merit as a sheet holds it (MAG-59): the name, the dots (one to ten —
+ * Sanctum's two aspects at five each are the widest, Mage p. 87), and the
+ * label a `named` Merit carries, written beside it as the book does:
+ * "Allies (Police) ••". Also the shape of a creation selection.
+ */
+export const HeldMerit = Schema.Struct({
+  name: MeritName,
+  dots: Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 1, maximum: 10 })),
+  label: Schema.optionalKey(Schema.String),
+})
+export type HeldMerit = typeof HeldMerit.Type
 
 const MeritBody = Schema.Struct({
   family: MeritFamily,
@@ -498,7 +511,8 @@ export const mechanicOf = (held: HeldMerit): MeritMechanic => CATALOG[held.name]
 export const diceOf = (held: HeldMerit): number =>
   Match.value(mechanicOf(held)).pipe(
     Match.tag("dice", (m) => amountAt(m.amount, held.dots)),
-    Match.orElse(() => 0),
+    Match.tag("none", "derived", "gate", "purse", () => 0),
+    Match.exhaustive,
   )
 
 /** A holding as the record names it: "Allies (Police)". */
@@ -520,15 +534,21 @@ export const meritComponent = (held: HeldMerit): PoolComponentInput => ({
 export const turns = (held: HeldMerit): boolean =>
   Match.value(mechanicOf(held)).pipe(
     Match.tag("dice", "purse", () => true),
-    Match.orElse(() => false),
+    Match.tag("none", "derived", "gate", () => false),
+    Match.exhaustive,
   )
 
 /** One holding's contribution to a derived number; 0 unless it is a `derived` Merit on that number. */
 const derivedBonusOf = (held: HeldMerit, number: DerivedNumber): number =>
   Match.value(mechanicOf(held)).pipe(
     Match.tag("derived", (m) => (m.number === number ? amountAt(m.amount, held.dots) : 0)),
-    Match.orElse(() => 0),
+    Match.tag("none", "dice", "gate", "purse", () => 0),
+    Match.exhaustive,
   )
+
+/** A holding that raises a derived number, and by how much. */
+export const RaisedBy = Schema.Struct({ held: HeldMerit, bonus: Schema.Number })
+export type RaisedBy = typeof RaisedBy.Type
 
 /**
  * The holdings that raise a derived number, each with its bonus — the
@@ -538,7 +558,7 @@ const derivedBonusOf = (held: HeldMerit, number: DerivedNumber): number =>
 export const sourcesOf = (
   held: ReadonlyArray<HeldMerit>,
   number: DerivedNumber,
-): ReadonlyArray<{ held: HeldMerit; bonus: number }> =>
+): ReadonlyArray<RaisedBy> =>
   held
     .map((h) => ({ held: h, bonus: derivedBonusOf(h, number) }))
     .filter((s) => s.bonus > 0)
@@ -552,7 +572,8 @@ export const unlocks = (held: ReadonlyArray<HeldMerit>, flow: GatedFlow): boolea
   held.some((h) =>
     Match.value(mechanicOf(h)).pipe(
       Match.tag("gate", (m) => m.flow === flow),
-      Match.orElse(() => false),
+      Match.tag("none", "dice", "derived", "purse", () => false),
+      Match.exhaustive,
     ),
   )
 
@@ -560,17 +581,20 @@ export const unlocks = (held: ReadonlyArray<HeldMerit>, flow: GatedFlow): boolea
 export const purseCapacityOf = (held: HeldMerit): number =>
   Match.value(mechanicOf(held)).pipe(
     Match.tag("purse", (m) => amountAt(m.amount, held.dots)),
-    Match.orElse(() => 0),
+    Match.tag("none", "dice", "derived", "gate", () => 0),
+    Match.exhaustive,
   )
+
+/** A purse and the holding it hangs from. */
+export const PurseHolding = Schema.Struct({ held: HeldMerit, capacity: Schema.Number })
+export type PurseHolding = typeof PurseHolding.Type
 
 /**
  * The purse a sheet's holdings carry (Destiny: twice the dots, Mage p. 81),
  * with the holding it hangs from. One purse Merit exists; were there two, the
  * first held would be the sheet's.
  */
-export const purseOf = (
-  held: ReadonlyArray<HeldMerit>,
-): Option.Option<{ held: HeldMerit; capacity: number }> =>
+export const purseOf = (held: ReadonlyArray<HeldMerit>): Option.Option<PurseHolding> =>
   Arr.findFirst(held, (h) => purseCapacityOf(h) > 0).pipe(
     Option.map((h) => ({ held: h, capacity: purseCapacityOf(h) })),
   )
@@ -615,19 +639,6 @@ export const ratingText = (rating: MeritRating): string =>
 export const creationCost = (dots: number): number => dots + (dots >= 5 ? 1 : 0)
 
 // --- Creation validation ---
-
-/**
- * One Merit as a sheet holds it (MAG-59): the name, the dots (one to ten —
- * Sanctum's two aspects at five each are the widest, Mage p. 87), and the
- * label a `named` Merit carries, written beside it as the book does:
- * "Allies (Police) ••". Also the shape of a creation selection.
- */
-export const HeldMerit = Schema.Struct({
-  name: MeritName,
-  dots: Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 1, maximum: 10 })),
-  label: Schema.optionalKey(Schema.String),
-})
-export type HeldMerit = typeof HeldMerit.Type
 
 export class MeritValidationError extends Schema.TaggedError<MeritValidationError>()(
   "MeritValidationError",
@@ -703,10 +714,10 @@ export const validateMeritSelections = Effect.fn("Merits.validate")(function* (i
 
   const all = [...currentMerits, ...selections]
   const dotsHeld = (name: MeritName): number =>
-    Option.getOrElse(
-      Arr.findFirst(all, (m) => m.name === name),
-      () => ({ dots: 0 }),
-    ).dots
+    Arr.findFirst(all, (m) => m.name === name).pipe(
+      Option.map((m) => m.dots),
+      Option.getOrElse(() => 0),
+    )
 
   yield* Effect.forEach(selections, (selection) =>
     Effect.gen(function* () {

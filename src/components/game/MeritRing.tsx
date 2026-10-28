@@ -45,13 +45,13 @@ import {
   type MeritName,
 } from "#/domain/merits"
 import { amountAt } from "#/domain/merits"
-import { DESTINY_COMPONENT_NAME, purseComponent } from "#/domain/destiny-economy"
+import { purseComponent } from "#/domain/destiny-economy"
 import { Destiny } from "#/domain/quantities"
 import type { SheetMark } from "#/domain/flows/hand-edit"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 import { DotRating } from "./DotRating"
 import { Keyhole, Mark } from "./merit-marks"
-import { periodic, pipStates, pipTap, ringName, wrapIndex, type Purse } from "./merit-ring-look"
+import { periodic, pipStates, pipTap, ringName, wrapIndex, type Purse, type PurseLevel } from "./merit-ring-look"
 
 export type Pool = ReturnType<typeof useDicePool>
 
@@ -63,24 +63,28 @@ export type Pool = ReturnType<typeof useDicePool>
 export interface Hand {
   readonly pool?: Pool | undefined
   /** Destiny's purse: what is left this chapter, and what it holds. */
-  readonly destiny: { readonly current: number; readonly capacity: number }
+  readonly destiny: PurseLevel
   readonly onMarkSheet?: ((mark: SheetMark) => Promise<unknown>) | undefined
 }
 
 const canToggle = (hand: Hand): boolean =>
   hand.pool !== undefined && (hand.pool.state === "idle" || hand.pool.state === "building")
 
+/** Where the purse component sits in the pool (one purse exists), or −1. */
+const purseIndex = (hand: Hand): number =>
+  hand.pool?.context.components.findIndex((c) => c.type === "purse") ?? -1
+
 /** Destiny dice staged into this roll: the purse component's dots. */
 export const stagedOf = (hand: Hand): number =>
-  hand.pool?.context.components.find((c) => c.type === "purse" && c.name === DESTINY_COMPONENT_NAME)?.dots ?? 0
+  hand.pool?.context.components[purseIndex(hand)]?.dots ?? 0
 
-/** Stage exactly `dice` from the purse into the pool (none takes them all back). */
-export const setStaged = (hand: Hand, dice: number): void => {
+/** Stage exactly `dice` from the purse `h` into the pool (none takes them all back). */
+export const setStaged = (hand: Hand, h: HeldMerit, dice: number): void => {
   const pool = hand.pool
   if (!pool) return
-  const idx = pool.context.components.findIndex((c) => c.type === "purse" && c.name === DESTINY_COMPONENT_NAME)
+  const idx = purseIndex(hand)
   if (idx >= 0) pool.removeComponent(idx)
-  if (dice > 0) pool.addComponent(purseComponent(dice))
+  if (dice > 0) pool.addComponent(purseComponent(h, dice))
 }
 
 const purseOfHand = (hand: Hand): Purse => ({ ...hand.destiny, staged: stagedOf(hand) })
@@ -90,7 +94,8 @@ export const litOf = (hand: Hand, h: HeldMerit): boolean =>
   Match.value(mechanicOf(h)).pipe(
     Match.tag("dice", () => hand.pool?.isComponentActive("merit", heldName(h)) ?? false),
     Match.tag("purse", () => stagedOf(hand) > 0),
-    Match.orElse(() => false),
+    Match.tag("none", "derived", "gate", () => false),
+    Match.exhaustive,
   )
 
 /** Turn the key in hand: dice in or out of the pool; a purse stages one more pip, wrapping to none past what is left. */
@@ -98,8 +103,9 @@ export const turnKey = (hand: Hand, h: HeldMerit): void => {
   if (!canToggle(hand)) return
   Match.value(mechanicOf(h)).pipe(
     Match.tag("dice", () => hand.pool?.toggleComponent(meritComponent(h))),
-    Match.tag("purse", () => setStaged(hand, (stagedOf(hand) + 1) % (hand.destiny.current + 1))),
-    Match.orElse(() => undefined),
+    Match.tag("purse", () => setStaged(hand, h, (stagedOf(hand) + 1) % (hand.destiny.current + 1))),
+    Match.tag("none", "derived", "gate", () => undefined),
+    Match.exhaustive,
   )
 }
 
@@ -107,18 +113,20 @@ export const turnKey = (hand: Hand, h: HeldMerit): void => {
 const reaches = (h: HeldMerit): boolean =>
   Match.value(mechanicOf(h)).pipe(
     Match.tag("none", () => false),
-    Match.orElse(() => true),
+    Match.tag("dice", "purse", "derived", "gate", () => true),
+    Match.exhaustive,
   )
 
 // ── The door's page ──────────────────────────────────────────────────────────
 
 const dots = (n: number) => "•".repeat(n)
-const FAMILY_WORD = { mental: "Mental", physical: "Physical", social: "Social", awakened: "Awakened" } as const
+export const FAMILY_WORD = { mental: "Mental", physical: "Physical", social: "Social", awakened: "Awakened" } as const
+/** The raised number's words at the door's foot, in the book's words: "+2 Initiative", "+1 wound penalty". */
 const DERIVED_WORD: Record<DerivedNumber, string> = {
   initiative: "Initiative",
   speed: "Speed",
   size: "Size",
-  woundPenalty: "against wounds",
+  woundPenalty: "wound penalty",
 }
 
 /** The eyebrow: the family. */
@@ -187,13 +195,13 @@ function DoorPage({ h, lit }: { h: HeldMerit; lit: boolean }) {
  * (verdigris ring), staged into this roll (ember), gone this chapter (dim,
  * hollow). Click-through both ways; a gone pip refills through itself by
  * the player's mark. */
-function Pips({ hand }: { hand: Hand }) {
+function Pips({ h, hand }: { h: HeldMerit; hand: Hand }) {
   const purse = purseOfHand(hand)
   const states = pipStates(purse)
   const may = canToggle(hand)
   const onTap = (i: number) =>
     Match.value(pipTap(purse, i)).pipe(
-      Match.tag("stage", (t) => setStaged(hand, t.staged)),
+      Match.tag("stage", (t) => setStaged(hand, h, t.staged)),
       Match.tag("refill", (t) => void hand.onMarkSheet?.({ destinyCurrent: Destiny.make(t.current) })),
       Match.exhaustive,
     )
@@ -211,7 +219,7 @@ function Pips({ hand }: { hand: Hand }) {
             aria-label={
               state === "purse" ? "Stage Destiny" : state === "staged" ? "Take Destiny back" : "Refill Destiny"
             }
-            className={`grid size-[18px] place-items-center rounded-full ${enabled ? "" : "cursor-default"}`}
+            className={`mv-key grid size-[18px] place-items-center rounded-full ${enabled ? "" : "cursor-default"}`}
           >
             <span
               className="inline-block size-[10px] rounded-full"
@@ -248,14 +256,14 @@ function DoorFoot({ h, hand }: { h: HeldMerit; hand: Hand }) {
           type="button"
           disabled={!canToggle(hand)}
           onClick={() => turnKey(hand, h)}
-          className={`mv-trait ${lit ? "mv-trait-on" : ""} mv-data rounded-[3px] px-2.5 py-1.5 text-[12px]`}
+          className={`mv-trait mv-key ${lit ? "mv-trait-on" : ""} mv-data rounded-[3px] px-2.5 py-1.5 text-[12px]`}
           style={{ color: lit ? "var(--ember)" : "var(--ink)", boxShadow: lit ? undefined : "inset 0 0 0 1px var(--line)" }}
         >
           +{n} {n === 1 ? "die" : "dice"}
         </button>
       )
     }),
-    Match.tag("purse", () => <Pips hand={hand} />),
+    Match.tag("purse", () => <Pips h={h} hand={hand} />),
     Match.tag("derived", (m) => (
       <span
         className="mv-data rounded-[3px] px-2.5 py-1.5 text-[12px]"
@@ -264,7 +272,8 @@ function DoorFoot({ h, hand }: { h: HeldMerit; hand: Hand }) {
         +{amountAt(m.amount, h.dots)} {DERIVED_WORD[m.number]}
       </span>
     )),
-    Match.orElse(() => null),
+    Match.tag("none", "gate", () => null),
+    Match.exhaustive,
   )
 }
 
@@ -272,7 +281,8 @@ function DoorFoot({ h, hand }: { h: HeldMerit; hand: Hand }) {
 const hasFoot = (h: HeldMerit): boolean =>
   Match.value(mechanicOf(h)).pipe(
     Match.tag("dice", "purse", "derived", () => true),
-    Match.orElse(() => false),
+    Match.tag("none", "gate", () => false),
+    Match.exhaustive,
   )
 
 // ── The wheel: key and door ──────────────────────────────────────────────────
@@ -384,7 +394,7 @@ function RingKey({
       <motion.button
         type="button"
         onClick={() => onTap(position)}
-        className={`absolute left-[6px] top-0 flex h-[36px] items-center gap-2 whitespace-nowrap text-left ${acts ? "" : "cursor-default"}`}
+        className={`mv-key absolute left-[6px] top-0 flex h-[36px] items-center gap-2 whitespace-nowrap text-left ${acts ? "" : "cursor-default"}`}
         style={{ x, rotate: lean, transformOrigin: "0 50%", color: ink }}
       >
         <motion.span
@@ -591,7 +601,7 @@ function Wheel({ held, hand }: { held: ReadonlyArray<HeldMerit>; hand: Hand }) {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        className="relative touch-none select-none overflow-hidden outline-none"
+        className="mv-key relative touch-none select-none overflow-hidden"
         style={{
           height: VISIBLE * ROW,
           cursor: "grab",
@@ -708,7 +718,7 @@ export function Door({
         disabled={!canToggle(hand) || !acts}
         onClick={() => turnKey(hand, h)}
         aria-label={lit ? `Let ${h.name} go` : `Turn ${h.name}`}
-        className={`absolute grid place-items-center ${acts ? "" : "cursor-default"}`}
+        className={`mv-key absolute grid place-items-center ${acts ? "" : "cursor-default"}`}
         style={{ left: -KEYHOLE / 2, top: middle - KEYHOLE / 2, width: KEYHOLE, height: KEYHOLE, color: ink, transition: "color 0.3s" }}
       >
         <Keyhole size={KEYHOLE} lit={lit} />

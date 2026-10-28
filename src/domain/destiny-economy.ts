@@ -1,5 +1,6 @@
 import { Effect, Schema } from "effect"
 import type { PoolComponentInput } from "./dice"
+import { heldName, type HeldMerit } from "./merits"
 import { Destiny } from "./quantities"
 
 /**
@@ -11,9 +12,6 @@ import { Destiny } from "./quantities"
  * (`markSheet`), never by the roll.
  */
 
-/** The component name the staged pips carry — the one string the tray and the record read. */
-export const DESTINY_COMPONENT_NAME = "Destiny"
-
 /**
  * Rules/precondition failure (ADR-0010): more Destiny staged than the purse
  * holds. Raised before any write, so a blocked spend leaves the sheet untouched.
@@ -23,10 +21,12 @@ export class InsufficientDestiny extends Schema.TaggedError<InsufficientDestiny>
   { current: Schema.Number, asked: Schema.Number },
 ) {}
 
-/** The pool component the staged pips land: typed `purse`, so the roll flow debits the sheet by its dots. */
-export const purseComponent = (dice: number): PoolComponentInput => ({
+/** The pool component the staged pips land: typed `purse`, under the purse
+ * Merit's own name (read off the holding, never written here), so the roll
+ * flow debits the sheet by its dots and the record names the purse. */
+export const purseComponent = (held: HeldMerit, dice: number): PoolComponentInput => ({
   type: "purse",
-  name: DESTINY_COMPONENT_NAME,
+  name: heldName(held),
   dots: dice,
 })
 

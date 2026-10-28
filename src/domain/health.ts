@@ -205,6 +205,11 @@ export const woundPenalty = (track: HealthTrack, cancels = 0): number => {
 
   // Wound penalties apply based on how many boxes from the RIGHT are filled
   // 3rd to last filled: -1, 2nd to last: -2, last: -3
-  const raw = filled >= total ? -3 : filled >= total - 1 ? -2 : filled >= total - 2 ? -1 : 0
-  return Math.min(0, raw + cancels)
+  const raw = (): number => {
+    if (filled >= total) return -3
+    if (filled >= total - 1) return -2
+    if (filled >= total - 2) return -1
+    return 0
+  }
+  return Math.min(0, raw() + cancels)
 }

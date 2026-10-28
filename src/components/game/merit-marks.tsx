@@ -10,7 +10,8 @@
 // tilts clockwise, toward the tray, and burns ember.
 import type { ReactNode } from "react"
 import { motion } from "motion/react"
-import type { MeritName } from "#/domain/merits"
+import { Schema } from "effect"
+import { MeritName } from "#/domain/merits"
 
 export const MARKS: Record<MeritName, ReactNode> = {
   // ── Mental (MAG-68, batch 1) ──
@@ -134,7 +135,14 @@ export const MARKS: Record<MeritName, ReactNode> = {
   Contacts: <><path d="M6 17 L12 7 L18 17 Z" /><circle cx="6" cy="17" r="1.3" fill="currentColor" stroke="none" /><circle cx="18" cy="17" r="1.3" fill="currentColor" stroke="none" /><circle cx="12" cy="7" r="1.3" fill="currentColor" stroke="none" /></>,
 }
 
-export function Mark({ name, size, turned }: { name: MeritName; size: number | "100%"; turned: boolean }) {
+const MarkProps = Schema.Struct({
+  name: MeritName,
+  /** px, or the whole of a sized box */
+  size: Schema.Union([Schema.Number, Schema.Literal("100%")]),
+  turned: Schema.Boolean,
+})
+
+export function Mark({ name, size, turned }: typeof MarkProps.Type) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -160,7 +168,9 @@ export function Mark({ name, size, turned }: { name: MeritName; size: number | "
 
 /** The keyhole: the one iconic shape, a round over a tapered slot, in the
  * marks' stroke. Lit, the round fills ember and glows — the key is turned. */
-export function Keyhole({ size, lit }: { size: number; lit: boolean }) {
+const KeyholeProps = Schema.Struct({ size: Schema.Number, lit: Schema.Boolean })
+
+export function Keyhole({ size, lit }: typeof KeyholeProps.Type) {
   return (
     <svg
       viewBox="0 0 24 24"

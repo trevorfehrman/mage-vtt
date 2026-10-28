@@ -8,12 +8,14 @@
 // Knobs: ?turned=true shows every card turned (one shared dice pool, every
 // turnable key toggled into it); ?family=mental|physical|social|awakened.
 import { useEffect, useRef } from "react"
+import { Match } from "effect"
 import { createFileRoute } from "@tanstack/react-router"
 import type { Id } from "../../../convex/_generated/dataModel"
 import { useDicePool } from "#/hooks/use-dice-pool"
 import { ArcanaGlyph, OrderGlyph, PathGlyph, StatGlyph, ViceGlyph, VirtueGlyph } from "#/components/game/ArcanaGlyph"
 import { MERIT_NAMES, heldName, mechanicOf, merit, meritComponent, turns, type HeldMerit, type MeritFamily, type MeritName } from "#/domain/merits"
-import { Door, KEYHOLE, MARK_IN_HAND, NAME_IN_HAND, Reach, litOf, setStaged, stagedOf, type Hand } from "#/components/game/MeritRing"
+import { Door, FAMILY_WORD, KEYHOLE, MARK_IN_HAND, NAME_IN_HAND, Reach, litOf, setStaged, stagedOf, type Hand } from "#/components/game/MeritRing"
+import { ARCANA } from "#/domain/trait-keys"
 import { Mark } from "#/components/game/merit-marks"
 import { ringName } from "#/components/game/merit-ring-look"
 
@@ -50,13 +52,14 @@ const LABELS: Partial<Record<MeritName, string>> = {
 
 /** A holding a dot or two into the Merit's range, so ladders show a rung
  * held and a rung not. */
-const sampleDots = (name: MeritName): number => {
-  const r = merit(name).rating
-  if (r._tag === "fixed") return r.dots
-  if (r._tag === "range") return Math.min(r.max, r.min + 1)
-  if (r._tag === "either") return r.low
-  return r.min
-}
+const sampleDots = (name: MeritName): number =>
+  Match.value(merit(name).rating).pipe(
+    Match.tag("fixed", (r) => r.dots),
+    Match.tag("range", (r) => Math.min(r.max, r.min + 1)),
+    Match.tag("either", (r) => r.low),
+    Match.tag("atLeast", (r) => r.min),
+    Match.exhaustive,
+  )
 
 const SAMPLE: ReadonlyArray<HeldMerit> = MERIT_NAMES.map((name) => ({
   name,
@@ -64,18 +67,10 @@ const SAMPLE: ReadonlyArray<HeldMerit> = MERIT_NAMES.map((name) => ({
   ...(LABELS[name] === undefined ? {} : { label: LABELS[name] }),
 }))
 
-const FAMILY_TITLE: Record<MeritFamily, string> = {
-  mental: "Mental",
-  physical: "Physical",
-  social: "Social",
-  awakened: "Awakened",
-}
-
 // ── The lineup: every glyph the app already draws, beside the drawn marks ────
 // A new mark must not collide with any of these (MAG-68): the open book was
 // the Mysterium's before it was Encyclopedic Knowledge's.
 
-const ARCANA = ["death", "fate", "forces", "life", "matter", "mind", "prime", "space", "spirit", "time"] as const
 const PATHS = ["acanthus", "mastigos", "moros", "obrimos", "thyrsus"] as const
 const ORDERS = ["adamantine arrow", "guardians of the veil", "mysterium", "silver ladder", "free council"] as const
 const VIRTUES = ["charity", "faith", "fortitude", "hope", "justice", "prudence", "temperance"] as const
@@ -180,9 +175,8 @@ function Gallery() {
     SAMPLE.forEach((h) => {
       const mech = mechanicOf(h)
       if (mech._tag === "dice" && litOf(hand, h) !== turned) pool.toggleComponent(meritComponent(h))
-      if (mech._tag === "purse" && (stagedOf(hand) > 0) !== turned) setStaged(hand, turned ? 1 : 0)
+      if (mech._tag === "purse" && (stagedOf(hand) > 0) !== turned) setStaged(hand, h, turned ? 1 : 0)
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turned])
 
   const shown = family === "all" ? SAMPLE : SAMPLE.filter((h) => merit(h.name).family === family)
@@ -225,7 +219,7 @@ function Gallery() {
         {families.map((f) => (
           <section key={f} className="grid gap-3">
             <h2 className="mv-data text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--dim)" }}>
-              {FAMILY_TITLE[f]} · {shown.filter((h) => merit(h.name).family === f).length}
+              {FAMILY_WORD[f]} · {shown.filter((h) => merit(h.name).family === f).length}
             </h2>
             <div className="grid gap-4">
               {shown

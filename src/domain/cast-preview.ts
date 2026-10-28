@@ -45,7 +45,7 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 // A pure preview (ADR-0014): every leaf it composes is a plain function, so
 // the improvised readout is one itself.
 export const previewImprovisedCast: (input: {
-  sheet: Pick<CharacterSheet, "path" | "gnosis" | "arcana">
+  sheet: Pick<CharacterSheet, "path" | "gnosis" | "arcana" | "knowsHighSpeech">
   arcanum: ArcanumName
   potency?: number
   targets?: number
@@ -54,10 +54,14 @@ export const previewImprovisedCast: (input: {
   spendWillpower?: boolean
 }) => Option.Option<CastPreview> = Option.liftThrowable((input) => {
   const dots = input.sheet.arcana[input.arcanum] ?? 0
+  // The chant is the Merit's (MAG-59): the preview mirrors the server, which
+  // refuses High Speech to a sheet without it, so a Merit-less sheet previews
+  // no +2 rather than promising dice the roll will never get.
+  const chant = input.highSpeech === true && input.sheet.knowsHighSpeech
   const basePool = calculateImprovisedPool({
     gnosis: input.sheet.gnosis,
     arcanumDots: dots,
-    ...(input.highSpeech ? { highSpeech: true } : {}),
+    ...(chant ? { highSpeech: true } : {}),
     ...(input.spendWillpower ? { willpower: true } : {}),
   })
   const pool = applySpellFactors(basePool, {
@@ -70,9 +74,7 @@ export const previewImprovisedCast: (input: {
   const components: ReadonlyArray<RawPoolComponent> = [
     { type: "gnosis", name: "Gnosis", dots: input.sheet.gnosis },
     { type: "arcanum", name: capitalize(input.arcanum), dots },
-    ...(input.highSpeech
-      ? [{ type: "modifier", name: "High Speech", dots: 2 }]
-      : []),
+    ...(chant ? [{ type: "modifier", name: "High Speech", dots: 2 }] : []),
     ...(input.spendWillpower
       ? [{ type: "modifier", name: WILLPOWER_COMPONENT_NAME, dots: WILLPOWER_BONUS_DICE }]
       : []),
@@ -89,7 +91,7 @@ export const previewImprovisedCast: (input: {
 })
 
 type RotePreviewInput = {
-  sheet: Pick<CharacterSheet, "attributes" | "skills" | "arcana" | "order">
+  sheet: Pick<CharacterSheet, "attributes" | "skills" | "arcana" | "order" | "knowsHighSpeech">
   rote: KnownRote
   skillChoice?: string
   potency?: number
@@ -106,6 +108,8 @@ export const previewRoteCast = (input: RotePreviewInput): Option.Option<CastPrev
   )
 
 const rotePreview = (input: RotePreviewInput, resolved: ResolvedRotePool): CastPreview => {
+  // The chant is the Merit's (MAG-59), on a Rote as on an improvisation.
+  const chant = input.highSpeech === true && input.sheet.knowsHighSpeech
   const basePool = calculateRotePool({
     attributeDots: resolved.attribute.dots,
     skillDots: resolved.skill.dots,
@@ -113,7 +117,7 @@ const rotePreview = (input: RotePreviewInput, resolved: ResolvedRotePool): CastP
     ...(resolved.specialty.eligible
       ? { specialtyBonus: resolved.specialty.bonus }
       : {}),
-    ...(input.highSpeech ? { highSpeech: true } : {}),
+    ...(chant ? { highSpeech: true } : {}),
     ...(input.spendWillpower ? { willpower: true } : {}),
   })
   const pool = applySpellFactors(basePool, {
@@ -128,9 +132,7 @@ const rotePreview = (input: RotePreviewInput, resolved: ResolvedRotePool): CastP
     ...(resolved.specialty.eligible
       ? [{ type: "modifier", name: "Rote Specialty", dots: resolved.specialty.bonus }]
       : []),
-    ...(input.highSpeech
-      ? [{ type: "modifier", name: "High Speech", dots: 2 }]
-      : []),
+    ...(chant ? [{ type: "modifier", name: "High Speech", dots: 2 }] : []),
     ...(input.spendWillpower
       ? [{ type: "modifier", name: WILLPOWER_COMPONENT_NAME, dots: WILLPOWER_BONUS_DICE }]
       : []),

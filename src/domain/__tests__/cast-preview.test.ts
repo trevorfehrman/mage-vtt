@@ -15,6 +15,15 @@ import { makeAldousSheet as makeSheet } from "../testing/fixtures"
  */
 
 describe("CastPreview.improvised", () => {
+  it("the preview without the Merit adds no High Speech dice — it mirrors the server's refusal (MAG-59)", () => {
+    const preview = Option.getOrThrow(
+      previewImprovisedCast({ sheet: makeSheet(), arcanum: "death", highSpeech: true }),
+    )
+    expect(preview.dice).toBe(4) // Gnosis 1 + Death 3, no +2
+    expect(preview.components.some((c) => c.name === "High Speech")).toBe(false)
+  })
+
+
   it("base pool is Gnosis + Arcanum; a ruling Arcanum costs no Mana", () => {
     const preview = Option.getOrThrow(
       previewImprovisedCast({
@@ -35,7 +44,8 @@ describe("CastPreview.improvised", () => {
   it("High Speech and Willpower add dice; non-ruling and extra Mana add cost", () => {
     const preview = Option.getOrThrow(
       previewImprovisedCast({
-        sheet: makeSheet(),
+        // the chant needs the Merit (MAG-59)
+        sheet: makeSheet({ merits: [{ name: "High Speech", dots: 1 }] }),
         arcanum: "prime", // not ruling for Moros → 1 Mana
         highSpeech: true,
         spendWillpower: true,
