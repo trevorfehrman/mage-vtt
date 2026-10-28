@@ -169,7 +169,7 @@ export function DerangementAccordion({
                     severe={severe}
                     held={pairDepth(standing, mild)}
                     chosen={pair === mild}
-                    onChoose={() => openOn(mild)}
+                    onChoose={() => (pair === mild ? setDepth((d) => (d === "mild" ? "severe" : "mild")) : openOn(mild))}
                   />
                 ))}
               </div>
@@ -205,10 +205,28 @@ function Fold({ open, children }: { open: boolean; children: ReactNode }) {
   )
 }
 
-/** The severe form's name wears the derangement's ink; the mild form's, the plain ink. Shown, not said. */
-const depthInk = (severity: DerangementSeverity) => (severity === "severe" ? "var(--derange)" : "var(--ink)")
+/**
+ * Depth by inversion (owner, 2026-10-28: "let the mild be the font color and
+ * the severe be bg color"): a mild form's name is written in the ink, a
+ * severe form's name stands on the ink. Shown, not said. The ink is the
+ * derangement's own, or the hold's for a held form.
+ */
+function Name({ name, severity, ink, size }: { name: string; severity: DerangementSeverity; ink: string; size: number }) {
+  return severity === "mild" ? (
+    <span className="mv-h leading-none" style={{ fontSize: size, color: ink }}>
+      {name}
+    </span>
+  ) : (
+    <span
+      className="mv-h rounded-[2px] leading-none"
+      style={{ fontSize: size, color: "var(--bg)", background: ink, padding: "3px 5px 2px" }}
+    >
+      {name}
+    </span>
+  )
+}
 
-/** One pair in the list: "Depression / Melancholia", the severe in the bruise, a held form in its hold's ink. */
+/** One pair in the list: "Depression / Melancholia", written and inverted; a second click on the chosen row turns the depth. */
 function PairRow({
   mild,
   severe,
@@ -223,21 +241,16 @@ function PairRow({
   onChoose: () => void
 }) {
   const heldInk = Option.map(held, (d) => inkOf(isBedlamHold(d.hold)))
-  const nameInk = (name: DerangementName, severity: DerangementSeverity) =>
-    Option.exists(held, (d) => d.name === name)
-      ? Option.getOrElse(heldInk, () => "var(--ink)")
-      : chosen
-        ? depthInk(severity)
-        : severity === "severe"
-          ? "color-mix(in srgb, var(--derange) 55%, var(--dim))"
-          : "var(--dim)"
+  const inkFor = (name: DerangementName) =>
+    Option.exists(held, (d) => d.name === name) ? Option.getOrElse(heldInk, () => "var(--derange)") : "var(--derange)"
   return (
     <button
       type="button"
       aria-pressed={chosen}
       onClick={onChoose}
-      className="mv-key flex min-h-0 items-center gap-1.5 rounded-[2px] px-2 text-left transition-colors"
+      className="mv-key flex min-h-0 items-center gap-1.5 rounded-[2px] px-2 text-left transition-[box-shadow,opacity]"
       style={{
+        opacity: chosen || Option.isSome(held) ? 1 : 0.55,
         boxShadow: `inset 0 0 0 1px ${chosen ? "var(--ink)" : Option.getOrElse(Option.map(heldInk, (i) => `color-mix(in srgb, ${i} 45%, transparent)`), () => "var(--line)")}`,
         background: Option.match(heldInk, {
           onNone: () => "transparent",
@@ -245,15 +258,11 @@ function PairRow({
         }),
       }}
     >
-      <span className="mv-h text-[13px] leading-none" style={{ color: nameInk(mild, "mild") }}>
-        {mild}
-      </span>
+      <Name name={mild} severity="mild" ink={inkFor(mild)} size={13} />
       <span className="mv-data text-[11px] leading-none" style={{ color: "var(--dim)" }}>
         /
       </span>
-      <span className="mv-h text-[13px] leading-none" style={{ color: nameInk(severe, "severe") }}>
-        {severe}
-      </span>
+      <Name name={severe} severity="severe" ink={inkFor(severe)} size={13} />
     </button>
   )
 }
@@ -364,7 +373,7 @@ function Form({ def, live, onLive }: { def: DerangementDef; live: boolean; onLiv
 
 /**
  * The full reading of one form, shared by the body and the chip's tooltip:
- * its name — in the derangement's ink if it is the severe form — what sets
+ * its name — written in the ink, or on it if severe — what sets
  * it off and the roll that resists, what it does, and its Bedlam weakness in
  * its own band. How it is held is the table's to track (owner, 2026-10-28).
  */
@@ -372,9 +381,7 @@ function Rules({ def, nameSize }: { def: DerangementDef; nameSize: number }) {
   return (
     <>
       <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="mv-h leading-none" style={{ fontSize: nameSize, color: depthInk(def.severity) }}>
-          {def.name}
-        </span>
+        <Name name={def.name} severity={def.severity} ink="var(--derange)" size={nameSize} />
         {def.extreme && <span className="mv-eyebrow">· life-altering trauma to acquire, save by Bedlam</span>}
       </span>
       <span className="mv-data text-[11px] leading-snug" style={{ color: "var(--dim)" }}>
@@ -404,8 +411,9 @@ function Rules({ def, nameSize }: { def: DerangementDef; nameSize: number }) {
 }
 
 /**
- * One standing derangement as a chip: its name, small, in its hold's ink,
- * with the full reading in a tooltip. A click opens the body on it.
+ * One standing derangement as a chip: its name, small, written in its
+ * hold's ink or, if severe, on it, with the full reading in a tooltip. A
+ * click opens the body on it.
  */
 function Chip({ held, at, onOpen }: { held: HeldDerangement; at: number; onOpen?: (() => void) | undefined }) {
   const def = derangement(held.name)
@@ -428,12 +436,13 @@ function Chip({ held, at, onOpen }: { held: HeldDerangement; at: number; onOpen?
           aria-label={`${held.name}, ${def.severity}: open the derangements`}
           className="mv-key mv-derange-chip flex items-center gap-2 rounded-[3px] px-2 transition-[box-shadow,background-color]"
           style={{ height: 24, ["--chip-ink" as string]: ink }}
+          data-severe={def.severity === "severe" ? "" : undefined}
         >
-          <span className="mv-h text-[13px] leading-none" style={{ color: "var(--ink)" }}>
+          <span className="mv-h text-[13px] leading-none" style={{ color: def.severity === "severe" ? "var(--bg)" : ink }}>
             {held.name}
           </span>
           {weight !== "" && (
-            <span className="mv-data text-[10px] leading-none" style={{ color: ink }}>
+            <span className="mv-data text-[10px] leading-none" style={{ color: def.severity === "severe" ? "var(--bg)" : ink }}>
               {weight}
             </span>
           )}

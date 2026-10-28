@@ -6,8 +6,9 @@
 // Knobs that have served (the #102 success-ink grammar, the MAG-49 hurt
 // caster, the MAG-53 +chat / +whisper lines) came out 2026-10-28 (owner:
 // "clean up this dressing room picker and remove the non relevant stuff");
-// what stands is what is still being judged: the rung, the seat, Wisdom,
-// and the derangement ink (?ink=) auditioning `--derange`'s value.
+// what stands is what is still being judged: the rung, the seat, Wisdom.
+// (The derangement ink knob served one round and came out the same day —
+// absinthe, "perfect".)
 // The REAL app shell (SessionLayout), the REAL feed neighbors (MessageItem /
 // RollItem), and the REAL CastCard — fed hand-built fake Cast documents via
 // URL knobs (?rung=…&seat=…), reload-stable and shareable. Each seat mounts
@@ -74,27 +75,10 @@ type RigRung = (typeof RUNG_ORDER)[number]
 const SEAT_ORDER = ["caster", "storyteller", "bystander"] as const
 type RigSeat = (typeof SEAT_ORDER)[number]
 
-// MAG-60: the derangement ink audition (owner, 2026-10-28: "what can we do
-// as a different color for derangements … the orange pops really well so
-// i'm not for sure we should abandon it but what else could we do?") — each
-// is ONLY a value swap on `--derange`; nothing else moves.
-const INK_ORDER = ["absinthe", "sulfur", "wine", "bone", "ember"] as const
-type RigInk = (typeof INK_ORDER)[number]
-
-const INKS: Record<RigInk, { hex: string; title: string }> = {
-  absinthe: { hex: "#aebb4d", title: "the wormwood glass — madness's old color (styles.css default)" },
-  sulfur: { hex: "#cfae4a", title: "jaundice, old paper — the warmest without touching the ember" },
-  wine: { hex: "#b05477", title: "venous, interior — between Paradox red and Will's violet" },
-  bone: { hex: "#cfc5a5", title: "ghostly, quiet — near the plain ink" },
-  ember: { hex: "#e29659", title: "the hand's orange — pops, but means armed and reversible elsewhere" },
-}
-
 const isRung = (v: unknown): v is RigRung =>
   typeof v === "string" && (RUNG_ORDER as ReadonlyArray<string>).includes(v)
 const isSeat = (v: unknown): v is RigSeat =>
   typeof v === "string" && (SEAT_ORDER as ReadonlyArray<string>).includes(v)
-const isInk = (v: unknown): v is RigInk =>
-  typeof v === "string" && (INK_ORDER as ReadonlyArray<string>).includes(v)
 
 // MAG-56: the Wisdom knob swaps the caster across the owner's four cases —
 // 10 amazing, 7 fine, 5 sketchy, 2 really bad — and the resolved rung's
@@ -109,7 +93,6 @@ export const Route = createFileRoute("/prototype/cast-dressing-room")({
   validateSearch: (search: Record<string, unknown>) => ({
     rung: isRung(search.rung) ? search.rung : ("draft" as RigRung),
     seat: isSeat(search.seat) ? search.seat : ("caster" as RigSeat),
-    ink: isInk(search.ink) ? search.ink : ("absinthe" as RigInk),
     wisdom: isWisdom(search.wisdom) ? (Number(search.wisdom) as RigWisdom) : (7 as RigWisdom),
   }),
   component: DressingRoom,
@@ -390,7 +373,7 @@ const RIG_SCENE = SceneId.make("rig-scene")
 // ── The rig ──────────────────────────────────────────────────────────────────
 
 function DressingRoom() {
-  const { rung, seat, ink, wisdom } = Route.useSearch()
+  const { rung, seat, wisdom } = Route.useSearch()
   const casterNow = arctusSheet
   // MAG-52: the sheet's tool switch flips a local copy (no server here).
   const [toolInHand, setToolInHand] = useState(false)
@@ -587,9 +570,7 @@ function DressingRoom() {
 
   return (
     <>
-      {/* display:contents — no layout, just the ink knob's CSS-var override
-          inheriting into the whole shell. */}
-      <div className="contents" style={{ ["--derange" as string]: INKS[ink].hex }}>
+      <div className="contents">
       <SessionLayout
         sessionName="The Dressing Room"
         inviteCode="PROTO-96"
@@ -668,22 +649,6 @@ function DressingRoom() {
               title="MAG-56: the caster's Wisdom — 10 amazing, 7 fine, 5 sketchy, 2 really bad; the resolved aftermath follows"
             >
               W{w}
-            </button>
-          ))}
-        </div>
-        <span className="h-4 w-px bg-zinc-400" />
-        <div className="flex items-center gap-1">
-          {INK_ORDER.map((i) => (
-            <button
-              key={i}
-              onClick={() => void navigate({ search: (prev) => ({ ...prev, ink: i }), replace: true })}
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                i === ink ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
-              }`}
-              title={`MAG-60: --derange = ${INKS[i].hex} — ${INKS[i].title}`}
-            >
-              <span className="inline-block size-2.5 rounded-full" style={{ background: INKS[i].hex }} />
-              {i}
             </button>
           ))}
         </div>
