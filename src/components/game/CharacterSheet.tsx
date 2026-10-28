@@ -40,6 +40,7 @@ import { ToolSwitch } from "./ToolSwitch"
 import { PoolNumerals } from "./CastHeaderStats"
 import { cycleBox, toggleResistant } from "#/domain/health"
 import { WisdomMeter } from "./WisdomMeter"
+import { DerangementShelf } from "./DerangementShelf"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
@@ -69,6 +70,9 @@ interface CharacterSheetProps {
    * Present on your own sheet and, for the Storyteller, on anyone's; the
    * server's ladder decides and a refusal speaks at the mark. */
   onMarkSheet?: ((mark: SheetMark) => Promise<unknown>) | undefined
+  /** The Scene open now (MAG-60): a Bedlam derangement bound to it hangs
+   * under the Wisdom meter while it is the open one. Absent in downtime. */
+  activeSceneId?: string | undefined
 }
 
 
@@ -84,6 +88,7 @@ export function CharacterSheet({
   pendingWillpower = 0,
   onSetMagicalTool,
   onMarkSheet,
+  activeSceneId,
 }: CharacterSheetProps) {
   const penalty = character.woundPenalty
   const canToggle =
@@ -179,6 +184,15 @@ export function CharacterSheet({
               <WisdomMeter
                 wisdom={character.wisdom}
                 onSet={onMarkSheet ? (wisdom) => void onMarkSheet({ wisdom }) : undefined}
+              />
+              {/* Derangements (MAG-60): hung under the meter — a permanent
+                  one from the cell it cost, a Bedlam one from its clock;
+                  the player marks and puts them down here */}
+              <DerangementShelf
+                held={character.derangementsHeld}
+                wisdom={character.wisdom}
+                activeSceneId={activeSceneId}
+                onMark={onMarkSheet ? (mark) => void onMarkSheet(mark) : undefined}
               />
             </Eyebrowed>
           </div>

@@ -90,8 +90,18 @@ tied to the dot lost, gone when it is bought back — or **temporarily** from a
 form it also carries a weakness to a kind of magic (Depression: −1 against
 Death). The three starred severe forms (Schizophrenia, Multiple Personality,
 Fugue) take a life-altering trauma to acquire — or a Bedlam, which inflicts
-them freely.
-_Avoid_: Condition, Flaw (other editions' words).
+them freely. On the sheet a **held derangement** is a name and a **hold** —
+what it hangs from (ADR-0026): the Wisdom **dot it cost** (`lostDot`,
+standing while that dot is lost), the **Scene** it is bound to (a Bedlam at
+Wisdom 5+, over when the Scene closes), or the **clock** it runs out on (a
+Bedlam at Wisdom 4−, an expiry stamped from the Wisdom table). Whether it
+stands is derived against the moment, never cleaned up. It is drawn under
+the Wisdom meter by its hold: a stem pinned through the hollow cell, or the
+Paradox glyph with its weakness and clock. The **player marks it** through
+`markSheet` by its cause (the lost dot, or Bedlam) and puts it down the same
+way; buying the dot back sheds the one it carried.
+_Avoid_: Condition, Flaw (other editions' words); "source" / "duration" for
+the hold.
 
 **Virtue / Vice**:
 A character's two moral anchors (nWoD 1e); role-playing them restores Willpower.

@@ -382,9 +382,13 @@ function SessionPage() {
                     ...(mark.destinyCurrent !== undefined ? { destinyCurrent: mark.destinyCurrent } : {}),
                     ...(mark.willpowerCurrent !== undefined ? { willpowerCurrent: mark.willpowerCurrent } : {}),
                     ...(mark.manaCurrent !== undefined ? { manaCurrent: mark.manaCurrent } : {}),
+                    ...(mark.derangement !== undefined ? { derangement: { ...mark.derangement } } : {}),
+                    ...(mark.shedDerangement !== undefined ? { shedDerangement: mark.shedDerangement } : {}),
                   })
               : undefined
           }
+          // the Scene open now (MAG-60): what a scene-bound derangement hangs from
+          activeSceneId={scene?.id}
         />
         {/* The hand-edit panel (issue #19): ST-only, on any sheet — the
             repair door (Mana, Will, XP, the track, Wisdom); players mark

@@ -56,6 +56,9 @@ import type { CharacterSheet as Sheet } from "#/domain/character"
 import type { VideoSeat } from "#/domain/video-rail"
 import type { Id } from "../../../convex/_generated/dataModel"
 import type { HeldMerit } from "#/domain/merits"
+import { Option } from "effect"
+import { bedlamHold, lostDotHold, type HeldDerangement } from "#/domain/derangements"
+import { SceneId } from "#/domain/ids"
 
 // ── The knobs ────────────────────────────────────────────────────────────────
 
@@ -393,6 +396,9 @@ const SEAT_VIEW: Record<
   bystander: { viewerUserId: BYSTANDER, isStoryteller: false, label: "Bystander" },
 }
 
+/** The rig's one open Scene (MAG-60): what a Bedlam derangement binds to. */
+const RIG_SCENE = "rig-scene"
+
 // ── The rig ──────────────────────────────────────────────────────────────────
 
 function DressingRoom() {
@@ -405,7 +411,30 @@ function DressingRoom() {
   // track, Wisdom) land in local state here — no server — so the owner can
   // click the boxes and the meter and watch them move; the knob resets them.
   const [marks, setMarks] = useState<SheetMark>({})
-  useEffect(() => setMarks({}), [wisdom])
+  // MAG-60: the derangement marks fold here as the flow would fold them —
+  // the lost dot one above Wisdom now, or the Bedlam clock against the rig's
+  // one open Scene — so the shelf under the meter can be judged with no server.
+  const [heldDerangements, setHeldDerangements] = useState<ReadonlyArray<HeldDerangement>>([])
+  useEffect(() => {
+    setMarks({})
+    setHeldDerangements([])
+  }, [wisdom])
+  const foldDerangement = (mark: SheetMark) => {
+    const wisdomNow = marks.wisdom ?? wisdom
+    if (mark.shedDerangement !== undefined) {
+      setHeldDerangements((prev) => prev.filter((d) => d.name !== mark.shedDerangement))
+    }
+    if (mark.derangement !== undefined) {
+      const { name, cause } = mark.derangement
+      const hold =
+        cause === "lostDot"
+          ? lostDotHold(wisdomNow)
+          : bedlamHold(wisdomNow, Option.some(SceneId.make(RIG_SCENE)), Date.now())
+      if (Option.isSome(hold)) {
+        setHeldDerangements((prev) => [...prev.filter((d) => d.name !== name), { name, hold: hold.value }])
+      }
+    }
+  }
   const shownSheet = useMemo(
     () =>
       decodeSheet({
@@ -421,8 +450,9 @@ function DressingRoom() {
         // seven creation dots, so every kind of key hangs on it — one that
         // turns for dice, a purse, a gate, a raised number, a ladder, story keys
         merits: [...RIG_MERITS],
+        derangements: [...heldDerangements],
       }),
-    [toolInHand, wisdom, marks],
+    [toolInHand, wisdom, marks, heldDerangements],
   )
   const navigate = Route.useNavigate()
   const pool = useDicePool(SESSION_ID)
@@ -613,9 +643,12 @@ function DressingRoom() {
                 return Promise.resolve()
               }}
               onMarkSheet={(mark) => {
-                setMarks((prev) => ({ ...prev, ...mark }))
+                const { derangement, shedDerangement, ...values } = mark
+                if (derangement !== undefined || shedDerangement !== undefined) foldDerangement(mark)
+                setMarks((prev) => ({ ...prev, ...values }))
                 return Promise.resolve()
               }}
+              activeSceneId={RIG_SCENE}
             />
           ) : (
             <p className="text-sm" style={{ color: "var(--bad)" }}>
