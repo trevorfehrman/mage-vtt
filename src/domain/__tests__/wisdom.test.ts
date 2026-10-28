@@ -1,12 +1,21 @@
 import { describe, expect, it } from "@effect/vitest"
+import { Option } from "effect"
 import {
   degenerationDicePool,
+  tapWisdomCell,
   wisdomEffects,
   untrainedSkillPenalty,
   xpCost,
 } from "../wisdom"
 
 describe("Wisdom & Morality", () => {
+  it("a tap on a meter cell toggles it: a lost cell fills up to it, a held one erases down past it", () => {
+    expect(tapWisdomCell(7, 9)).toEqual(Option.some(9))
+    expect(tapWisdomCell(7, 7)).toEqual(Option.some(6))
+    expect(tapWisdomCell(7, 5)).toEqual(Option.some(4))
+    expect(tapWisdomCell(1, 1)).toEqual(Option.none())
+  })
+
   it("degeneration dice pool by wisdom level", () => {
     expect(degenerationDicePool(10)).toBe(5)
     expect(degenerationDicePool(8)).toBe(4)

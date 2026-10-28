@@ -4,9 +4,11 @@ import {
   DERANGEMENT_PAIRS,
   derangement,
   hangingFromDot,
+  holdWords,
   standingDerangements,
   weaknessWords,
   type DerangementDef,
+  type DerangementName,
   type HeldDerangement,
 } from "#/domain/derangements"
 import type { SheetMark } from "#/domain/flows/hand-edit"
@@ -19,29 +21,30 @@ import { clockWords, shelfOrder } from "./derangement-shelf-look"
 
 /**
  * Derangements on the sheet (MAG-60), the owner's foundation (2026-10-28,
- * two rounds): badges under the Wisdom track; hovering a permanent one
- * lights up its empty pip; the Bedlam kind lists its duration; beneath each
- * empty pip an unlit derangement symbol (no box); a dedicated Derangements
- * heading beneath Wisdom; clicking any symbol under the pips, or the opener
- * under the heading, animates height into the character block — no popup —
- * and shows the full list as larger cards complete with what each does;
- * toggle them on there; shrink the section and they become the badges.
+ * four rounds): badges that are always visible; hovering a permanent one
+ * lights up its empty Wisdom pip; the Bedlam kind lists its duration;
+ * beneath each empty pip an unlit derangement symbol that lights itself on
+ * hover (not the pip); and the section in its own border, opening like an
+ * accordion — "i need to see all the derangements side by side with their
+ * twins but we should only detail one at a time on click or hover over …
+ * clicking on one toggles it on and then that should create the badge. the
+ * badges are always visible the detailed view isn't."
  *
- * Three pieces share one `menu` the sheet holds: `DerangementSlots` is the
+ * Two pieces share one `menu` the sheet holds: `DerangementSlots` is the
  * row of symbols in the meter's columns (a symbol under a lost cell, solid
- * when that dot carries one, unlit when it could); `DerangementBadges` is
- * what the heading holds — the badge row and its opener, folded away while
- * the list is open; `DerangementList` is the list itself, which the sheet
- * places beneath the title row at the plate's full width (owner,
- * 2026-10-28: "take up the full width of the component with the derangement
- * cards"). The context is what the opener chose: a dot's symbol opens the
- * list *for that dot*, the heading's opener opens it *for Bedlam*, and the
- * list's eyebrow says which. A card toggled on hangs there; toggled off, it
- * is put down.
+ * when that dot carries one, unlit when it could); `DerangementPanel` is
+ * the bordered section the sheet places beneath the title row at the
+ * plate's full width — its header is the heading, the opener and the
+ * badges; its body, folded open, is two-sided: the nine pairs as twin
+ * chips on the left, mild beside severe, and on the right the one the
+ * player is pointing at, detailed. The context is what the opener chose: a
+ * dot's symbol opens the body *for that dot*, the heading opens it *for
+ * Bedlam*, and the body's eyebrow says which. A chip tapped on hangs there
+ * and its badge appears in the header; tapped off, it is put down.
  *
- * The folds animate `grid-template-rows`, a layout property; what made the
- * fold drop frames was not the cards but the halo'd trait rows beneath the
- * plate repainting as they were shoved — each sheet section is now its own
+ * The fold animates `grid-template-rows`, a layout property; what made it
+ * drop frames was never the body but the halo'd trait rows beneath the
+ * plate repainting as they were shoved — each sheet section is its own
  * compositor layer (`.mv-sheet-section`), and the fold holds 120Hz.
  */
 
@@ -71,6 +74,10 @@ const standingNow = (
   at: number,
 ) => shelfOrder(standingDerangements(held, { wisdom, sceneId: Option.fromUndefinedOr(activeSceneId), at }))
 
+/** At Wisdom 5+ a Bedlam needs a Scene to bind to; below, it has a clock. */
+const bedlamGateOf = (wisdom: WisdomRank, activeSceneId: SceneId | undefined) =>
+  activeSceneId !== undefined || wisdom <= 4 ? null : "no scene open"
+
 /** The symbols beneath the meter, in its own ten columns. */
 export function DerangementSlots({
   held,
@@ -78,18 +85,15 @@ export function DerangementSlots({
   activeSceneId,
   menu,
   onOpen,
-  onPoint,
 }: {
   held: ReadonlyArray<HeldDerangement>
   wisdom: WisdomRank
   activeSceneId?: SceneId | undefined
   menu: DerangementMenu
   onOpen?: ((menu: DerangementMenu) => void) | undefined
-  onPoint?: ((rank: WisdomRank | undefined) => void) | undefined
 }) {
   const at = useNow()
   const standing = standingNow(held, wisdom, activeSceneId, at)
-  const point = (rank: WisdomRank | undefined) => onPoint?.(rank)
   if (wisdom === 10) return null
   return (
     <div className="grid grid-cols-10" style={{ gap: GAP, height: CELL }}>
@@ -107,21 +111,13 @@ export function DerangementSlots({
             aria-label={carried ? `Wisdom dot ${rank}'s derangement` : `Hang a derangement on Wisdom dot ${rank}`}
             aria-expanded={open}
             onClick={() => onOpen(open ? { _tag: "closed" } : { _tag: "dot", rank })}
-            onMouseEnter={() => point(rank)}
-            onMouseLeave={() => point(undefined)}
-            className="mv-key grid place-items-center transition-opacity"
-            style={{ color: carried || open ? "var(--ink)" : "var(--dim)", opacity: carried || open ? 1 : 0.45 }}
+            className="mv-key mv-slot grid place-items-center"
+            data-lit={carried || open ? "" : undefined}
           >
             {symbol}
           </button>
         ) : (
-          <span
-            key={rank}
-            className="grid place-items-center"
-            style={{ color: "var(--ink)", opacity: carried ? 1 : 0 }}
-            onMouseEnter={() => point(rank)}
-            onMouseLeave={() => point(undefined)}
-          >
+          <span key={rank} className="grid place-items-center" style={{ color: "var(--ink)", opacity: carried ? 1 : 0 }}>
             {symbol}
           </span>
         )
@@ -130,12 +126,11 @@ export function DerangementSlots({
   )
 }
 
-/** At Wisdom 5+ a Bedlam needs a Scene to bind to; below, it has a clock. */
-const bedlamGateOf = (wisdom: WisdomRank, activeSceneId: SceneId | undefined) =>
-  activeSceneId !== undefined || wisdom <= 4 ? null : "no scene open"
-
-/** Under the Derangements heading: the badges and the opener, folded away while the list is open. */
-export function DerangementBadges({
+/**
+ * The bordered section beneath the title row: the heading as the opener,
+ * the badges beside it always, and the two-sided body folded beneath.
+ */
+export function DerangementPanel({
   held,
   wisdom,
   activeSceneId,
@@ -156,12 +151,40 @@ export function DerangementBadges({
   const standing = standingNow(held, wisdom, activeSceneId, at)
   const point = (rank: WisdomRank | undefined) => onPoint?.(rank)
   const open = menu._tag !== "closed"
+  const bedlamGate = bedlamGateOf(wisdom, activeSceneId)
+  const gate = menu._tag === "bedlam" ? bedlamGate : null
+  // the one detailed at a time: the last pointed at or tapped; to begin, the first hanging one
+  const [focus, setFocus] = useState<DerangementName>(() => standing[0]?.name ?? DERANGEMENT_PAIRS[0][0])
+  const context = Match.value(menu).pipe(
+    Match.tag("closed", () => ""),
+    Match.tag("dot", (m) => `on Wisdom dot ${m.rank}`),
+    Match.tag("bedlam", () => `Bedlam${bedlamGate === null ? "" : ` · ${bedlamGate}`}`),
+    Match.exhaustive,
+  )
+  const toggle = (name: DerangementName, on: boolean) =>
+    onMark?.(
+      on ? { derangement: { name, ...(menu._tag === "dot" ? { dot: menu.rank } : {}) } } : { shedDerangement: name },
+    )
 
   return (
     <TooltipProvider>
-      <div className="grid">
-        <Fold open={!open}>
-          <div className="mv-data flex flex-wrap items-center gap-1.5" style={{ minHeight: 18 }}>
+      <div className="grid rounded-[2px]" style={{ boxShadow: "inset 0 0 0 1px var(--line)" }}>
+        <div className="flex items-center gap-3 px-3" style={{ minHeight: 30 }}>
+          {onMenu ? (
+            <button
+              type="button"
+              aria-expanded={open}
+              onClick={() => onMenu(open ? { _tag: "closed" } : { _tag: "bedlam" })}
+              className="mv-key mv-eyebrow flex items-center gap-1.5 transition-colors"
+              style={{ color: open ? "var(--ink)" : undefined }}
+            >
+              Derangements
+              <Chevron open={open} />
+            </button>
+          ) : (
+            <span className="mv-eyebrow">Derangements</span>
+          )}
+          <span className="mv-data flex flex-wrap items-center gap-1.5">
             {standing.map((d) => (
               <Badge
                 key={d.name}
@@ -171,18 +194,56 @@ export function DerangementBadges({
                 onPoint={point}
               />
             ))}
-            {onMenu && (
-              <button
-                type="button"
-                aria-label="Open the derangements"
-                aria-expanded={open}
-                onClick={() => onMenu({ _tag: "bedlam" })}
-                className="mv-key grid place-items-center transition-opacity"
-                style={{ height: 18, width: 18, color: "var(--dim)", opacity: 0.45 }}
-              >
-                <ParadoxGlyph size={11} ink="currentColor" title="" />
-              </button>
-            )}
+          </span>
+        </div>
+        <Fold open={open}>
+          <div className="grid gap-2 px-3 pb-3">
+            <div className="flex items-center justify-between">
+              <span className="mv-eyebrow" style={{ color: "var(--ink)" }}>
+                {context}
+              </span>
+              {onMenu && (
+                <button
+                  type="button"
+                  aria-label="Close the derangements"
+                  onClick={() => onMenu({ _tag: "closed" })}
+                  className="mv-key mv-data text-[11px] leading-none"
+                  style={{ color: "var(--dim)" }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <div className="grid gap-3" style={{ gridTemplateColumns: "minmax(0, 5fr) minmax(0, 7fr)" }}>
+              {/* the twins: mild beside severe, nine rows under their two words */}
+              <div className="grid content-start gap-1">
+                <div className="grid grid-cols-2 gap-1 px-2 pb-0.5">
+                  <span className="mv-eyebrow">mild</span>
+                  <span className="mv-eyebrow">severe</span>
+                </div>
+                {DERANGEMENT_PAIRS.map(([mild, severe]) => (
+                  <div key={mild} className="grid grid-cols-2 gap-1">
+                    {[mild, severe].map((name) => (
+                      <Twin
+                        key={name}
+                        name={name}
+                        on={standing.some((d) => d.name === name)}
+                        focused={focus === name}
+                        gate={gate}
+                        onFocus={() => setFocus(name)}
+                        onToggle={onMark ? (on) => toggle(name, on) : undefined}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <Detail
+                def={derangement(focus)}
+                held={standing.find((d) => d.name === focus)}
+                bedlam={menu._tag === "bedlam"}
+                wisdom={wisdom}
+              />
+            </div>
           </div>
         </Fold>
       </div>
@@ -190,81 +251,18 @@ export function DerangementBadges({
   )
 }
 
-/**
- * The list, opening in place beneath the title row at the plate's full
- * width: every derangement as a card, mild beside severe, each a toggle. Its
- * top padding is the plate's own gap, inside the fold so a shut list is no
- * height at all.
- */
-export function DerangementList({
-  held,
-  wisdom,
-  activeSceneId,
-  menu,
-  onMenu,
-  onMark,
-}: {
-  held: ReadonlyArray<HeldDerangement>
-  wisdom: WisdomRank
-  activeSceneId?: SceneId | undefined
-  menu: DerangementMenu
-  onMenu?: ((menu: DerangementMenu) => void) | undefined
-  onMark?: ((mark: SheetMark) => void) | undefined
-}) {
-  const at = useNow()
-  const standing = standingNow(held, wisdom, activeSceneId, at)
-  const open = menu._tag !== "closed"
-  const bedlamGate = bedlamGateOf(wisdom, activeSceneId)
-
+/** The opener's chevron: down shut, up open. */
+function Chevron({ open }: { open: boolean }) {
   return (
-    <Fold open={open}>
-      <div className="grid gap-2 pt-4">
-        <div className="flex items-center justify-between">
-          <span className="mv-eyebrow" style={{ color: "var(--ink)" }}>
-            {Match.value(menu).pipe(
-              Match.tag("closed", () => ""),
-              Match.tag("dot", (m) => `on Wisdom dot ${m.rank}`),
-              Match.tag("bedlam", () => `Bedlam${bedlamGate === null ? "" : ` · ${bedlamGate}`}`),
-              Match.exhaustive,
-            )}
-          </span>
-          {onMenu && (
-            <button
-              type="button"
-              aria-label="Close the derangements"
-              onClick={() => onMenu({ _tag: "closed" })}
-              className="mv-key mv-data text-[11px] leading-none"
-              style={{ color: "var(--dim)" }}
-            >
-              ×
-            </button>
-          )}
-        </div>
-        <div className="grid grid-cols-2 gap-1.5">
-          {DERANGEMENT_PAIRS.flatMap(([mild, severe]) =>
-            [mild, severe].map((name) => (
-              <Card
-                key={name}
-                def={derangement(name)}
-                menu={menu}
-                held={standing.find((d) => d.name === name)}
-                gate={menu._tag === "bedlam" ? bedlamGate : null}
-                onToggle={
-                  onMark
-                    ? (on) =>
-                        onMark(
-                          on
-                            ? { derangement: { name, ...(menu._tag === "dot" ? { dot: menu.rank } : {}) } }
-                            : { shedDerangement: name },
-                        )
-                    : undefined
-                }
-              />
-            )),
-          )}
-        </div>
-      </div>
-    </Fold>
+    <svg
+      width={8}
+      height={8}
+      viewBox="0 0 8 8"
+      aria-hidden
+      style={{ transition: "transform 200ms", transform: open ? "rotate(180deg)" : "none" }}
+    >
+      <path d="M1 2.5 L4 5.5 L7 2.5" fill="none" stroke="currentColor" strokeWidth={1.2} />
+    </svg>
   )
 }
 
@@ -283,40 +281,71 @@ function Fold({ open, children }: { open: boolean; children: ReactNode }) {
   )
 }
 
-/** One derangement in the open list: the name, the pair it belongs to, what sets it off and what it does. */
-function Card({
-  def,
-  menu,
-  held,
+/** One name in the twin rows: pointing at it details it, tapping it hangs it or puts it down. */
+function Twin({
+  name,
+  on,
+  focused,
   gate,
+  onFocus,
   onToggle,
 }: {
-  def: DerangementDef
-  menu: DerangementMenu
-  held: HeldDerangement | undefined
+  name: DerangementName
+  on: boolean
+  focused: boolean
   gate: string | null
+  onFocus: () => void
   onToggle?: ((on: boolean) => void) | undefined
 }) {
-  const on = held !== undefined
-  const bedlam = menu._tag === "bedlam"
-  const weakness = bedlam ? weaknessWords(def.bedlam) : ""
+  const refused = gate !== null && !on
   return (
     <button
       type="button"
       aria-pressed={on}
-      aria-disabled={gate !== null && !on}
-      onClick={() => (gate === null || on) && onToggle?.(!on)}
-      className={`mv-key grid gap-1 rounded-[2px] p-2.5 text-left transition-colors ${gate !== null && !on ? "mv-refuse" : ""}`}
+      aria-disabled={refused}
+      onMouseEnter={onFocus}
+      onFocus={onFocus}
+      onClick={() => {
+        onFocus()
+        if (!refused) onToggle?.(!on)
+      }}
+      className={`mv-key rounded-[2px] px-2 text-left text-[12px] leading-none transition-colors ${refused ? "mv-refuse" : ""}`}
       style={{
-        boxShadow: `inset 0 0 0 1px ${on ? "var(--accent)" : "var(--line)"}`,
+        height: 24,
+        color: on ? "var(--accent)" : focused ? "var(--ink)" : "var(--dim)",
+        boxShadow: `inset 0 0 0 1px ${on ? "var(--accent)" : focused ? "var(--ink)" : "var(--line)"}`,
         background: on ? "var(--glow)" : "transparent",
       }}
+    >
+      {name}
+    </button>
+  )
+}
+
+/** The one detailed: its mark, its name and severity, what sets it off, what it does, and where it hangs. */
+function Detail({
+  def,
+  held,
+  bedlam,
+  wisdom,
+}: {
+  def: DerangementDef
+  held: HeldDerangement | undefined
+  bedlam: boolean
+  wisdom: WisdomRank
+}) {
+  const on = held !== undefined
+  const weakness = bedlam ? weaknessWords(def.bedlam) : ""
+  return (
+    <div
+      className="grid content-start gap-1.5 rounded-[2px] p-3"
+      style={{ boxShadow: "inset 0 0 0 1px var(--line)", background: "color-mix(in srgb, var(--ink) 3%, transparent)" }}
     >
       <span className="flex items-center gap-2">
         <span style={{ color: on ? "var(--accent)" : "var(--dim)" }}>
           {bedlam ? <ParadoxGlyph size={12} ink="currentColor" title="" /> : <DerangementGlyph size={12} />}
         </span>
-        <span className="mv-h text-[14px] leading-none" style={{ color: on ? "var(--accent)" : "var(--ink)" }}>
+        <span className="mv-h text-[16px] leading-none" style={{ color: on ? "var(--accent)" : "var(--ink)" }}>
           {def.name}
         </span>
         <span className="mv-eyebrow ml-auto">{def.severity}</span>
@@ -332,7 +361,12 @@ function Card({
           {weakness}
         </span>
       )}
-    </button>
+      {held && (
+        <span className="mv-eyebrow" style={{ color: "var(--accent)" }}>
+          hanging · {holdWords(held, wisdom)}
+        </span>
+      )}
+    </div>
   )
 }
 

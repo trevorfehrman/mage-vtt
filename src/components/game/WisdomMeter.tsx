@@ -1,4 +1,5 @@
-import { WisdomRank } from "#/domain/wisdom"
+import { Option } from "effect"
+import { tapWisdomCell, WisdomRank } from "#/domain/wisdom"
 
 /**
  * Wisdom on the title card (MAG-56): the meter. The owner's brief
@@ -51,7 +52,9 @@ const GLOW_BY_RANK: Partial<Record<WisdomRank, string>> = {
 
 /**
  * `onSet` (MAG-63; owner's call 2026-10-27: players mark their own Wisdom):
- * when present each cell is a button that sets the rank to its own number —
+ * when present each cell is a button and a toggle (owner, 2026-10-28:
+ * "clicking a segment should let me remove that segment") — a lost cell
+ * fills up to itself, a held cell erases down past itself (`tapWisdomCell`),
  * the paper gesture of filling or erasing a dot. Absent, the meter is the
  * read-only record it was.
  */
@@ -95,9 +98,10 @@ export function WisdomMeter({
           <button
             key={rank}
             type="button"
-            onClick={() => onSet(rank)}
-            aria-label={`Set Wisdom ${rank}`}
-            aria-pressed={rank === wisdom}
+            onClick={() => Option.match(tapWisdomCell(wisdom, rank), { onNone: () => {}, onSome: onSet })}
+            aria-label={rank <= wisdom ? `Erase Wisdom dot ${rank}` : `Fill Wisdom dot ${rank}`}
+            aria-pressed={rank <= wisdom}
+            aria-disabled={Option.isNone(tapWisdomCell(wisdom, rank))}
             className="block cursor-pointer rounded-[2px]"
             style={cellStyle(rank <= wisdom, rank === lit)}
           />

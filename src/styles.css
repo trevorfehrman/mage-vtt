@@ -528,6 +528,22 @@ pre code {
 .mv-sheet-section {
   will-change: transform;
 }
+/* The derangement symbol under a lost Wisdom cell (MAG-60): dim until it
+ * carries one, its list is open, or it is pointed at — the hover lights the
+ * symbol, not the cell above it (owner, 2026-10-28). */
+.mv-slot {
+  color: var(--dim);
+  opacity: 0.45;
+  transition:
+    opacity 160ms,
+    color 160ms;
+}
+.mv-slot:hover,
+.mv-slot:focus-visible,
+.mv-slot[data-lit] {
+  color: var(--ink);
+  opacity: 1;
+}
 /* The meteor: a dash segment racing the line entry → exit (JS-driven CSS
  * transitions on concrete px values — see TraitSky's MeteorLine). */
 /* stroke paint comes from the per-meteor flight-path gradient (inline) */

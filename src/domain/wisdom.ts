@@ -1,4 +1,4 @@
-import { Match, Schema } from "effect"
+import { Match, Option, Schema } from "effect"
 
 // Pure rules leaves (ADR-0014): plain functions; the Wisdom-keyed table is
 // total over the 1–10 rank vocabulary, and the XP-cost variants are a tagged
@@ -10,6 +10,16 @@ export type WisdomRank = typeof WisdomRank.Type
 
 /** A new mage's Wisdom (page 69): 7, before any creation trade-off. */
 export const STARTING_WISDOM: WisdomRank = 7
+
+/**
+ * A tap on one of the meter's cells (MAG-60; owner 2026-10-28: "clicking a
+ * segment should let me remove that segment, they should be like toggles"):
+ * a lost cell is filled, and Wisdom rises to it; a held cell is erased, and
+ * Wisdom falls to the cell beneath, since the meter is contiguous. The first
+ * dot cannot be erased — Wisdom has no 0 — so that tap is None.
+ */
+export const tapWisdomCell = (wisdom: WisdomRank, rank: WisdomRank): Option.Option<WisdomRank> =>
+  rank > wisdom ? Option.some(rank) : Option.filter(Option.some(rank - 1), Schema.is(WisdomRank))
 
 // --- Degeneration dice pool by Wisdom (pages 79-80, Mage) ---
 
