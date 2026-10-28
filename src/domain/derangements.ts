@@ -372,13 +372,36 @@ export const shedBoughtBack = (
     ),
   )
 
-/** The hold in the Chronicle's words: "dot 7", "this scene", "24 hours". */
-export const holdWords = (hold: DerangementHold, wisdom: WisdomRank): string =>
-  Match.value(hold).pipe(
+/**
+ * The hold in the Chronicle's words: "dot 7", "Bedlam, this scene",
+ * "Bedlam, 24 hours". Fixation's Bedlam is the one the table doesn't clock
+ * (Mage p. 269: a die roll's worth of scenes, whatever the Wisdom), so its
+ * mark carries the note.
+ */
+export const holdWords = (held: HeldDerangement, wisdom: WisdomRank): string =>
+  Match.value(held.hold).pipe(
     Match.tag("lostDot", (h) => `dot ${h.rank}`),
-    Match.tag("scene", () => "Bedlam, this scene"),
-    Match.tag("until", () => `Bedlam, ${spanWords(paradoxSpan("bedlam", wisdom))}`),
+    Match.tag("scene", () => `Bedlam, this scene${fixationNote(held.name)}`),
+    Match.tag("until", () => `Bedlam, ${spanWords(paradoxSpan("bedlam", wisdom))}${fixationNote(held.name)}`),
     Match.exhaustive,
+  )
+
+const fixationNote = (name: DerangementName): string =>
+  name === "Fixation" || name === "Obsessive Compulsion"
+    ? " — runs a die roll's worth of scenes (p. 269)"
+    : ""
+
+/** The permanent derangement already hanging from a dot, if any — one dot carries one (Mage p. 79). */
+export const hangingFromDot = (
+  held: ReadonlyArray<HeldDerangement>,
+  rank: WisdomRank,
+): Option.Option<HeldDerangement> =>
+  Arr.findFirst(held, (d) =>
+    Match.value(d.hold).pipe(
+      Match.tag("lostDot", (h) => h.rank === rank),
+      Match.tag("scene", "until", () => false),
+      Match.exhaustive,
+    ),
   )
 
 /**

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Match, Option } from "effect"
 import {
   DERANGEMENT_PAIRS,
@@ -10,7 +10,7 @@ import {
   type HeldDerangement,
 } from "#/domain/derangements"
 import type { SheetMark } from "#/domain/flows/hand-edit"
-import { SceneId } from "#/domain/ids"
+import type { SceneId } from "#/domain/ids"
 import type { WisdomRank } from "#/domain/wisdom"
 import { ParadoxGlyph } from "./ParadoxGlyph"
 import { clockWords, shelfOrder } from "./derangement-shelf-look"
@@ -34,7 +34,11 @@ import { clockWords, shelfOrder } from "./derangement-shelf-look"
  * player's door too (the MAG-63 paper gesture): a + at the foot opens the
  * nine pairs, mild beside severe, under two chips for the cause — the lost
  * dot or Bedlam — and a tap on a name marks it; a tap on a hanging name
- * puts it down. The chip is ember while chosen (armed, reversible).
+ * puts it down. The chip is ember while chosen (armed, reversible); a cause
+ * the rules refuse right now (no dot lost at Wisdom 10, no Scene open for a
+ * scene-long Bedlam) wears the refusing treatment and says why in its own
+ * few words — gates explain themselves (component-standards §2), inline,
+ * since the owner reads hovers as noise.
  */
 
 const LINE = 14
@@ -55,7 +59,7 @@ export function DerangementShelf({
   held: ReadonlyArray<HeldDerangement>
   wisdom: WisdomRank
   /** The Scene open now, for the scene-bound ones; absent in downtime. */
-  activeSceneId?: string | undefined
+  activeSceneId?: SceneId | undefined
   onMark?: ((mark: SheetMark) => void) | undefined
 }) {
   // The clock, for the timed ones: read on render and kept roughly current.
@@ -66,7 +70,7 @@ export function DerangementShelf({
   }, [])
   const [open, setOpen] = useState(false)
 
-  const sceneId = Option.map(Option.fromUndefinedOr(activeSceneId), SceneId.make)
+  const sceneId = Option.fromUndefinedOr(activeSceneId)
   const standing = shelfOrder(standingDerangements(held, { wisdom, sceneId, at }))
   if (standing.length === 0 && onMark === undefined) return null
 
@@ -188,8 +192,11 @@ function HangingLine({
         <div
           className="flex items-center gap-2 whitespace-nowrap text-[11px] leading-none"
           style={{ height: LINE }}
+          role="group"
+          aria-label={`${held.name}, from Bedlam`}
         >
-          <ParadoxGlyph size={11} title="Bedlam" />
+          {/* the glyph says Paradox; no SVG title, so nothing hovers (ADR-0026 §2) */}
+          <ParadoxGlyph size={11} title="" />
           {name}
           <span style={{ color: "var(--dim)" }}>
             {[...(weakness === "" ? [] : [weakness]), ...Option.toArray(clock)].join(" · ")}
@@ -213,26 +220,28 @@ function Picker({
   held: ReadonlyArray<HeldDerangement>
   onPick: (name: DerangementName, cause: DerangementCause) => void
 }) {
-  const dotLost = wisdom < 10
-  // at Wisdom 5+ a Bedlam needs a Scene to bind to; below, it has a clock
-  const bedlamPossible = sceneOpen || wisdom <= 4
-  const [cause, setCause] = useState<DerangementCause>(dotLost ? "lostDot" : "bedlam")
-  const chip = (c: DerangementCause, enabled: boolean, children: React.ReactNode) => {
-    const chosen = cause === c
+  // the gates, each with its reason: no dot is lost at 10; at Wisdom 5+ a
+  // Bedlam needs a Scene to bind to (below, it has a clock)
+  const dotGate = wisdom < 10 ? null : "no dot lost"
+  const bedlamGate = sceneOpen || wisdom <= 4 ? null : "no scene open"
+  const [cause, setCause] = useState<DerangementCause>(dotGate === null ? "lostDot" : "bedlam")
+  const chip = (c: DerangementCause, gate: string | null, glyph: ReactNode, label: string) => {
+    const chosen = gate === null && cause === c
     return (
       <button
         type="button"
-        disabled={!enabled}
-        onClick={() => setCause(c)}
+        aria-disabled={gate !== null}
+        onClick={() => gate === null && setCause(c)}
         aria-pressed={chosen}
-        className="mv-key flex items-center gap-1.5 rounded-[2px] px-2 text-[10px] leading-none transition-colors disabled:opacity-25"
+        className={`mv-key flex items-center gap-1.5 rounded-[2px] px-2 text-[10px] leading-none transition-colors ${gate === null ? "" : "mv-refuse"}`}
         style={{
           height: 18,
           color: chosen ? "var(--ember)" : "var(--dim)",
           boxShadow: `inset 0 0 0 1px ${chosen ? "var(--ember)" : "var(--line)"}`,
         }}
       >
-        {children}
+        {glyph}
+        <span>{gate ?? label}</span>
       </button>
     )
   }
@@ -242,20 +251,11 @@ function Picker({
       <div className="flex items-center gap-2">
         {chip(
           "lostDot",
-          dotLost,
-          <>
-            <span aria-hidden style={{ width: 1, height: 10, background: "currentColor", opacity: 0.7 }} />
-            <span>dot {wisdom + 1}</span>
-          </>,
+          dotGate,
+          <span aria-hidden style={{ width: 1, height: 10, background: "currentColor", opacity: 0.7 }} />,
+          `dot ${wisdom + 1}`,
         )}
-        {chip(
-          "bedlam",
-          bedlamPossible,
-          <>
-            <ParadoxGlyph size={10} ink="currentColor" title="" />
-            <span>Bedlam</span>
-          </>,
-        )}
+        {chip("bedlam", bedlamGate, <ParadoxGlyph size={10} ink="currentColor" title="" />, "Bedlam")}
       </div>
       <div className="grid grid-cols-2 gap-x-4" style={{ rowGap: 2 }}>
         {DERANGEMENT_PAIRS.map(([mild, severe]) => (

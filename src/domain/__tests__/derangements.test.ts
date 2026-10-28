@@ -8,6 +8,7 @@ import {
   derangement,
   derangementStands,
   findDerangement,
+  hangingFromDot,
   holdWords,
   lostDotHold,
   partnerOf,
@@ -19,6 +20,7 @@ import {
   type Moment,
 } from "../derangements"
 import { SceneId } from "../ids"
+import { makeAldousSheet } from "../testing/fixtures"
 
 describe("Derangement catalog", () => {
   it("is the book's nine pairs, eighteen names, mild first", () => {
@@ -126,10 +128,26 @@ describe("A held derangement (MAG-60)", () => {
     expect(shedBoughtBack([phobia, depression, anxiety], 6)).toEqual([phobia, depression, anxiety])
   })
 
-  it("the Chronicle's words for each hold", () => {
-    expect(holdWords(phobia.hold, 6)).toBe("dot 7")
-    expect(holdWords(depression.hold, 7)).toBe("Bedlam, this scene")
-    expect(holdWords(anxiety.hold, 2)).toBe("Bedlam, 24 hours")
+  it("the Chronicle's words for each hold; Fixation's Bedlam carries the book's note", () => {
+    expect(holdWords(phobia, 6)).toBe("dot 7")
+    expect(holdWords(depression, 7)).toBe("Bedlam, this scene")
+    expect(holdWords(anxiety, 2)).toBe("Bedlam, 24 hours")
+    expect(holdWords({ name: "Fixation", hold: depression.hold }, 7)).toBe(
+      "Bedlam, this scene — runs a die roll's worth of scenes (p. 269)",
+    )
+  })
+
+  it("one dot carries one derangement", () => {
+    expect(hangingFromDot([phobia, depression], 7)).toEqual(Option.some(phobia))
+    expect(hangingFromDot([phobia, depression], 6)).toEqual(Option.none())
+  })
+
+  it("a held list decodes through the sheet, and an unknown hold does not", () => {
+    const sheet = makeAldousSheet({ derangements: [phobia, { name: "Anxiety", hold: { _tag: "until", expiresAt: 5 } }] })
+    expect(sheet.derangementsHeld.map((d) => d.name)).toEqual(["Phobia", "Anxiety"])
+    expect(() =>
+      makeAldousSheet({ derangements: [{ name: "Phobia", hold: { _tag: "forever" } } as never] }),
+    ).toThrow()
   })
 
   it("the weakness in a few words", () => {

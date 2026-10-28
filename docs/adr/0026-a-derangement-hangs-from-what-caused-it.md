@@ -61,8 +61,13 @@ own paper gesture (ADR-0025).
   refused, which is the rule: a scene-long affliction with no scene has
   nothing to bind to.
 - Fixation's Bedlam duration (a die roll's worth of scenes, Mage p. 269)
-  is not modelled; it binds to the Scene like the rest and the table
-  re-marks it if it should run on.
+  is not clocked; it binds to the Scene like the rest, the Chronicle line
+  carries the book's note, and the table re-marks it if it should run on.
+- One dot carries one derangement (Mage p. 79): a second name marked
+  against the same lost dot is refused — it means the Wisdom mark between
+  the two losses was skipped.
+- The template carries an empty `derangements` list; no live character
+  holds one today, so no re-ingest is owed by this change.
 - The `derangements` column is optional and absent means none; rows
   written before it decode unchanged. Stored rows may hold stale entries
   (an expired clock, a closed Scene) until the next derangement mark; the

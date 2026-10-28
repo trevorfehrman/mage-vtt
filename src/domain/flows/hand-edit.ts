@@ -1,4 +1,4 @@
-import { Clock, Effect, Option, Schema } from "effect"
+import { Clock, Effect, Match, Option, Schema } from "effect"
 import {
   getSessionScopedSheet,
   requireRepairAuthority,
@@ -16,6 +16,7 @@ import {
   DerangementCause,
   DerangementName,
   derangement as derangementDef,
+  hangingFromDot,
   holdWords,
   lostDotHold,
   shedBoughtBack,
@@ -150,7 +151,7 @@ const describeDerangements = (
   const words = (held: ReadonlyArray<HeldDerangement>) =>
     held.length === 0
       ? "none"
-      : held.map((d) => `${d.name} (${holdWords(d.hold, sheet.wisdom)})`).join(", ")
+      : held.map((d) => `${d.name} (${holdWords(d, sheet.wisdom)})`).join(", ")
   return `Derangements ${words(sheet.derangementsHeld)} → ${words(next)}`
 }
 
@@ -417,14 +418,28 @@ const nextDerangements = Effect.fn("Flows.handEdit.nextDerangements")(function* 
   if (shed !== undefined && !standing.some((d) => d.name === shed)) {
     return yield* new InvalidHandEdit({ message: `${shed} isn't on the sheet.` })
   }
-  const kept = standing.filter((d) => d.name !== shed && d.name !== taken?.name)
-  if (taken === undefined) return kept
+  if (taken === undefined) return standing.filter((d) => d.name !== shed)
+  const kept = standing.filter((d) => d.name !== shed && d.name !== taken.name)
 
-  const [hold, why] =
-    taken.cause === "lostDot"
-      ? [lostDotHold(sheet.wisdom), "No Wisdom dot is lost."]
-      : [bedlamHold(sheet.wisdom, sceneId, at), "No scene is open to bind it to."]
+  const [hold, why] = Match.value(taken.cause).pipe(
+    Match.when("lostDot", () => [lostDotHold(sheet.wisdom), "No Wisdom dot is lost."] as const),
+    Match.when(
+      "bedlam",
+      () => [bedlamHold(sheet.wisdom, sceneId, at), "No scene is open to bind it to."] as const,
+    ),
+    Match.exhaustive,
+  )
   if (Option.isNone(hold)) return yield* new InvalidHandEdit({ message: why })
+  // One dot carries one derangement (Mage p. 79): a second name on the same
+  // lost dot means the Wisdom mark between them was skipped.
+  const already = Match.value(hold.value).pipe(
+    Match.tag("lostDot", (h) => hangingFromDot(kept, h.rank)),
+    Match.tag("scene", "until", () => Option.none()),
+    Match.exhaustive,
+  )
+  if (Option.isSome(already)) {
+    return yield* new InvalidHandEdit({ message: `That dot already carries ${already.value.name}.` })
+  }
   const held: HeldDerangement = { name: derangementDef(taken.name).name, hold: hold.value }
   return [...kept, held]
 })

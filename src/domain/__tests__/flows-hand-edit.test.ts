@@ -883,6 +883,23 @@ describe("Flows.handEdit.markSheet — derangements (MAG-60)", () => {
     }),
   )
 
+  it.effect("one dot carries one derangement: a second name on the same lost dot is refused", () =>
+    Effect.gen(function* () {
+      const store = seedWith(
+        makeSheet({ wisdom: 6, derangements: [{ name: "Phobia", hold: { _tag: "lostDot", rank: 7 } }] }),
+      )
+
+      const exit = yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        derangement: { name: "Suspicion", cause: "lostDot" },
+      }).pipe(Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("InvalidHandEdit")
+      expect(store.sheetPatches).toHaveLength(0)
+    }),
+  )
+
   it.effect("an unknown name doesn't fit the sheet", () =>
     Effect.gen(function* () {
       const store = seedWith(makeSheet())

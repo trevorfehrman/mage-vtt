@@ -11,6 +11,7 @@ import {
   type SkillSpecialty,
 } from "#/domain/character"
 import type { HealthBox } from "#/domain/damage"
+import type { SceneId } from "#/domain/ids"
 import type { PoolComponentInput, PoolComponentType } from "#/domain/dice"
 import type { SheetMark } from "#/domain/flows/hand-edit"
 import {
@@ -72,7 +73,7 @@ interface CharacterSheetProps {
   onMarkSheet?: ((mark: SheetMark) => Promise<unknown>) | undefined
   /** The Scene open now (MAG-60): a Bedlam derangement bound to it hangs
    * under the Wisdom meter while it is the open one. Absent in downtime. */
-  activeSceneId?: string | undefined
+  activeSceneId?: SceneId | undefined
 }
 
 

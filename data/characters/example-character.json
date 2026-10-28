@@ -62,6 +62,7 @@
       { "name": "Allies", "dots": 1, "label": "Museum staff" },
       { "name": "Language", "dots": 1, "label": "Latin" }
     ],
+    "derangements": [],
     "nimbus": "Ledgers of frost crawl across every surface; the air rings like struck coin.",
     "cabal": "The Hollow Choir",
     "consilium": "Consilium of the Narrows",

@@ -397,7 +397,7 @@ const SEAT_VIEW: Record<
 }
 
 /** The rig's one open Scene (MAG-60): what a Bedlam derangement binds to. */
-const RIG_SCENE = "rig-scene"
+const RIG_SCENE = SceneId.make("rig-scene")
 
 // ── The rig ──────────────────────────────────────────────────────────────────
 
@@ -429,7 +429,7 @@ function DressingRoom() {
       const hold =
         cause === "lostDot"
           ? lostDotHold(wisdomNow)
-          : bedlamHold(wisdomNow, Option.some(SceneId.make(RIG_SCENE)), Date.now())
+          : bedlamHold(wisdomNow, Option.some(RIG_SCENE), Date.now())
       if (Option.isSome(hold)) {
         setHeldDerangements((prev) => [...prev.filter((d) => d.name !== name), { name, hold: hold.value }])
       }
