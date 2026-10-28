@@ -51,9 +51,8 @@ import type { SheetMark } from "#/domain/flows/hand-edit"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 import { DotRating } from "./DotRating"
 import { Keyhole, Mark } from "./merit-marks"
-import { periodic, ringName, wrapIndex, type PurseLevel } from "./merit-ring-look"
-import { PurseNumeral } from "./CastHeaderStats"
-import { TooltipProvider } from "#/components/ui/tooltip"
+import { periodic, purseDice, purseTap, ringName, wrapIndex, type Purse, type PurseLevel } from "./merit-ring-look"
+import { UnifiedDie } from "./UnifiedDie"
 
 export type Pool = ReturnType<typeof useDicePool>
 
@@ -191,48 +190,43 @@ function DoorPage({ h, lit }: { h: HeldMerit; lit: boolean }) {
   )
 }
 
-/** Destiny's foot (MAG-67; owner 2026-10-28: "it needs an activation
- * button of some kind, it needs to match our design grammar, and uniquely
- * it also needs the refill mechanic, and these can't conflict"). Two
- * objects in two grammars, side by side: the purse's number in the
- * header's Will · Mana grammar — what is left over what it holds, the
- * staged dice shown as a pending spend in ember, the + above and − below
- * marking the purse's level (a refill at the chapter, the bane's cost) on
- * your own sheet; and the activation chip every dice key has, lit ember
- * while dice are staged — each press stages one more from the purse, and a
- * press past what is left takes them all back. The dots at the door's top
- * right are the Merit's rating, as on every door. */
-function PurseFoot({ h, hand }: { h: HeldMerit; hand: Hand }) {
-  const staged = stagedOf(hand)
-  const lit = staged > 0
-  const offer = Math.max(1, staged)
+/** Destiny's purse (MAG-67; owner 2026-10-28: "show the purse as normal
+ * sized dice. clicking them puts them in the tray, rolling them depletes
+ * them. clicking them again brings them back. normal verdigris, orange
+ * ghost back to verdigris. one input type"). A row of the tray's own dice
+ * at the door's foot: a die in the purse is verdigris; click it and it
+ * goes to the tray, leaving an ember ghost here (click the ghost and it
+ * comes back); the roll takes it and the slot stays a dim ghost for the
+ * chapter — click that and the purse refills through it, by the player's
+ * mark, on their own sheet. The dots at the door's top right are the
+ * Merit's rating, as on every door. */
+function PurseDice({ h, hand }: { h: HeldMerit; hand: Hand }) {
+  const reduced = useReducedMotion()
+  const purse: Purse = { ...hand.destiny, staged: stagedOf(hand) }
+  const states = purseDice(purse)
+  const may = canToggle(hand)
+  const onTap = (i: number) =>
+    Match.value(purseTap(purse, i)).pipe(
+      Match.tag("stage", (t) => setStaged(hand, h, t.staged)),
+      Match.tag("refill", (t) => void hand.onMarkSheet?.({ destinyCurrent: Destiny.make(t.current) })),
+      Match.exhaustive,
+    )
   return (
-    <span className="flex items-center gap-5">
-      <TooltipProvider>
-        <span className="mv-data text-[13px] leading-none">
-          <PurseNumeral
-            label="Destiny"
-            color="var(--accent)"
-            current={hand.destiny.current}
-            max={hand.destiny.capacity}
-            pending={staged}
-            onNudge={
-              hand.onMarkSheet !== undefined
-                ? (next) => void hand.onMarkSheet?.({ destinyCurrent: Destiny.make(next) })
-                : undefined
-            }
-          />
-        </span>
-      </TooltipProvider>
-      <button
-        type="button"
-        disabled={!canToggle(hand) || hand.destiny.current === 0}
-        onClick={() => turnKey(hand, h)}
-        className={`mv-trait mv-key ${lit ? "mv-trait-on" : ""} mv-data rounded-[3px] px-2.5 py-1.5 text-[12px]`}
-        style={{ color: lit ? "var(--ember)" : "var(--ink)", boxShadow: lit ? undefined : "inset 0 0 0 1px var(--line)" }}
-      >
-        +{offer} {offer === 1 ? "die" : "dice"}
-      </button>
+    <span className="flex items-center gap-[6px] py-1">
+      {states.map((state, i) =>
+        Match.value(state).pipe(
+          Match.when("purse", () => (
+            <UnifiedDie key={i} mode="pool" kind="sheet" size="md" reduced={reduced} entrance={false} glide={false} title="Destiny — tap to add it to the roll" onSkim={may ? () => onTap(i) : undefined} disabled={!may} />
+          )),
+          Match.when("staged", () => (
+            <UnifiedDie key={i} mode="pool" kind="sheet" size="md" reduced={reduced} entrance={false} glide={false} ghost ghostInk="var(--ember)" title="Destiny — in the roll; tap to take it back" onSkim={may ? () => onTap(i) : undefined} disabled={!may} />
+          )),
+          Match.when("gone", () => (
+            <UnifiedDie key={i} mode="pool" kind="loose" size="md" reduced={reduced} entrance={false} glide={false} ghost title="Destiny — spent this chapter" onSkim={hand.onMarkSheet !== undefined ? () => onTap(i) : undefined} />
+          )),
+          Match.exhaustive,
+        ),
+      )}
     </span>
   )
 }
@@ -258,7 +252,7 @@ function DoorFoot({ h, hand }: { h: HeldMerit; hand: Hand }) {
         </button>
       )
     }),
-    Match.tag("purse", () => <PurseFoot h={h} hand={hand} />),
+    Match.tag("purse", () => <PurseDice h={h} hand={hand} />),
     Match.tag("derived", (m) => (
       <span
         className="mv-data rounded-[3px] px-2.5 py-1.5 text-[12px]"
