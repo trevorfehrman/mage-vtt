@@ -108,9 +108,10 @@ describe("A held derangement (MAG-60)", () => {
     ])
   })
 
-  it("the permanent mark hangs from the dot one above Wisdom now; nothing at 10", () => {
-    expect(lostDotHold(6)).toEqual(Option.some({ _tag: "lostDot", rank: 7 }))
-    expect(lostDotHold(10)).toEqual(Option.none())
+  it("the permanent mark hangs on the lost dot the player points at; a held dot has nothing to hang from", () => {
+    expect(lostDotHold(6, 7)).toEqual(Option.some({ _tag: "lostDot", rank: 7 }))
+    expect(lostDotHold(6, 10)).toEqual(Option.some({ _tag: "lostDot", rank: 10 }))
+    expect(lostDotHold(6, 6)).toEqual(Option.none())
   })
 
   it("the Bedlam mark binds to the Scene at Wisdom 5+ and needs one open", () => {

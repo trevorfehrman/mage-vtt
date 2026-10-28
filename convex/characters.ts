@@ -90,9 +90,10 @@ export const markSheet = enforcedMutation({
     destinyCurrent: v.optional(v.number()),
     willpowerCurrent: v.optional(v.number()),
     manaCurrent: v.optional(v.number()),
-    // A derangement taken or put down (MAG-60): the name and its cause; what
-    // it hangs from — the lost dot, the Scene, the clock — is the flow's.
-    derangement: v.optional(v.object({ name: v.string(), cause: v.string() })),
+    // A derangement taken or put down (MAG-60): the name and, for a
+    // permanent one, the lost dot it hangs on; a Bedlam one has no dot and
+    // the flow works out its clock.
+    derangement: v.optional(v.object({ name: v.string(), dot: v.optional(v.number()) })),
     shedDerangement: v.optional(v.string()),
   },
   flow: markSheetFlow,

@@ -13,7 +13,6 @@ import {
 } from "../damage"
 import {
   bedlamHold,
-  DerangementCause,
   DerangementName,
   derangement as derangementDef,
   hangingFromDot,
@@ -284,9 +283,12 @@ export const MarkSheetArgs = Schema.Struct({
   destinyCurrent: Schema.optionalKey(Schema.Number),
   willpowerCurrent: Schema.optionalKey(Schema.Number),
   manaCurrent: Schema.optionalKey(Schema.Number),
-  /** A derangement taken (MAG-60): its name and why — the dot just lost, or
-   * a Bedlam Paradox; the flow works out what it hangs from. */
-  derangement: Schema.optionalKey(Schema.Struct({ name: Schema.String, cause: Schema.String })),
+  /** A derangement taken (MAG-60): its name and, for a permanent one, the
+   * lost Wisdom dot it hangs on; no dot means a Bedlam one, and the flow
+   * works out its clock. */
+  derangement: Schema.optionalKey(
+    Schema.Struct({ name: Schema.String, dot: Schema.optionalKey(Schema.Number) }),
+  ),
   /** A derangement put down by name — the mark in reverse. */
   shedDerangement: Schema.optionalKey(Schema.String),
 })
@@ -300,7 +302,9 @@ export const SheetMark = Schema.Struct({
   destinyCurrent: Schema.optionalKey(Destiny),
   willpowerCurrent: Schema.optionalKey(Willpower),
   manaCurrent: Schema.optionalKey(Mana),
-  derangement: Schema.optionalKey(Schema.Struct({ name: DerangementName, cause: DerangementCause })),
+  derangement: Schema.optionalKey(
+    Schema.Struct({ name: DerangementName, dot: Schema.optionalKey(WisdomRank) }),
+  ),
   shedDerangement: Schema.optionalKey(DerangementName),
 })
 export type SheetMark = typeof SheetMark.Type
@@ -376,8 +380,8 @@ export const markSheet = Effect.fn("Flows.handEdit.markSheet")(function* (
     return yield* new InvalidHandEdit({ message: `Mana holds at most ${sheet.maxMana}.` })
   }
 
-  // The derangement marks (MAG-60): what the new one hangs from is the
-  // flow's to work out — the dot one above Wisdom now, or the Bedlam clock
+  // The derangement marks (MAG-60): a permanent one hangs on the lost dot
+  // the player pointed at; a Bedlam one on the clock the flow works out
   // (the Scene open now at Wisdom 5+, an expiry stamped below). The list is
   // written whole: the same name re-marked replaces its old hold, and
   // anything no longer standing at this moment leaves the row with it.
@@ -421,17 +425,12 @@ const nextDerangements = Effect.fn("Flows.handEdit.nextDerangements")(function* 
   if (taken === undefined) return standing.filter((d) => d.name !== shed)
   const kept = standing.filter((d) => d.name !== shed && d.name !== taken.name)
 
-  const [hold, why] = Match.value(taken.cause).pipe(
-    Match.when("lostDot", () => [lostDotHold(sheet.wisdom), "No Wisdom dot is lost."] as const),
-    Match.when(
-      "bedlam",
-      () => [bedlamHold(sheet.wisdom, sceneId, at), "No scene is open to bind it to."] as const,
-    ),
-    Match.exhaustive,
-  )
+  const [hold, why] =
+    taken.dot !== undefined
+      ? ([lostDotHold(sheet.wisdom, taken.dot), `Wisdom dot ${taken.dot} is held, not lost.`] as const)
+      : ([bedlamHold(sheet.wisdom, sceneId, at), "No scene is open to bind it to."] as const)
   if (Option.isNone(hold)) return yield* new InvalidHandEdit({ message: why })
-  // One dot carries one derangement (Mage p. 79): a second name on the same
-  // lost dot means the Wisdom mark between them was skipped.
+  // One dot carries one derangement (Mage p. 79).
   const already = Match.value(hold.value).pipe(
     Match.tag("lostDot", (h) => hangingFromDot(kept, h.rank)),
     Match.tag("scene", "until", () => Option.none()),

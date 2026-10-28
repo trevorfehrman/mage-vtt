@@ -324,20 +324,14 @@ export const isBedlamHold = (hold: DerangementHold): boolean =>
     Match.exhaustive,
   )
 
-/** Why a derangement is being marked: the dot just lost, or a Bedlam Paradox. */
-export const DerangementCause = Schema.Literals(["lostDot", "bedlam"])
-export type DerangementCause = typeof DerangementCause.Type
-
 /**
- * The permanent mark's hold: the dot most recently lost — one above the
- * sheet's Wisdom now, since the player marks Wisdom down first and the
- * derangement after (Mage p. 79: the lost dot and the derangement are one
- * event). At 10 no dot is lost, so there is nothing to hang it from.
+ * The permanent mark's hold: the dot the player hangs it on (owner,
+ * 2026-10-28: a ghost beneath each empty pip is the door), which must be a
+ * lost dot — one the sheet's Wisdom no longer reaches. A held dot has
+ * nothing to hang from.
  */
-export const lostDotHold = (wisdom: WisdomRank): Option.Option<DerangementHold> =>
-  Arr.findFirst(WisdomRank.literals, (rank) => rank === wisdom + 1).pipe(
-    Option.map((rank) => ({ _tag: "lostDot", rank }) as const),
-  )
+export const lostDotHold = (wisdom: WisdomRank, rank: WisdomRank): Option.Option<DerangementHold> =>
+  rank > wisdom ? Option.some({ _tag: "lostDot", rank } as const) : Option.none()
 
 /**
  * The Bedlam mark's hold, from the Wisdom table (Mage p. 268): one scene at

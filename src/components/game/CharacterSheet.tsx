@@ -1,4 +1,4 @@
-import { Fragment, type CSSProperties, type ReactNode } from "react"
+import { Fragment, useState, type CSSProperties, type ReactNode } from "react"
 import { Option } from "effect"
 import {
   attainmentGates,
@@ -12,6 +12,7 @@ import {
 } from "#/domain/character"
 import type { HealthBox } from "#/domain/damage"
 import type { SceneId } from "#/domain/ids"
+import type { WisdomRank } from "#/domain/wisdom"
 import type { PoolComponentInput, PoolComponentType } from "#/domain/dice"
 import type { SheetMark } from "#/domain/flows/hand-edit"
 import {
@@ -105,6 +106,9 @@ export function CharacterSheet({
     pool?.isComponentActive(type, name) ?? false
 
   const interactive = pool !== undefined
+  // MAG-60: the lost Wisdom cell a derangement badge (or its ghost slot) is
+  // pointing at under the hover, lit on the meter above
+  const [litDot, setLitDot] = useState<WisdomRank | undefined>(undefined)
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-6">
@@ -185,15 +189,18 @@ export function CharacterSheet({
               <WisdomMeter
                 wisdom={character.wisdom}
                 onSet={onMarkSheet ? (wisdom) => void onMarkSheet({ wisdom }) : undefined}
+                lit={litDot}
               />
-              {/* Derangements (MAG-60): hung under the meter — a permanent
-                  one from the cell it cost, a Bedlam one from its clock;
-                  the player marks and puts them down here */}
+              {/* Derangements (MAG-60): a ghost slot beneath each lost cell
+                  is the door to a permanent one; the badges beneath carry
+                  the name, the clock and the ×; a badge's hover lights
+                  its cell above */}
               <DerangementShelf
                 held={character.derangementsHeld}
                 wisdom={character.wisdom}
                 activeSceneId={activeSceneId}
                 onMark={onMarkSheet ? (mark) => void onMarkSheet(mark) : undefined}
+                onPoint={setLitDot}
               />
             </Eyebrowed>
           </div>

@@ -425,10 +425,10 @@ function DressingRoom() {
       setHeldDerangements((prev) => prev.filter((d) => d.name !== mark.shedDerangement))
     }
     if (mark.derangement !== undefined) {
-      const { name, cause } = mark.derangement
+      const { name, dot } = mark.derangement
       const hold =
-        cause === "lostDot"
-          ? lostDotHold(wisdomNow)
+        dot !== undefined
+          ? lostDotHold(wisdomNow, dot)
           : bedlamHold(wisdomNow, Option.some(RIG_SCENE), Date.now())
       if (Option.isSome(hold)) {
         setHeldDerangements((prev) => [...prev.filter((d) => d.name !== name), { name, hold: hold.value }])
