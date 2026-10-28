@@ -4,11 +4,21 @@ import {
   DERANGEMENTS,
   DERANGEMENT_PAIRS,
   DerangementName,
+  bedlamHold,
   derangement,
+  derangementStands,
   findDerangement,
+  holdWords,
+  lostDotHold,
   partnerOf,
   severeFormOf,
+  shedBoughtBack,
+  standingDerangements,
+  weaknessWords,
+  type HeldDerangement,
+  type Moment,
 } from "../derangements"
+import { SceneId } from "../ids"
 
 describe("Derangement catalog", () => {
   it("is the book's nine pairs, eighteen names, mild first", () => {
@@ -63,5 +73,68 @@ describe("Derangement catalog", () => {
   it("an open-string lookup misses as a value", () => {
     expect(Option.isSome(findDerangement("Depression"))).toBe(true)
     expect(Option.isNone(findDerangement("Chronic Optimism"))).toBe(true)
+  })
+})
+
+describe("A held derangement (MAG-60)", () => {
+  const at = 1_000_000
+  const scene = Option.some(SceneId.make("scene-1"))
+  const phobia: HeldDerangement = { name: "Phobia", hold: { _tag: "lostDot", rank: 7 } }
+  const depression: HeldDerangement = { name: "Depression", hold: { _tag: "scene", sceneId: SceneId.make("scene-1") } }
+  const anxiety: HeldDerangement = { name: "Anxiety", hold: { _tag: "until", expiresAt: at + 1 } }
+
+  it("a permanent one stands while its dot is lost and is gone the moment it is bought back", () => {
+    expect(derangementStands(phobia, { wisdom: 6, sceneId: Option.none(), at })).toBe(true)
+    expect(derangementStands(phobia, { wisdom: 7, sceneId: Option.none(), at })).toBe(false)
+  })
+
+  it("a scene-bound one stands only while that Scene is the open one", () => {
+    expect(derangementStands(depression, { wisdom: 7, sceneId: scene, at })).toBe(true)
+    expect(derangementStands(depression, { wisdom: 7, sceneId: Option.some(SceneId.make("scene-2")), at })).toBe(false)
+    expect(derangementStands(depression, { wisdom: 7, sceneId: Option.none(), at })).toBe(false)
+  })
+
+  it("a clocked one stands until its expiry", () => {
+    expect(derangementStands(anxiety, { wisdom: 2, sceneId: Option.none(), at })).toBe(true)
+    expect(derangementStands(anxiety, { wisdom: 2, sceneId: Option.none(), at: at + 1 })).toBe(false)
+  })
+
+  it("standingDerangements keeps the marked order", () => {
+    const now: Moment = { wisdom: 6, sceneId: scene, at }
+    expect(standingDerangements([anxiety, phobia, depression], now).map((d) => d.name)).toEqual([
+      "Anxiety", "Phobia", "Depression",
+    ])
+  })
+
+  it("the permanent mark hangs from the dot one above Wisdom now; nothing at 10", () => {
+    expect(lostDotHold(6)).toEqual(Option.some({ _tag: "lostDot", rank: 7 }))
+    expect(lostDotHold(10)).toEqual(Option.none())
+  })
+
+  it("the Bedlam mark binds to the Scene at Wisdom 5+ and needs one open", () => {
+    expect(bedlamHold(7, scene, at)).toEqual(Option.some({ _tag: "scene", sceneId: "scene-1" }))
+    expect(bedlamHold(5, Option.none(), at)).toEqual(Option.none())
+  })
+
+  it("the Bedlam mark stamps the Wisdom table's clock at Wisdom 4 and below, scene or no scene", () => {
+    expect(bedlamHold(4, Option.none(), at)).toEqual(Option.some({ _tag: "until", expiresAt: at + 2 * 3_600_000 }))
+    expect(bedlamHold(2, scene, at)).toEqual(Option.some({ _tag: "until", expiresAt: at + 24 * 3_600_000 }))
+  })
+
+  it("buying a dot back sheds the derangement it carried, and only that", () => {
+    expect(shedBoughtBack([phobia, depression, anxiety], 7)).toEqual([depression, anxiety])
+    expect(shedBoughtBack([phobia, depression, anxiety], 6)).toEqual([phobia, depression, anxiety])
+  })
+
+  it("the Chronicle's words for each hold", () => {
+    expect(holdWords(phobia.hold, 6)).toBe("dot 7")
+    expect(holdWords(depression.hold, 7)).toBe("Bedlam, this scene")
+    expect(holdWords(anxiety.hold, 2)).toBe("Bedlam, 24 hours")
+  })
+
+  it("the weakness in a few words", () => {
+    expect(weaknessWords(derangement("Depression").bedlam)).toBe("−1 Death")
+    expect(weaknessWords(derangement("Hysteria").bedlam)).toBe("−2 vs the fear")
+    expect(weaknessWords(derangement("Fugue").bedlam)).toBe("")
   })
 })

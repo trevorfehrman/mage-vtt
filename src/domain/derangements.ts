@@ -1,5 +1,8 @@
-import { Array as Arr, Option, Schema } from "effect"
+import { Array as Arr, Match, Option, Schema } from "effect"
+import { SceneId } from "./ids"
+import { paradoxSpan, spanMillis, spanWords } from "./paradox-effects"
 import { ArcanumName } from "./trait-keys"
+import { WisdomRank } from "./wisdom"
 
 // The Derangement catalog (MAG-60): the nine mild/severe pairs of the World
 // of Darkness Rulebook pp. 96–100 and their Bedlam forms from Mage: The
@@ -259,3 +262,140 @@ export const severeFormOf = (name: DerangementName): Option.Option<DerangementNa
   Arr.findFirst(DERANGEMENT_PAIRS, ([mild]) => mild === name).pipe(
     Option.map(([, severe]) => severe),
   )
+
+// --- A derangement held on a sheet (MAG-60) ---
+//
+// The owner's model (2026-10-27): a derangement is not a line on the sheet
+// but a thing *hung* from what caused it. A permanent one hangs from the
+// Wisdom dot it cost and stands while that dot is lost — bought back, it is
+// simply no longer there, no second mark. A Bedlam one hangs from the
+// Paradox's clock: at Wisdom 5 and above the book says one scene, so it binds
+// to the Scene open when it was marked and ends when the Storyteller closes
+// it; at 4 and below the book gives hours and days, so the mark stamps an
+// expiry from the Wisdom table at that moment. Whether one still stands is
+// derived at read time from the sheet's Wisdom, the active Scene and the
+// clock — never a cleanup write.
+
+/** Why the mage holds it, and so when it ends. */
+export const DerangementHold = Schema.Union([
+  /** Permanent (Mage p. 79): the Wisdom dot it cost; stands while that dot is lost. */
+  Schema.TaggedStruct("lostDot", { rank: WisdomRank }),
+  /** Bedlam at Wisdom 5+ (Mage p. 268): bound to the Scene, over when it closes. */
+  Schema.TaggedStruct("scene", { sceneId: SceneId }),
+  /** Bedlam at Wisdom 4−: an expiry stamped from the Wisdom table. */
+  Schema.TaggedStruct("until", { expiresAt: Schema.Number }),
+])
+export type DerangementHold = typeof DerangementHold.Type
+
+export const HeldDerangement = Schema.Struct({
+  name: DerangementName,
+  hold: DerangementHold,
+})
+export type HeldDerangement = typeof HeldDerangement.Type
+
+/** What a held derangement is read against: the sheet's Wisdom now, the Scene open now, the clock now. */
+export const Moment = Schema.Struct({
+  wisdom: WisdomRank,
+  sceneId: Schema.Option(SceneId),
+  at: Schema.Number,
+})
+export type Moment = typeof Moment.Type
+
+/** Whether a held derangement still applies at this moment. */
+export const derangementStands = (held: HeldDerangement, now: Moment): boolean =>
+  Match.value(held.hold).pipe(
+    Match.tag("lostDot", (h) => now.wisdom < h.rank),
+    Match.tag("scene", (h) => Option.exists(now.sceneId, (id) => id === h.sceneId)),
+    Match.tag("until", (h) => now.at < h.expiresAt),
+    Match.exhaustive,
+  )
+
+/** The held derangements that still stand, in the order they were marked. */
+export const standingDerangements = (
+  held: ReadonlyArray<HeldDerangement>,
+  now: Moment,
+): ReadonlyArray<HeldDerangement> => held.filter((h) => derangementStands(h, now))
+
+/** Whether the hold is a Bedlam's — a scene or a clock, never a dot. */
+export const isBedlamHold = (hold: DerangementHold): boolean =>
+  Match.value(hold).pipe(
+    Match.tag("lostDot", () => false),
+    Match.tag("scene", "until", () => true),
+    Match.exhaustive,
+  )
+
+/** Why a derangement is being marked: the dot just lost, or a Bedlam Paradox. */
+export const DerangementCause = Schema.Literals(["lostDot", "bedlam"])
+export type DerangementCause = typeof DerangementCause.Type
+
+/**
+ * The permanent mark's hold: the dot most recently lost — one above the
+ * sheet's Wisdom now, since the player marks Wisdom down first and the
+ * derangement after (Mage p. 79: the lost dot and the derangement are one
+ * event). At 10 no dot is lost, so there is nothing to hang it from.
+ */
+export const lostDotHold = (wisdom: WisdomRank): Option.Option<DerangementHold> =>
+  Arr.findFirst(WisdomRank.literals, (rank) => rank === wisdom + 1).pipe(
+    Option.map((rank) => ({ _tag: "lostDot", rank }) as const),
+  )
+
+/**
+ * The Bedlam mark's hold, from the Wisdom table (Mage p. 268): one scene at
+ * Wisdom 5+ — so it needs a Scene open, and None says there is none — or a
+ * clock's worth below, stamped from `at`.
+ */
+export const bedlamHold = (
+  wisdom: WisdomRank,
+  sceneId: Option.Option<SceneId>,
+  at: number,
+): Option.Option<DerangementHold> =>
+  Option.match(spanMillis(paradoxSpan("bedlam", wisdom)), {
+    onNone: () => Option.map(sceneId, (id) => ({ _tag: "scene", sceneId: id }) as const),
+    onSome: (ms) => Option.some({ _tag: "until", expiresAt: at + ms } as const),
+  })
+
+/**
+ * The held list after a Wisdom mark: a permanent derangement whose dot is
+ * bought back leaves the sheet for good, so a later loss of the same dot
+ * starts clean (the derived rule alone would make the old affliction
+ * reappear with the new loss).
+ */
+export const shedBoughtBack = (
+  held: ReadonlyArray<HeldDerangement>,
+  wisdom: WisdomRank,
+): ReadonlyArray<HeldDerangement> =>
+  held.filter((h) =>
+    Match.value(h.hold).pipe(
+      Match.tag("lostDot", (d) => wisdom < d.rank),
+      Match.tag("scene", "until", () => true),
+      Match.exhaustive,
+    ),
+  )
+
+/** The hold in the Chronicle's words: "dot 7", "this scene", "24 hours". */
+export const holdWords = (hold: DerangementHold, wisdom: WisdomRank): string =>
+  Match.value(hold).pipe(
+    Match.tag("lostDot", (h) => `dot ${h.rank}`),
+    Match.tag("scene", () => "Bedlam, this scene"),
+    Match.tag("until", () => `Bedlam, ${spanWords(paradoxSpan("bedlam", wisdom))}`),
+    Match.exhaustive,
+  )
+
+/**
+ * The Bedlam weakness in a few words for the sheet (Mage pp. 269–271):
+ * "−1 Death", "−2 vs the fear". Empty where the form carries none.
+ */
+export const weaknessWords = (weakness: BedlamWeakness): string =>
+  Match.value(weakness).pipe(
+    Match.tag("arcanum", (w) => `−${w.penalty} ${arcanumWord(w.arcanum)}`),
+    Match.tag("fearedSource", (w) => `−${w.penalty} vs the fear`),
+    Match.tag("wisdomRolls", (w) => `−${w.penalty} Wisdom rolls`),
+    Match.tag("spellcastingElsewhere", (w) => `−${w.penalty} casting elsewhere`),
+    Match.tag("covertImprobable", () => "covert reads Improbable"),
+    Match.tag("cannotTargetAvoided", () => "can't target it"),
+    Match.tag("none", () => ""),
+    Match.exhaustive,
+  )
+
+const arcanumWord = (arcanum: ArcanumName): string =>
+  arcanum.charAt(0).toUpperCase() + arcanum.slice(1)

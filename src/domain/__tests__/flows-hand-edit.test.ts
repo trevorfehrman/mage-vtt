@@ -2,7 +2,7 @@ import { Effect } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import { healthBox } from "../damage"
 import { handEditSheet, markSheet, setMagicalTool } from "../flows/hand-edit"
-import { CharacterId, PlayerId, SessionId, SessionMemberId } from "../ids"
+import { CharacterId, PlayerId, SceneId, SessionId, SessionMemberId } from "../ids"
 import { Membership } from "../membership"
 import { failureTag, makeAldousSheet as makeSheet } from "../testing/fixtures"
 import { makeInMemory } from "../testing/in-memory"
@@ -774,6 +774,191 @@ describe("Flows.handEdit.setMagicalTool (issue #107)", () => {
       }).pipe(Effect.provide(store.layer))
 
       expect(store.sheets.get(CHARACTER)!.magicalTool).toBe(true)
+    }),
+  )
+})
+
+/**
+ * The derangement marks (MAG-60): the player takes one by its cause and the
+ * flow works out what it hangs from — the dot one above Wisdom now, or the
+ * Bedlam clock: the open Scene at Wisdom 5+, an expiry from the Wisdom
+ * table below. Shedding is the mark in reverse; a bought-back dot sheds
+ * its own.
+ */
+describe("Flows.handEdit.markSheet — derangements (MAG-60)", () => {
+  const openScene = {
+    id: SceneId.make("scene-1"),
+    sessionId: SESSION,
+    name: "The Archive",
+    status: "active" as const,
+    witnessCount: 0,
+    circumstances: [],
+    openedAt: 0,
+  }
+  const seedWith = (sheet: ReturnType<typeof makeSheet>, scenes: ReadonlyArray<typeof openScene> = []) =>
+    makeInMemory({
+      members: [aldous, briar, stella],
+      actor: { userId: PLAYER, isDev: false },
+      sheets: [sheet],
+      scenes,
+    })
+
+  it.effect("a permanent one hangs from the dot one above Wisdom now", () =>
+    Effect.gen(function* () {
+      const store = seedWith(makeSheet({ wisdom: 6 }))
+
+      yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        derangement: { name: "Phobia", cause: "lostDot" },
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.derangementsHeld).toEqual([
+        { name: "Phobia", hold: { _tag: "lostDot", rank: 7 } },
+      ])
+      expect(store.messages[0]!.text).toContain("Derangements none → Phobia (dot 7)")
+    }),
+  )
+
+  it.effect("at Wisdom 10 there is no lost dot to hang one from", () =>
+    Effect.gen(function* () {
+      const store = seedWith(makeSheet({ wisdom: 10 }))
+
+      const exit = yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        derangement: { name: "Phobia", cause: "lostDot" },
+      }).pipe(Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("InvalidHandEdit")
+      expect(store.sheetPatches).toHaveLength(0)
+    }),
+  )
+
+  it.effect("a Bedlam one at Wisdom 7 binds to the open Scene", () =>
+    Effect.gen(function* () {
+      const store = seedWith(makeSheet(), [openScene])
+
+      yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        derangement: { name: "Depression", cause: "bedlam" },
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.derangementsHeld).toEqual([
+        { name: "Depression", hold: { _tag: "scene", sceneId: "scene-1" } },
+      ])
+      expect(store.messages[0]!.text).toContain("Depression (Bedlam, this scene)")
+    }),
+  )
+
+  it.effect("a Bedlam one at Wisdom 7 with no Scene open is refused", () =>
+    Effect.gen(function* () {
+      const store = seedWith(makeSheet())
+
+      const exit = yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        derangement: { name: "Depression", cause: "bedlam" },
+      }).pipe(Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("InvalidHandEdit")
+    }),
+  )
+
+  it.effect("a Bedlam one at Wisdom 2 stamps the table's 24 hours from the clock", () =>
+    Effect.gen(function* () {
+      const store = seedWith(makeSheet({ wisdom: 2 }))
+
+      yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        derangement: { name: "Anxiety", cause: "bedlam" },
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.derangementsHeld).toEqual([
+        { name: "Anxiety", hold: { _tag: "until", expiresAt: 24 * 3_600_000 } },
+      ])
+      expect(store.messages[0]!.text).toContain("Anxiety (Bedlam, 24 hours)")
+    }),
+  )
+
+  it.effect("an unknown name doesn't fit the sheet", () =>
+    Effect.gen(function* () {
+      const store = seedWith(makeSheet())
+
+      const exit = yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        derangement: { name: "Ennui", cause: "lostDot" },
+      }).pipe(Effect.provide(store.layer), Effect.exit)
+
+      expect(failureTag(exit)).toBe("InvalidHandEdit")
+    }),
+  )
+
+  it.effect("shedding puts one down and leaves the rest; a name not held is refused", () =>
+    Effect.gen(function* () {
+      const held = [
+        { name: "Phobia" as const, hold: { _tag: "lostDot" as const, rank: 7 as const } },
+        { name: "Depression" as const, hold: { _tag: "scene" as const, sceneId: "scene-1" } },
+      ]
+      const store = seedWith(makeSheet({ wisdom: 6, derangements: held }), [openScene])
+
+      yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        shedDerangement: "Phobia",
+      }).pipe(Effect.provide(store.layer))
+      expect(store.sheets.get(CHARACTER)!.derangementsHeld.map((d) => d.name)).toEqual(["Depression"])
+      expect(store.messages[0]!.text).toContain("Derangements Phobia (dot 7), Depression (Bedlam, this scene) → Depression (Bedlam, this scene)")
+
+      const exit = yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        shedDerangement: "Phobia",
+      }).pipe(Effect.provide(store.layer), Effect.exit)
+      expect(failureTag(exit)).toBe("InvalidHandEdit")
+    }),
+  )
+
+  it.effect("a mark writes the list whole: what no longer stands leaves the row with it", () =>
+    Effect.gen(function* () {
+      const held = [
+        { name: "Depression" as const, hold: { _tag: "scene" as const, sceneId: "scene-gone" } },
+        { name: "Anxiety" as const, hold: { _tag: "until" as const, expiresAt: 0 } },
+      ]
+      const store = seedWith(makeSheet({ wisdom: 6, derangements: held }), [openScene])
+
+      yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        derangement: { name: "Phobia", cause: "lostDot" },
+      }).pipe(Effect.provide(store.layer))
+
+      expect(store.sheets.get(CHARACTER)!.derangementsHeld).toEqual([
+        { name: "Phobia", hold: { _tag: "lostDot", rank: 7 } },
+      ])
+    }),
+  )
+
+  it.effect("buying the dot back sheds the derangement it carried", () =>
+    Effect.gen(function* () {
+      const held = [
+        { name: "Phobia" as const, hold: { _tag: "lostDot" as const, rank: 7 as const } },
+        { name: "Suspicion" as const, hold: { _tag: "lostDot" as const, rank: 6 as const } },
+      ]
+      const store = seedWith(makeSheet({ wisdom: 5, derangements: held }))
+
+      yield* markSheet({ sessionId: SESSION, characterId: CHARACTER, wisdom: 6 }).pipe(
+        Effect.provide(store.layer),
+      )
+
+      expect(store.sheets.get(CHARACTER)!.derangementsHeld).toEqual([
+        { name: "Phobia", hold: { _tag: "lostDot", rank: 7 } },
+      ])
+      expect(store.messages[0]!.text).toContain("Wisdom 5 → 6, Derangements Phobia (dot 7), Suspicion (dot 6) → Phobia (dot 7)")
+      expect(store.sheetPatches[0]!.patch.derangements).toHaveLength(1)
     }),
   )
 })

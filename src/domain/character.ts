@@ -17,6 +17,7 @@ import { STARTING_WISDOM, WisdomRank } from "./wisdom"
 import { ArcanumName, SkillKey } from "./trait-keys"
 import { woundPenalty } from "./health"
 import { bonusTo, HeldMerit, purseOf, unlocks } from "./merits"
+import { HeldDerangement } from "./derangements"
 
 // The key vocabularies live in trait-keys.ts (a leaf the catalogs share);
 // the sheet's callers keep importing them from here.
@@ -432,6 +433,10 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   // full. Capacity is shape — twice the Merit's dots — so the column is
   // only ever read clamped to it.
   destinyCurrent: Schema.optionalKey(Destiny),
+  // Derangements held (MAG-60): each hung from what caused it — a lost
+  // Wisdom dot, a Scene, a clock. Absent means none. Whether one still
+  // stands is read against the moment, never cleaned up.
+  derangements: Schema.optionalKey(Schema.Array(HeldDerangement)),
   // The record's words (MAG-61): the nimbus sentence, the Legacy, the cabal
   // and consilium names. None change a roll; all absent until written.
   nimbus: Schema.optionalKey(Schema.String),
@@ -462,6 +467,11 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   /** Merits (MAG-59), absent-column-safe. */
   get meritsHeld(): ReadonlyArray<HeldMerit> {
     return this.merits ?? []
+  }
+
+  /** Derangements held (MAG-60), absent-column-safe — the stored list; read it against a `Moment` for what stands. */
+  get derangementsHeld(): ReadonlyArray<HeldDerangement> {
+    return this.derangements ?? []
   }
 
   /** The Destiny purse's capacity (MAG-67): twice the dots, 0 without the Merit. */

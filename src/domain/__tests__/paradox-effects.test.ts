@@ -1,3 +1,4 @@
+import { Option } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import {
   anomalyArea,
@@ -6,6 +7,7 @@ import {
   havocWords,
   paradoxBacklash,
   paradoxSpan,
+  spanMillis,
   spanWords,
 } from "../paradox-effects"
 import { WisdomRank } from "../wisdom"
@@ -90,5 +92,14 @@ describe("Paradox Effects", () => {
   it("anomaly area = 20 yards per arcanum dot", () => {
     expect(anomalyArea(3)).toBe(60)
     expect(anomalyArea(5)).toBe(100)
+  })
+})
+
+describe("spanMillis (MAG-60)", () => {
+  it("a scene has no clock; the rest are the book's hours and days", () => {
+    expect(spanMillis("scene")).toEqual(Option.none())
+    expect(spanMillis("twoHours")).toEqual(Option.some(2 * 3_600_000))
+    expect(spanMillis("day")).toEqual(Option.some(24 * 3_600_000))
+    expect(spanMillis("month")).toEqual(Option.some(30 * 24 * 3_600_000))
   })
 })

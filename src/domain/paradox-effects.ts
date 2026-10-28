@@ -1,4 +1,4 @@
-import { Match, Schema } from "effect"
+import { Match, Option, Schema } from "effect"
 import { EXCEPTIONAL_THRESHOLD } from "./dice"
 import { WisdomRank } from "./wisdom"
 
@@ -82,6 +82,27 @@ export const spanWords = (span: ParadoxSpan): string =>
     Match.when("month", () => "one month"),
     Match.exhaustive,
   )
+
+/**
+ * The span as a clock reads it, in milliseconds — for a mark that must stamp
+ * an expiry (a Bedlam derangement at Wisdom 4 and below, MAG-60). A scene
+ * has no clock, so it is None: whatever is bound to it ends when the
+ * Storyteller closes the Scene, not when a timer runs out. A month is the
+ * book's "one month": thirty days.
+ */
+export const spanMillis = (span: ParadoxSpan): Option.Option<number> =>
+  Match.value(span).pipe(
+    Match.when("scene", () => Option.none()),
+    Match.when("twoHours", () => Option.some(2 * HOUR)),
+    Match.when("twelveHours", () => Option.some(12 * HOUR)),
+    Match.when("day", () => Option.some(24 * HOUR)),
+    Match.when("twoDays", () => Option.some(48 * HOUR)),
+    Match.when("week", () => Option.some(7 * 24 * HOUR)),
+    Match.when("month", () => Option.some(30 * 24 * HOUR)),
+    Match.exhaustive,
+  )
+
+const HOUR = 60 * 60 * 1000
 
 // --- Havoc: the Wisdom roll (page 268) ---
 

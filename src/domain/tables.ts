@@ -167,6 +167,22 @@ export const CharacterSeedData = Schema.Struct({
   ),
   // The Destiny purse (MAG-67): dice left this chapter; absent means full.
   destinyCurrent: Schema.optionalKey(Schema.Number),
+  // Derangements held (MAG-60): the name and what it hangs from — the
+  // Wisdom dot it cost, the Scene it is bound to, or the clock it runs out
+  // on. Raw primitives (ADR-0011); the tagged vocabulary decodes in
+  // `derangements.ts`. Absent means none.
+  derangements: Schema.optionalKey(
+    Schema.Array(
+      Schema.Struct({
+        name: Schema.String,
+        hold: Schema.Union([
+          Schema.Struct({ _tag: Schema.String, rank: Schema.Number }),
+          Schema.Struct({ _tag: Schema.String, sceneId: Schema.String }),
+          Schema.Struct({ _tag: Schema.String, expiresAt: Schema.Number }),
+        ]),
+      }),
+    ),
+  ),
   nimbus: Schema.optionalKey(Schema.String),
   legacy: Schema.optionalKey(
     Schema.Struct({ name: Schema.String, attainments: Schema.Array(Schema.String) }),

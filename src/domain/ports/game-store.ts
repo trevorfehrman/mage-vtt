@@ -18,6 +18,7 @@ import { ParadoxPoolModifier, ParadoxSeverity } from "../paradox"
 import { ParadoxSpan } from "../paradox-effects"
 import { Membership } from "../membership"
 import type { NotAMember } from "../authz"
+import { HeldDerangement } from "../derangements"
 import { Destiny, Experience, Mana, Willpower } from "../quantities"
 import type { SpellRef } from "../rote-cast"
 import type { RoteArcanumName } from "../rote-pool"
@@ -74,6 +75,9 @@ export const SheetPatch = Schema.Struct({
   wisdom: Schema.optionalKey(WisdomRank),
   /** Unspent experience (MAG-57): a record the Storyteller keeps through the hand-edit door. */
   experienceUnspent: Schema.optionalKey(Experience),
+  /** Derangements held (MAG-60): the whole list as it should now read —
+   * replace, not merge — marked by the player, shed by a bought-back dot. */
+  derangements: Schema.optionalKey(Schema.Array(HeldDerangement)),
 })
 export type SheetPatch = typeof SheetPatch.Type
 
