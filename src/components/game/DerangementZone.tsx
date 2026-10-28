@@ -104,114 +104,117 @@ export function DerangementZone({
   const shed = (name: DerangementName) => onMark?.({ shedDerangement: name })
 
   return (
-    <Collapsible
-      open={open}
-      onOpenChange={setOpen}
-      className="mv-burden grid"
-      style={{ marginInline: -PLATE_PAD, paddingInline: PLATE_PAD, ["--burden-ink" as string]: zoneInk }}
-      data-burdened={burdened ? "" : undefined}
-    >
-      {burdened && <div key={standing.map((d) => d.name).join("·")} className="mv-burden-fog" aria-hidden />}
-      {/* the header strip: always there; a click anywhere not on a button opens the picker */}
-      <div
-        className="flex items-start gap-5 py-3"
-        style={{ cursor: onMark ? "pointer" : undefined }}
-        onClick={(e) => {
-          if (onMark && !(e.target as HTMLElement).closest("button")) setOpen((o) => !o)
-        }}
+    <div className="grid content-start gap-1.5">
+      {/* the heading above the band, on Health's and Wisdom's edge (owner, 2026-10-28: "put the derangements title above the zone") */}
+      <span className="mv-eyebrow" style={{ color: open ? "var(--ink)" : undefined }}>
+        Derangements
+      </span>
+      <Collapsible
+        open={open}
+        onOpenChange={setOpen}
+        className="mv-burden grid"
+        style={{ marginInline: -PLATE_PAD, paddingInline: PLATE_PAD, ["--burden-ink" as string]: zoneInk }}
+        data-burdened={burdened ? "" : undefined}
       >
-        <span className="mv-eyebrow shrink-0" style={{ paddingTop: 4, color: open ? "var(--ink)" : undefined }}>
-          Derangements
-        </span>
-        <div className="flex flex-wrap items-stretch gap-2">
-          {standing.map((d) => (
-            <Mark key={d.name} held={d} at={at} wisdom={wisdom} onShed={onMark ? () => shed(d.name) : undefined} />
-          ))}
-          {onMark && (
-            <CollapsibleTrigger
-              aria-label={open ? "Close the derangements" : "Take on a derangement"}
-              className="mv-key flex items-center gap-2 rounded-[3px] px-3 transition-colors"
-              style={{
-                minHeight: 30,
-                border: `1px dashed color-mix(in srgb, ${open ? "var(--ink)" : "var(--dim)"} 55%, transparent)`,
-                color: open ? "var(--ink)" : "var(--dim)",
-              }}
-            >
-              <DerangementGlyph size={12} />
-              {!burdened && <span className="mv-data text-[11px] leading-none">unburdened</span>}
-              <ChevronDown
-                size={10}
-                strokeWidth={1.5}
-                aria-hidden
-                style={{ transition: "transform 200ms", transform: open ? "rotate(180deg)" : "none" }}
-              />
-            </CollapsibleTrigger>
-          )}
-        </div>
-      </div>
-      <CollapsibleContent forceMount>
-        <Fold open={open}>
-          <div className="grid gap-3 pb-4">
-            <div className="flex items-center gap-4">
-              <span className="mv-eyebrow">take as</span>
-              {[
-                ["lasting", false],
-                ["Bedlam", true],
-              ].map(([word, bedlam]) => (
-                <button
-                  key={String(word)}
-                  type="button"
-                  aria-pressed={asBedlam === bedlam}
-                  onClick={() => setAsBedlam(bedlam === true)}
-                  className="mv-key mv-eyebrow transition-colors"
-                  style={{
-                    color: asBedlam === bedlam ? inkOf(bedlam === true) : undefined,
-                    boxShadow: asBedlam === bedlam ? `0 1px 0 ${inkOf(bedlam === true)}` : undefined,
-                  }}
-                >
-                  {word}
-                </button>
-              ))}
-              {gate !== null && (
-                <span className="mv-eyebrow" style={{ color: "var(--paradox)" }}>
-                  · {gate}
-                </span>
-              )}
-              <button
-                type="button"
-                aria-label="Close the derangements"
-                onClick={() => setOpen(false)}
-                className="mv-key mv-data ml-auto text-[11px] leading-none"
-                style={{ color: "var(--dim)" }}
+        {burdened && <div key={standing.map((d) => d.name).join("·")} className="mv-burden-fog" aria-hidden />}
+        {/* the header strip: always there; a click anywhere not on a button opens the picker */}
+        <div
+          className="py-3"
+          style={{ cursor: onMark ? "pointer" : undefined }}
+          onClick={(e) => {
+            if (onMark && !(e.target as HTMLElement).closest("button")) setOpen((o) => !o)
+          }}
+        >
+          <div className="flex flex-wrap items-stretch gap-2">
+            {standing.map((d) => (
+              <Mark key={d.name} held={d} at={at} wisdom={wisdom} onShed={onMark ? () => shed(d.name) : undefined} />
+            ))}
+            {onMark && (
+              <CollapsibleTrigger
+                aria-label={open ? "Close the derangements" : "Take on a derangement"}
+                className="mv-key flex items-center gap-2 rounded-[3px] px-3 transition-colors"
+                style={{
+                  minHeight: 30,
+                  border: `1px dashed color-mix(in srgb, ${open ? "var(--ink)" : "var(--dim)"} 55%, transparent)`,
+                  color: open ? "var(--ink)" : "var(--dim)",
+                }}
               >
-                ×
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-2" onMouseLeave={() => setFocus(undefined)}>
-              {DERANGEMENT_PAIRS.map(([mild, severe]) => (
-                <PairCard
-                  key={mild}
-                  mild={mild}
-                  severe={severe}
-                  depth={pairDepth(standing, mild)}
-                  ink={inkOf(asBedlam)}
-                  gated={gate !== null}
-                  focused={focus === mild}
-                  onFocus={() => setFocus(mild)}
-                  onTake={onMark ? take : undefined}
-                  onShed={onMark ? shed : undefined}
+                <DerangementGlyph size={12} />
+                {!burdened && <span className="mv-data text-[11px] leading-none">unburdened</span>}
+                <ChevronDown
+                  size={10}
+                  strokeWidth={1.5}
+                  aria-hidden
+                  style={{ transition: "transform 200ms", transform: open ? "rotate(180deg)" : "none" }}
                 />
-              ))}
-            </div>
-            <Detail
-              focus={focus}
-              standing={standing}
-              bedlam={asBedlam}
-            />
+              </CollapsibleTrigger>
+            )}
           </div>
-        </Fold>
-      </CollapsibleContent>
-    </Collapsible>
+        </div>
+        <CollapsibleContent forceMount>
+          <Fold open={open}>
+            <div className="grid gap-3 pb-4">
+              <div className="flex items-center gap-4">
+                <span className="mv-eyebrow">take as</span>
+                {[
+                  ["lasting", false],
+                  ["Bedlam", true],
+                ].map(([word, bedlam]) => (
+                  <button
+                    key={String(word)}
+                    type="button"
+                    aria-pressed={asBedlam === bedlam}
+                    onClick={() => setAsBedlam(bedlam === true)}
+                    className="mv-key mv-eyebrow transition-colors"
+                    style={{
+                      color: asBedlam === bedlam ? inkOf(bedlam === true) : undefined,
+                      boxShadow: asBedlam === bedlam ? `0 1px 0 ${inkOf(bedlam === true)}` : undefined,
+                    }}
+                  >
+                    {word}
+                  </button>
+                ))}
+                {gate !== null && (
+                  <span className="mv-eyebrow" style={{ color: "var(--paradox)" }}>
+                    · {gate}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  aria-label="Close the derangements"
+                  onClick={() => setOpen(false)}
+                  className="mv-key mv-data ml-auto text-[11px] leading-none"
+                  style={{ color: "var(--dim)" }}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2" onMouseLeave={() => setFocus(undefined)}>
+                {DERANGEMENT_PAIRS.map(([mild, severe]) => (
+                  <PairCard
+                    key={mild}
+                    mild={mild}
+                    severe={severe}
+                    depth={pairDepth(standing, mild)}
+                    ink={inkOf(asBedlam)}
+                    gated={gate !== null}
+                    focused={focus === mild}
+                    onFocus={() => setFocus(mild)}
+                    onTake={onMark ? take : undefined}
+                    onShed={onMark ? shed : undefined}
+                  />
+                ))}
+              </div>
+              <Detail
+                focus={focus}
+                standing={standing}
+                bedlam={asBedlam}
+              />
+            </div>
+          </Fold>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
   )
 }
 
