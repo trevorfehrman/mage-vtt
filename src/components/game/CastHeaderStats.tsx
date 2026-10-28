@@ -43,8 +43,8 @@ export function PoolNumerals({
 }: typeof PoolNumeralsProps.Type & PoolNumeralsHandlers) {
   return (
     <TooltipProvider>
-      <span className="mv-data flex items-start gap-3 leading-none" style={{ fontSize: size }}>
-        <Pool
+      <span className="mv-data flex items-baseline gap-3 leading-none" style={{ fontSize: size }}>
+        <PurseNumeral
           label="Willpower"
           color="var(--will)"
           current={sheet.willpowerCurrent}
@@ -52,7 +52,7 @@ export function PoolNumerals({
           pending={pendingWillpower}
           onNudge={onMarkPurse ? (next) => onMarkPurse("willpower", next) : undefined}
         />
-        <Pool
+        <PurseNumeral
           label="Mana"
           color="var(--mana)"
           current={sheet.manaCurrent}
@@ -86,7 +86,7 @@ export function PoolNumerals({
   )
 }
 
-const PoolProps = Schema.Struct({
+const PurseNumeralProps = Schema.Struct({
   label: Schema.String,
   color: Schema.String,
   current: Schema.Number,
@@ -94,34 +94,38 @@ const PoolProps = Schema.Struct({
   pending: Schema.Number,
 })
 
-function Pool({
+/**
+ * One purse as a numeral: its lozenge in the purse's color, what is left
+ * over what it holds; a pending spend shows what would be left, in ember.
+ * With `onNudge` (your own sheet, MAG-67) a thin + and − sit over the
+ * number's margins — the number itself never moves.
+ */
+export function PurseNumeral({
   label,
   color,
   current,
   max,
   pending,
   onNudge,
-}: typeof PoolProps.Type & { onNudge?: ((next: number) => void) | undefined }) {
+}: typeof PurseNumeralProps.Type & { onNudge?: ((next: number) => void) | undefined }) {
   // A pending spend shows what would be left, in ember — no arrow.
   const shown = Math.max(0, current - pending)
   const name = pending > 0 ? `${label} · ${pending} pending` : label
   return (
-    <span className="grid justify-items-start gap-1">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span tabIndex={0} aria-label={name} className="flex items-baseline gap-1">
-            <span style={{ color }}><Lozenge /></span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span tabIndex={0} aria-label={name} className="flex items-baseline gap-1">
+          <span style={{ color }}><Lozenge /></span>
+          <Nudge label={label} current={current} max={max} onNudge={onNudge}>
             <span style={{ color: pending > 0 ? "var(--ember)" : "var(--ink)" }}>{shown}</span>
             <span style={{ color: "var(--dim)" }}>/{max}</span>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={4}>
-          {name}
-        </TooltipContent>
-      </Tooltip>
-      {/* the purse mark (MAG-67): − + beneath, on your own sheet */}
-      {onNudge !== undefined && <Nudge label={label} current={current} max={max} onNudge={onNudge} />}
-    </span>
+          </Nudge>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={4}>
+        {name}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

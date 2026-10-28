@@ -37,24 +37,3 @@ export const PurseLevel = Schema.Struct({
   capacity: Schema.Number,
 })
 export type PurseLevel = typeof PurseLevel.Type
-
-/** The purse as the door shows it: its level, and what is staged into this roll. */
-export const Purse = Schema.Struct({
-  ...PurseLevel.fields,
-  staged: Schema.Number,
-})
-export type Purse = typeof Purse.Type
-
-export const PipState = Schema.Literals(["purse", "staged", "gone"])
-export type PipState = typeof PipState.Type
-
-/**
- * The pips left to right (owner, 2026-10-28: one job each — the pips only
- * show): staged into this roll (ember, from the left, as the key turns),
- * then what is left in the purse (verdigris ring), then gone this chapter
- * (dim, hollow).
- */
-export const pipStates = (purse: Purse): ReadonlyArray<PipState> =>
-  Array.from({ length: purse.capacity }, (_, i) =>
-    i < purse.staged ? "staged" : i < purse.current ? "purse" : "gone",
-  )

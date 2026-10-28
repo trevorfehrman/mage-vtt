@@ -51,8 +51,8 @@ import type { SheetMark } from "#/domain/flows/hand-edit"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 import { DotRating } from "./DotRating"
 import { Keyhole, Mark } from "./merit-marks"
-import { periodic, pipStates, ringName, wrapIndex, type Purse, type PurseLevel } from "./merit-ring-look"
-import { Nudge } from "./Nudge"
+import { periodic, ringName, wrapIndex, type PurseLevel } from "./merit-ring-look"
+import { PurseNumeral } from "./CastHeaderStats"
 
 export type Pool = ReturnType<typeof useDicePool>
 
@@ -87,8 +87,6 @@ export const setStaged = (hand: Hand, h: HeldMerit, dice: number): void => {
   if (idx >= 0) pool.removeComponent(idx)
   if (dice > 0) pool.addComponent(purseComponent(h, dice))
 }
-
-const purseOfHand = (hand: Hand): Purse => ({ ...hand.destiny, staged: stagedOf(hand) })
 
 /** Whether the key is turned: its dice are in the pool, or a pip of its purse is staged. */
 export const litOf = (hand: Hand, h: HeldMerit): boolean =>
@@ -192,44 +190,28 @@ function DoorPage({ h, lit }: { h: HeldMerit; lit: boolean }) {
   )
 }
 
-/** The purse's pips (MAG-67), three states in one row: staged into this
- * roll (ember, from the left — the key's turn stages them), left in the
- * purse (verdigris ring), gone this chapter (dim, hollow). The pips only
- * show; the small − + beneath them is the player's mark on what the purse
- * holds (a refill at the chapter, the bane's cost), present on their own
- * sheet. */
-function Pips({ hand }: { hand: Hand }) {
-  const states = pipStates(purseOfHand(hand))
+/** Destiny's purse at the door's foot (MAG-67; owner 2026-10-28: "we just
+ * can't use pips for the points in the purse"): a numeral in the header's
+ * grammar — what is left over what it holds, the dice staged into this
+ * roll shown as a pending spend in ember — with the + above and − below
+ * marking the purse's level (a refill at the chapter, the bane's cost) on
+ * your own sheet. The dots at the door's top right are the Merit's rating,
+ * as on every door; the purse is this number. */
+function PurseFoot({ hand }: { hand: Hand }) {
   return (
-    <span className="grid justify-items-end gap-1">
-      <span className="flex gap-1 py-1">
-        {states.map((state, i) => (
-          <span
-            key={i}
-            aria-hidden
-            className="inline-block size-[10px] rounded-full"
-            style={{
-              background: state === "staged" ? "var(--ember)" : "transparent",
-              boxShadow:
-                state === "staged"
-                  ? "0 0 6px var(--ember-glow)"
-                  : state === "purse"
-                    ? "inset 0 0 0 1px var(--accent)"
-                    : "inset 0 0 0 1px var(--line)",
-              opacity: state === "gone" ? 0.7 : 1,
-              transition: "background 0.2s, box-shadow 0.2s",
-            }}
-          />
-        ))}
-      </span>
-      {hand.onMarkSheet !== undefined && (
-        <Nudge
-          label="Destiny"
-          current={hand.destiny.current}
-          max={hand.destiny.capacity}
-          onNudge={(next) => void hand.onMarkSheet?.({ destinyCurrent: Destiny.make(next) })}
-        />
-      )}
+    <span className="mv-data text-[13px] leading-none" style={{ paddingBlock: 12 }}>
+      <PurseNumeral
+        label="Destiny"
+        color="var(--accent)"
+        current={hand.destiny.current}
+        max={hand.destiny.capacity}
+        pending={stagedOf(hand)}
+        onNudge={
+          hand.onMarkSheet !== undefined
+            ? (next) => void hand.onMarkSheet?.({ destinyCurrent: Destiny.make(next) })
+            : undefined
+        }
+      />
     </span>
   )
 }
@@ -255,7 +237,7 @@ function DoorFoot({ h, hand }: { h: HeldMerit; hand: Hand }) {
         </button>
       )
     }),
-    Match.tag("purse", () => <Pips hand={hand} />),
+    Match.tag("purse", () => <PurseFoot hand={hand} />),
     Match.tag("derived", (m) => (
       <span
         className="mv-data rounded-[3px] px-2.5 py-1.5 text-[12px]"
