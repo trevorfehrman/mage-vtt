@@ -137,6 +137,25 @@ export const MARKS: Partial<Record<MeritName, ReactNode>> = {
   Language: <><path d="M4.5 12 C7 7 10 7 12 12 S17 17 19.5 12" /><circle cx="4" cy="12" r="1.3" fill="currentColor" stroke="none" /></>,
   // the still pool — a round undisturbed over its waterline, the mind at its center
   "Meditative Mind": <><circle cx="12" cy="10" r="6" /><path d="M4 20 H20" /><circle cx="12" cy="10" r="1.3" fill="currentColor" stroke="none" /></>,
+  // ── Social (MAG-68, batch 2) ──
+  // the two links — a chain of two, held together
+  Allies: <><path d="M9.5 8.5 A3.5 3.5 0 1 0 9.5 15.5" /><path d="M9.5 8.5 H11 A3.5 3.5 0 0 1 11 15.5 H9.5" /><path d="M14.5 8.5 A3.5 3.5 0 1 1 14.5 15.5" /><path d="M14.5 8.5 H13 A3.5 3.5 0 0 0 13 15.5 H14.5" /></>,
+  // the velvet rope — two posts and the rope that drops for you
+  Barfly: <><path d="M5 20 V9" /><path d="M19 20 V9" /><path d="M5 10.5 Q12 16.5 19 10.5" /><circle cx="5" cy="7.4" r="1.2" fill="currentColor" stroke="none" /><circle cx="19" cy="7.4" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the signature — a name everyone knows, in one flourish
+  Fame: <><path d="M3.5 16 C5 8 9 8 9 13 S12.5 18 13.5 11 S18 6 18.5 12 S21 16 20.5 14" /><circle cx="20.5" cy="17.5" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the stair — each step lifts the next (the rays were Holistic's sprig again)
+  Inspiring: <><path d="M3.5 20 H8.5 V15 H13.5 V10 H18.5 V5" /><circle cx="20.5" cy="3.6" r="1.3" fill="currentColor" stroke="none" /></>,
+  // the crook and the stave — the shepherd's guide beside the one it guides
+  // (two staves with bindis were two of Faith's candles)
+  Mentor: <><path d="M8 20.5 V7 A2.6 2.6 0 0 1 13.2 7" /><path d="M16.5 20.5 V12" /><circle cx="16.5" cy="9.8" r="1.3" fill="currentColor" stroke="none" /></>,
+  // the tally — four strokes and the fifth across: wealth counted
+  Resources: <><path d="M6 6 V18 M9.5 6 V18 M13 6 V18 M16.5 6 V18" /><path d="M4 16.5 L18.5 7.5" /><circle cx="20" cy="6.5" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the one who follows — the mage solid, the follower a step behind
+  // (a ring on a line was a magnifier, or Obrimos' key)
+  Retainer: <><circle cx="8.5" cy="8.5" r="1.8" fill="currentColor" stroke="none" /><circle cx="14.5" cy="14.5" r="4" /></>,
+  // the drawn gaze — every line in the room comes to one point
+  "Striking Looks": <><path d="M4 4 L9 9 M20 4 L15 9 M4 20 L9 15 M20 20 L15 15" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /></>,
   // ── Awakened and others ──
   // the Atlantean tongue — a tongue of flame rising from parted lips
   "High Speech": <><path d="M6 15 Q12 20 18 15" /><path d="M12 14.5 C9.8 11.5 13.4 9.4 12 5.6" /><circle cx="12" cy="4" r="1.2" fill="currentColor" stroke="none" /></>,
