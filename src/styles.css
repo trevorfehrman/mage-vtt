@@ -528,6 +528,30 @@ pre code {
 .mv-sheet-section {
   will-change: transform;
 }
+/* The Derangements accordion's collapsed strip (MAG-60; owner 2026-10-28:
+ * "we need hover over behavior on the collapsed state"): pointing anywhere
+ * at the strip brightens the heading and the sentence to ink; open, they
+ * stay there. A chip raises its border and tint on its own hover. */
+.mv-derange-head .mv-eyebrow,
+.mv-derange-head .mv-derange-sentence {
+  color: var(--dim);
+  transition: color 160ms;
+}
+.mv-derange-head:hover .mv-eyebrow,
+.mv-derange-head:hover .mv-derange-sentence,
+.mv-derange-open .mv-eyebrow,
+.mv-derange-open .mv-derange-sentence {
+  color: var(--ink);
+}
+.mv-derange-chip {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-ink) 45%, transparent);
+  background: color-mix(in srgb, var(--chip-ink) 8%, transparent);
+}
+.mv-derange-chip:hover {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-ink) 85%, transparent);
+  background: color-mix(in srgb, var(--chip-ink) 16%, transparent);
+}
+
 /* The meteor: a dash segment racing the line entry → exit (JS-driven CSS
  * transitions on concrete px values — see TraitSky's MeteorLine). */
 /* stroke paint comes from the per-meteor flight-path gradient (inline) */
