@@ -3,23 +3,18 @@
 // The cheap viewing rig for the live Cast card: every rung of the ladder
 // (7 live + cancelled/voided) × every seat (caster / storyteller / bystander),
 // flipped through in seconds instead of a two-account Convex playthrough.
-// The #102 grammar audition adds a third knob (?grammar=): three success-ink
-// candidates — A merge (success IS verdigris), B quantity (no status hue;
-// count, weight, and pips carry it), C mint (a second green at hard tonal
-// distance). The settled constitution — danger slot, Mana blue + glyph,
-// neutral dice counts — renders identically in all three; the knob only
-// swaps the --rail-success alias. The ROOT VERDICT IS PINNED (owner walk
-// 2026-07-18): the rail's structure changes too much under the campaign to
-// judge hues on this surface; the knob and the two-colored rungs stay as
-// audition material for the re-walk after the rebuild. Ember commit buttons
-// were auditioned here and rescinded — triggers stay verdigris mv-roll.
+// Knobs that have served (the #102 success-ink grammar, the MAG-49 hurt
+// caster, the MAG-53 +chat / +whisper lines) came out 2026-10-28 (owner:
+// "clean up this dressing room picker and remove the non relevant stuff");
+// what stands is what is still being judged: the rung, the seat, Wisdom,
+// and the derangement ink (?ink=) auditioning `--derange`'s value.
 // The REAL app shell (SessionLayout), the REAL feed neighbors (MessageItem /
 // RollItem), and the REAL CastCard — fed hand-built fake Cast documents via
 // URL knobs (?rung=…&seat=…), reload-stable and shareable. Each seat mounts
 // the card where the session does (MAG-48): while live it stands in the
 // working zone on every seat, above the working slot (MAG-53); the feed
 // once it is a record. The slot is the real one — the message box sends
-// locally, and +chat / +whisper feed it lines to count.
+// locally.
 //
 // Unlike the census-era prototypes in this directory, this rig imports app
 // code ON PURPOSE — that is its whole job (map #95 reaffirmed ADR-0021's
@@ -79,26 +74,27 @@ type RigRung = (typeof RUNG_ORDER)[number]
 const SEAT_ORDER = ["caster", "storyteller", "bystander"] as const
 type RigSeat = (typeof SEAT_ORDER)[number]
 
-// The #102 root candidates: each is ONLY an alias swap on --rail-success —
-// the settled grammar (danger, Mana, turns, pending) never varies.
-const GRAMMAR_ORDER = ["merge", "quantity", "mint"] as const
-type RigGrammar = (typeof GRAMMAR_ORDER)[number]
+// MAG-60: the derangement ink audition (owner, 2026-10-28: "what can we do
+// as a different color for derangements … the orange pops really well so
+// i'm not for sure we should abandon it but what else could we do?") — each
+// is ONLY a value swap on `--derange`; nothing else moves.
+const INK_ORDER = ["absinthe", "sulfur", "wine", "bone", "ember"] as const
+type RigInk = (typeof INK_ORDER)[number]
 
-const GRAMMARS: Record<
-  RigGrammar,
-  { label: string; vars: Record<string, string> }
-> = {
-  merge: { label: "A · merge", vars: {} }, // styles.css default: success IS verdigris
-  quantity: { label: "B · quantity", vars: { "--rail-success": "var(--ink)" } },
-  mint: { label: "C · mint", vars: { "--rail-success": "#93e6bf" } },
+const INKS: Record<RigInk, { hex: string; title: string }> = {
+  absinthe: { hex: "#aebb4d", title: "the wormwood glass — madness's old color (styles.css default)" },
+  sulfur: { hex: "#cfae4a", title: "jaundice, old paper — the warmest without touching the ember" },
+  wine: { hex: "#b05477", title: "venous, interior — between Paradox red and Will's violet" },
+  bone: { hex: "#cfc5a5", title: "ghostly, quiet — near the plain ink" },
+  ember: { hex: "#e29659", title: "the hand's orange — pops, but means armed and reversible elsewhere" },
 }
 
 const isRung = (v: unknown): v is RigRung =>
   typeof v === "string" && (RUNG_ORDER as ReadonlyArray<string>).includes(v)
 const isSeat = (v: unknown): v is RigSeat =>
   typeof v === "string" && (SEAT_ORDER as ReadonlyArray<string>).includes(v)
-const isGrammar = (v: unknown): v is RigGrammar =>
-  typeof v === "string" && (GRAMMAR_ORDER as ReadonlyArray<string>).includes(v)
+const isInk = (v: unknown): v is RigInk =>
+  typeof v === "string" && (INK_ORDER as ReadonlyArray<string>).includes(v)
 
 // MAG-56: the Wisdom knob swaps the caster across the owner's four cases —
 // 10 amazing, 7 fine, 5 sketchy, 2 really bad — and the resolved rung's
@@ -113,8 +109,7 @@ export const Route = createFileRoute("/prototype/cast-dressing-room")({
   validateSearch: (search: Record<string, unknown>) => ({
     rung: isRung(search.rung) ? search.rung : ("draft" as RigRung),
     seat: isSeat(search.seat) ? search.seat : ("caster" as RigSeat),
-    grammar: isGrammar(search.grammar) ? search.grammar : ("merge" as RigGrammar),
-    hurt: search.hurt === true || search.hurt === "true",
+    ink: isInk(search.ink) ? search.ink : ("absinthe" as RigInk),
     wisdom: isWisdom(search.wisdom) ? (Number(search.wisdom) as RigWisdom) : (7 as RigWisdom),
   }),
   component: DressingRoom,
@@ -166,13 +161,6 @@ const track = (filled: ReadonlyArray<ReturnType<typeof box>>, length: number) =>
   ...filled,
   ...Array.from({ length: length - filled.length }, () => box("empty")),
 ]
-
-// MAG-49's hard case: Arctus with two boxes left, so containing both of the
-// rig's Paradox successes fills the track — unconscious (never dead).
-const hurtArctusSheet = decodeSheet({
-  ...ARCTUS_INPUT,
-  healthTrack: track([box("lethal"), box("bashing"), box("bashing"), box("bashing"), box("bashing")], 7),
-})
 
 const player = (
   name: string,
@@ -402,8 +390,8 @@ const RIG_SCENE = SceneId.make("rig-scene")
 // ── The rig ──────────────────────────────────────────────────────────────────
 
 function DressingRoom() {
-  const { rung, seat, grammar, hurt, wisdom } = Route.useSearch()
-  const casterNow = hurt ? hurtArctusSheet : arctusSheet
+  const { rung, seat, ink, wisdom } = Route.useSearch()
+  const casterNow = arctusSheet
   // MAG-52: the sheet's tool switch flips a local copy (no server here).
   const [toolInHand, setToolInHand] = useState(false)
   // MAG-56: the Wisdom knob rides the shown sheet too, so the meter and the
@@ -454,8 +442,7 @@ function DressingRoom() {
   const navigate = Route.useNavigate()
   const pool = useDicePool(SESSION_ID)
 
-  // MAG-53: the lines the knobs (+chat, +whisper) and the message box add,
-  // local — the rig has no server.
+  // MAG-53: the lines the message box adds, local — the rig has no server.
   const [arrived, setArrived] = useState<ReadonlyArray<MessageEntry>>([])
 
   // The ST's adjustments live here, per rung (MAG-45): the fixture cast has
@@ -498,7 +485,6 @@ function DressingRoom() {
     { id: BYSTANDER, name: "The Witness" },
   ]
   const me = PEOPLE.find((p) => p.id === view.viewerUserId)!
-  const someoneElse = PEOPLE.find((p) => p.id !== view.viewerUserId)!
   // the working slot reads the rig's feed as the route reads the real one
   const slot = useWorkingSlot([systemMsg, chatMsg, priorRoll, ...arrived], view.viewerUserId)
   // the tiles are the whisper roster, the viewer's own excepted
@@ -523,17 +509,6 @@ function DressingRoom() {
         }),
     timestamp: T0 + seq * 1000,
   })
-  // the knob's incoming lines: the slot counts them while the tray shows
-  const arrive = (whisper: boolean) => {
-    setArrived((prev) => [
-      ...prev,
-      line(
-        someoneElse,
-        whisper ? "Don't tell the others — I saw the sigil move." : "Footsteps on the stair. Someone's coming down.",
-        whisper ? [view.viewerUserId] : [],
-      ),
-    ])
-  }
   const pooled = pooledDice(pool.context)
 
   // Functional updaters: each knob patches only its own key, so a fast
@@ -612,9 +587,9 @@ function DressingRoom() {
 
   return (
     <>
-      {/* display:contents — no layout, just the grammar's CSS-var override
+      {/* display:contents — no layout, just the ink knob's CSS-var override
           inheriting into the whole shell. */}
-      <div className="contents" style={GRAMMARS[grammar].vars}>
+      <div className="contents" style={{ ["--derange" as string]: INKS[ink].hex }}>
       <SessionLayout
         sessionName="The Dressing Room"
         inviteCode="PROTO-96"
@@ -681,38 +656,6 @@ function DressingRoom() {
           mistakes them for the design under audition. */}
       <div className="fixed top-1.5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full bg-zinc-100 px-4 py-2 text-zinc-900 shadow-lg">
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => arrive(false)}
-            className="rounded-full px-2 py-0.5 text-[11px] font-semibold hover:bg-zinc-300"
-            title="A chat line arrives from someone else"
-          >
-            +chat
-          </button>
-          <button
-            onClick={() => arrive(true)}
-            className="rounded-full px-2 py-0.5 text-[11px] font-semibold hover:bg-zinc-300"
-            title="A whisper to you arrives"
-          >
-            +whisper
-          </button>
-        </div>
-        <span className="h-4 w-px bg-zinc-400" />
-        <button
-          onClick={() =>
-            void navigate({
-              search: (prev) => ({ ...prev, hurt: !hurt }),
-              replace: true,
-            })
-          }
-          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-            hurt ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
-          }`}
-          title="MAG-49: the caster with two boxes left — containing both fills the track"
-        >
-          hurt
-        </button>
-        <span className="h-4 w-px bg-zinc-400" />
-        <div className="flex items-center gap-1">
           {WISDOM_ORDER.map((w) => (
             <button
               key={w}
@@ -730,27 +673,17 @@ function DressingRoom() {
         </div>
         <span className="h-4 w-px bg-zinc-400" />
         <div className="flex items-center gap-1">
-          {GRAMMAR_ORDER.map((g) => (
+          {INK_ORDER.map((i) => (
             <button
-              key={g}
-              onClick={() =>
-                void navigate({
-                  search: (prev) => ({ ...prev, grammar: g }),
-                  replace: true,
-                })
-              }
-              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                g === grammar ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
+              key={i}
+              onClick={() => void navigate({ search: (prev) => ({ ...prev, ink: i }), replace: true })}
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                i === ink ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
               }`}
-              title={
-                g === "merge"
-                  ? "Success IS verdigris — two token names, one hex"
-                  : g === "quantity"
-                    ? "No status hue — count, weight, and pips carry success"
-                    : "A second green at hard tonal distance"
-              }
+              title={`MAG-60: --derange = ${INKS[i].hex} — ${INKS[i].title}`}
             >
-              {GRAMMARS[g].label}
+              <span className="inline-block size-2.5 rounded-full" style={{ background: INKS[i].hex }} />
+              {i}
             </button>
           ))}
         </div>
