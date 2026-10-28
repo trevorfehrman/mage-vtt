@@ -27,14 +27,22 @@ import { clockWords, shelfOrder } from "./derangement-shelf-look"
  * and shows the full list as larger cards complete with what each does;
  * toggle them on there; shrink the section and they become the badges.
  *
- * Two pieces share one `menu` the sheet holds: `DerangementSlots` is the
+ * Three pieces share one `menu` the sheet holds: `DerangementSlots` is the
  * row of symbols in the meter's columns (a symbol under a lost cell, solid
- * when that dot carries one, unlit when it could); `DerangementSection` is
- * what the heading holds — the badge row, its opener, and the list that
- * opens beneath. The context is what the opener chose: a dot's symbol opens
- * the list *for that dot*, the heading's opener opens it *for Bedlam*, and
- * the list's eyebrow says which. A card toggled on hangs there; toggled off,
- * it is put down.
+ * when that dot carries one, unlit when it could); `DerangementBadges` is
+ * what the heading holds — the badge row and its opener, folded away while
+ * the list is open; `DerangementList` is the list itself, which the sheet
+ * places beneath the title row at the plate's full width (owner,
+ * 2026-10-28: "take up the full width of the component with the derangement
+ * cards"). The context is what the opener chose: a dot's symbol opens the
+ * list *for that dot*, the heading's opener opens it *for Bedlam*, and the
+ * list's eyebrow says which. A card toggled on hangs there; toggled off, it
+ * is put down.
+ *
+ * The folds animate `grid-template-rows`, a layout property; what made the
+ * fold drop frames was not the cards but the halo'd trait rows beneath the
+ * plate repainting as they were shoved — each sheet section is now its own
+ * compositor layer (`.mv-sheet-section`), and the fold holds 120Hz.
  */
 
 export type DerangementMenu =
@@ -122,8 +130,12 @@ export function DerangementSlots({
   )
 }
 
-/** Under the Derangements heading: the badges, the opener, and the list that opens in place. */
-export function DerangementSection({
+/** At Wisdom 5+ a Bedlam needs a Scene to bind to; below, it has a clock. */
+const bedlamGateOf = (wisdom: WisdomRank, activeSceneId: SceneId | undefined) =>
+  activeSceneId !== undefined || wisdom <= 4 ? null : "no scene open"
+
+/** Under the Derangements heading: the badges and the opener, folded away while the list is open. */
+export function DerangementBadges({
   held,
   wisdom,
   activeSceneId,
@@ -144,13 +156,10 @@ export function DerangementSection({
   const standing = standingNow(held, wisdom, activeSceneId, at)
   const point = (rank: WisdomRank | undefined) => onPoint?.(rank)
   const open = menu._tag !== "closed"
-  // at Wisdom 5+ a Bedlam needs a Scene to bind to; below, it has a clock
-  const bedlamGate = activeSceneId !== undefined || wisdom <= 4 ? null : "no scene open"
 
   return (
     <TooltipProvider>
       <div className="grid">
-        {/* the badge row, folded away while the list is open */}
         <Fold open={!open}>
           <div className="mv-data flex flex-wrap items-center gap-1.5" style={{ minHeight: 18 }}>
             {standing.map((d) => (
@@ -176,57 +185,86 @@ export function DerangementSection({
             )}
           </div>
         </Fold>
-        {/* the list, opening in place */}
-        <Fold open={open}>
-          <div className="grid gap-2 pt-1">
-            <div className="flex items-center justify-between">
-              <span className="mv-eyebrow" style={{ color: "var(--ink)" }}>
-                {Match.value(menu).pipe(
-                  Match.tag("closed", () => ""),
-                  Match.tag("dot", (m) => `on Wisdom dot ${m.rank}`),
-                  Match.tag("bedlam", () => `Bedlam${bedlamGate === null ? "" : ` · ${bedlamGate}`}`),
-                  Match.exhaustive,
-                )}
-              </span>
-              {onMenu && (
-                <button
-                  type="button"
-                  aria-label="Close the derangements"
-                  onClick={() => onMenu({ _tag: "closed" })}
-                  className="mv-key mv-data text-[11px] leading-none"
-                  style={{ color: "var(--dim)" }}
-                >
-                  ×
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {DERANGEMENT_PAIRS.flatMap(([mild, severe]) =>
-                [mild, severe].map((name) => (
-                  <Card
-                    key={name}
-                    def={derangement(name)}
-                    menu={menu}
-                    held={standing.find((d) => d.name === name)}
-                    gate={menu._tag === "bedlam" ? bedlamGate : null}
-                    onToggle={
-                      onMark
-                        ? (on) =>
-                            onMark(
-                              on
-                                ? { derangement: { name, ...(menu._tag === "dot" ? { dot: menu.rank } : {}) } }
-                                : { shedDerangement: name },
-                            )
-                        : undefined
-                    }
-                  />
-                )),
-              )}
-            </div>
-          </div>
-        </Fold>
       </div>
     </TooltipProvider>
+  )
+}
+
+/**
+ * The list, opening in place beneath the title row at the plate's full
+ * width: every derangement as a card, mild beside severe, each a toggle. Its
+ * top padding is the plate's own gap, inside the fold so a shut list is no
+ * height at all.
+ */
+export function DerangementList({
+  held,
+  wisdom,
+  activeSceneId,
+  menu,
+  onMenu,
+  onMark,
+}: {
+  held: ReadonlyArray<HeldDerangement>
+  wisdom: WisdomRank
+  activeSceneId?: SceneId | undefined
+  menu: DerangementMenu
+  onMenu?: ((menu: DerangementMenu) => void) | undefined
+  onMark?: ((mark: SheetMark) => void) | undefined
+}) {
+  const at = useNow()
+  const standing = standingNow(held, wisdom, activeSceneId, at)
+  const open = menu._tag !== "closed"
+  const bedlamGate = bedlamGateOf(wisdom, activeSceneId)
+
+  return (
+    <Fold open={open}>
+      <div className="grid gap-2 pt-4">
+        <div className="flex items-center justify-between">
+          <span className="mv-eyebrow" style={{ color: "var(--ink)" }}>
+            {Match.value(menu).pipe(
+              Match.tag("closed", () => ""),
+              Match.tag("dot", (m) => `on Wisdom dot ${m.rank}`),
+              Match.tag("bedlam", () => `Bedlam${bedlamGate === null ? "" : ` · ${bedlamGate}`}`),
+              Match.exhaustive,
+            )}
+          </span>
+          {onMenu && (
+            <button
+              type="button"
+              aria-label="Close the derangements"
+              onClick={() => onMenu({ _tag: "closed" })}
+              className="mv-key mv-data text-[11px] leading-none"
+              style={{ color: "var(--dim)" }}
+            >
+              ×
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-1.5">
+          {DERANGEMENT_PAIRS.flatMap(([mild, severe]) =>
+            [mild, severe].map((name) => (
+              <Card
+                key={name}
+                def={derangement(name)}
+                menu={menu}
+                held={standing.find((d) => d.name === name)}
+                gate={menu._tag === "bedlam" ? bedlamGate : null}
+                onToggle={
+                  onMark
+                    ? (on) =>
+                        onMark(
+                          on
+                            ? { derangement: { name, ...(menu._tag === "dot" ? { dot: menu.rank } : {}) } }
+                            : { shedDerangement: name },
+                        )
+                    : undefined
+                }
+              />
+            )),
+          )}
+        </div>
+      </div>
+    </Fold>
   )
 }
 

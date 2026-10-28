@@ -519,6 +519,15 @@ pre code {
 .mv-sky-halo {
   --mv-dot-ring: color-mix(in srgb, var(--ink) 42%, transparent);
 }
+/* Each sheet section is its own compositor layer. The halo'd rows above
+ * re-raster whenever they move, so when the title card grows — the
+ * Derangements list folding open in place (MAG-60) — everything beneath it
+ * was repainted every frame of the fold. As layers the sections are shoved
+ * by offset, not repainted. Measured on the rig 2026-10-28 at 120Hz: frames
+ * of 42–76ms during the fold without this, none over 18ms with it. */
+.mv-sheet-section {
+  will-change: transform;
+}
 /* The meteor: a dash segment racing the line entry → exit (JS-driven CSS
  * transitions on concrete px values — see TraitSky's MeteorLine). */
 /* stroke paint comes from the per-meteor flight-path gradient (inline) */
