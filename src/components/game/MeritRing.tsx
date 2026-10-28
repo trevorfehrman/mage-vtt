@@ -53,6 +53,7 @@ import { DotRating } from "./DotRating"
 import { Keyhole, Mark } from "./merit-marks"
 import { periodic, ringName, wrapIndex, type PurseLevel } from "./merit-ring-look"
 import { PurseNumeral } from "./CastHeaderStats"
+import { TooltipProvider } from "#/components/ui/tooltip"
 
 export type Pool = ReturnType<typeof useDicePool>
 
@@ -199,20 +200,22 @@ function DoorPage({ h, lit }: { h: HeldMerit; lit: boolean }) {
  * as on every door; the purse is this number. */
 function PurseFoot({ hand }: { hand: Hand }) {
   return (
-    <span className="mv-data text-[13px] leading-none" style={{ paddingBlock: 12 }}>
-      <PurseNumeral
-        label="Destiny"
-        color="var(--accent)"
-        current={hand.destiny.current}
-        max={hand.destiny.capacity}
-        pending={stagedOf(hand)}
-        onNudge={
-          hand.onMarkSheet !== undefined
-            ? (next) => void hand.onMarkSheet?.({ destinyCurrent: Destiny.make(next) })
-            : undefined
-        }
-      />
-    </span>
+    <TooltipProvider>
+      <span className="mv-data text-[13px] leading-none" style={{ paddingBlock: 12 }}>
+        <PurseNumeral
+          label="Destiny"
+          color="var(--accent)"
+          current={hand.destiny.current}
+          max={hand.destiny.capacity}
+          pending={stagedOf(hand)}
+          onNudge={
+            hand.onMarkSheet !== undefined
+              ? (next) => void hand.onMarkSheet?.({ destinyCurrent: Destiny.make(next) })
+              : undefined
+          }
+        />
+      </span>
+    </TooltipProvider>
   )
 }
 
