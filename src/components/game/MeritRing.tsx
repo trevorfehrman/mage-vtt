@@ -191,31 +191,49 @@ function DoorPage({ h, lit }: { h: HeldMerit; lit: boolean }) {
   )
 }
 
-/** Destiny's purse at the door's foot (MAG-67; owner 2026-10-28: "we just
- * can't use pips for the points in the purse"): a numeral in the header's
- * grammar — what is left over what it holds, the dice staged into this
- * roll shown as a pending spend in ember — with the + above and − below
+/** Destiny's foot (MAG-67; owner 2026-10-28: "it needs an activation
+ * button of some kind, it needs to match our design grammar, and uniquely
+ * it also needs the refill mechanic, and these can't conflict"). Two
+ * objects in two grammars, side by side: the purse's number in the
+ * header's Will · Mana grammar — what is left over what it holds, the
+ * staged dice shown as a pending spend in ember, the + above and − below
  * marking the purse's level (a refill at the chapter, the bane's cost) on
- * your own sheet. The dots at the door's top right are the Merit's rating,
- * as on every door; the purse is this number. */
-function PurseFoot({ hand }: { hand: Hand }) {
+ * your own sheet; and the activation chip every dice key has, lit ember
+ * while dice are staged — each press stages one more from the purse, and a
+ * press past what is left takes them all back. The dots at the door's top
+ * right are the Merit's rating, as on every door. */
+function PurseFoot({ h, hand }: { h: HeldMerit; hand: Hand }) {
+  const staged = stagedOf(hand)
+  const lit = staged > 0
+  const offer = Math.max(1, staged)
   return (
-    <TooltipProvider>
-      <span className="mv-data text-[13px] leading-none" style={{ paddingBlock: 12 }}>
-        <PurseNumeral
-          label="Destiny"
-          color="var(--accent)"
-          current={hand.destiny.current}
-          max={hand.destiny.capacity}
-          pending={stagedOf(hand)}
-          onNudge={
-            hand.onMarkSheet !== undefined
-              ? (next) => void hand.onMarkSheet?.({ destinyCurrent: Destiny.make(next) })
-              : undefined
-          }
-        />
-      </span>
-    </TooltipProvider>
+    <span className="flex items-center gap-5">
+      <TooltipProvider>
+        <span className="mv-data text-[13px] leading-none">
+          <PurseNumeral
+            label="Destiny"
+            color="var(--accent)"
+            current={hand.destiny.current}
+            max={hand.destiny.capacity}
+            pending={staged}
+            onNudge={
+              hand.onMarkSheet !== undefined
+                ? (next) => void hand.onMarkSheet?.({ destinyCurrent: Destiny.make(next) })
+                : undefined
+            }
+          />
+        </span>
+      </TooltipProvider>
+      <button
+        type="button"
+        disabled={!canToggle(hand) || hand.destiny.current === 0}
+        onClick={() => turnKey(hand, h)}
+        className={`mv-trait mv-key ${lit ? "mv-trait-on" : ""} mv-data rounded-[3px] px-2.5 py-1.5 text-[12px]`}
+        style={{ color: lit ? "var(--ember)" : "var(--ink)", boxShadow: lit ? undefined : "inset 0 0 0 1px var(--line)" }}
+      >
+        +{offer} {offer === 1 ? "die" : "dice"}
+      </button>
+    </span>
   )
 }
 
@@ -240,7 +258,7 @@ function DoorFoot({ h, hand }: { h: HeldMerit; hand: Hand }) {
         </button>
       )
     }),
-    Match.tag("purse", () => <PurseFoot hand={hand} />),
+    Match.tag("purse", () => <PurseFoot h={h} hand={hand} />),
     Match.tag("derived", (m) => (
       <span
         className="mv-data rounded-[3px] px-2.5 py-1.5 text-[12px]"
