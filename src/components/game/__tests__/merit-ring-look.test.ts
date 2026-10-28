@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest"
-import { periodic, purseDice, purseTap, ringName, wrapIndex } from "../merit-ring-look"
+import { canonicalPurse, periodic, reconcilePurse, ringName, tapPurseDie, wrapIndex, type PurseLayout } from "../merit-ring-look"
 
 describe("the ring's names", () => {
   it("a name over fifteen characters hangs short; the door says the whole of it", () => {
@@ -20,22 +20,30 @@ describe("the wheel's placement", () => {
 })
 
 describe("the purse's dice (MAG-67)", () => {
-  // Destiny •• holds four; two are left this chapter; one is staged into this roll.
-  it("read left to right: in the purse, staged into the tray, gone this chapter", () => {
-    expect(purseDice({ capacity: 4, current: 2, staged: 1 })).toEqual(["purse", "staged", "gone", "gone"])
-    expect(purseDice({ capacity: 4, current: 4, staged: 0 })).toEqual(["purse", "purse", "purse", "purse"])
-    expect(purseDice({ capacity: 2, current: 0, staged: 0 })).toEqual(["gone", "gone"])
+  it("the counts alone lay the purse out: in the purse, staged, gone", () => {
+    expect(canonicalPurse({ capacity: 4, current: 2, staged: 1 })).toEqual(["purse", "staged", "gone", "gone"])
+    expect(canonicalPurse({ capacity: 2, current: 0, staged: 0 })).toEqual(["gone", "gone"])
   })
 
-  it("one input: a purse die goes to the tray, a staged die comes back, a gone die refills through itself", () => {
-    const full = { capacity: 4, current: 3, staged: 0 }
-    expect(purseTap(full, 2)).toEqual({ _tag: "stage", staged: 1 })
-    expect(purseTap(full, 0)).toEqual({ _tag: "stage", staged: 3 })
-    const some = { capacity: 4, current: 3, staged: 2 }
-    expect(purseDice(some)).toEqual(["purse", "staged", "staged", "gone"])
-    expect(purseTap(some, 2)).toEqual({ _tag: "stage", staged: 0 })
-    expect(purseTap(some, 1)).toEqual({ _tag: "stage", staged: 1 })
-    expect(purseTap(some, 3)).toEqual({ _tag: "refill", current: 4 })
-    expect(purseTap({ capacity: 4, current: 0, staged: 0 }, 1)).toEqual({ _tag: "refill", current: 2 })
+  it("one input, any order: tap a purse die and it goes to the tray; tap it again and it comes back; tap a gone die and the purse refills through it", () => {
+    const full: PurseLayout = ["purse", "purse", "purse", "purse"]
+    const one = tapPurseDie(full, 1)
+    expect(one).toEqual({ layout: ["purse", "staged", "purse", "purse"], act: { _tag: "stage", staged: 1 } })
+    const two = tapPurseDie(one.layout, 3)
+    expect(two).toEqual({ layout: ["purse", "staged", "purse", "staged"], act: { _tag: "stage", staged: 2 } })
+    expect(tapPurseDie(two.layout, 1)).toEqual({ layout: ["purse", "purse", "purse", "staged"], act: { _tag: "stage", staged: 1 } })
+    expect(tapPurseDie(["purse", "gone", "gone", "gone"], 2)).toEqual({
+      layout: ["purse", "gone", "purse", "gone"],
+      act: { _tag: "refill", current: 2 },
+    })
+  })
+
+  it("a remembered layout stands while it agrees with the counts; the roll takes exactly the staged dice; anything else is canonical", () => {
+    const remembered: PurseLayout = ["purse", "staged", "purse", "staged"]
+    expect(reconcilePurse(remembered, { capacity: 4, current: 4, staged: 2 })).toBe(remembered)
+    // the roll resolved: the pool emptied and the purse dropped by two
+    expect(reconcilePurse(remembered, { capacity: 4, current: 2, staged: 0 })).toEqual(["purse", "gone", "purse", "gone"])
+    // a hand edit the layout cannot explain
+    expect(reconcilePurse(remembered, { capacity: 4, current: 1, staged: 0 })).toEqual(["purse", "gone", "gone", "gone"])
   })
 })

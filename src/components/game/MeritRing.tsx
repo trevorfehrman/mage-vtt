@@ -51,7 +51,7 @@ import type { SheetMark } from "#/domain/flows/hand-edit"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 import { DotRating } from "./DotRating"
 import { Keyhole, Mark } from "./merit-marks"
-import { periodic, purseDice, purseTap, ringName, wrapIndex, type Purse, type PurseLevel } from "./merit-ring-look"
+import { canonicalPurse, periodic, reconcilePurse, ringName, tapPurseDie, wrapIndex, type Purse, type PurseLayout, type PurseLevel } from "./merit-ring-look"
 import { UnifiedDie } from "./UnifiedDie"
 
 export type Pool = ReturnType<typeof useDicePool>
@@ -97,13 +97,13 @@ export const litOf = (hand: Hand, h: HeldMerit): boolean =>
     Match.exhaustive,
   )
 
-/** Turn the key in hand: dice in or out of the pool; a purse stages one more pip, wrapping to none past what is left. */
+/** Turn the key in hand: a dice key's dice in or out of the pool. */
 export const turnKey = (hand: Hand, h: HeldMerit): void => {
   if (!canToggle(hand)) return
   Match.value(mechanicOf(h)).pipe(
     Match.tag("dice", () => hand.pool?.toggleComponent(meritComponent(h))),
-    Match.tag("purse", () => setStaged(hand, h, (stagedOf(hand) + 1) % (hand.destiny.current + 1))),
-    Match.tag("none", "derived", "gate", () => undefined),
+    // a purse's one input is its dice (owner, 2026-10-28); the key's turn is theirs
+    Match.tag("none", "derived", "gate", "purse", () => undefined),
     Match.exhaustive,
   )
 }
@@ -191,29 +191,37 @@ function DoorPage({ h, lit }: { h: HeldMerit; lit: boolean }) {
 }
 
 /** Destiny's purse (MAG-67; owner 2026-10-28: "show the purse as normal
- * sized dice. clicking them puts them in the tray, rolling them depletes
- * them. clicking them again brings them back. normal verdigris, orange
- * ghost back to verdigris. one input type"). A row of the tray's own dice
- * at the door's foot: a die in the purse is verdigris; click it and it
- * goes to the tray, leaving an ember ghost here (click the ghost and it
- * comes back); the roll takes it and the slot stays a dim ghost for the
- * chapter — click that and the purse refills through it, by the player's
- * mark, on their own sheet. The dots at the door's top right are the
- * Merit's rating, as on every door. */
+ * sized dice… one input type", then "select and deselect the dice at will,
+ * in whatever order I want — that will make it feel more like a purse"). A
+ * row of the tray's own dice at the door's foot: a die in the purse is
+ * verdigris; tap it and that die goes to the tray, leaving an ember ghost
+ * here; tap the ghost and it comes back; the roll takes it and its slot
+ * stays a dim ghost for the chapter — tap that and the purse refills
+ * through it, by the player's mark, on their own sheet. The door remembers
+ * which die is which; the sheet and the pool only know how many. */
 function PurseDice({ h, hand }: { h: HeldMerit; hand: Hand }) {
   const reduced = useReducedMotion()
   const purse: Purse = { ...hand.destiny, staged: stagedOf(hand) }
-  const states = purseDice(purse)
+  const [remembered, remember] = useState<PurseLayout>(() => canonicalPurse(purse))
+  const layout = reconcilePurse(remembered, purse)
+  useEffect(() => {
+    if (layout !== remembered) remember(layout)
+  }, [layout, remembered])
   const may = canToggle(hand)
-  const onTap = (i: number) =>
-    Match.value(purseTap(purse, i)).pipe(
-      Match.tag("stage", (t) => setStaged(hand, h, t.staged)),
-      Match.tag("refill", (t) => void hand.onMarkSheet?.({ destinyCurrent: Destiny.make(t.current) })),
+  const onTap = (i: number) => {
+    const tap = tapPurseDie(layout, i)
+    remember(tap.layout)
+    Match.value(tap.act).pipe(
+      Match.tag("stage", (a) => setStaged(hand, h, a.staged)),
+      Match.tag("refill", (a) => void hand.onMarkSheet?.({ destinyCurrent: Destiny.make(a.current) })),
       Match.exhaustive,
     )
+  }
   return (
-    <span className="flex items-center gap-[6px] py-1">
-      {states.map((state, i) =>
+    // the dice stand as diamonds, so their corners reach 5px past their
+    // boxes on each side: 22px between boxes is 12px of air between corners
+    <span className="flex items-center py-1 pr-1" style={{ gap: 22 }}>
+      {layout.map((state, i) =>
         Match.value(state).pipe(
           Match.when("purse", () => (
             <UnifiedDie key={i} mode="pool" kind="sheet" size="md" reduced={reduced} entrance={false} glide={false} title="Destiny — tap to add it to the roll" onSkim={may ? () => onTap(i) : undefined} disabled={!may} />

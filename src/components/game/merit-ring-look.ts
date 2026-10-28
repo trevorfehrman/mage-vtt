@@ -48,34 +48,74 @@ export type Purse = typeof Purse.Type
 export const PurseDieState = Schema.Literals(["purse", "staged", "gone"])
 export type PurseDieState = typeof PurseDieState.Type
 
-/**
- * The purse's dice left to right (owner, 2026-10-28: "show the purse as
- * normal sized dice… one input type"): in the purse (a verdigris die),
- * staged into the tray (an ember ghost — the die has gone to the tray; the
- * rightmost of what is left go first), gone this chapter (a dim ghost,
- * rolled away).
- */
-export const purseDice = (purse: Purse): ReadonlyArray<PurseDieState> =>
+/** The purse's dice as the door lays them out, one state per slot. */
+export const PurseLayout = Schema.Array(PurseDieState)
+export type PurseLayout = typeof PurseLayout.Type
+
+const count = (layout: PurseLayout, state: PurseDieState): number =>
+  layout.filter((d) => d === state).length
+
+/** The layout the counts alone give: in the purse, then staged, then gone. */
+export const canonicalPurse = (purse: Purse): PurseLayout =>
   Array.from({ length: purse.capacity }, (_, i) =>
     i >= purse.current ? "gone" : i >= purse.current - purse.staged ? "staged" : "purse",
   )
 
-/** What a tap on a purse die asks for: a new staging, or a refill through the die (a mark). */
-export const PurseTap = Schema.Union([
-  Schema.TaggedStruct("stage", { staged: Schema.Number }),
-  Schema.TaggedStruct("refill", { current: Schema.Number }),
-])
+/**
+ * The door remembers which die is which (owner, 2026-10-28: "select and
+ * deselect the dice at will, in whatever order I want — that will make it
+ * feel more like a purse"); the sheet and the pool only know counts. A
+ * remembered layout stands while it agrees with the counts. When the roll
+ * takes the staged dice (the pool empties and the purse drops by exactly
+ * that many) the staged slots are the ones that go. Anything else — a
+ * hand edit, a stale layout — falls back to the canonical layout.
+ */
+export const reconcilePurse = (layout: PurseLayout, purse: Purse): PurseLayout => {
+  const agrees =
+    layout.length === purse.capacity &&
+    count(layout, "gone") === purse.capacity - purse.current &&
+    count(layout, "staged") === purse.staged
+  if (agrees) return layout
+  const rolled =
+    layout.length === purse.capacity &&
+    purse.staged === 0 &&
+    count(layout, "gone") + count(layout, "staged") === purse.capacity - purse.current
+  if (rolled) return layout.map((d) => (d === "staged" ? "gone" : d))
+  return canonicalPurse(purse)
+}
+
+/** What a tap on a purse die asks for, and the layout after it. */
+export const PurseTap = Schema.Struct({
+  layout: PurseLayout,
+  act: Schema.Union([
+    /** stage this many into the pool */
+    Schema.TaggedStruct("stage", { staged: Schema.Number }),
+    /** refill the purse to this many — a mark */
+    Schema.TaggedStruct("refill", { current: Schema.Number }),
+  ]),
+})
 export type PurseTap = typeof PurseTap.Type
 
 /**
- * One input: click a die. A purse die goes to the tray, with every purse
- * die right of it; a staged die comes back, with every staged die left of
- * it; a gone die refills the purse through itself.
+ * One input: tap a die, any die, in any order. A purse die goes to the
+ * tray; a staged die comes back; a gone die refills the purse through
+ * itself.
  */
-export const purseTap = (purse: Purse, i: number): PurseTap =>
-  Match.value(purseDice(purse)[i] ?? "gone").pipe(
-    Match.when("purse", () => ({ _tag: "stage", staged: purse.current - i }) as const),
-    Match.when("staged", () => ({ _tag: "stage", staged: purse.current - i - 1 }) as const),
-    Match.when("gone", () => ({ _tag: "refill", current: i + 1 }) as const),
+export const tapPurseDie = (layout: PurseLayout, i: number): PurseTap => {
+  const flip = (to: PurseDieState): PurseLayout => layout.map((d, k) => (k === i ? to : d))
+  return Match.value(layout[i] ?? "gone").pipe(
+    Match.when("purse", () => {
+      const next = flip("staged")
+      return { layout: next, act: { _tag: "stage", staged: count(next, "staged") } as const }
+    }),
+    Match.when("staged", () => {
+      const next = flip("purse")
+      return { layout: next, act: { _tag: "stage", staged: count(next, "staged") } as const }
+    }),
+    Match.when("gone", () => {
+      const next = flip("purse")
+      return { layout: next, act: { _tag: "refill", current: next.length - count(next, "gone") } as const }
+    }),
     Match.exhaustive,
   )
+}
