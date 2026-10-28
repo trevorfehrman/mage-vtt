@@ -431,7 +431,11 @@ function DressingRoom() {
           ? lostDotHold(wisdomNow, dot)
           : bedlamHold(wisdomNow, Option.some(RIG_SCENE), Date.now())
       if (Option.isSome(hold)) {
-        setHeldDerangements((prev) => [...prev.filter((d) => d.name !== name), { name, hold: hold.value }])
+        setHeldDerangements((prev) =>
+          dot !== undefined && prev.some((d) => d.name !== name && d.hold._tag === "lostDot" && d.hold.rank === dot)
+            ? prev
+            : [...prev.filter((d) => d.name !== name), { name, hold: hold.value }],
+        )
       }
     }
   }

@@ -1,5 +1,4 @@
 import { WisdomRank } from "#/domain/wisdom"
-import { DerangementGlyph } from "./DerangementGlyph"
 
 /**
  * Wisdom on the title card (MAG-56): the meter. The owner's brief
@@ -58,9 +57,10 @@ const GLOW_BY_RANK: Partial<Record<WisdomRank, string>> = {
  */
 /**
  * `lit` (MAG-60; owner 2026-10-28: "when you hover over the permanent one
- * it can light up a decorated empty wisdom pip"): the lost cell a
- * derangement badge is pointing at — outlined in ink with a glow and the
- * derangement's mark drawn inside, for as long as the hover lasts.
+ * it can light up a decorated empty wisdom pip" — and then "the symbol
+ * shouldn't also light up in the wisdom pip, that's superfluous"): the
+ * lost cell a derangement badge is pointing at — outlined in ink with a
+ * glow for as long as the hover lasts, nothing drawn inside.
  */
 export function WisdomMeter({
   wisdom,
@@ -82,12 +82,7 @@ export function WisdomMeter({
         : "inset 0 0 0 1px var(--line)",
     transition: `background-color ${SHIFT}, box-shadow ${isLit ? "160ms" : SHIFT}`,
   })
-  const decoration = (rank: WisdomRank) =>
-    rank === lit && rank > wisdom ? (
-      <span className="grid h-full place-items-center" style={{ color: "var(--ink)" }}>
-        <DerangementGlyph size={10} />
-      </span>
-    ) : null
+
   return (
     <span
       className="grid w-full grid-cols-10 gap-[3px]"
@@ -105,13 +100,9 @@ export function WisdomMeter({
             aria-pressed={rank === wisdom}
             className="block cursor-pointer rounded-[2px]"
             style={cellStyle(rank <= wisdom, rank === lit)}
-          >
-            {decoration(rank)}
-          </button>
+          />
         ) : (
-          <span key={rank} className="block rounded-[2px]" style={cellStyle(rank <= wisdom, rank === lit)}>
-            {decoration(rank)}
-          </span>
+          <span key={rank} className="block rounded-[2px]" style={cellStyle(rank <= wisdom, rank === lit)} />
         ),
       )}
     </span>

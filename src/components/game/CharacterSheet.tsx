@@ -42,7 +42,7 @@ import { ToolSwitch } from "./ToolSwitch"
 import { PoolNumerals } from "./CastHeaderStats"
 import { cycleBox, toggleResistant } from "#/domain/health"
 import { WisdomMeter } from "./WisdomMeter"
-import { DerangementShelf } from "./DerangementShelf"
+import { DerangementSection, DerangementSlots, type DerangementMenu } from "./DerangementShelf"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
@@ -106,9 +106,11 @@ export function CharacterSheet({
     pool?.isComponentActive(type, name) ?? false
 
   const interactive = pool !== undefined
-  // MAG-60: the lost Wisdom cell a derangement badge (or its ghost slot) is
-  // pointing at under the hover, lit on the meter above
+  // MAG-60: the lost Wisdom cell a derangement badge (or its slot) is
+  // pointing at under the hover, lit on the meter above; and the open
+  // derangement list's context — closed, a dot, or Bedlam
   const [litDot, setLitDot] = useState<WisdomRank | undefined>(undefined)
+  const [menu, setMenu] = useState<DerangementMenu>({ _tag: "closed" })
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-6">
@@ -191,18 +193,33 @@ export function CharacterSheet({
                 onSet={onMarkSheet ? (wisdom) => void onMarkSheet({ wisdom }) : undefined}
                 lit={litDot}
               />
-              {/* Derangements (MAG-60): a ghost slot beneath each lost cell
-                  is the door to a permanent one; the badges beneath carry
-                  the name, the clock and the ×; a badge's hover lights
-                  its cell above */}
-              <DerangementShelf
+              {/* Derangements (MAG-60): an unlit mark beneath each lost
+                  cell opens the list for that dot */}
+              <DerangementSlots
                 held={character.derangementsHeld}
                 wisdom={character.wisdom}
                 activeSceneId={activeSceneId}
-                onMark={onMarkSheet ? (mark) => void onMarkSheet(mark) : undefined}
+                menu={menu}
+                onOpen={onMarkSheet ? setMenu : undefined}
                 onPoint={setLitDot}
               />
             </Eyebrowed>
+            {/* the Derangements heading (owner, 2026-10-28): the badges, and
+                the list opening in place beneath them — height animated
+                into the card — as full cards toggled on and off */}
+            {(character.derangementsHeld.length > 0 || onMarkSheet) && (
+              <Eyebrowed label="Derangements">
+                <DerangementSection
+                  held={character.derangementsHeld}
+                  wisdom={character.wisdom}
+                  activeSceneId={activeSceneId}
+                  menu={menu}
+                  onMenu={onMarkSheet ? setMenu : undefined}
+                  onMark={onMarkSheet ? (mark) => void onMarkSheet(mark) : undefined}
+                  onPoint={setLitDot}
+                />
+              </Eyebrowed>
+            )}
           </div>
           <div className="mv-data grid shrink-0 justify-items-end gap-3 text-right">
             <span className="flex items-baseline gap-2 leading-none">
