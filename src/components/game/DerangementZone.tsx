@@ -55,7 +55,10 @@ import { clockWords, shelfOrder } from "./derangement-shelf-look"
  */
 
 const OPEN = "420ms cubic-bezier(0.2, 0.8, 0.2, 1)"
-const PLATE_PAD = 16
+/** How far past the title card's content edge the band reaches: a little, not full bleed (owner, 2026-10-28:
+ * "shrink the zone just a little so that it's not full bleed … so that all the text inside it can still be
+ * aligned with the title"), so the band's edge stands inside the plate's and the text inside stays on the edge. */
+const BLEED = 8
 
 /** The clock, for the timed ones: read on render and kept roughly current. */
 const useNow = () => {
@@ -112,8 +115,8 @@ export function DerangementZone({
       <Collapsible
         open={open}
         onOpenChange={setOpen}
-        className="mv-burden grid"
-        style={{ marginInline: -PLATE_PAD, paddingInline: PLATE_PAD, ["--burden-ink" as string]: zoneInk }}
+        className="mv-burden grid rounded-[3px]"
+        style={{ marginInline: -BLEED, paddingInline: BLEED, ["--burden-ink" as string]: zoneInk }}
         data-burdened={burdened ? "" : undefined}
       >
         {burdened && <div key={standing.map((d) => d.name).join("·")} className="mv-burden-fog" aria-hidden />}
