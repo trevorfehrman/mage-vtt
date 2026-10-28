@@ -379,6 +379,9 @@ function SessionPage() {
                       ? { healthTrack: mark.healthTrack.map((box) => ({ ...box })) }
                       : {}),
                     ...(mark.wisdom !== undefined ? { wisdom: mark.wisdom } : {}),
+                    ...(mark.destinyCurrent !== undefined ? { destinyCurrent: mark.destinyCurrent } : {}),
+                    ...(mark.willpowerCurrent !== undefined ? { willpowerCurrent: mark.willpowerCurrent } : {}),
+                    ...(mark.manaCurrent !== undefined ? { manaCurrent: mark.manaCurrent } : {}),
                   })
               : undefined
           }

@@ -8,7 +8,7 @@ import {
 import { type PoolComponentInput } from "./dice"
 import { CharacterId, PlayerId, SessionId, SessionMemberId } from "./ids"
 import { manaPerTurnByGnosis, toGnosisRank } from "./mana-economy"
-import { Dots, Experience, Mana, Willpower } from "./quantities"
+import { Destiny, Dots, Experience, Mana, Willpower } from "./quantities"
 import { RoteArcanumName, RotePool } from "./rote-pool"
 // Value-only imports; rote-cast's import of this module is type-only, so the
 // module graph stays acyclic at runtime.
@@ -16,7 +16,7 @@ import { ORDER_ROTE_SKILLS, SpellAspect } from "./rote-cast"
 import { STARTING_WISDOM, WisdomRank } from "./wisdom"
 import { ArcanumName, SkillKey } from "./trait-keys"
 import { woundPenalty } from "./health"
-import { bonusTo, HeldMerit, unlocks } from "./merits"
+import { bonusTo, HeldMerit, purseOf, unlocks } from "./merits"
 
 // The key vocabularies live in trait-keys.ts (a leaf the catalogs share);
 // the sheet's callers keep importing them from here.
@@ -428,6 +428,10 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   // Merits (MAG-59): the perks the record holds, from the closed catalog;
   // absent means none. Written by the ingest, never by a door (yet).
   merits: Schema.optionalKey(Schema.Array(HeldMerit)),
+  // The Destiny purse (MAG-67): the dice left this chapter; absent means
+  // full. Capacity is shape — twice the Merit's dots — so the column is
+  // only ever read clamped to it.
+  destinyCurrent: Schema.optionalKey(Destiny),
   // The record's words (MAG-61): the nimbus sentence, the Legacy, the cabal
   // and consilium names. None change a roll; all absent until written.
   nimbus: Schema.optionalKey(Schema.String),
@@ -458,6 +462,16 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   /** Merits (MAG-59), absent-column-safe. */
   get meritsHeld(): ReadonlyArray<HeldMerit> {
     return this.merits ?? []
+  }
+
+  /** The Destiny purse's capacity (MAG-67): twice the dots, 0 without the Merit. */
+  get destinyCapacity(): number {
+    return Option.match(purseOf(this.meritsHeld), { onNone: () => 0, onSome: (p) => p.capacity })
+  }
+
+  /** Destiny dice in the purse: full when the column is absent, never past capacity. */
+  get destiny(): number {
+    return Math.min(this.destinyCapacity, this.destinyCurrent ?? this.destinyCapacity)
   }
 
   /**

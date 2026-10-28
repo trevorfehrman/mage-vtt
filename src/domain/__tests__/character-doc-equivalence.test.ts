@@ -121,6 +121,8 @@ const addedColumns = {
   merits: v.optional(
     v.array(v.object({ name: v.string(), dots: v.number(), label: v.optional(v.string()) })),
   ),
+  // MAG-67: the Destiny purse's current dice.
+  destinyCurrent: v.optional(v.number()),
   nimbus: v.optional(v.string()),
   legacy: v.optional(v.object({ name: v.string(), attainments: v.array(v.string()) })),
   cabal: v.optional(v.string()),

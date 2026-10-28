@@ -15,7 +15,7 @@ import { CharacterId, PlayerId, SessionId } from "../ids"
 import { tableName } from "../membership"
 import { CurrentActor } from "../ports/current-actor"
 import { GameStore, type SheetPatch } from "../ports/game-store"
-import { Experience, Mana, Willpower } from "../quantities"
+import { Destiny, Experience, Mana, Willpower } from "../quantities"
 import { WisdomRank } from "../wisdom"
 
 /**
@@ -83,6 +83,7 @@ export class InvalidHandEdit extends Schema.TaggedError<InvalidHandEdit>()(
 const HandEditPatch = Schema.Struct({
   manaCurrent: Schema.optionalKey(Mana),
   willpowerCurrent: Schema.optionalKey(Willpower),
+  destinyCurrent: Schema.optionalKey(Destiny),
   healthTrack: Schema.optionalKey(HealthTrack),
   wisdom: Schema.optionalKey(WisdomRank),
   experienceUnspent: Schema.optionalKey(Experience),
@@ -116,6 +117,9 @@ const describeChanges = (
       : []),
     ...(patch.willpowerCurrent !== undefined
       ? [`Willpower ${sheet.willpowerCurrent} → ${patch.willpowerCurrent}`]
+      : []),
+    ...(patch.destinyCurrent !== undefined
+      ? [`Destiny ${sheet.destiny} → ${patch.destinyCurrent}`]
       : []),
     ...(patch.healthTrack !== undefined
       ? [`Health ${describeTrack(sheet.healthTrack)} → ${describeTrack(patch.healthTrack)}`]
@@ -239,21 +243,34 @@ export const MarkSheetArgs = Schema.Struct({
     ),
   ),
   wisdom: Schema.optionalKey(Schema.Number),
+  /** The purse mark (MAG-67): the player refills Destiny, Willpower and
+   * Mana by their own hand (and spends Destiny's bane the same way). */
+  destinyCurrent: Schema.optionalKey(Schema.Number),
+  willpowerCurrent: Schema.optionalKey(Schema.Number),
+  manaCurrent: Schema.optionalKey(Schema.Number),
 })
 export type MarkSheetArgs = typeof MarkSheetArgs.Type
 
-/** A mark as the sheet makes it: the track as shown, or the new Wisdom rank. */
+/** A mark as the sheet makes it: the track as shown, the new Wisdom rank, or
+ * a purse's new level (MAG-67). */
 export const SheetMark = Schema.Struct({
   healthTrack: Schema.optionalKey(HealthTrack),
   wisdom: Schema.optionalKey(WisdomRank),
+  destinyCurrent: Schema.optionalKey(Destiny),
+  willpowerCurrent: Schema.optionalKey(Willpower),
+  manaCurrent: Schema.optionalKey(Mana),
 })
 export type SheetMark = typeof SheetMark.Type
 
 /**
  * `markSheet` — the paper-sheet gesture (MAG-63; owner's call 2026-10-27):
  * the Storyteller says "take two lethal" or "you lose a dot of Wisdom" and
- * the player marks their own sheet. The track and Wisdom are the two marks
- * (healing and degeneration stay manual for now, by the same call). It
+ * the player marks their own sheet. The track and Wisdom are two marks
+ * (healing and degeneration stay manual for now, by the same call); the
+ * purses are the others (MAG-67): the player refills Destiny at the
+ * chapter, Willpower at the scene, Mana by oblation, by the same gesture —
+ * and pays Destiny's bane by it in reverse. Capacity is shape here as in
+ * the repair: a purse fills to its printed size and no further. It
  * walks the *normal* authority ladder, like `setMagicalTool`: the owner
  * passes plainly, an ST or Dev marking in their stead is Override-recorded
  * by the seam — the inverse of `handEditSheet`, whose point is that the
@@ -267,6 +284,9 @@ export const markSheet = Effect.fn("Flows.handEdit.markSheet")(function* (
   const decoded = yield* Schema.decodeUnknownEffect(SheetMark)({
     ...(args.healthTrack !== undefined ? { healthTrack: args.healthTrack } : {}),
     ...(args.wisdom !== undefined ? { wisdom: args.wisdom } : {}),
+    ...(args.destinyCurrent !== undefined ? { destinyCurrent: args.destinyCurrent } : {}),
+    ...(args.willpowerCurrent !== undefined ? { willpowerCurrent: args.willpowerCurrent } : {}),
+    ...(args.manaCurrent !== undefined ? { manaCurrent: args.manaCurrent } : {}),
   }).pipe(
     Effect.mapError(
       () => new InvalidHandEdit({ message: "That mark doesn't fit the sheet." }),
@@ -277,7 +297,13 @@ export const markSheet = Effect.fn("Flows.handEdit.markSheet")(function* (
       ? { ...decoded, healthTrack: normalizeHealthTrack(decoded.healthTrack) }
       : decoded
 
-  if (patch.healthTrack === undefined && patch.wisdom === undefined) {
+  if (
+    patch.healthTrack === undefined &&
+    patch.wisdom === undefined &&
+    patch.destinyCurrent === undefined &&
+    patch.willpowerCurrent === undefined &&
+    patch.manaCurrent === undefined
+  ) {
     return yield* new InvalidHandEdit({ message: "Nothing to mark." })
   }
 
@@ -288,6 +314,19 @@ export const markSheet = Effect.fn("Flows.handEdit.markSheet")(function* (
     sessionId,
     CharacterId.make(args.characterId),
   )
+
+  // Capacity is shape: a purse fills to its printed size — Destiny's twice
+  // the Merit's dots (none without the Merit), Willpower's rating, Mana's
+  // Gnosis cap.
+  if (patch.destinyCurrent !== undefined && patch.destinyCurrent > sheet.destinyCapacity) {
+    return yield* new InvalidHandEdit({ message: `Destiny holds at most ${sheet.destinyCapacity}.` })
+  }
+  if (patch.willpowerCurrent !== undefined && patch.willpowerCurrent > sheet.willpower) {
+    return yield* new InvalidHandEdit({ message: `Willpower holds at most ${sheet.willpower}.` })
+  }
+  if (patch.manaCurrent !== undefined && patch.manaCurrent > sheet.maxMana) {
+    return yield* new InvalidHandEdit({ message: `Mana holds at most ${sheet.maxMana}.` })
+  }
 
   // The entry's name: the actor's table name, or — for a Dev who is no
   // member at all, whom the ladder admits — their id, as the repair door does.

@@ -185,6 +185,67 @@ describe("Flows.rolls.create (enforcement seam tracer bullet)", () => {
     }),
   )
 
+  // The Destiny purse (MAG-67): the pips the player stages land in the pool
+  // as a typed purse component; the flow debits the sheet on resolve, as
+  // Willpower's spend does, and the record names the purse.
+  it.effect("a purse component spends Destiny on resolve: the dice roll, the purse is debited, the record names it", () =>
+    Effect.gen(function* () {
+      const store = makeInMemory({
+        members: [member],
+        actor: { userId: PLAYER, isDev: false },
+        sheets: [makeSheet({ merits: [{ name: "Destiny", dots: 2 }] })],
+      })
+
+      yield* createRoll({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        components: [...components, { type: "purse", name: "Destiny", dots: 3 }],
+      }).pipe(Effect.provide(store.layer), Random.withSeed("destiny-seed"))
+
+      const entry = store.rolls[0]!
+      // Pool = Strength 3 + Brawl 2 + Destiny 3
+      expect(entry.result.poolSize).toBe(8)
+      expect(entry.components).toContainEqual({ type: "purse", name: "Destiny", dots: 3 })
+      // Four in the purse, three spent
+      expect(store.sheetPatches).toEqual([{ characterId: CHARACTER, patch: { destinyCurrent: 1 } }])
+      expect(store.sheets.get(CHARACTER)!.destiny).toBe(1)
+    }),
+  )
+
+  it.effect("a purse spend past what is left fails InsufficientDestiny — no roll, no write", () =>
+    Effect.gen(function* () {
+      const store = makeInMemory({
+        members: [member],
+        actor: { userId: PLAYER, isDev: false },
+        sheets: [makeSheet({ merits: [{ name: "Destiny", dots: 1 }], destinyCurrent: 1 })],
+      })
+
+      const exit = yield* createRoll({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        components: [...components, { type: "purse", name: "Destiny", dots: 2 }],
+      }).pipe(Effect.provide(store.layer), Random.withSeed("destiny-seed"), Effect.exit)
+
+      expect(failureTag(exit)).toBe("InsufficientDestiny")
+      expect(store.rolls).toHaveLength(0)
+      expect(store.sheetPatches).toHaveLength(0)
+    }),
+  )
+
+  it.effect("a purse component on a free pool is refused — a spend needs a sheet to fund it", () =>
+    Effect.gen(function* () {
+      const store = seed()
+
+      const exit = yield* createRoll({
+        sessionId: SESSION,
+        components: [...components, { type: "purse", name: "Destiny", dots: 1 }],
+      }).pipe(Effect.provide(store.layer), Random.withSeed("destiny-seed"), Effect.exit)
+
+      expect(failureTag(exit)).toBe("InvalidPoolComponent")
+      expect(store.rolls).toHaveLength(0)
+    }),
+  )
+
   it.effect("the Storyteller spending in a player's stead carries the Override marker", () =>
     Effect.gen(function* () {
       const STORYTELLER = PlayerId.make("user-morgan")

@@ -86,6 +86,10 @@ export const markSheet = enforcedMutation({
     characterId: v.id("characters"),
     healthTrack: v.optional(schemaToConvexValidator(Schema.Array(HealthBox))),
     wisdom: v.optional(v.number()),
+    // The purse mark (MAG-67): Destiny, Willpower and Mana by the player's hand.
+    destinyCurrent: v.optional(v.number()),
+    willpowerCurrent: v.optional(v.number()),
+    manaCurrent: v.optional(v.number()),
   },
   flow: markSheetFlow,
 })

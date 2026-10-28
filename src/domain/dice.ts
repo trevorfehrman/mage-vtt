@@ -11,6 +11,12 @@ export const PoolComponentType = Schema.Literals([
   "arcanum",
   "gnosis",
   "modifier",
+  // A turned Merit key (MAG-59): its dice under the Merit's name, for the
+  // Storyteller to see in the record.
+  "merit",
+  // Pips staged from a purse (MAG-67, Destiny): the roll flow debits the
+  // sheet by this many on resolve.
+  "purse",
 ])
 export type PoolComponentType = typeof PoolComponentType.Type
 

@@ -18,7 +18,7 @@ import { ParadoxPoolModifier, ParadoxSeverity } from "../paradox"
 import { ParadoxSpan } from "../paradox-effects"
 import { Membership } from "../membership"
 import type { NotAMember } from "../authz"
-import { Experience, Mana, Willpower } from "../quantities"
+import { Destiny, Experience, Mana, Willpower } from "../quantities"
 import type { SpellRef } from "../rote-cast"
 import type { RoteArcanumName } from "../rote-pool"
 import type { Scene } from "../scene"
@@ -64,6 +64,8 @@ export const SheetPatch = Schema.Struct({
   manaCurrent: Schema.optionalKey(Mana),
   willpowerCurrent: Schema.optionalKey(Willpower),
   healthTrack: Schema.optionalKey(Schema.Array(HealthBox)),
+  /** The Destiny purse (MAG-67): spent by a roll, refilled by a mark. */
+  destinyCurrent: Schema.optionalKey(Destiny),
   /** The standing tool fact (issue #107) — the one identity column a flow
    * may flip; everything else here is current state. */
   hasMagicalTool: Schema.optionalKey(Schema.Boolean),

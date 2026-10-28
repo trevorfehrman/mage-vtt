@@ -165,6 +165,8 @@ export const CharacterSeedData = Schema.Struct({
       }),
     ),
   ),
+  // The Destiny purse (MAG-67): dice left this chapter; absent means full.
+  destinyCurrent: Schema.optionalKey(Schema.Number),
   nimbus: Schema.optionalKey(Schema.String),
   legacy: Schema.optionalKey(
     Schema.Struct({ name: Schema.String, attainments: Schema.Array(Schema.String) }),

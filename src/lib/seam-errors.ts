@@ -33,6 +33,7 @@ const describe = Match.type<SeamError>().pipe(
     ArcanumTooWeak: (e) => `You need ${capitalize(e.arcanum)} ${e.level} — you have ${e.dots}.`,
     InsufficientMana: (e) => `Not enough Mana: need ${e.required}, have ${e.current}.`,
     InsufficientWillpower: () => "No Willpower left to spend.",
+    InsufficientDestiny: (e) => `Destiny holds ${e.current}, not ${e.asked}.`,
     HighSpeechNeedsMerit: () => "High Speech needs the Merit.",
     NotYourCharacter: () => "That's not your character.",
     NotAMember: () => "You're not a member of this session.",

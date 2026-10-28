@@ -134,6 +134,22 @@ describe("CharacterSheet: Merits (MAG-59)", () => {
   })
 })
 
+describe("CharacterSheet: the Destiny purse (MAG-67)", () => {
+  it("Destiny •• is a purse of four, full until the column says otherwise; a sheet without it has none", () => {
+    const full = makeAldousSheet({ merits: [{ name: "Destiny", dots: 2 }] })
+    expect([full.destiny, full.destinyCapacity]).toEqual([4, 4])
+    const spent = makeAldousSheet({ merits: [{ name: "Destiny", dots: 2 }], destinyCurrent: 1 })
+    expect([spent.destiny, spent.destinyCapacity]).toEqual([1, 4])
+    const none = makeAldousSheet()
+    expect([none.destiny, none.destinyCapacity]).toEqual([0, 0])
+  })
+
+  it("a stale column past the capacity reads clamped — a re-ingest at fewer dots never shows more than the purse holds", () => {
+    const sheet = makeAldousSheet({ merits: [{ name: "Destiny", dots: 1 }], destinyCurrent: 4 })
+    expect(sheet.destiny).toBe(2)
+  })
+})
+
 describe("CharacterSheet: the words (MAG-61)", () => {
   it("nimbus, legacy, cabal and consilium are absent until written and read back whole", () => {
     const bare = makeAldousSheet()

@@ -38,6 +38,7 @@ import {
   VulgarCastingNotYetSupported,
 } from "./rote-cast"
 import { InsufficientWillpower } from "./willpower-economy"
+import { InsufficientDestiny } from "./destiny-economy"
 
 /**
  * The enforcement seam's client-facing error union (ADR-0010, issue #36):
@@ -60,6 +61,7 @@ export const SeamError = Schema.Union([
   // Rules / precondition
   InsufficientMana,
   InsufficientWillpower,
+  InsufficientDestiny,
   ArcanumTooWeak,
   HighSpeechNeedsMerit,
   VulgarCastingNotYetSupported,

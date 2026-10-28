@@ -3,6 +3,7 @@ import { tableName } from "../membership"
 import { requireMember, requireSessionCharacter } from "../authz"
 import {
   buildPool,
+  InvalidPoolComponent,
   RawPoolComponent,
   RollVisibility,
   rollPool,
@@ -11,7 +12,8 @@ import {
 import { CharacterId, SessionId } from "../ids"
 import { GameStore } from "../ports/game-store"
 import { spendWillpower, WILLPOWER_BONUS_DICE } from "../willpower-economy"
-import type { Willpower } from "../quantities"
+import { spendDestiny } from "../destiny-economy"
+import { Destiny, type Willpower } from "../quantities"
 
 /**
  * `rolls.create` re-implemented through the enforcement seam (ADR-0004, ADR-0007).
@@ -99,6 +101,26 @@ export const createRoll = Effect.fn("Flows.rolls.create")(function* (
     ]
   }
 
+  // Staged Destiny (MAG-67): the purse components' dice leave the anchoring
+  // sheet's purse on resolve. A free pool has no purse to fund them.
+  const staged = components
+    .filter((c) => c.type === "purse")
+    .reduce((sum, c) => sum + c.dots, 0)
+  let destinySpend: { characterId: CharacterId; remaining: Destiny } | null = null
+  if (staged > 0) {
+    if (!args.characterId) {
+      return yield* new InvalidPoolComponent({
+        message: "Destiny is a spend — it needs your sheet to fund it.",
+      })
+    }
+    const sheet = yield* requireSessionCharacter(
+      member.sessionId,
+      CharacterId.make(args.characterId),
+    )
+    const remaining = yield* spendDestiny(Destiny.make(sheet.destiny), staged)
+    destinySpend = { characterId: sheet.id, remaining }
+  }
+
   const pool = yield* buildPool(components)
   const rollOptions: {
     visibility: RollVisibility
@@ -113,6 +135,11 @@ export const createRoll = Effect.fn("Flows.rolls.create")(function* (
   if (willpowerSpend) {
     yield* store.patchSheet(willpowerSpend.characterId, {
       willpowerCurrent: willpowerSpend.remaining,
+    })
+  }
+  if (destinySpend) {
+    yield* store.patchSheet(destinySpend.characterId, {
+      destinyCurrent: destinySpend.remaining,
     })
   }
   return yield* store.insertRoll({

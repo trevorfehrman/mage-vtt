@@ -271,6 +271,9 @@ export const makeInMemory = (seed: {
               ...(patch.willpowerCurrent !== undefined
                 ? { willpowerCurrent: patch.willpowerCurrent }
                 : {}),
+              ...(patch.destinyCurrent !== undefined
+                ? { destinyCurrent: patch.destinyCurrent }
+                : {}),
               ...(patch.healthTrack !== undefined
                 ? { healthTrack: patch.healthTrack }
                 : {}),
