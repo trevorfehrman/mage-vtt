@@ -11,10 +11,10 @@ import { WisdomRank } from "./wisdom"
 // is a plain function the compiler keeps total, and the one open-input
 // lookup (`findDerangement`) returns Option.
 //
-// Two ways a mage gets one (MAG-60): permanently, when a Wisdom degeneration
-// roll fails and the follow-up roll fails too (Mage p. 79), tied to the lost
-// dot until it is bought back; or temporarily, from a Bedlam Paradox (Mage
-// p. 268), for the Paradox's duration. The Bedlam form adds a weakness to a
+// Two ways a mage gets one (MAG-60): lastingly, when a Wisdom degeneration
+// roll fails and the follow-up roll fails too (Mage p. 79), until the dot is
+// bought back; or temporarily, from a Bedlam Paradox (Mage p. 268), for the
+// Paradox's duration. The Bedlam form adds a weakness to a
 // kind of magic, recorded here as `bedlam`.
 
 // --- Vocabulary ---
@@ -265,27 +265,31 @@ export const severeFormOf = (name: DerangementName): Option.Option<DerangementNa
 
 // --- A derangement held on a sheet (MAG-60) ---
 //
-// The owner's model (2026-10-27): a derangement is not a line on the sheet
-// but a thing *hung* from what caused it. A permanent one hangs from the
-// Wisdom dot it cost and stands while that dot is lost — bought back, it is
-// simply no longer there, no second mark. A Bedlam one hangs from the
-// Paradox's clock: at Wisdom 5 and above the book says one scene, so it binds
-// to the Scene open when it was marked and ends when the Storyteller closes
-// it; at 4 and below the book gives hours and days, so the mark stamps an
-// expiry from the Wisdom table at that moment. Whether one still stands is
-// derived at read time from the sheet's Wisdom, the active Scene and the
-// clock — never a cleanup write.
+// The owner's model (2026-10-27, simplified 2026-10-28): a derangement is not
+// a line on the sheet but a thing *hung* from what caused it. A lasting one
+// — a failed degeneration and its failed follow-up (Mage p. 79) — simply
+// stands until the player puts it down; the owner tore out tying it to the
+// Wisdom dot it cost ("i don't anticipate that these will happen often enough
+// for the players to forget what they're associated with"). A Bedlam one
+// hangs from the Paradox's clock: at Wisdom 5 and above the book says one
+// scene, so it binds to the Scene open when it was marked and ends when the
+// Storyteller closes it; at 4 and below the book gives hours and days, so the
+// mark stamps an expiry from the Wisdom table at that moment. Whether one
+// still stands is derived at read time from the active Scene and the clock —
+// never a cleanup write.
 
 /** Why the mage holds it, and so when it ends. */
 export const DerangementHold = Schema.Union([
-  /** Permanent (Mage p. 79): the Wisdom dot it cost; stands while that dot is lost. */
-  Schema.TaggedStruct("lostDot", { rank: WisdomRank }),
+  /** Lasting (Mage p. 79): stands until put down by hand. */
+  Schema.TaggedStruct("lasting", {}),
   /** Bedlam at Wisdom 5+ (Mage p. 268): bound to the Scene, over when it closes. */
   Schema.TaggedStruct("scene", { sceneId: SceneId }),
   /** Bedlam at Wisdom 4−: an expiry stamped from the Wisdom table. */
   Schema.TaggedStruct("until", { expiresAt: Schema.Number }),
 ])
 export type DerangementHold = typeof DerangementHold.Type
+
+export const LASTING: DerangementHold = { _tag: "lasting" }
 
 export const HeldDerangement = Schema.Struct({
   name: DerangementName,
@@ -304,7 +308,7 @@ export type Moment = typeof Moment.Type
 /** Whether a held derangement still applies at this moment. */
 export const derangementStands = (held: HeldDerangement, now: Moment): boolean =>
   Match.value(held.hold).pipe(
-    Match.tag("lostDot", (h) => now.wisdom < h.rank),
+    Match.tag("lasting", () => true),
     Match.tag("scene", (h) => Option.exists(now.sceneId, (id) => id === h.sceneId)),
     Match.tag("until", (h) => now.at < h.expiresAt),
     Match.exhaustive,
@@ -316,22 +320,13 @@ export const standingDerangements = (
   now: Moment,
 ): ReadonlyArray<HeldDerangement> => held.filter((h) => derangementStands(h, now))
 
-/** Whether the hold is a Bedlam's — a scene or a clock, never a dot. */
+/** Whether the hold is a Bedlam's — a scene or a clock, never lasting. */
 export const isBedlamHold = (hold: DerangementHold): boolean =>
   Match.value(hold).pipe(
-    Match.tag("lostDot", () => false),
+    Match.tag("lasting", () => false),
     Match.tag("scene", "until", () => true),
     Match.exhaustive,
   )
-
-/**
- * The permanent mark's hold: the dot the player hangs it on (owner,
- * 2026-10-28: a ghost beneath each empty pip is the door), which must be a
- * lost dot — one the sheet's Wisdom no longer reaches. A held dot has
- * nothing to hang from.
- */
-export const lostDotHold = (wisdom: WisdomRank, rank: WisdomRank): Option.Option<DerangementHold> =>
-  rank > wisdom ? Option.some({ _tag: "lostDot", rank } as const) : Option.none()
 
 /**
  * The Bedlam mark's hold, from the Wisdom table (Mage p. 268): one scene at
@@ -349,32 +344,32 @@ export const bedlamHold = (
   })
 
 /**
- * The held list after a Wisdom mark: a permanent derangement whose dot is
- * bought back leaves the sheet for good, so a later loss of the same dot
- * starts clean (the derived rule alone would make the old affliction
- * reappear with the new loss).
+ * The held list once a name is taken: the name and its partner leave, since
+ * a pair is one affliction at two depths (WoD p. 97: the severe form is what
+ * the mild one worsens into) — taking Hysteria over a held Phobia deepens
+ * it, taking Phobia over a held Hysteria lightens it.
  */
-export const shedBoughtBack = (
+export const withoutPair = (
   held: ReadonlyArray<HeldDerangement>,
-  wisdom: WisdomRank,
-): ReadonlyArray<HeldDerangement> =>
-  held.filter((h) =>
-    Match.value(h.hold).pipe(
-      Match.tag("lostDot", (d) => wisdom < d.rank),
-      Match.tag("scene", "until", () => true),
-      Match.exhaustive,
-    ),
-  )
+  name: DerangementName,
+): ReadonlyArray<HeldDerangement> => held.filter((d) => d.name !== name && d.name !== PARTNER[name])
 
 /**
- * The hold in the Chronicle's words: "dot 7", "Bedlam, this scene",
+ * How deep a pair sits on the sheet: none, the mild form, or the severe.
+ * The pair is named by its mild form.
+ */
+export const pairDepth = (held: ReadonlyArray<HeldDerangement>, mild: DerangementName): Option.Option<HeldDerangement> =>
+  Arr.findFirst(held, (d) => d.name === mild || d.name === PARTNER[mild])
+
+/**
+ * The hold in the Chronicle's words: "lasting", "Bedlam, this scene",
  * "Bedlam, 24 hours". Fixation's Bedlam is the one the table doesn't clock
  * (Mage p. 269: a die roll's worth of scenes, whatever the Wisdom), so its
  * mark carries the note.
  */
 export const holdWords = (held: HeldDerangement, wisdom: WisdomRank): string =>
   Match.value(held.hold).pipe(
-    Match.tag("lostDot", (h) => `dot ${h.rank}`),
+    Match.tag("lasting", () => "lasting"),
     Match.tag("scene", () => `Bedlam, this scene${fixationNote(held.name)}`),
     Match.tag("until", () => `Bedlam, ${spanWords(paradoxSpan("bedlam", wisdom))}${fixationNote(held.name)}`),
     Match.exhaustive,
@@ -384,19 +379,6 @@ const fixationNote = (name: DerangementName): string =>
   name === "Fixation" || name === "Obsessive Compulsion"
     ? " — runs a die roll's worth of scenes (p. 269)"
     : ""
-
-/** The permanent derangement already hanging from a dot, if any — one dot carries one (Mage p. 79). */
-export const hangingFromDot = (
-  held: ReadonlyArray<HeldDerangement>,
-  rank: WisdomRank,
-): Option.Option<HeldDerangement> =>
-  Arr.findFirst(held, (d) =>
-    Match.value(d.hold).pipe(
-      Match.tag("lostDot", (h) => h.rank === rank),
-      Match.tag("scene", "until", () => false),
-      Match.exhaustive,
-    ),
-  )
 
 /**
  * The Bedlam weakness in a few words for the sheet (Mage pp. 269–271):

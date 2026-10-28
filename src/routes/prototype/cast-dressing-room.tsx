@@ -57,7 +57,7 @@ import type { VideoSeat } from "#/domain/video-rail"
 import type { Id } from "../../../convex/_generated/dataModel"
 import type { HeldMerit } from "#/domain/merits"
 import { Option } from "effect"
-import { bedlamHold, lostDotHold, type HeldDerangement } from "#/domain/derangements"
+import { LASTING, bedlamHold, withoutPair, type HeldDerangement } from "#/domain/derangements"
 import { SceneId } from "#/domain/ids"
 
 // ── The knobs ────────────────────────────────────────────────────────────────
@@ -412,8 +412,8 @@ function DressingRoom() {
   // click the boxes and the meter and watch them move; the knob resets them.
   const [marks, setMarks] = useState<SheetMark>({})
   // MAG-60: the derangement marks fold here as the flow would fold them —
-  // the lost dot one above Wisdom now, or the Bedlam clock against the rig's
-  // one open Scene — so the shelf under the meter can be judged with no server.
+  // lasting, or the Bedlam clock against the rig's one open Scene — so the
+  // zone can be judged with no server.
   const [heldDerangements, setHeldDerangements] = useState<ReadonlyArray<HeldDerangement>>([])
   useEffect(() => {
     setMarks({})
@@ -425,17 +425,10 @@ function DressingRoom() {
       setHeldDerangements((prev) => prev.filter((d) => d.name !== mark.shedDerangement))
     }
     if (mark.derangement !== undefined) {
-      const { name, dot } = mark.derangement
-      const hold =
-        dot !== undefined
-          ? lostDotHold(wisdomNow, dot)
-          : bedlamHold(wisdomNow, Option.some(RIG_SCENE), Date.now())
+      const { name, bedlam } = mark.derangement
+      const hold = bedlam === true ? bedlamHold(wisdomNow, Option.some(RIG_SCENE), Date.now()) : Option.some(LASTING)
       if (Option.isSome(hold)) {
-        setHeldDerangements((prev) =>
-          dot !== undefined && prev.some((d) => d.name !== name && d.hold._tag === "lostDot" && d.hold.rank === dot)
-            ? prev
-            : [...prev.filter((d) => d.name !== name), { name, hold: hold.value }],
-        )
+        setHeldDerangements((prev) => [...withoutPair(prev, name), { name, hold: hold.value }])
       }
     }
   }

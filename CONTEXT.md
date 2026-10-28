@@ -91,15 +91,18 @@ form it also carries a weakness to a kind of magic (Depression: −1 against
 Death). The three starred severe forms (Schizophrenia, Multiple Personality,
 Fugue) take a life-altering trauma to acquire — or a Bedlam, which inflicts
 them freely. On the sheet a **held derangement** is a name and a **hold** —
-what it hangs from (ADR-0026): the Wisdom **dot it cost** (`lostDot`,
-standing while that dot is lost), the **Scene** it is bound to (a Bedlam at
-Wisdom 5+, over when the Scene closes), or the **clock** it runs out on (a
-Bedlam at Wisdom 4−, an expiry stamped from the Wisdom table). Whether it
-stands is derived against the moment, never cleaned up. It is drawn under
-the Wisdom meter by its hold: a stem pinned through the hollow cell, or the
-Paradox glyph with its weakness and clock. The **player marks it** through
-`markSheet` by its cause (the lost dot, or Bedlam) and puts it down the same
-way; buying the dot back sheds the one it carried.
+what it hangs from (ADR-0026): **lasting** (standing until put down by
+hand), the **Scene** it is bound to (a Bedlam at Wisdom 5+, over when the
+Scene closes), or the **clock** it runs out on (a Bedlam at Wisdom 4−, an
+expiry stamped from the Wisdom table). Whether it stands is derived against
+the moment, never cleaned up. It is drawn in the **Derangements zone**
+across the title card as a **mark** — the name in serif, its weight in mono
+("lasting"; "Bedlam · −1 Death · scene"), its bout in prose — under a fog of
+its ink: the wound's bruise for a lasting one, Paradox red for a Bedlam's.
+The **player marks it** through `markSheet` by name, as lasting or as a
+Bedlam's, and puts it down the same way. A pair is **one affliction at two
+depths**: taking the severe form over the mild **deepens** it, and the
+partner leaves the sheet with the mark.
 _Avoid_: Condition, Flaw (other editions' words); "source" / "duration" for
 the hold.
 

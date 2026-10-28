@@ -3,7 +3,12 @@
 Adopted 2026-10-28 (MAG-60, inside the sheet-completeness arc P-MAG-15;
 owner's framing of the same day: "the challenge here is to communicate two
 types, and to associate one type with the specific pip of the wisdom track
-that's missing").
+that's missing"). **Amended the same evening**: the owner tore the pip out —
+"i wanna tear out all the logic of assigning a derangement to a specific
+wisdom pip, i don't anticipate that these will happen often enough for the
+players to forget what they're associated with, we can cross that bridge if
+and when we come to it" — so a lasting one now simply stands, and the sheet
+draws the zone described in §2 as amended.
 
 ## Context
 
@@ -23,33 +28,41 @@ own paper gesture (ADR-0025).
 ## Decision
 
 1. **A held derangement is a name and a hold**, never a duration. The hold
-   is the cause: `lostDot` with the Wisdom rank it cost; `scene` with the
-   Scene it is bound to; `until` with an expiry stamped from the Wisdom
-   table at the moment of the mark. Whether it still stands is **derived
-   at read time** against the moment — the sheet's Wisdom, the open
-   Scene, the clock — and nothing ever has to clear it: a permanent one
-   stands while its dot is lost, a scene-bound one while that Scene is the
-   open one, a clocked one until its expiry.
-2. **The sheet draws the two kinds by what they hang from.** Under the
-   Wisdom meter, a permanent one is pinned by a stem through the hollow
-   cell it cost and the name hangs off the stem; a Bedlam one wears the
-   Paradox glyph, its weakness in a few words, and its clock ("scene", or
-   the time left). No source word, no hover: the stem says "this dot", the
-   glyph says "Paradox".
+   is the cause: `lasting` for one a failed degeneration left behind
+   (Mage p. 79); `scene` with the Scene a Bedlam one is bound to; `until`
+   with an expiry stamped from the Wisdom table at the moment of the mark.
+   Whether it still stands is **derived at read time** against the moment
+   — the open Scene, the clock — and nothing ever has to clear it: a
+   lasting one stands until put down by hand, a scene-bound one while that
+   Scene is the open one, a clocked one until its expiry. (As first
+   adopted the lasting hold was `lostDot` with the Wisdom rank it cost,
+   standing while that dot was lost; the owner withdrew the tie to the pip
+   the same day, see above.)
+2. **The sheet draws derangements as a zone** across the title card beneath
+   its title row, its eyebrow on Health's and Wisdom's left edge, always
+   present. A held one is a *mark*: the name in the display serif (it is
+   fiction), one mono line of game weight beneath ("lasting"; "Bedlam ·
+   −1 Death · scene"), and the bout in prose, read, never hovered. A
+   lasting one wears the wound's bruise, a Bedlam one Paradox red, and
+   while anything is held the zone wears a fog of that ink. A ghost — a
+   dashed outline wearing the spiral, "unburdened" while nothing is held —
+   opens the picker: one card per pair, named for its mild form with the
+   severe form beneath as what it deepens to; a tap takes the mild form, a
+   second deepens it, a third puts it down. Two words say what a tap takes
+   it as: lasting, or a Bedlam's.
 3. **The player marks it**, through `markSheet`: `derangement: { name,
-   cause }` where the cause is the dot just lost (the hold is the dot one
-   above Wisdom now — the player marks Wisdom down first; nothing at 10)
-   or Bedlam (the open Scene at Wisdom 5+, refused when none is open; the
-   table's clock below). `shedDerangement: name` is the mark in reverse.
-   Which derangement is chosen stays between player and Storyteller, as
-   the book says. The Storyteller inherits the door through the normal
-   ladder (Override-recorded), as with every mark.
-4. **Two writes keep the stored list honest without a sweeper.** A
-   derangement mark writes the list whole, so whatever no longer stands at
-   that moment leaves the row with it. A Wisdom mark that buys a dot back
-   sheds the derangement that dot carried, so a later loss of the same dot
-   starts clean — the derived rule alone would have resurrected the old
-   affliction.
+   bedlam? }` — lasting unless `bedlam` is set, in which case the hold is
+   the open Scene at Wisdom 5+ (refused when none is open) or the table's
+   clock below. `shedDerangement: name` is the mark in reverse. Which
+   derangement is chosen stays between player and Storyteller, as the book
+   says. The Storyteller inherits the door through the normal ladder
+   (Override-recorded), as with every mark.
+4. **One pair, one depth.** A pair is one affliction at two depths (WoD
+   p. 97: the severe form is what the mild one worsens into), so taking a
+   name drops its partner: Hysteria over a held Phobia deepens it, Phobia
+   over a held Hysteria lightens it. A derangement mark writes the list
+   whole, so whatever no longer stands at that moment leaves the row with
+   it. (The Wisdom-mark shedding of the first adoption went with the pip.)
 
 ## Consequences
 
@@ -63,9 +76,10 @@ own paper gesture (ADR-0025).
 - Fixation's Bedlam duration (a die roll's worth of scenes, Mage p. 269)
   is not clocked; it binds to the Scene like the rest, the Chronicle line
   carries the book's note, and the table re-marks it if it should run on.
-- One dot carries one derangement (Mage p. 79): a second name marked
-  against the same lost dot is refused — it means the Wisdom mark between
-  the two losses was skipped.
+- Nothing on the sheet says which Wisdom dot a lasting one cost; the
+  Chronicle line ("Phobia (lasting)") and the player's memory carry it.
+  If that proves too little at the table, the pip comes back as a note on
+  the hold, not as a door.
 - The template carries an empty `derangements` list; no live character
   holds one today, so no re-ingest is owed by this change.
 - The `derangements` column is optional and absent means none; rows

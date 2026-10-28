@@ -4,18 +4,18 @@ import {
   DERANGEMENTS,
   DERANGEMENT_PAIRS,
   DerangementName,
+  LASTING,
   bedlamHold,
+  pairDepth,
   derangement,
   derangementStands,
   findDerangement,
-  hangingFromDot,
   holdWords,
-  lostDotHold,
   partnerOf,
   severeFormOf,
-  shedBoughtBack,
   standingDerangements,
   weaknessWords,
+  withoutPair,
   type HeldDerangement,
   type Moment,
 } from "../derangements"
@@ -81,13 +81,13 @@ describe("Derangement catalog", () => {
 describe("A held derangement (MAG-60)", () => {
   const at = 1_000_000
   const scene = Option.some(SceneId.make("scene-1"))
-  const phobia: HeldDerangement = { name: "Phobia", hold: { _tag: "lostDot", rank: 7 } }
+  const phobia: HeldDerangement = { name: "Phobia", hold: LASTING }
   const depression: HeldDerangement = { name: "Depression", hold: { _tag: "scene", sceneId: SceneId.make("scene-1") } }
   const anxiety: HeldDerangement = { name: "Anxiety", hold: { _tag: "until", expiresAt: at + 1 } }
 
-  it("a permanent one stands while its dot is lost and is gone the moment it is bought back", () => {
+  it("a lasting one stands whatever the moment", () => {
     expect(derangementStands(phobia, { wisdom: 6, sceneId: Option.none(), at })).toBe(true)
-    expect(derangementStands(phobia, { wisdom: 7, sceneId: Option.none(), at })).toBe(false)
+    expect(derangementStands(phobia, { wisdom: 10, sceneId: Option.none(), at })).toBe(true)
   })
 
   it("a scene-bound one stands only while that Scene is the open one", () => {
@@ -108,12 +108,6 @@ describe("A held derangement (MAG-60)", () => {
     ])
   })
 
-  it("the permanent mark hangs on the lost dot the player points at; a held dot has nothing to hang from", () => {
-    expect(lostDotHold(6, 7)).toEqual(Option.some({ _tag: "lostDot", rank: 7 }))
-    expect(lostDotHold(6, 10)).toEqual(Option.some({ _tag: "lostDot", rank: 10 }))
-    expect(lostDotHold(6, 6)).toEqual(Option.none())
-  })
-
   it("the Bedlam mark binds to the Scene at Wisdom 5+ and needs one open", () => {
     expect(bedlamHold(7, scene, at)).toEqual(Option.some({ _tag: "scene", sceneId: "scene-1" }))
     expect(bedlamHold(5, Option.none(), at)).toEqual(Option.none())
@@ -124,23 +118,27 @@ describe("A held derangement (MAG-60)", () => {
     expect(bedlamHold(2, scene, at)).toEqual(Option.some({ _tag: "until", expiresAt: at + 24 * 3_600_000 }))
   })
 
-  it("buying a dot back sheds the derangement it carried, and only that", () => {
-    expect(shedBoughtBack([phobia, depression, anxiety], 7)).toEqual([depression, anxiety])
-    expect(shedBoughtBack([phobia, depression, anxiety], 6)).toEqual([phobia, depression, anxiety])
+  it("taking a name drops its partner too: one pair, one depth", () => {
+    expect(withoutPair([phobia, depression, anxiety], "Hysteria")).toEqual([depression, anxiety])
+    expect(withoutPair([phobia, depression, anxiety], "Phobia")).toEqual([depression, anxiety])
+    expect(withoutPair([phobia, depression, anxiety], "Fugue")).toEqual([phobia, depression, anxiety])
+  })
+
+  it("a pair's depth on the sheet is whichever form is held, named by the mild one", () => {
+    expect(pairDepth([phobia, depression], "Phobia")).toEqual(Option.some(phobia))
+    expect(pairDepth([{ name: "Hysteria", hold: LASTING }], "Phobia")).toEqual(
+      Option.some({ name: "Hysteria", hold: LASTING }),
+    )
+    expect(pairDepth([depression], "Phobia")).toEqual(Option.none())
   })
 
   it("the Chronicle's words for each hold; Fixation's Bedlam carries the book's note", () => {
-    expect(holdWords(phobia, 6)).toBe("dot 7")
+    expect(holdWords(phobia, 6)).toBe("lasting")
     expect(holdWords(depression, 7)).toBe("Bedlam, this scene")
     expect(holdWords(anxiety, 2)).toBe("Bedlam, 24 hours")
     expect(holdWords({ name: "Fixation", hold: depression.hold }, 7)).toBe(
       "Bedlam, this scene — runs a die roll's worth of scenes (p. 269)",
     )
-  })
-
-  it("one dot carries one derangement", () => {
-    expect(hangingFromDot([phobia, depression], 7)).toEqual(Option.some(phobia))
-    expect(hangingFromDot([phobia, depression], 6)).toEqual(Option.none())
   })
 
   it("a held list decodes through the sheet, and an unknown hold does not", () => {

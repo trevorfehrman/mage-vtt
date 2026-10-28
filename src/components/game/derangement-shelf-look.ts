@@ -1,26 +1,15 @@
-import { Array as Arr, Match, Option, Order } from "effect"
+import { Option } from "effect"
 import { isBedlamHold, type HeldDerangement } from "#/domain/derangements"
 
-// The shelf's pure look rules (MAG-60), kept out of the component so they can
-// be tested flat (ADR-0014/0019): the order the standing derangements hang
+// The zone's pure look rules (MAG-60), kept out of the component so they can
+// be tested flat (ADR-0014/0019): the order the standing derangements stand
 // in, and the clock's few words.
 
-/**
- * The shelf's order: the permanent ones first, the most recently lost dot
- * (the highest rank) nearest the meter so the stems stay short and never
- * cross; the Bedlam ones after, in the order they were marked.
- */
-export const shelfOrder = (standing: ReadonlyArray<HeldDerangement>): ReadonlyArray<HeldDerangement> => {
-  const rankOf = (d: HeldDerangement) =>
-    Match.value(d.hold).pipe(
-      Match.tag("lostDot", (h) => h.rank),
-      Match.tag("scene", "until", () => 0),
-      Match.exhaustive,
-    )
-  const permanent = standing.filter((d) => !isBedlamHold(d.hold))
-  const bedlam = standing.filter((d) => isBedlamHold(d.hold))
-  return [...Arr.sortWith(permanent, (d) => -rankOf(d), Order.Number), ...bedlam]
-}
+/** The zone's order: the lasting ones first, then the Bedlam ones, each in the order they were marked. */
+export const shelfOrder = (standing: ReadonlyArray<HeldDerangement>): ReadonlyArray<HeldDerangement> => [
+  ...standing.filter((d) => !isBedlamHold(d.hold)),
+  ...standing.filter((d) => isBedlamHold(d.hold)),
+]
 
 /**
  * Time left in the fewest words: "40m" under an hour, "3h" under two days,

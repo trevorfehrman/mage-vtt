@@ -1,4 +1,4 @@
-import { Clock, Effect, Match, Option, Schema } from "effect"
+import { Clock, Effect, Option, Schema } from "effect"
 import {
   getSessionScopedSheet,
   requireRepairAuthority,
@@ -12,14 +12,13 @@ import {
   type HealthBox,
 } from "../damage"
 import {
+  LASTING,
   bedlamHold,
   DerangementName,
   derangement as derangementDef,
-  hangingFromDot,
   holdWords,
-  lostDotHold,
-  shedBoughtBack,
   standingDerangements,
+  withoutPair,
   type HeldDerangement,
 } from "../derangements"
 import { CharacterId, PlayerId, SessionId } from "../ids"
@@ -180,20 +179,9 @@ const recordSheetChange = Effect.fn("Flows.handEdit.recordSheetChange")(function
       message: `The health track has ${sheet.healthTrack.length} boxes.`,
     })
   }
-  // A bought-back dot takes its derangement with it (MAG-60): the patch that
-  // raises Wisdom also sheds whatever hung from the dots now held again, so
-  // the next loss of the same dot starts clean.
-  const shed =
-    patch.wisdom !== undefined && patch.derangements === undefined
-      ? shedBoughtBack(sheet.derangementsHeld, patch.wisdom)
-      : undefined
-  const settled: SheetPatch =
-    shed !== undefined && shed.length !== sheet.derangementsHeld.length
-      ? { ...patch, derangements: shed }
-      : patch
   const store = yield* GameStore
-  const changes = describeChanges(sheet, settled)
-  yield* store.patchSheet(sheet.id, settled)
+  const changes = describeChanges(sheet, patch)
+  yield* store.patchSheet(sheet.id, patch)
   return yield* store.insertMessage({
     sessionId: sheet.sessionId,
     sender: { userId: by.userId, displayName: by.tableName },
@@ -283,11 +271,10 @@ export const MarkSheetArgs = Schema.Struct({
   destinyCurrent: Schema.optionalKey(Schema.Number),
   willpowerCurrent: Schema.optionalKey(Schema.Number),
   manaCurrent: Schema.optionalKey(Schema.Number),
-  /** A derangement taken (MAG-60): its name and, for a permanent one, the
-   * lost Wisdom dot it hangs on; no dot means a Bedlam one, and the flow
-   * works out its clock. */
+  /** A derangement taken (MAG-60): its name, and whether it is a Bedlam's
+   * — then the flow works out its clock; otherwise it is lasting. */
   derangement: Schema.optionalKey(
-    Schema.Struct({ name: Schema.String, dot: Schema.optionalKey(Schema.Number) }),
+    Schema.Struct({ name: Schema.String, bedlam: Schema.optionalKey(Schema.Boolean) }),
   ),
   /** A derangement put down by name — the mark in reverse. */
   shedDerangement: Schema.optionalKey(Schema.String),
@@ -303,7 +290,7 @@ export const SheetMark = Schema.Struct({
   willpowerCurrent: Schema.optionalKey(Willpower),
   manaCurrent: Schema.optionalKey(Mana),
   derangement: Schema.optionalKey(
-    Schema.Struct({ name: DerangementName, dot: Schema.optionalKey(WisdomRank) }),
+    Schema.Struct({ name: DerangementName, bedlam: Schema.optionalKey(Schema.Boolean) }),
   ),
   shedDerangement: Schema.optionalKey(DerangementName),
 })
@@ -380,11 +367,12 @@ export const markSheet = Effect.fn("Flows.handEdit.markSheet")(function* (
     return yield* new InvalidHandEdit({ message: `Mana holds at most ${sheet.maxMana}.` })
   }
 
-  // The derangement marks (MAG-60): a permanent one hangs on the lost dot
-  // the player pointed at; a Bedlam one on the clock the flow works out
-  // (the Scene open now at Wisdom 5+, an expiry stamped below). The list is
-  // written whole: the same name re-marked replaces its old hold, and
-  // anything no longer standing at this moment leaves the row with it.
+  // The derangement marks (MAG-60): a lasting one simply stands; a Bedlam
+  // one hangs on the clock the flow works out (the Scene open now at Wisdom
+  // 5+, an expiry stamped below). The list is written whole: the same name
+  // re-marked replaces its old hold, its partner leaves with it (one pair,
+  // one depth), and anything no longer standing at this moment leaves the
+  // row with it.
   const marked: SheetPatch =
     derangement === undefined && shedDerangement === undefined
       ? patch
@@ -423,22 +411,10 @@ const nextDerangements = Effect.fn("Flows.handEdit.nextDerangements")(function* 
     return yield* new InvalidHandEdit({ message: `${shed} isn't on the sheet.` })
   }
   if (taken === undefined) return standing.filter((d) => d.name !== shed)
-  const kept = standing.filter((d) => d.name !== shed && d.name !== taken.name)
+  const kept = withoutPair(standing, derangementDef(taken.name).name).filter((d) => d.name !== shed)
 
-  const [hold, why] =
-    taken.dot !== undefined
-      ? ([lostDotHold(sheet.wisdom, taken.dot), `Wisdom dot ${taken.dot} is held, not lost.`] as const)
-      : ([bedlamHold(sheet.wisdom, sceneId, at), "No scene is open to bind it to."] as const)
-  if (Option.isNone(hold)) return yield* new InvalidHandEdit({ message: why })
-  // One dot carries one derangement (Mage p. 79).
-  const already = Match.value(hold.value).pipe(
-    Match.tag("lostDot", (h) => hangingFromDot(kept, h.rank)),
-    Match.tag("scene", "until", () => Option.none()),
-    Match.exhaustive,
-  )
-  if (Option.isSome(already)) {
-    return yield* new InvalidHandEdit({ message: `That dot already carries ${already.value.name}.` })
-  }
+  const hold = taken.bedlam === true ? bedlamHold(sheet.wisdom, sceneId, at) : Option.some(LASTING)
+  if (Option.isNone(hold)) return yield* new InvalidHandEdit({ message: "No scene is open to bind it to." })
   const held: HeldDerangement = { name: derangementDef(taken.name).name, hold: hold.value }
   return [...kept, held]
 })

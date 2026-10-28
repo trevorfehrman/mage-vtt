@@ -528,21 +528,41 @@ pre code {
 .mv-sheet-section {
   will-change: transform;
 }
-/* The derangement symbol under a lost Wisdom cell (MAG-60): dim until it
- * carries one, its list is open, or it is pointed at — the hover lights the
- * symbol, not the cell above it (owner, 2026-10-28). */
-.mv-slot {
-  color: var(--dim);
-  opacity: 0.45;
-  transition:
-    opacity 160ms,
-    color 160ms;
+/* The Derangements zone (MAG-60; owner 2026-10-28: "styled more like a
+ * zone … the player should be very aware that they're under the burden of
+ * these things"): a band across the title card, quiet while nothing is
+ * held, and under a fog of its burden's ink (`--burden-ink`: the wound's
+ * bruise, or Paradox red once a Bedlam one stands) while anything is. The
+ * fog settles in when a mark lands and then holds still (ADR-0021: ambient
+ * motion is rare and earned). */
+.mv-burden {
+  position: relative;
+  isolation: isolate;
+  background: color-mix(in srgb, var(--ink) 2.5%, transparent);
+  transition: background-color 420ms;
 }
-.mv-slot:hover,
-.mv-slot:focus-visible,
-.mv-slot[data-lit] {
-  color: var(--ink);
-  opacity: 1;
+.mv-burden[data-burdened] {
+  background: color-mix(in srgb, var(--burden-ink) 5%, transparent);
+}
+.mv-burden-fog {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.85;
+  background:
+    radial-gradient(50% 120% at 18% 30%, color-mix(in srgb, var(--burden-ink) 22%, transparent), transparent 70%),
+    radial-gradient(60% 140% at 80% 80%, color-mix(in srgb, var(--burden-ink) 14%, transparent), transparent 70%),
+    radial-gradient(40% 100% at 55% 10%, color-mix(in srgb, var(--burden-ink) 10%, transparent), transparent 70%);
+  animation: mv-burden-settle 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes mv-burden-settle {
+  0% { opacity: 0; transform: translateY(-6px); }
+  35% { opacity: 1; }
+  100% { opacity: 0.85; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mv-burden-fog { animation: none; }
 }
 /* The meteor: a dash segment racing the line entry → exit (JS-driven CSS
  * transitions on concrete px values — see TraitSky's MeteorLine). */

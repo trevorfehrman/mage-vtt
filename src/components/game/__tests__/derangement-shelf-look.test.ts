@@ -3,15 +3,15 @@ import { describe, expect, it } from "@effect/vitest"
 import { SceneId } from "#/domain/ids"
 import { clockWords, shelfOrder } from "../derangement-shelf-look"
 
-describe("the derangement shelf's look (MAG-60)", () => {
-  it("permanent ones hang first, highest dot nearest the meter, then the Bedlam ones as marked", () => {
+describe("the derangement zone's look (MAG-60)", () => {
+  it("lasting ones stand first, then the Bedlam ones, each as marked", () => {
     const names = shelfOrder([
       { name: "Depression", hold: { _tag: "scene", sceneId: SceneId.make("s") } },
-      { name: "Suspicion", hold: { _tag: "lostDot", rank: 6 } },
+      { name: "Suspicion", hold: { _tag: "lasting" } },
       { name: "Anxiety", hold: { _tag: "until", expiresAt: 5 } },
-      { name: "Phobia", hold: { _tag: "lostDot", rank: 7 } },
+      { name: "Phobia", hold: { _tag: "lasting" } },
     ]).map((d) => d.name)
-    expect(names).toEqual(["Phobia", "Suspicion", "Depression", "Anxiety"])
+    expect(names).toEqual(["Suspicion", "Phobia", "Depression", "Anxiety"])
   })
 
   it("the clock in the fewest words", () => {

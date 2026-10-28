@@ -58,32 +58,19 @@ const GLOW_BY_RANK: Partial<Record<WisdomRank, string>> = {
  * the paper gesture of filling or erasing a dot. Absent, the meter is the
  * read-only record it was.
  */
-/**
- * `lit` (MAG-60; owner 2026-10-28: "when you hover over the permanent one
- * it can light up a decorated empty wisdom pip" — and then "the symbol
- * shouldn't also light up in the wisdom pip, that's superfluous"): the
- * lost cell a derangement badge is pointing at — outlined in ink with a
- * glow for as long as the hover lasts, nothing drawn inside.
- */
 export function WisdomMeter({
   wisdom,
   onSet,
-  lit,
 }: {
   wisdom: WisdomRank
   onSet?: ((rank: WisdomRank) => void) | undefined
-  lit?: WisdomRank | undefined
 }) {
   const fill = FILL_BY_RANK[wisdom]
   const glow = GLOW_BY_RANK[wisdom]
-  const cellStyle = (held: boolean, isLit: boolean) => ({
-    background: held ? fill : isLit ? "color-mix(in srgb, var(--ink) 14%, transparent)" : "transparent",
-    boxShadow: held
-      ? glow
-      : isLit
-        ? "inset 0 0 0 1px var(--ink), 0 0 10px color-mix(in srgb, var(--ink) 45%, transparent)"
-        : "inset 0 0 0 1px var(--line)",
-    transition: `background-color ${SHIFT}, box-shadow ${isLit ? "160ms" : SHIFT}`,
+  const cellStyle = (held: boolean) => ({
+    background: held ? fill : "transparent",
+    boxShadow: held ? glow : "inset 0 0 0 1px var(--line)",
+    transition: `background-color ${SHIFT}, box-shadow ${SHIFT}`,
   })
 
   return (
@@ -103,10 +90,10 @@ export function WisdomMeter({
             aria-pressed={rank <= wisdom}
             aria-disabled={Option.isNone(tapWisdomCell(wisdom, rank))}
             className="block cursor-pointer rounded-[2px]"
-            style={cellStyle(rank <= wisdom, rank === lit)}
+            style={cellStyle(rank <= wisdom)}
           />
         ) : (
-          <span key={rank} className="block rounded-[2px]" style={cellStyle(rank <= wisdom, rank === lit)} />
+          <span key={rank} className="block rounded-[2px]" style={cellStyle(rank <= wisdom)} />
         ),
       )}
     </span>

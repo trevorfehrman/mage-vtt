@@ -803,35 +803,18 @@ describe("Flows.handEdit.markSheet — derangements (MAG-60)", () => {
       scenes,
     })
 
-  it.effect("a permanent one hangs on the lost dot the player points at", () =>
+  it.effect("a lasting one is marked by name and simply stands", () =>
     Effect.gen(function* () {
       const store = seedWith(makeSheet({ wisdom: 6 }))
 
       yield* markSheet({
         sessionId: SESSION,
         characterId: CHARACTER,
-        derangement: { name: "Phobia", dot: 7 },
+        derangement: { name: "Phobia" },
       }).pipe(Effect.provide(store.layer))
 
-      expect(store.sheets.get(CHARACTER)!.derangementsHeld).toEqual([
-        { name: "Phobia", hold: { _tag: "lostDot", rank: 7 } },
-      ])
-      expect(store.messages[0]!.text).toContain("Derangements none → Phobia (dot 7)")
-    }),
-  )
-
-  it.effect("a held dot has nothing to hang one from", () =>
-    Effect.gen(function* () {
-      const store = seedWith(makeSheet({ wisdom: 7 }))
-
-      const exit = yield* markSheet({
-        sessionId: SESSION,
-        characterId: CHARACTER,
-        derangement: { name: "Phobia", dot: 7 },
-      }).pipe(Effect.provide(store.layer), Effect.exit)
-
-      expect(failureTag(exit)).toBe("InvalidHandEdit")
-      expect(store.sheetPatches).toHaveLength(0)
+      expect(store.sheets.get(CHARACTER)!.derangementsHeld).toEqual([{ name: "Phobia", hold: { _tag: "lasting" } }])
+      expect(store.messages[0]!.text).toContain("Derangements none → Phobia (lasting)")
     }),
   )
 
@@ -842,7 +825,7 @@ describe("Flows.handEdit.markSheet — derangements (MAG-60)", () => {
       yield* markSheet({
         sessionId: SESSION,
         characterId: CHARACTER,
-        derangement: { name: "Depression" },
+        derangement: { name: "Depression", bedlam: true },
       }).pipe(Effect.provide(store.layer))
 
       expect(store.sheets.get(CHARACTER)!.derangementsHeld).toEqual([
@@ -859,7 +842,7 @@ describe("Flows.handEdit.markSheet — derangements (MAG-60)", () => {
       const exit = yield* markSheet({
         sessionId: SESSION,
         characterId: CHARACTER,
-        derangement: { name: "Depression" },
+        derangement: { name: "Depression", bedlam: true },
       }).pipe(Effect.provide(store.layer), Effect.exit)
 
       expect(failureTag(exit)).toBe("InvalidHandEdit")
@@ -873,7 +856,7 @@ describe("Flows.handEdit.markSheet — derangements (MAG-60)", () => {
       yield* markSheet({
         sessionId: SESSION,
         characterId: CHARACTER,
-        derangement: { name: "Anxiety" },
+        derangement: { name: "Anxiety", bedlam: true },
       }).pipe(Effect.provide(store.layer))
 
       expect(store.sheets.get(CHARACTER)!.derangementsHeld).toEqual([
@@ -883,20 +866,24 @@ describe("Flows.handEdit.markSheet — derangements (MAG-60)", () => {
     }),
   )
 
-  it.effect("one dot carries one derangement: a second name on the same lost dot is refused", () =>
+  it.effect("one pair, one depth: taking the severe form over the mild deepens it, the mild over the severe lightens it", () =>
     Effect.gen(function* () {
-      const store = seedWith(
-        makeSheet({ wisdom: 6, derangements: [{ name: "Phobia", hold: { _tag: "lostDot", rank: 7 } }] }),
-      )
+      const store = seedWith(makeSheet({ wisdom: 6, derangements: [{ name: "Phobia", hold: { _tag: "lasting" } }] }))
 
-      const exit = yield* markSheet({
+      yield* markSheet({
         sessionId: SESSION,
         characterId: CHARACTER,
-        derangement: { name: "Suspicion", dot: 7 },
-      }).pipe(Effect.provide(store.layer), Effect.exit)
+        derangement: { name: "Hysteria" },
+      }).pipe(Effect.provide(store.layer))
+      expect(store.sheets.get(CHARACTER)!.derangementsHeld).toEqual([{ name: "Hysteria", hold: { _tag: "lasting" } }])
+      expect(store.messages[0]!.text).toContain("Derangements Phobia (lasting) → Hysteria (lasting)")
 
-      expect(failureTag(exit)).toBe("InvalidHandEdit")
-      expect(store.sheetPatches).toHaveLength(0)
+      yield* markSheet({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        derangement: { name: "Phobia" },
+      }).pipe(Effect.provide(store.layer))
+      expect(store.sheets.get(CHARACTER)!.derangementsHeld).toEqual([{ name: "Phobia", hold: { _tag: "lasting" } }])
     }),
   )
 
@@ -907,7 +894,7 @@ describe("Flows.handEdit.markSheet — derangements (MAG-60)", () => {
       const exit = yield* markSheet({
         sessionId: SESSION,
         characterId: CHARACTER,
-        derangement: { name: "Ennui", dot: 7 },
+        derangement: { name: "Ennui" },
       }).pipe(Effect.provide(store.layer), Effect.exit)
 
       expect(failureTag(exit)).toBe("InvalidHandEdit")
@@ -917,7 +904,7 @@ describe("Flows.handEdit.markSheet — derangements (MAG-60)", () => {
   it.effect("shedding puts one down and leaves the rest; a name not held is refused", () =>
     Effect.gen(function* () {
       const held = [
-        { name: "Phobia" as const, hold: { _tag: "lostDot" as const, rank: 7 as const } },
+        { name: "Phobia" as const, hold: { _tag: "lasting" as const } },
         { name: "Depression" as const, hold: { _tag: "scene" as const, sceneId: "scene-1" } },
       ]
       const store = seedWith(makeSheet({ wisdom: 6, derangements: held }), [openScene])
@@ -928,7 +915,7 @@ describe("Flows.handEdit.markSheet — derangements (MAG-60)", () => {
         shedDerangement: "Phobia",
       }).pipe(Effect.provide(store.layer))
       expect(store.sheets.get(CHARACTER)!.derangementsHeld.map((d) => d.name)).toEqual(["Depression"])
-      expect(store.messages[0]!.text).toContain("Derangements Phobia (dot 7), Depression (Bedlam, this scene) → Depression (Bedlam, this scene)")
+      expect(store.messages[0]!.text).toContain("Derangements Phobia (lasting), Depression (Bedlam, this scene) → Depression (Bedlam, this scene)")
 
       const exit = yield* markSheet({
         sessionId: SESSION,
@@ -950,32 +937,11 @@ describe("Flows.handEdit.markSheet — derangements (MAG-60)", () => {
       yield* markSheet({
         sessionId: SESSION,
         characterId: CHARACTER,
-        derangement: { name: "Phobia", dot: 7 },
+        derangement: { name: "Phobia" },
       }).pipe(Effect.provide(store.layer))
 
-      expect(store.sheets.get(CHARACTER)!.derangementsHeld).toEqual([
-        { name: "Phobia", hold: { _tag: "lostDot", rank: 7 } },
-      ])
+      expect(store.sheets.get(CHARACTER)!.derangementsHeld).toEqual([{ name: "Phobia", hold: { _tag: "lasting" } }])
     }),
   )
 
-  it.effect("buying the dot back sheds the derangement it carried", () =>
-    Effect.gen(function* () {
-      const held = [
-        { name: "Phobia" as const, hold: { _tag: "lostDot" as const, rank: 7 as const } },
-        { name: "Suspicion" as const, hold: { _tag: "lostDot" as const, rank: 6 as const } },
-      ]
-      const store = seedWith(makeSheet({ wisdom: 5, derangements: held }))
-
-      yield* markSheet({ sessionId: SESSION, characterId: CHARACTER, wisdom: 6 }).pipe(
-        Effect.provide(store.layer),
-      )
-
-      expect(store.sheets.get(CHARACTER)!.derangementsHeld).toEqual([
-        { name: "Phobia", hold: { _tag: "lostDot", rank: 7 } },
-      ])
-      expect(store.messages[0]!.text).toContain("Wisdom 5 → 6, Derangements Phobia (dot 7), Suspicion (dot 6) → Phobia (dot 7)")
-      expect(store.sheetPatches[0]!.patch.derangements).toHaveLength(1)
-    }),
-  )
 })

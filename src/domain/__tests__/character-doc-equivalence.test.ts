@@ -123,13 +123,13 @@ const addedColumns = {
   ),
   // MAG-67: the Destiny purse's current dice.
   destinyCurrent: v.optional(v.number()),
-  // MAG-60: derangements held, each hung from a dot, a Scene or a clock.
+  // MAG-60: derangements held, each lasting, or hung from a Scene or a clock.
   derangements: v.optional(
     v.array(
       v.object({
         name: v.string(),
         hold: v.union(
-          v.object({ _tag: v.string(), rank: v.number() }),
+          v.object({ _tag: v.string() }),
           v.object({ _tag: v.string(), sceneId: v.string() }),
           v.object({ _tag: v.string(), expiresAt: v.number() }),
         ),
