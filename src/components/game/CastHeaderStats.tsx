@@ -110,13 +110,15 @@ const HealthLineProps = Schema.Struct({
   ghosts: Schema.Number,
   /** Box edge in px; the Cast header's 14 by default. */
   box: Schema.optionalKey(Schema.Number),
+  /** Points of wound penalty the sheet cancels (Iron Stamina, MAG-59). */
+  cancels: Schema.optionalKey(Schema.Number),
 })
 
-export function HealthLine({ track, ghosts, box: edge = 14 }: typeof HealthLineProps.Type) {
+export function HealthLine({ track, ghosts, box: edge = 14, cancels = 0 }: typeof HealthLineProps.Type) {
   const ordinals = emptyOrdinals(track)
   // The penalty follows the bet (owner, 2026-10-25): the ghosted boxes take
   // Resistant bashing on the Cast, so the number reads as it will be.
-  const penalty = woundPenalty(containOnTrack(track, ghosts))
+  const penalty = woundPenalty(containOnTrack(track, ghosts), cancels)
   return (
     <span className="flex items-center gap-1.5" title="Health">
       <span className="flex gap-[3px]" style={{ paddingBottom: 6 }}>

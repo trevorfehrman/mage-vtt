@@ -1131,7 +1131,7 @@ export const releaseCast = Effect.fn("Flows.vulgarCast.releaseCast")(function* (
   }
 
   const uncontained = paradoxSuccesses - contained
-  const penalty = woundPenalty(track)
+  const penalty = woundPenalty(track, sheet.cancelsWoundPenalty)
   const castPool = finalCastPool({
     declaredPool: cast.declaredPool,
     paradoxSuccesses,

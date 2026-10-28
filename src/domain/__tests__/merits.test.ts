@@ -1,4 +1,4 @@
-import { Effect } from "effect"
+import { Effect, Option } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import { AttributeKey, SkillKey } from "../trait-keys"
 import {
@@ -11,6 +11,12 @@ import {
   ratingAllows,
   ratingText,
   validateMeritSelections,
+  diceOf,
+  bonusTo,
+  unlocks,
+  purseOf,
+  sourcesOf,
+  turns,
   type MeritTraits,
 } from "../merits"
 
@@ -217,4 +223,54 @@ describe("Merit creation validation", () => {
       expect(err.message).toBe("Occultation cannot be taken with Fame")
     }),
   )
+})
+
+// --- The typed mechanic (MAG-59 grill, 2026-10-27): what the app can act on ---
+
+describe("Merit mechanic: the dice a turned key adds", () => {
+  it("Danger Sense turns for two dice; a story Merit turns for none and does not turn", () => {
+    expect(diceOf({ name: "Danger Sense", dots: 2 })).toBe(2)
+    expect(turns({ name: "Danger Sense", dots: 2 })).toBe(true)
+    expect(diceOf({ name: "Barfly", dots: 1 })).toBe(0)
+    expect(turns({ name: "Barfly", dots: 1 })).toBe(false)
+  })
+})
+
+describe("Merit mechanic: dice by dots, and the numbers that read higher", () => {
+  it("Status adds a die a dot; Striking Looks adds one at •• and two at ••••", () => {
+    expect(diceOf({ name: "Status", dots: 3, label: "Mysterium" })).toBe(3)
+    expect(diceOf({ name: "Striking Looks", dots: 2 })).toBe(1)
+    expect(diceOf({ name: "Striking Looks", dots: 4 })).toBe(2)
+  })
+
+  it("a sheet's holdings raise a derived number: Fast Reflexes •• is +2 Initiative, Giant is +1 Size, Iron Stamina cancels wound penalty a dot", () => {
+    const held = [
+      { name: "Fast Reflexes", dots: 2 },
+      { name: "Giant", dots: 4 },
+      { name: "Iron Stamina", dots: 1 },
+      { name: "Barfly", dots: 1 },
+    ] as const
+    expect(bonusTo(held, "initiative")).toBe(2)
+    expect(bonusTo(held, "size")).toBe(1)
+    expect(bonusTo(held, "woundPenalty")).toBe(1)
+    expect(bonusTo(held, "speed")).toBe(0)
+    // the sources, for the sheet's few words: "Fast Reflexes +2"
+    expect(sourcesOf(held, "initiative")).toEqual([{ held: { name: "Fast Reflexes", dots: 2 }, bonus: 2 }])
+    expect(sourcesOf(held, "speed")).toEqual([])
+  })
+})
+
+describe("Merit mechanic: the gate and the purse", () => {
+  it("a sheet unlocks High Speech by holding a Merit whose mechanic gates the chant, not by its name", () => {
+    expect(unlocks([{ name: "High Speech", dots: 1 }], "highSpeech")).toBe(true)
+    expect(unlocks([{ name: "Resources", dots: 2 }], "highSpeech")).toBe(false)
+    expect(unlocks([], "highSpeech")).toBe(false)
+  })
+
+  it("Destiny •• is a purse of four; a sheet without a purse Merit has none", () => {
+    const held = [{ name: "Resources", dots: 2 }, { name: "Destiny", dots: 2 }] as const
+    expect(Option.getOrNull(purseOf(held))).toEqual({ held: { name: "Destiny", dots: 2 }, capacity: 4 })
+    expect(Option.isNone(purseOf([{ name: "Resources", dots: 2 }]))).toBe(true)
+    expect(turns({ name: "Destiny", dots: 2 })).toBe(true)
+  })
 })

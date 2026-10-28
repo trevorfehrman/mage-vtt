@@ -195,14 +195,16 @@ export const emptyOrdinals = (track: HealthTrack): ReadonlyArray<number | null> 
     box.severity === "empty" ? [n + 1, n] : [n, null],
   )[1]
 
-export const woundPenalty = (track: HealthTrack): number => {
+/**
+ * The wound penalty a track imposes, less the points a sheet cancels (Iron
+ * Stamina, WoD p. 113: "each dot cancels one point"), never past zero.
+ */
+export const woundPenalty = (track: HealthTrack, cancels = 0): number => {
   const filled = track.filter((b) => b.severity !== "empty").length
   const total = track.length
 
   // Wound penalties apply based on how many boxes from the RIGHT are filled
   // 3rd to last filled: -1, 2nd to last: -2, last: -3
-  if (filled >= total) return -3
-  if (filled >= total - 1) return -2
-  if (filled >= total - 2) return -1
-  return 0
+  const raw = filled >= total ? -3 : filled >= total - 1 ? -2 : filled >= total - 2 ? -1 : 0
+  return Math.min(0, raw + cancels)
 }

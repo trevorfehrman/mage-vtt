@@ -96,6 +96,66 @@ export const MeritTier = Schema.Struct({
 })
 export type MeritTier = typeof MeritTier.Type
 
+
+/**
+ * The typed **mechanic** (MAG-59 grill, 2026-10-27; CONTEXT: Merit): the one
+ * thing the app can act on for a Merit, from a closed list of kinds. The
+ * sheet, the tray and the flows read the mechanic — nothing in code names a
+ * Merit. Most Merits have nothing to compute (`none`): a name, a rating and
+ * a sentence the table applies.
+ *
+ * - `dice` — the dice a turned key adds to a roll. Never added by the app and
+ *   never gated on the pool's shape: the player activates it by hand, for
+ *   any roll, and the dice land under the Merit's name for the Storyteller
+ *   to see.
+ * - `derived` — a change to a number the sheet already derives (Initiative,
+ *   Speed, Size → Health, the wound penalty). The number simply reads higher.
+ * - `gate` — a flow the Merit unlocks (High Speech, the +2 chant).
+ * - `purse` — a spendable pool with a capacity (Destiny: twice the dots).
+ */
+export const MeritAmount = Schema.Union([
+  /** the same whatever the dots: "+2 on ... rolls" */
+  Schema.TaggedStruct("fixed", { n: Schema.Number }),
+  /** `n` for every `per` dots: "+1 per dot" is (1, 1); Striking Looks' +1 at •• and +2 at •••• is (1, 2) */
+  Schema.TaggedStruct("perDots", { n: Schema.Number, per: Schema.Number }),
+])
+export type MeritAmount = typeof MeritAmount.Type
+
+const fixedAmount = (n: number): MeritAmount => ({ _tag: "fixed", n })
+const perDot = (n = 1): MeritAmount => ({ _tag: "perDots", n, per: 1 })
+const perDots = (n: number, per: number): MeritAmount => ({ _tag: "perDots", n, per })
+
+/** An amount at a holding's dots. */
+export const amountAt = (amount: MeritAmount, dots: number): number =>
+  Match.value(amount).pipe(
+    Match.tag("fixed", (a) => a.n),
+    Match.tag("perDots", (a) => Math.floor(dots / a.per) * a.n),
+    Match.exhaustive,
+  )
+
+/** The numbers the sheet derives that a Merit may raise. */
+export const DerivedNumber = Schema.Literals(["initiative", "speed", "size", "woundPenalty"])
+export type DerivedNumber = typeof DerivedNumber.Type
+
+/** The flows a Merit may unlock. */
+export const GatedFlow = Schema.Literals(["highSpeech"])
+export type GatedFlow = typeof GatedFlow.Type
+
+export const MeritMechanic = Schema.Union([
+  Schema.TaggedStruct("none", {}),
+  Schema.TaggedStruct("dice", { amount: MeritAmount }),
+  Schema.TaggedStruct("derived", { number: DerivedNumber, amount: MeritAmount }),
+  Schema.TaggedStruct("gate", { flow: GatedFlow }),
+  Schema.TaggedStruct("purse", { amount: MeritAmount }),
+])
+export type MeritMechanic = typeof MeritMechanic.Type
+
+const none: MeritMechanic = { _tag: "none" }
+const dice = (amount: MeritAmount): MeritMechanic => ({ _tag: "dice", amount })
+const derived = (number: DerivedNumber, amount: MeritAmount): MeritMechanic => ({ _tag: "derived", number, amount })
+const gate = (flow: GatedFlow): MeritMechanic => ({ _tag: "gate", flow })
+const purse = (amount: MeritAmount): MeritMechanic => ({ _tag: "purse", amount })
+
 const MeritBody = Schema.Struct({
   family: MeritFamily,
   rating: MeritRating,
@@ -105,6 +165,8 @@ const MeritBody = Schema.Struct({
   creationOnly: Schema.Boolean,
   /** The book's mechanical sentence, in one line. */
   effect: Schema.String,
+  /** What the app can act on; `none` for most. */
+  mechanic: MeritMechanic,
   /** Fighting Styles: the maneuver each dot unlocks, each a prerequisite for the next. */
   tiers: Schema.optionalKey(Schema.Array(MeritTier)),
   /** Where the paragraph is: the book and its page. */
@@ -123,75 +185,75 @@ const wod = (page: number) => ({ book: "wod" as const, page })
 const CATALOG: Record<MeritName, MeritBody> = {
   // ---- Mental (WoD pp. 108–110) ----
   "Common Sense": {
-    family: "mental", rating: fixed(4), prerequisites: [], instance: "single", creationOnly: true,
+    family: "mental", rating: fixed(4), prerequisites: [], instance: "single", creationOnly: true, mechanic: none,
     effect: "Once a chapter the Storyteller may make a reflexive Wits + Composure roll to warn the character off a disastrous course.",
     page: wod(108),
   },
   "Danger Sense": {
-    family: "mental", rating: fixed(2), prerequisites: [], instance: "single", creationOnly: false,
+    family: "mental", rating: fixed(2), prerequisites: [], instance: "single", creationOnly: false, mechanic: dice(fixedAmount(2)),
     effect: "+2 on reflexive Wits + Composure rolls to detect an impending ambush.",
     page: wod(108),
   },
   "Eidetic Memory": {
-    family: "mental", rating: fixed(2), prerequisites: [], instance: "single", creationOnly: true,
+    family: "mental", rating: fixed(2), prerequisites: [], instance: "single", creationOnly: true, mechanic: dice(fixedAmount(2)),
     effect: "No roll to recall a fact or past experience; under stress, +2 to memory-recall rolls.",
     page: wod(108),
   },
   "Encyclopedic Knowledge": {
-    family: "mental", rating: fixed(4), prerequisites: [], instance: "single", creationOnly: true,
+    family: "mental", rating: fixed(4), prerequisites: [], instance: "single", creationOnly: true, mechanic: none,
     effect: "Intelligence + Wits to recall a factoid about any situation outside the character's experience.",
     page: wod(109),
   },
   "Holistic Awareness": {
-    family: "mental", rating: fixed(3), prerequisites: [], instance: "single", creationOnly: false,
+    family: "mental", rating: fixed(3), prerequisites: [], instance: "single", creationOnly: false, mechanic: none,
     effect: "An hour's treatment and an Intelligence + Medicine roll once a day: a success halves the patient's healing times that day (bashing and lethal only).",
     page: wod(109),
   },
   "Language": {
-    family: "mental", rating: range(1, 3), prerequisites: [], instance: "named", creationOnly: false,
+    family: "mental", rating: range(1, 3), prerequisites: [], instance: "named", creationOnly: false, mechanic: none,
     effect: "An extra language: minimal fluency at one dot, literate and conversational at two, like a native at three.",
     page: wod(109),
   },
   "Meditative Mind": {
-    family: "mental", rating: fixed(1), prerequisites: [], instance: "single", creationOnly: false,
+    family: "mental", rating: fixed(1), prerequisites: [], instance: "single", creationOnly: false, mechanic: none,
     effect: "Environmental and wound penalties to Wits + Composure rolls to meditate are ignored.",
     page: wod(109),
   },
 
   // ---- Physical (WoD pp. 110–114) ----
   "Ambidextrous": {
-    family: "physical", rating: fixed(3), prerequisites: [], instance: "single", creationOnly: true,
+    family: "physical", rating: fixed(3), prerequisites: [], instance: "single", creationOnly: true, mechanic: none,
     effect: "No −2 penalty for the off hand.",
     page: wod(110),
   },
   "Brawling Dodge": {
-    family: "physical", rating: fixed(1), prerequisites: [attr("strength", 2), skill("brawl", 1)], instance: "single", creationOnly: false,
+    family: "physical", rating: fixed(1), prerequisites: [attr("strength", 2), skill("brawl", 1)], instance: "single", creationOnly: false, mechanic: none,
     effect: "On a dodge, add Brawl dots to Defense instead of doubling it.",
     page: wod(110),
   },
   "Direction Sense": {
-    family: "physical", rating: fixed(1), prerequisites: [], instance: "single", creationOnly: false,
+    family: "physical", rating: fixed(1), prerequisites: [], instance: "single", creationOnly: false, mechanic: none,
     effect: "Always oriented: retrace any route and face any compass point without references.",
     page: wod(110),
   },
   "Disarm": {
-    family: "physical", rating: fixed(2), prerequisites: [attr("dexterity", 3), skill("weaponry", 2)], instance: "single", creationOnly: false,
+    family: "physical", rating: fixed(2), prerequisites: [attr("dexterity", 3), skill("weaponry", 2)], instance: "single", creationOnly: false, mechanic: none,
     effect: "A close-combat attack whose successes equal or exceed the opponent's Dexterity may disarm instead of wound; the weapon lands successes yards away.",
     page: wod(110),
   },
   "Fast Reflexes": {
-    family: "physical", rating: range(1, 2), prerequisites: [attr("dexterity", 3)], instance: "single", creationOnly: false,
+    family: "physical", rating: range(1, 2), prerequisites: [attr("dexterity", 3)], instance: "single", creationOnly: false, mechanic: derived("initiative", perDot()),
     effect: "+1 Initiative per dot.",
     page: wod(110),
   },
   "Fighting Finesse": {
-    family: "physical", rating: fixed(2), prerequisites: [attr("dexterity", 3), skill("weaponry", 2)], instance: "named", creationOnly: false,
+    family: "physical", rating: fixed(2), prerequisites: [attr("dexterity", 3), skill("weaponry", 2)], instance: "named", creationOnly: false, mechanic: none,
     effect: "With one chosen weapon, substitute Dexterity for Strength on attack rolls; bought once per weapon.",
     page: wod(110),
   },
   "Fighting Style: Boxing": {
     family: "physical", rating: range(1, 5),
-    prerequisites: [attr("strength", 3), attr("stamina", 2), skill("brawl", 2)], instance: "single", creationOnly: false,
+    prerequisites: [attr("strength", 3), attr("stamina", 2), skill("brawl", 2)], instance: "single", creationOnly: false, mechanic: none,
     effect: "Trained boxing; each dot unlocks the next maneuver.",
     tiers: [
       { dots: 1, name: "Body Blow", effect: "A Brawl attack whose successes equal or exceed the target's Size costs him his next action." },
@@ -204,7 +266,7 @@ const CATALOG: Record<MeritName, MeritBody> = {
   },
   "Fighting Style: Kung Fu": {
     family: "physical", rating: range(1, 5),
-    prerequisites: [attr("strength", 2), attr("dexterity", 2), attr("stamina", 2), skill("brawl", 2)], instance: "single", creationOnly: false,
+    prerequisites: [attr("strength", 2), attr("dexterity", 2), attr("stamina", 2), skill("brawl", 2)], instance: "single", creationOnly: false, mechanic: none,
     effect: "Trained kung fu; each dot unlocks the next maneuver.",
     tiers: [
       { dots: 1, name: "Focused Attack", effect: "Specified-target penalties and armor penalties to Brawl attacks are reduced by one." },
@@ -217,7 +279,7 @@ const CATALOG: Record<MeritName, MeritBody> = {
   },
   "Fighting Style: Two Weapons": {
     family: "physical", rating: range(1, 4),
-    prerequisites: [attr("dexterity", 3), skill("weaponry", 3)], instance: "single", creationOnly: false,
+    prerequisites: [attr("dexterity", 3), skill("weaponry", 3)], instance: "single", creationOnly: false, mechanic: none,
     effect: "A weapon in each hand; each dot unlocks the next maneuver. The off hand still takes −2 without Ambidextrous.",
     tiers: [
       { dots: 1, name: "Whirling Blades", effect: "The Dodge is not reduced by multiple attackers until their number exceeds Weaponry dots." },
@@ -228,192 +290,192 @@ const CATALOG: Record<MeritName, MeritBody> = {
     page: wod(112),
   },
   "Fleet of Foot": {
-    family: "physical", rating: range(1, 3), prerequisites: [attr("strength", 2)], instance: "single", creationOnly: false,
+    family: "physical", rating: range(1, 3), prerequisites: [attr("strength", 2)], instance: "single", creationOnly: false, mechanic: derived("speed", perDot()),
     effect: "+1 Speed per dot.",
     page: wod(112),
   },
   "Fresh Start": {
-    family: "physical", rating: fixed(1), prerequisites: [{ _tag: "merit", name: "Fast Reflexes", dots: 2 }], instance: "single", creationOnly: false,
+    family: "physical", rating: fixed(1), prerequisites: [{ _tag: "merit", name: "Fast Reflexes", dots: 2 }], instance: "single", creationOnly: false, mechanic: none,
     effect: "Spend an action to re-enter the Initiative roster at any point from the next turn on.",
     page: wod(112),
   },
   "Giant": {
-    family: "physical", rating: fixed(4), prerequisites: [], instance: "single", creationOnly: true,
+    family: "physical", rating: fixed(4), prerequisites: [], instance: "single", creationOnly: true, mechanic: derived("size", fixedAmount(1)),
     effect: "+1 Size, and so +1 Health.",
     page: wod(112),
   },
   "Gunslinger": {
-    family: "physical", rating: fixed(3), prerequisites: [attr("dexterity", 3), skill("firearms", 3)], instance: "single", creationOnly: false,
+    family: "physical", rating: fixed(3), prerequisites: [attr("dexterity", 3), skill("firearms", 3)], instance: "single", creationOnly: false, mechanic: none,
     effect: "Fire two pistols as a single action, the second at −1 and the off hand at −2; two different targets costs Defense for the turn.",
     page: wod(112),
   },
   "Iron Stamina": {
     family: "physical", rating: range(1, 3),
-    prerequisites: [{ _tag: "anyAttribute", keys: ["stamina", "resolve"], dots: 3 }], instance: "single", creationOnly: false,
+    prerequisites: [{ _tag: "anyAttribute", keys: ["stamina", "resolve"], dots: 3 }], instance: "single", creationOnly: false, mechanic: derived("woundPenalty", perDot()),
     effect: "Each dot cancels one point of fatigue or wound penalty.",
     page: wod(113),
   },
   "Iron Stomach": {
-    family: "physical", rating: fixed(2), prerequisites: [attr("stamina", 2)], instance: "single", creationOnly: false,
+    family: "physical", rating: fixed(2), prerequisites: [attr("stamina", 2)], instance: "single", creationOnly: false, mechanic: dice(fixedAmount(2)),
     effect: "+2 to Survival rolls to eat whatever is at hand; +3 to Stamina to resist deprivation.",
     page: wod(113),
   },
   "Natural Immunity": {
-    family: "physical", rating: fixed(1), prerequisites: [attr("stamina", 2)], instance: "single", creationOnly: false,
+    family: "physical", rating: fixed(1), prerequisites: [attr("stamina", 2)], instance: "single", creationOnly: false, mechanic: dice(fixedAmount(2)),
     effect: "+2 on Stamina rolls to resist infection, sickness and disease.",
     page: wod(113),
   },
   "Quick Draw": {
-    family: "physical", rating: fixed(1), prerequisites: [attr("dexterity", 3)], instance: "named", creationOnly: false,
+    family: "physical", rating: fixed(1), prerequisites: [attr("dexterity", 3)], instance: "named", creationOnly: false, mechanic: none,
     effect: "Draw and attack as one action without penalty, a hidden weapon costing no Defense; bought separately for firearms and for melee weapons.",
     page: wod(113),
   },
   "Quick Healer": {
-    family: "physical", rating: fixed(4), prerequisites: [attr("stamina", 4)], instance: "single", creationOnly: false,
+    family: "physical", rating: fixed(4), prerequisites: [attr("stamina", 4)], instance: "single", creationOnly: false, mechanic: none,
     effect: "Heals in half the time: bashing in eight minutes, lethal in a day, aggravated in four days.",
     page: wod(113),
   },
   "Strong Back": {
-    family: "physical", rating: fixed(1), prerequisites: [attr("strength", 2)], instance: "single", creationOnly: false,
+    family: "physical", rating: fixed(1), prerequisites: [attr("strength", 2)], instance: "single", creationOnly: false, mechanic: dice(fixedAmount(1)),
     effect: "+1 to lift or carry heavy weights.",
     page: wod(113),
   },
   "Strong Lungs": {
-    family: "physical", rating: fixed(3), prerequisites: [skill("athletics", 3)], instance: "single", creationOnly: false,
+    family: "physical", rating: fixed(3), prerequisites: [skill("athletics", 3)], instance: "single", creationOnly: false, mechanic: dice(fixedAmount(2)),
     effect: "+2 to Stamina when reading the holding-breath chart.",
     page: wod(113),
   },
   "Stunt Driver": {
-    family: "physical", rating: fixed(3), prerequisites: [attr("dexterity", 3)], instance: "single", creationOnly: false,
+    family: "physical", rating: fixed(3), prerequisites: [attr("dexterity", 3)], instance: "single", creationOnly: false, mechanic: none,
     effect: "Drive and take an unrelated action in the same turn.",
     page: wod(113),
   },
   "Toxin Resistance": {
-    family: "physical", rating: fixed(2), prerequisites: [attr("stamina", 3)], instance: "single", creationOnly: false,
+    family: "physical", rating: fixed(2), prerequisites: [attr("stamina", 3)], instance: "single", creationOnly: false, mechanic: dice(fixedAmount(2)),
     effect: "+2 on Stamina rolls to resist drugs, poisons and toxins; hard to intoxicate, and painkillers work half as well.",
     page: wod(113),
   },
   "Weaponry Dodge": {
-    family: "physical", rating: fixed(1), prerequisites: [attr("strength", 2), skill("weaponry", 1)], instance: "single", creationOnly: false,
+    family: "physical", rating: fixed(1), prerequisites: [attr("strength", 2), skill("weaponry", 1)], instance: "single", creationOnly: false, mechanic: none,
     effect: "On a dodge, add Weaponry dots to Defense instead of doubling it.",
     page: wod(114),
   },
 
   // ---- Social (WoD pp. 114–117) ----
   "Allies": {
-    family: "social", rating: range(1, 5), prerequisites: [], instance: "named", creationOnly: false,
+    family: "social", rating: range(1, 5), prerequisites: [], instance: "named", creationOnly: false, mechanic: dice(perDot()),
     effect: "Favors from one group, deeper per dot; a doubtful ask is Manipulation + Persuasion with a bonus equal to the dots.",
     page: wod(114),
   },
   "Barfly": {
-    family: "social", rating: fixed(1), prerequisites: [], instance: "single", creationOnly: false,
+    family: "social", rating: fixed(1), prerequisites: [], instance: "single", creationOnly: false, mechanic: none,
     effect: "Into any nightspot with a few quick words and a timely bribe.",
     page: wod(114),
   },
   "Contacts": {
-    family: "social", rating: range(1, 5), prerequisites: [], instance: "single", creationOnly: false,
+    family: "social", rating: range(1, 5), prerequisites: [], instance: "single", creationOnly: false, mechanic: none,
     effect: "One circle of informants per dot; information takes a Manipulation + Persuasion or Socialize roll.",
     page: wod(114),
   },
   "Fame": {
-    family: "social", rating: range(1, 3), prerequisites: [], instance: "single", creationOnly: false,
+    family: "social", rating: range(1, 3), prerequisites: [], instance: "single", creationOnly: false, mechanic: dice(perDot()),
     effect: "+1 per dot to Socialize (or Persuasion) rolls among the impressed — and the same bonus to be recognized on the street.",
     page: wod(115),
   },
   "Inspiring": {
-    family: "social", rating: fixed(4), prerequisites: [attr("presence", 4)], instance: "single", creationOnly: false,
+    family: "social", rating: fixed(4), prerequisites: [attr("presence", 4)], instance: "single", creationOnly: false, mechanic: none,
     effect: "Once a session, a Presence + Persuasion roll: those who actively assist and are in earshot regain one spent Willpower.",
     page: wod(115),
   },
   "Mentor": {
-    family: "social", rating: range(1, 5), prerequisites: [], instance: "single", creationOnly: false,
+    family: "social", rating: range(1, 5), prerequisites: [], instance: "single", creationOnly: false, mechanic: none,
     effect: "A teacher and patron who acts on the character's behalf, power and reach growing with the dots.",
     page: wod(115),
   },
   "Resources": {
-    family: "social", rating: range(1, 5), prerequisites: [], instance: "single", creationOnly: false,
+    family: "social", rating: range(1, 5), prerequisites: [], instance: "single", creationOnly: false, mechanic: none,
     effect: "Disposable income, from $500 a month at one dot to $50,000 at five; an item costing no more dots than this is affordable.",
     page: wod(115),
   },
   "Retainer": {
-    family: "social", rating: range(1, 5), prerequisites: [], instance: "named", creationOnly: false,
+    family: "social", rating: range(1, 5), prerequisites: [], instance: "named", creationOnly: false, mechanic: none,
     effect: "One loyal follower per acquisition, the dots measuring his capability; no roll to get results.",
     page: wod(116),
   },
   "Status": {
-    family: "social", rating: range(1, 5), prerequisites: [], instance: "named", creationOnly: false,
+    family: "social", rating: range(1, 5), prerequisites: [], instance: "named", creationOnly: false, mechanic: dice(perDot()),
     effect: "Standing in one group — a Sleeper body, or among the Awakened a Consilium or an order: bonus dice equal to the dots on mundane Social rolls through official channels. One dot of Order Status is needed to learn the order's rotes past the starting six.",
     page: wod(116),
   },
   "Striking Looks": {
-    family: "social", rating: either(2, 4), prerequisites: [], instance: "single", creationOnly: false,
+    family: "social", rating: either(2, 4), prerequisites: [], instance: "single", creationOnly: false, mechanic: dice(perDots(1, 2)),
     effect: "+1 at two dots, +2 at four, to Presence or Manipulation rolls that trade on looks; harder to go unnoticed.",
     page: wod(117),
   },
 
   // ---- Awakened (Mage pp. 80–89) ----
   "Artifact": {
-    family: "awakened", rating: atLeast(3), prerequisites: [], instance: "named", creationOnly: false,
+    family: "awakened", rating: atLeast(3), prerequisites: [], instance: "named", creationOnly: false, mechanic: none,
     effect: "A Supernal item whose powers mimic spells, rolling Gnosis + the mimicked Arcanum when triggered; costs 2 + the highest Arcanum dots, +1 per further power, +1 if persistent.",
     page: mage(80),
   },
   "Destiny": {
-    family: "awakened", rating: range(1, 5), prerequisites: [], instance: "single", creationOnly: false,
+    family: "awakened", rating: range(1, 5), prerequisites: [], instance: "single", creationOnly: false, mechanic: purse(perDot(2)),
     effect: "A pool of destiny dice each chapter equal to twice the dots, added to any rolls; a bane the Storyteller approves costs one die per dot whenever it comes into play.",
     page: mage(81),
   },
   "Dream": {
-    family: "awakened", rating: range(1, 5), prerequisites: [], instance: "single", creationOnly: false,
+    family: "awakened", rating: range(1, 5), prerequisites: [], instance: "single", creationOnly: false, mechanic: none,
     effect: "Once a session, an hour's reverie and a secret Wits + Composure roll yield one clue per dot, veiled in symbol.",
     page: mage(82),
   },
   "Enhanced Item": {
-    family: "awakened", rating: range(1, 5), prerequisites: [], instance: "named", creationOnly: false,
+    family: "awakened", rating: range(1, 5), prerequisites: [], instance: "named", creationOnly: false, mechanic: none,
     effect: "An object altered with Matter: 1 dot per +2 Durability, Structure or Size, per +1 equipment bonus, or per Arcanum dot of a special property. Persistent, and no Paradox.",
     page: mage(82),
   },
   "Familiar": {
-    family: "awakened", rating: either(3, 4), prerequisites: [], instance: "single", creationOnly: false,
+    family: "awakened", rating: either(3, 4), prerequisites: [], instance: "single", creationOnly: false, mechanic: none,
     effect: "A bonded rank 1 spirit — three dots in Twilight, four embodied — whose Essence the mage may spend as Mana and whose senses serve as a scrying window.",
     page: mage(82),
   },
   "Hallow": {
-    family: "awakened", rating: range(1, 5), prerequisites: [{ _tag: "merit", name: "Sanctum", dots: 1 }], instance: "single", creationOnly: false,
+    family: "awakened", rating: range(1, 5), prerequisites: [{ _tag: "merit", name: "Sanctum", dots: 1 }], instance: "single", creationOnly: false, mechanic: none,
     effect: "Mana equal to the dots each day, drawn by oblation or Prime 3; within five yards per dot, the first Mana point a spell costs is free.",
     page: mage(83),
   },
   "High Speech": {
-    family: "awakened", rating: fixed(1), prerequisites: [], instance: "single", creationOnly: false,
+    family: "awakened", rating: fixed(1), prerequisites: [], instance: "single", creationOnly: false, mechanic: gate("highSpeech"),
     effect: "The Atlantean tongue: an instant action of chanting gives +2 to the next turn's spellcasting (p. 117), and its runes extend a spell's Duration (p. 119). Free to a mage who begins play in an order.",
     page: mage(84),
   },
   "Imbued Item": {
-    family: "awakened", rating: atLeast(2), prerequisites: [], instance: "named", creationOnly: false,
+    family: "awakened", rating: atLeast(2), prerequisites: [], instance: "named", creationOnly: false, mechanic: none,
     effect: "An item holding a spell imbued with Prime, rolling Gnosis + the Arcanum when triggered; costs 1 + the highest Arcanum dots, +1 per further power, +1 if persistent, +1 for a Mana pool of its own.",
     page: mage(84),
   },
   "Library": {
-    family: "awakened", rating: range(1, 5), prerequisites: [{ _tag: "merit", name: "Sanctum", dots: 1 }], instance: "single", creationOnly: false,
+    family: "awakened", rating: range(1, 5), prerequisites: [{ _tag: "merit", name: "Sanctum", dots: 1 }], instance: "single", creationOnly: false, mechanic: none,
     effect: "One field of study per dot; research rolls from it take ten minutes each rather than thirty. Shareable within a sanctum.",
     page: mage(85),
   },
   "Occultation": {
-    family: "awakened", rating: range(1, 3), prerequisites: [{ _tag: "noMerit", name: "Fame" }], instance: "single", creationOnly: false,
+    family: "awakened", rating: range(1, 3), prerequisites: [{ _tag: "noMerit", name: "Fame" }], instance: "single", creationOnly: false, mechanic: none,
     effect: "The dots are subtracted from rolls to read the mage's resonance, from sympathetic spells cast at him and from mundane rolls to gather information about him. Lost while he is publicly known.",
     page: mage(86),
   },
   "Sanctum": {
-    family: "awakened", rating: range(1, 10), prerequisites: [], instance: "single", creationOnly: false,
+    family: "awakened", rating: range(1, 10), prerequisites: [], instance: "single", creationOnly: false, mechanic: none,
     effect: "The mage's stronghold, its dots split between Size (rooms) and Security (−1 die per dot to intrude, +1 Initiative per dot to those inside); each aspect caps at five.",
     page: mage(86),
   },
   "Sleepwalker Retainer": {
-    family: "awakened", rating: range(1, 5), prerequisites: [], instance: "named", creationOnly: false,
+    family: "awakened", rating: range(1, 5), prerequisites: [], instance: "named", creationOnly: false, mechanic: none,
     effect: "A Retainer who is a Sleepwalker: magic may be worked openly before him.",
     page: mage(88),
   },
   "Thrall": {
-    family: "awakened", rating: fixed(3), prerequisites: [], instance: "named", creationOnly: false,
+    family: "awakened", rating: fixed(3), prerequisites: [], instance: "named", creationOnly: false, mechanic: none,
     effect: "The mage holds another willworker's soul stone: three favors owed, an Intimate connection, and once a day Gnosis + Presence − the owner's Resolve to draw one Mana per success.",
     page: mage(89),
   },
@@ -424,6 +486,78 @@ export const MERITS: ReadonlyArray<MeritDef> = MERIT_NAMES.map((name) => ({ name
 
 /** The catalog entry for a name — total, since the name is closed. */
 export const merit = (name: MeritName): MeritDef => ({ name, ...CATALOG[name] })
+
+
+// --- The mechanic, read off a holding ---
+
+/** The mechanic of a held Merit — total, since the name is closed. */
+export const mechanicOf = (held: HeldMerit): MeritMechanic => CATALOG[held.name].mechanic
+
+/** The dice a turned key adds at these dots; 0 for anything but a `dice` Merit. */
+export const diceOf = (held: HeldMerit): number =>
+  Match.value(mechanicOf(held)).pipe(
+    Match.tag("dice", (m) => amountAt(m.amount, held.dots)),
+    Match.orElse(() => 0),
+  )
+
+/** Whether the key turns: a Merit that adds dice or spends from a purse. */
+export const turns = (held: HeldMerit): boolean =>
+  Match.value(mechanicOf(held)).pipe(
+    Match.tag("dice", "purse", () => true),
+    Match.orElse(() => false),
+  )
+
+/** One holding's contribution to a derived number; 0 unless it is a `derived` Merit on that number. */
+const derivedBonusOf = (held: HeldMerit, number: DerivedNumber): number =>
+  Match.value(mechanicOf(held)).pipe(
+    Match.tag("derived", (m) => (m.number === number ? amountAt(m.amount, held.dots) : 0)),
+    Match.orElse(() => 0),
+  )
+
+/**
+ * The holdings that raise a derived number, each with its bonus — the
+ * sheet's few words where the number would otherwise be plain
+ * ("Fast Reflexes +2").
+ */
+export const sourcesOf = (
+  held: ReadonlyArray<HeldMerit>,
+  number: DerivedNumber,
+): ReadonlyArray<{ held: HeldMerit; bonus: number }> =>
+  held
+    .map((h) => ({ held: h, bonus: derivedBonusOf(h, number) }))
+    .filter((s) => s.bonus > 0)
+
+/** What a sheet's holdings add to a derived number: the number simply reads higher. */
+export const bonusTo = (held: ReadonlyArray<HeldMerit>, number: DerivedNumber): number =>
+  sourcesOf(held, number).reduce((sum, s) => sum + s.bonus, 0)
+
+/** Whether a sheet's holdings unlock a flow: any Merit whose mechanic gates it. */
+export const unlocks = (held: ReadonlyArray<HeldMerit>, flow: GatedFlow): boolean =>
+  held.some((h) =>
+    Match.value(mechanicOf(h)).pipe(
+      Match.tag("gate", (m) => m.flow === flow),
+      Match.orElse(() => false),
+    ),
+  )
+
+/** A holding's purse capacity; 0 unless it is a `purse` Merit. */
+export const purseCapacityOf = (held: HeldMerit): number =>
+  Match.value(mechanicOf(held)).pipe(
+    Match.tag("purse", (m) => amountAt(m.amount, held.dots)),
+    Match.orElse(() => 0),
+  )
+
+/**
+ * The purse a sheet's holdings carry (Destiny: twice the dots, Mage p. 81),
+ * with the holding it hangs from. One purse Merit exists; were there two, the
+ * first held would be the sheet's.
+ */
+export const purseOf = (
+  held: ReadonlyArray<HeldMerit>,
+): Option.Option<{ held: HeldMerit; capacity: number }> =>
+  Arr.findFirst(held, (h) => purseCapacityOf(h) > 0).pipe(
+    Option.map((h) => ({ held: h, capacity: purseCapacityOf(h) })),
+  )
 
 /** Find-by-name over an open string (a name a person typed): a miss is a value. */
 export const findMerit = (name: string): Option.Option<MeritDef> =>

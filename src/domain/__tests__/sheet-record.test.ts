@@ -84,10 +84,9 @@ describe("CharacterSheet: Skill Specialties (MAG-58)", () => {
 })
 
 describe("CharacterSheet: Merits (MAG-59)", () => {
-  it("a row without the column holds none; a stored list reads back whole", () => {
+  it("a row without the column holds none; a stored list reads back whole, each holding its own entry", () => {
     const bare = makeAldousSheet()
     expect(bare.meritsHeld).toEqual([])
-    expect(bare.hasMerit("High Speech")).toBe(false)
     expect(bare.knowsHighSpeech).toBe(false)
     const sheet = makeAldousSheet({
       merits: [
@@ -98,19 +97,6 @@ describe("CharacterSheet: Merits (MAG-59)", () => {
     })
     expect(sheet.meritsHeld).toHaveLength(3)
     expect(sheet.knowsHighSpeech).toBe(true)
-    expect(sheet.meritDots("High Speech")).toBe(1)
-    expect(sheet.meritDots("Resources")).toBe(0)
-  })
-
-  it("a named Merit held more than once answers with its highest rating", () => {
-    const sheet = makeAldousSheet({
-      merits: [
-        { name: "Allies", dots: 2, label: "Police" },
-        { name: "Allies", dots: 3, label: "Criminals" },
-      ],
-    })
-    expect(sheet.meritDots("Allies")).toBe(3)
-    expect(sheet.hasMerit("Allies")).toBe(true)
   })
 
   it("a Merit outside the catalog, or at no dots, is not representable", () => {
@@ -122,6 +108,29 @@ describe("CharacterSheet: Merits (MAG-59)", () => {
   it("the template character holds High Speech; the bare fixture does not", () => {
     expect(makeCorvinSheet().knowsHighSpeech).toBe(true)
     expect(makeAldousSheet().knowsHighSpeech).toBe(false)
+  })
+
+  // The derived numbers read higher (grill 2026-10-27): Aldous is Dexterity 2,
+  // Composure 3 (+1 Moros), Strength 2, Stamina 2 — Initiative 6, Speed 9,
+  // Size 5, Health 7 on the plain sheet.
+  it("Fast Reflexes raises Initiative, Fleet of Foot Speed, Giant Size and so Health", () => {
+    const plain = makeAldousSheet()
+    expect([plain.initiative, plain.speed, plain.size, plain.health]).toEqual([6, 9, 5, 7])
+    const sheet = makeAldousSheet({
+      merits: [
+        { name: "Fast Reflexes", dots: 2 },
+        { name: "Fleet of Foot", dots: 1 },
+        { name: "Giant", dots: 4 },
+      ],
+    })
+    expect([sheet.initiative, sheet.speed, sheet.size, sheet.health]).toEqual([8, 10, 6, 8])
+  })
+
+  it("Iron Stamina cancels a point of wound penalty a dot, never past zero", () => {
+    const hurt = ["lethal", "lethal", "lethal", "lethal", "lethal", "lethal", "empty"] as const
+    expect(makeAldousSheet({ healthTrack: hurt }).woundPenalty).toBe(-2)
+    expect(makeAldousSheet({ healthTrack: hurt, merits: [{ name: "Iron Stamina", dots: 1 }] }).woundPenalty).toBe(-1)
+    expect(makeAldousSheet({ healthTrack: hurt, merits: [{ name: "Iron Stamina", dots: 3 }] }).woundPenalty).toBe(0)
   })
 })
 

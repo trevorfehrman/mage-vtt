@@ -368,6 +368,7 @@ export function CastCard({
           declaredPool: cast.declaredPool,
           paradoxSuccesses: cast.paradoxSuccesses,
           contained: cockpitContained,
+          cancels: cockpitSheet.cancelsWoundPenalty,
         })
       : null
 
@@ -770,7 +771,7 @@ export function CastCard({
           </p>
           {statsSheet !== null && (
             <span className="shrink-0 pt-[3px]">
-              <HealthLine track={statsSheet.healthTrack} ghosts={cockpitContained} />
+              <HealthLine track={statsSheet.healthTrack} ghosts={cockpitContained} cancels={statsSheet.cancelsWoundPenalty} />
             </span>
           )}
         </div>

@@ -15,7 +15,8 @@ import { RoteArcanumName, RotePool } from "./rote-pool"
 import { ORDER_ROTE_SKILLS, SpellAspect } from "./rote-cast"
 import { STARTING_WISDOM, WisdomRank } from "./wisdom"
 import { ArcanumName, SkillKey } from "./trait-keys"
-import { HeldMerit, type MeritName } from "./merits"
+import { woundPenalty } from "./health"
+import { bonusTo, HeldMerit, unlocks } from "./merits"
 
 // The key vocabularies live in trait-keys.ts (a leaf the catalogs share);
 // the sheet's callers keep importing them from here.
@@ -460,26 +461,35 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   }
 
   /**
-   * The dots held in a Merit, 0 when it is not held. A `named` Merit held
-   * more than once ("Allies (Police) ••, Allies (Criminals) •••") answers
-   * with its highest rating — the question "how deep does it run" has no
-   * single answer there, and a gate only asks whether it is held at all.
+   * Whether the mage may chant for the +2 (Mage p. 117: "the mage must know
+   * the language — see the High Speech Merit"): the sheet holds a Merit whose
+   * mechanic gates the chant. The cast flows refuse the declaration without it.
    */
-  meritDots(name: MeritName): number {
-    return Math.max(0, ...this.meritsHeld.filter((m) => m.name === name).map((m) => m.dots))
-  }
-
-  hasMerit(name: MeritName): boolean {
-    return this.meritDots(name) > 0
+  get knowsHighSpeech(): boolean {
+    return unlocks(this.meritsHeld, "highSpeech")
   }
 
   /**
-   * Whether the mage may chant for the +2 (Mage p. 117: "the mage must know
-   * the language — see the High Speech Merit"). The cast flows refuse the
-   * declaration without it.
+   * The derived numbers a Merit raises (MAG-59; grill 2026-10-27): the number
+   * simply reads higher — Fast Reflexes on Initiative, Fleet of Foot on
+   * Speed, Giant on Size and so on Health. Size stays in the rules, not drawn.
    */
-  get knowsHighSpeech(): boolean {
-    return this.hasMerit("High Speech")
+  get size(): number {
+    return DEFAULT_SIZE + bonusTo(this.meritsHeld, "size")
+  }
+
+  /**
+   * The wound penalty the sheet's track imposes, after Iron Stamina cancels a
+   * point a dot (WoD p. 113) — never past zero, and the same number every
+   * roll pays.
+   */
+  get woundPenalty(): number {
+    return woundPenalty(this.healthTrack, this.cancelsWoundPenalty)
+  }
+
+  /** The points of wound penalty the sheet's Merits cancel, for a track the sheet does not yet hold (a containment bet). */
+  get cancelsWoundPenalty(): number {
+    return bonusTo(this.meritsHeld, "woundPenalty")
   }
 
   /**
@@ -526,7 +536,7 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   }
 
   get health(): number {
-    return healthOf(this)
+    return this.attributes.physical.stamina + this.size
   }
 
   get willpower(): number {
@@ -542,11 +552,11 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   }
 
   get initiative(): number {
-    return this.attributes.physical.dexterity + this.effectiveComposure
+    return this.attributes.physical.dexterity + this.effectiveComposure + bonusTo(this.meritsHeld, "initiative")
   }
 
   get speed(): number {
-    return this.attributes.physical.strength + this.attributes.physical.dexterity + 5
+    return this.attributes.physical.strength + this.attributes.physical.dexterity + 5 + bonusTo(this.meritsHeld, "speed")
   }
 
   get maxMana(): number {

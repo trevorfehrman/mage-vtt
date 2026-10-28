@@ -36,7 +36,7 @@ import { DotRating } from "./DotRating"
 import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { ToolSwitch } from "./ToolSwitch"
 import { PoolNumerals } from "./CastHeaderStats"
-import { cycleBox, toggleResistant, woundPenalty } from "#/domain/health"
+import { cycleBox, toggleResistant } from "#/domain/health"
 import { WisdomMeter } from "./WisdomMeter"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
@@ -87,7 +87,7 @@ export function CharacterSheet({
   onMarkSheet,
   meritsAudition,
 }: CharacterSheetProps) {
-  const penalty = woundPenalty(character.healthTrack)
+  const penalty = character.woundPenalty
   const canToggle =
     pool !== undefined && (pool.state === "idle" || pool.state === "building")
   const ruling = rulingArcanaOf(character.path)
