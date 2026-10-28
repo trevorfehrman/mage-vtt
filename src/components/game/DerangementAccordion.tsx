@@ -4,7 +4,6 @@ import { ChevronDown } from "lucide-react"
 import {
   DERANGEMENT_PAIRS,
   derangement,
-  holdWords,
   isBedlamHold,
   pairDepth,
   standingDerangements,
@@ -20,6 +19,7 @@ import type { SceneId } from "#/domain/ids"
 import type { WisdomRank } from "#/domain/wisdom"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "#/components/ui/collapsible"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
+import { DerangementGlyph } from "./DerangementGlyph"
 import { ParadoxGlyph } from "./ParadoxGlyph"
 import { clockWords, shelfOrder } from "./derangement-shelf-look"
 
@@ -54,7 +54,7 @@ import { clockWords, shelfOrder } from "./derangement-shelf-look"
  * red-inked band — parted by a line with the turn on it: a half-lit disc
  * whose lit half faces the form that is live. The other form stands
  * dimmed. A click on the turn (or on a dimmed form) turns it. Depth is
- * shown, not said: the severe form's name wears the bruise. A footer under
+ * shown, not said: the severe form's name wears the derangement's ink. A footer under
  * a line holds the book's pages and the one button: Derange, to take the
  * live form; Compose, when the live form is already held, to put it down
  * — Resolve + Composure being what resists a derangement. The mark is
@@ -79,8 +79,8 @@ const useNow = () => {
   return at
 }
 
-/** The held one's ink: the wound's bruise for a lasting one, Paradox red for a Bedlam's. */
-const inkOf = (bedlam: boolean) => (bedlam ? "var(--paradox)" : "var(--bad)")
+/** The held one's ink: the derangement's own absinthe for a lasting one, Paradox red for a Bedlam's. */
+const inkOf = (bedlam: boolean) => (bedlam ? "var(--paradox)" : "var(--derange)")
 
 /** The pair a name belongs to, named by its mild form. */
 const pairOf = (name: DerangementName): DerangementName => {
@@ -149,7 +149,7 @@ export function DerangementAccordion({
               </button>
             ) : (
               standing.map((d) => (
-                <Chip key={d.name} held={d} at={at} wisdom={wisdom} onOpen={onMark ? () => openOn(pairOf(d.name)) : undefined} />
+                <Chip key={d.name} held={d} at={at} onOpen={onMark ? () => openOn(pairOf(d.name)) : undefined} />
               ))
             )}
           </div>
@@ -178,7 +178,6 @@ export function DerangementAccordion({
                 severe={derangement(derangement(pair).partner)}
                 held={pairDepth(standing, pair)}
                 depth={depth}
-                wisdom={wisdom}
                 onTurn={setDepth}
                 onTake={onMark ? (name) => onMark({ derangement: { name } }) : undefined}
                 onShed={onMark ? (name) => onMark({ shedDerangement: name }) : undefined}
@@ -206,8 +205,8 @@ function Fold({ open, children }: { open: boolean; children: ReactNode }) {
   )
 }
 
-/** The severe form's name wears the bruise; the mild form's, the ink. Shown, not said. */
-const depthInk = (severity: DerangementSeverity) => (severity === "severe" ? "var(--bad)" : "var(--ink)")
+/** The severe form's name wears the derangement's ink; the mild form's, the plain ink. Shown, not said. */
+const depthInk = (severity: DerangementSeverity) => (severity === "severe" ? "var(--derange)" : "var(--ink)")
 
 /** One pair in the list: "Depression / Melancholia", the severe in the bruise, a held form in its hold's ink. */
 function PairRow({
@@ -230,7 +229,7 @@ function PairRow({
       : chosen
         ? depthInk(severity)
         : severity === "severe"
-          ? "color-mix(in srgb, var(--bad) 55%, var(--dim))"
+          ? "color-mix(in srgb, var(--derange) 55%, var(--dim))"
           : "var(--dim)"
   return (
     <button
@@ -269,7 +268,6 @@ function Reading({
   severe,
   held,
   depth,
-  wisdom,
   onTurn,
   onTake,
   onShed,
@@ -278,7 +276,6 @@ function Reading({
   severe: DerangementDef
   held: Option.Option<HeldDerangement>
   depth: DerangementSeverity
-  wisdom: WisdomRank
   onTurn: (depth: DerangementSeverity) => void
   onTake?: ((name: DerangementName) => void) | undefined
   onShed?: ((name: DerangementName) => void) | undefined
@@ -295,25 +292,13 @@ function Reading({
         background: "color-mix(in srgb, var(--ink) 3%, transparent)",
       }}
     >
-      <Form
-        def={mild}
-        held={Option.filter(held, (d) => d.name === mild.name)}
-        live={depth === "mild"}
-        wisdom={wisdom}
-        onLive={() => onTurn("mild")}
-      />
+      <Form def={mild} live={depth === "mild"} onLive={() => onTurn("mild")} />
       <div className="flex items-center gap-2 px-3">
         <span className="h-px flex-1" style={{ background: "var(--line)" }} />
         <Turn depth={depth} onTurn={onTurn} />
         <span className="h-px flex-1" style={{ background: "var(--line)" }} />
       </div>
-      <Form
-        def={severe}
-        held={Option.filter(held, (d) => d.name === severe.name)}
-        live={depth === "severe"}
-        wisdom={wisdom}
-        onLive={() => onTurn("severe")}
-      />
+      <Form def={severe} live={depth === "severe"} onLive={() => onTurn("severe")} />
       {/* the footer: the pages on the left, the button on the right */}
       <div
         className="flex items-center justify-between gap-3 px-3"
@@ -327,7 +312,7 @@ function Reading({
             type="button"
             onClick={() => act(live.name)}
             className="mv-btn rounded-[3px] px-3 text-[12px] leading-none"
-            style={{ height: 26, color: liveHeld ? "var(--accent)" : "var(--bad)" }}
+            style={{ height: 26, color: liveHeld ? "var(--accent)" : "var(--derange)" }}
           >
             {liveHeld ? "Compose" : "Derange"}
           </button>
@@ -338,8 +323,9 @@ function Reading({
 }
 
 /**
- * The turn on the line between the two forms: a disc half lit, the lit half
- * facing the form that is live. A click turns it to the other.
+ * The turn on the line between the two forms: the spiral — the mind turning
+ * in on itself — which twists half a turn when the depth changes. A click
+ * turns it to the other form.
  */
 function Turn({ depth, onTurn }: { depth: DerangementSeverity; onTurn: (depth: DerangementSeverity) => void }) {
   const toSevere = depth === "mild"
@@ -348,38 +334,21 @@ function Turn({ depth, onTurn }: { depth: DerangementSeverity; onTurn: (depth: D
       type="button"
       aria-label={toSevere ? "Turn to the severe form" : "Turn to the mild form"}
       onClick={() => onTurn(toSevere ? "severe" : "mild")}
-      className="mv-key grid place-items-center rounded-full transition-colors"
-      style={{ width: 22, height: 22, color: "var(--dim)" }}
+      className="mv-key grid place-items-center rounded-full"
+      style={{ width: 24, height: 24, color: "var(--derange)" }}
     >
-      <svg
-        viewBox="0 0 24 24"
-        width={18}
-        height={18}
-        aria-hidden
-        style={{ transition: "transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1)", transform: toSevere ? "none" : "rotate(180deg)" }}
+      <span
+        className="grid place-items-center"
+        style={{ transition: "transform 480ms cubic-bezier(0.2, 0.8, 0.2, 1)", transform: toSevere ? "none" : "rotate(180deg)" }}
       >
-        <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth={1.4} />
-        {/* the lit half: upward while the mild form is live */}
-        <path d="M4 12 A8 8 0 0 1 20 12 Z" fill="var(--bad)" />
-      </svg>
+        <DerangementGlyph size={16} />
+      </span>
     </button>
   )
 }
 
 /** One form read whole; dimmed while the other is live, and a click makes it live. */
-function Form({
-  def,
-  held,
-  live,
-  wisdom,
-  onLive,
-}: {
-  def: DerangementDef
-  held: Option.Option<HeldDerangement>
-  live: boolean
-  wisdom: WisdomRank
-  onLive: () => void
-}) {
+function Form({ def, live, onLive }: { def: DerangementDef; live: boolean; onLive: () => void }) {
   return (
     <button
       type="button"
@@ -388,28 +357,18 @@ function Form({
       className="mv-key grid min-h-0 content-start gap-1.5 overflow-hidden px-3 py-2.5 text-left transition-opacity"
       style={{ opacity: live ? 1 : 0.4 }}
     >
-      <Rules def={def} held={held} wisdom={wisdom} nameSize={16} />
+      <Rules def={def} nameSize={16} />
     </button>
   )
 }
 
 /**
  * The full reading of one form, shared by the body and the chip's tooltip:
- * its name — in the bruise if it is the severe form — what sets it off and
- * the roll that resists, what it does, its Bedlam weakness in its own band,
- * and, when held, how it is held.
+ * its name — in the derangement's ink if it is the severe form — what sets
+ * it off and the roll that resists, what it does, and its Bedlam weakness in
+ * its own band. How it is held is the table's to track (owner, 2026-10-28).
  */
-function Rules({
-  def,
-  held,
-  wisdom,
-  nameSize,
-}: {
-  def: DerangementDef
-  held: Option.Option<HeldDerangement>
-  wisdom: WisdomRank
-  nameSize: number
-}) {
+function Rules({ def, nameSize }: { def: DerangementDef; nameSize: number }) {
   return (
     <>
       <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -417,11 +376,6 @@ function Rules({
           {def.name}
         </span>
         {def.extreme && <span className="mv-eyebrow">· life-altering trauma to acquire, save by Bedlam</span>}
-        {Option.isSome(held) && (
-          <span className="mv-eyebrow ml-auto" style={{ color: inkOf(isBedlamHold(held.value.hold)) }}>
-            {holdWords(held.value, wisdom)}
-          </span>
-        )}
       </span>
       <span className="mv-data text-[11px] leading-snug" style={{ color: "var(--dim)" }}>
         {def.trigger} · resist with {def.resist}
@@ -453,17 +407,7 @@ function Rules({
  * One standing derangement as a chip: its name, small, in its hold's ink,
  * with the full reading in a tooltip. A click opens the body on it.
  */
-function Chip({
-  held,
-  at,
-  wisdom,
-  onOpen,
-}: {
-  held: HeldDerangement
-  at: number
-  wisdom: WisdomRank
-  onOpen?: (() => void) | undefined
-}) {
+function Chip({ held, at, onOpen }: { held: HeldDerangement; at: number; onOpen?: (() => void) | undefined }) {
   const def = derangement(held.name)
   const bedlam = isBedlamHold(held.hold)
   const ink = inkOf(bedlam)
@@ -497,7 +441,7 @@ function Chip({
       </TooltipTrigger>
       <TooltipContent side="bottom" align="start" sideOffset={6} className="max-w-[46ch] px-3 py-2.5 text-pretty">
         <span className="grid gap-1.5 text-left">
-          <Rules def={def} held={Option.some(held)} wisdom={wisdom} nameSize={14} />
+          <Rules def={def} nameSize={14} />
         </span>
       </TooltipContent>
     </Tooltip>
