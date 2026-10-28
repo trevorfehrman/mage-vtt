@@ -49,25 +49,34 @@ only willworkers" (pp. 80–89). Most are a name, a rating and a sentence the
 Storyteller applies by judgment: the catalog records the sentence (the
 book's **effect**), the table applies it. Every entry also carries its
 **mechanic**: the typed thing the app can act on, from a closed list of
-kinds — nothing to compute (most), dice added to a roll, a change to a
-derived number (Fast Reflexes, Fleet of Foot, Giant, Iron Stamina), a gate on
-a flow (High Speech, the +2 chant), a spendable pool (Destiny). The sheet, the
-tray and the flows read the mechanic; nothing in code names a Merit. A Merit
-that adds dice is never added by the app: the player **activates** it by hand
-on the sheet, for any roll (the book's "where it applies" is the table's
-judgment, and the roll's record shows the Merit's name for the Storyteller to
-see), and the dice land in the pool under the Merit's name. A Merit that
-changes a derived number simply makes the number read higher, the number
-marked as enhanced where it would otherwise be plain. Destiny is a **purse**,
-like Willpower and Mana: its dice are spent by hand into a roll and refill
-each session. A
+kinds — nothing to compute (most), dice added to a roll (fixed, or by the
+dots), a change to a derived number (Fast Reflexes → Initiative, Fleet of
+Foot → Speed, Giant → Size and so Health, Iron Stamina → the wound penalty),
+a gate on a flow (High Speech, the +2 chant), a spendable purse (Destiny). The
+sheet, the tray and the flows read the mechanic; nothing in code names a
+Merit. A Merit that adds dice is never added by the app: the player
+**turns** it by hand on the sheet, for any roll (the book's "where it
+applies" is the table's judgment), and the dice land in the pool as a
+`merit` component under the Merit's name, so the tray's header and the
+roll's record show it for the Storyteller to see. A Merit that changes a
+derived number simply makes the number read higher — verdigris, with a few
+words naming the source where it would otherwise be plain. Destiny is a
+**purse** (MAG-67; see Mark). A
 **named** Merit (Allies, Status, Language, Retainer…) is held once per thing
 it names, the label written beside it as the book does: "Allies (Police) ••",
 and each holding is its own entry — there is no single "dots of Allies". On
-the sheet, a Merits section under Attributes & Skills, in the trait rows'
-grammar: the name (and label) and its dots; no hover. It arrives with the
-ingest; no door writes it yet, and High Speech's +2 is refused to a sheet
-without the Merit.
+the sheet, Merits are a **ring of keys** (`MeritRing.tsx`; owner's direction
+2026-10-27): a wheel at the left the hand turns through, the **key in hand**
+at the middle, each key unique by its **mark** (one line glyph per Merit in
+the Arcana glyphs' stroke, `merit-marks.tsx`, MAG-68) and hanging verdigris
+when it has something to turn on this table, dim when it only opens things
+in the story, ember when turned; a **reach** line from the ring to the
+**keyhole** on the **door**, which holds what the key opens — the family,
+the name and dots, the sentence, a Fighting Style's ladder — and at its foot
+the act in the game's words only ("+2 dice", the purse's pips, "+2
+Initiative"). Key-ness is gestured, never drawn (no teeth, no tags; dots are
+dots). It arrives with the ingest; no door writes it, and High Speech's +2 is
+refused to a sheet without the Merit.
 _Avoid_: Feat, Advantage (the book's Advantages are the derived numbers —
 Defense, Speed, Initiative, Health, Willpower).
 
@@ -307,7 +316,14 @@ clear), click beneath it to toggle the Resistant dot, click a Wisdom cell to
 set the rank. Walks the normal ownership ladder (`markSheet`: the owner plainly,
 an ST or Dev in their stead Override-recorded) and lands in the Chronicle as
 "X marked Y: Health clear → 1 lethal". Healing and degeneration rolls stay
-manual for now. The inverse of the **Hand edit**, whose point is that the
+manual for now. The **purse mark** (MAG-67, ADR-0025) is the same gesture on
+the three purses — Destiny, Willpower, Mana: spending is a roll's or a
+cast's act (Destiny's staged pips land in the pool as a `purse` component
+and the roll flow debits the sheet on resolve, as Willpower's spend does),
+but refilling is the player's hand — click a gone Destiny pip and the purse
+fills through it (click-through), the Chronicle reading "X marked Y: Destiny
+2 → 4". Capacity is shape: Destiny's twice the Merit's dots, Willpower's
+rating, Mana's Gnosis cap. The bane's cost is the same gesture in reverse. The inverse of the **Hand edit**, whose point is that the
 owner may not.
 _Avoid_: edit (the hand edit is the Storyteller's repair; a mark is the player's record).
 
