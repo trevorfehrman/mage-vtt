@@ -1,5 +1,6 @@
 import { Array as Arr, Effect, Match, Option, Schema } from "effect"
 import { AttributeKey, SkillKey } from "./trait-keys"
+import type { PoolComponentInput } from "./dice"
 
 // The Merit catalog (MAG-59): every Merit the two core books offer a mage,
 // taken from the page — Mage: The Awakening pp. 80–89 for the Awakened ones,
@@ -499,6 +500,21 @@ export const diceOf = (held: HeldMerit): number =>
     Match.tag("dice", (m) => amountAt(m.amount, held.dots)),
     Match.orElse(() => 0),
   )
+
+/** A holding as the record names it: "Allies (Police)". */
+export const heldName = (held: HeldMerit): string =>
+  `${held.name}${held.label === undefined ? "" : ` (${held.label})`}`
+
+/**
+ * The pool component a turned dice key lands (MAG-59): typed `merit`, under
+ * the holding's name, so the tray's header reads it ("Wits + Composure +
+ * Danger Sense") and the Storyteller sees a wrong use in the record.
+ */
+export const meritComponent = (held: HeldMerit): PoolComponentInput => ({
+  type: "merit",
+  name: heldName(held),
+  dots: diceOf(held),
+})
 
 /** Whether the key turns: a Merit that adds dice or spends from a purse. */
 export const turns = (held: HeldMerit): boolean =>

@@ -27,7 +27,8 @@ import {
   pathTint,
 } from "./ArcanaGlyph"
 import { ArcanaSubstance, hasSubstance } from "./ArcanaSubstance"
-import type { HeldMerit } from "#/domain/merits"
+import { sourcesOf } from "#/domain/merits"
+import { MeritRing } from "./MeritRing"
 import { RoteBook } from "./RoteBook"
 import { TraitSky } from "./TraitSky"
 import { Separator } from "#/components/ui/separator"
@@ -67,9 +68,6 @@ interface CharacterSheetProps {
    * Present on your own sheet and, for the Storyteller, on anyone's; the
    * server's ladder decides and a refusal speaks at the mark. */
   onMarkSheet?: ((mark: SheetMark) => Promise<unknown>) | undefined
-  /** PROTOTYPE (MAG-59 audition, 2026-10-27): the dressing room swaps the
-   * Merits section's body for a candidate. Remove with the audition. */
-  meritsAudition?: ReactNode | undefined
 }
 
 
@@ -85,7 +83,6 @@ export function CharacterSheet({
   pendingWillpower = 0,
   onSetMagicalTool,
   onMarkSheet,
-  meritsAudition,
 }: CharacterSheetProps) {
   const penalty = character.woundPenalty
   const canToggle =
@@ -182,8 +179,8 @@ export function CharacterSheet({
             <TooltipProvider>
               <div className="flex items-center gap-4 leading-none" style={{ fontSize: 15, height: 20 }}>
                 <Rating label="Defense" stat="defense" value={character.defense} />
-                <Rating label="Initiative" stat="initiative" value={character.initiative} />
-                <Rating label="Speed" stat="speed" value={character.speed} />
+                <Rating label="Initiative" stat="initiative" value={character.initiative} raisedBy={sourcesOf(character.meritsHeld, "initiative")} />
+                <Rating label="Speed" stat="speed" value={character.speed} raisedBy={sourcesOf(character.meritsHeld, "speed")} />
               </div>
               {/* unspent experience (MAG-57): the one advancement number the
                   sheet keeps so it isn't on paper; the Storyteller's to edit */}
@@ -332,20 +329,21 @@ export function CharacterSheet({
       </Section>
 
       {/* Merits (MAG-59; WoD p. 108, Mage p. 80) — the perks the record
-          holds, beside the human traits they were bought with: the name (and
-          a named Merit's label, as the book writes it — "Allies (Police)")
-          and its dots. No hover: the book's rule sentence is in the catalog,
-          and where it reads on the sheet is an open MAG-59 question. Players
-          don't edit it; it comes with the ingest. Absent until any is held. */}
+          holds, beside the human traits they were bought with, as a ring of
+          keys and a door (MeritRing): the key in hand's door says what it
+          opens, a turn lands its dice in the pool, Destiny's pips stage and
+          refill (MAG-67). Players don't edit the ring; it comes with the
+          ingest. Absent until any is held. */}
       {character.meritsHeld.length > 0 && (
         <Section title="Merits">
-          {meritsAudition ?? (
-            <div className="grid grid-cols-3 gap-x-6 gap-y-1">
-              {character.meritsHeld.map((held) => (
-                <MeritRow key={`${held.name}${held.label === undefined ? "" : ` (${held.label})`}`} held={held} />
-              ))}
-            </div>
-          )}
+          <MeritRing
+            held={character.meritsHeld}
+            hand={{
+              pool,
+              destiny: { current: character.destiny, capacity: character.destinyCapacity },
+              onMarkSheet,
+            }}
+          />
         </Section>
       )}
 
@@ -410,17 +408,26 @@ function Section({ title, children }: { title: ReactNode; children: ReactNode })
   )
 }
 
+/** The few words a raised number says of its source (MAG-59): "Fast Reflexes +2". */
+const raisedWords = (raisedBy: ReadonlyArray<{ held: { name: string }; bonus: number }>): string =>
+  raisedBy.map((s) => `${s.held.name} +${s.bonus}`).join(", ")
+
 /** A combat rating in the numerals' grammar: its glyph, its number, and a
  * tooltip naming it on hover or focus (ADR-0021's focus ring). */
 function Rating({
   label,
   stat,
   value,
+  raisedBy = [],
 }: {
   label: string
   stat: "defense" | "initiative" | "speed"
   value: number
+  /** The Merits that raise this number (MAG-59): the numeral turns verdigris
+   * and the tooltip names them in a few words — "Initiative · Fast Reflexes +2". */
+  raisedBy?: ReadonlyArray<{ held: { name: string }; bonus: number }>
 }) {
+  const raised = raisedBy.length > 0
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -428,11 +435,11 @@ function Rating({
           <span className="inline-flex" style={{ color: "var(--dim)" }}>
             <StatGlyph stat={stat} size={16} />
           </span>
-          <span style={{ color: "var(--ink)" }}>{value}</span>
+          <span style={{ color: raised ? "var(--accent)" : "var(--ink)" }}>{value}</span>
         </span>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={4}>
-        {label}
+        {raised ? `${label} · ${raisedWords(raisedBy)}` : label}
       </TooltipContent>
     </Tooltip>
   )
@@ -741,28 +748,6 @@ function CategoryColumn({
       {skills.length > 0 && <span aria-hidden className="h-2" />}
       {zone("skill", skills, "var(--zone-skill)")}
     </div>
-  )
-}
-
-/**
- * One held Merit in the trait rows' grammar: the name in ink, a named
- * Merit's label in the dim small face beside it, the dots on the right edge
- * (Sanctum may run past five, so the rating widens to the dots). Nothing on
- * hover (the owner's rule); the rule sentence's place is still open.
- */
-function MeritRow({ held }: { held: HeldMerit }) {
-  return (
-    <span className="-mx-2 flex items-center justify-between gap-2 rounded-[3px] px-2 py-1">
-      <span className="flex min-w-0 items-baseline gap-1.5">
-        <span className="whitespace-nowrap text-[14px]">{held.name}</span>
-        {held.label !== undefined && (
-          <span className="truncate text-[12px]" style={{ color: "var(--dim)" }}>
-            ({held.label})
-          </span>
-        )}
-      </span>
-      <DotRating current={held.dots} max={Math.max(5, held.dots)} />
-    </span>
   )
 }
 

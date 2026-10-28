@@ -1,4 +1,5 @@
 import { Effect, Schema } from "effect"
+import type { PoolComponentInput } from "./dice"
 import { Destiny } from "./quantities"
 
 /**
@@ -21,6 +22,13 @@ export class InsufficientDestiny extends Schema.TaggedError<InsufficientDestiny>
   "InsufficientDestiny",
   { current: Schema.Number, asked: Schema.Number },
 ) {}
+
+/** The pool component the staged pips land: typed `purse`, so the roll flow debits the sheet by its dots. */
+export const purseComponent = (dice: number): PoolComponentInput => ({
+  type: "purse",
+  name: DESTINY_COMPONENT_NAME,
+  dots: dice,
+})
 
 /** Spend `dice` from the purse: the remainder, or `InsufficientDestiny`. */
 export const spendDestiny = Effect.fn("Destiny.spend")(function* (current: Destiny, dice: number) {

@@ -55,13 +55,7 @@ import { VideoRail } from "#/components/game/VideoRail"
 import type { CharacterSheet as Sheet } from "#/domain/character"
 import type { VideoSeat } from "#/domain/video-rail"
 import type { Id } from "../../../convex/_generated/dataModel"
-import {
-  AUDITION_MERITS,
-  AUDITION_VARIANT_NAMES,
-  MERITS_AUDITION_ORDER,
-  MeritsAudition,
-  isMeritsAuditionVariant,
-} from "./-merits-audition"
+import type { HeldMerit } from "#/domain/merits"
 
 // ── The knobs ────────────────────────────────────────────────────────────────
 
@@ -119,13 +113,26 @@ export const Route = createFileRoute("/prototype/cast-dressing-room")({
     grammar: isGrammar(search.grammar) ? search.grammar : ("merge" as RigGrammar),
     hurt: search.hurt === true || search.hurt === "true",
     wisdom: isWisdom(search.wisdom) ? (Number(search.wisdom) as RigWisdom) : (7 as RigWisdom),
-    // PROTOTYPE (MAG-59 audition): which Merits area the sheet shows.
-    merits: isMeritsAuditionVariant(search.merits) ? search.merits : ("off" as const),
   }),
   component: DressingRoom,
 })
 
 // ── The fake documents ───────────────────────────────────────────────────────
+
+/** The rig's Arctus ring (MAG-59): a key of every kind, so the wheel, the
+ * door and the purse can all be judged on one sheet. */
+const RIG_MERITS: ReadonlyArray<HeldMerit> = [
+  { name: "High Speech", dots: 1 },
+  { name: "Danger Sense", dots: 2 },
+  { name: "Destiny", dots: 2 },
+  { name: "Status", dots: 1, label: "Mysterium" },
+  { name: "Fast Reflexes", dots: 2 },
+  { name: "Sanctum", dots: 1 },
+  { name: "Library", dots: 2 },
+  { name: "Occultation", dots: 1 },
+  { name: "Contacts", dots: 1 },
+  { name: "Fighting Style: Boxing", dots: 2 },
+]
 
 const SESSION_ID = "proto-dressing-room" as Id<"sessions">
 const CASTER = "dev:proto-arctus"
@@ -389,7 +396,7 @@ const SEAT_VIEW: Record<
 // ── The rig ──────────────────────────────────────────────────────────────────
 
 function DressingRoom() {
-  const { rung, seat, grammar, hurt, wisdom, merits } = Route.useSearch()
+  const { rung, seat, grammar, hurt, wisdom } = Route.useSearch()
   const casterNow = hurt ? hurtArctusSheet : arctusSheet
   // MAG-52: the sheet's tool switch flips a local copy (no server here).
   const [toolInHand, setToolInHand] = useState(false)
@@ -406,11 +413,14 @@ function DressingRoom() {
         hasMagicalTool: toolInHand,
         wisdom: marks.wisdom ?? wisdom,
         ...(marks.healthTrack !== undefined ? { healthTrack: marks.healthTrack } : {}),
-        // PROTOTYPE (MAG-59 audition): two more Merits, so there is something
-        // to activate and a purse to spend
-        ...(merits === "off" ? {} : { merits: [...AUDITION_MERITS] }),
+        // MAG-67: the Destiny mark lands here too, so the pips refill on the rig
+        ...(marks.destinyCurrent !== undefined ? { destinyCurrent: marks.destinyCurrent } : {}),
+        // MAG-59: the rig's Arctus holds a fuller ring than the fixture's
+        // seven creation dots, so every kind of key hangs on it — one that
+        // turns for dice, a purse, a gate, a raised number, a ladder, story keys
+        merits: [...RIG_MERITS],
       }),
-    [toolInHand, wisdom, marks, merits],
+    [toolInHand, wisdom, marks],
   )
   const navigate = Route.useNavigate()
   const pool = useDicePool(SESSION_ID)
@@ -604,11 +614,6 @@ function DressingRoom() {
                 setMarks((prev) => ({ ...prev, ...mark }))
                 return Promise.resolve()
               }}
-              meritsAudition={
-                merits === "off" ? undefined : (
-                  <MeritsAudition variant={merits} held={shownSheet.meritsHeld} pool={pool} />
-                )
-              }
             />
           ) : (
             <p className="text-sm" style={{ color: "var(--bad)" }}>
@@ -688,23 +693,6 @@ function DressingRoom() {
               title="MAG-56: the caster's Wisdom — 10 amazing, 7 fine, 5 sketchy, 2 really bad; the resolved aftermath follows"
             >
               W{w}
-            </button>
-          ))}
-        </div>
-        <span className="h-4 w-px bg-zinc-400" />
-        <div className="flex items-center gap-1">
-          {MERITS_AUDITION_ORDER.map((m) => (
-            <button
-              key={m}
-              onClick={() =>
-                void navigate({ search: (prev) => ({ ...prev, merits: m }), replace: true })
-              }
-              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                m === merits ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
-              }`}
-              title={`MAG-59 Merits audition: ${AUDITION_VARIANT_NAMES[m]}`}
-            >
-              {m === "off" ? "merits" : m}
             </button>
           ))}
         </div>

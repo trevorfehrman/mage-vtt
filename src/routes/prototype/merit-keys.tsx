@@ -1,8 +1,9 @@
 // PROTOTYPE RIG — the Merit keys gallery (MAG-66): every Merit in the
-// catalog as it will look on the ring and in the door, beside its mark at
-// both sizes. The worksheet for the marks campaign (MAG-68): a Merit with
-// no mark shows the fallback circle, so the gaps are plain. Mock holdings,
-// one plausible per Merit; never linked from shipping navigation.
+// catalog as it looks on the ring and in the door (the real MeritRing
+// pieces), beside its mark at both sizes and the lineup of every glyph the
+// app already draws — the worksheet a new or redrawn mark (MAG-68) is checked
+// against by eye. Mock holdings, one plausible per Merit; never linked from
+// shipping navigation.
 //
 // Knobs: ?turned=true shows every card turned (one shared dice pool, every
 // turnable key toggled into it); ?family=mental|physical|social|awakened.
@@ -11,25 +12,10 @@ import { createFileRoute } from "@tanstack/react-router"
 import type { Id } from "../../../convex/_generated/dataModel"
 import { useDicePool } from "#/hooks/use-dice-pool"
 import { ArcanaGlyph, OrderGlyph, PathGlyph, StatGlyph, ViceGlyph, VirtueGlyph } from "#/components/game/ArcanaGlyph"
-import { MERIT_NAMES, merit, type HeldMerit, type MeritFamily, type MeritName } from "#/domain/merits"
-import {
-  Door,
-  KEYHOLE,
-
-  MARK_IN_HAND,
-  Mark,
-  NAME_IN_HAND,
-  Reach,
-  keyOf,
-  litOf,
-  mechanicOf,
-  ringName,
-  spend,
-  spentOf,
-  toggleDice,
-  turnsOf,
-  type Pool,
-} from "./-merits-audition"
+import { MERIT_NAMES, heldName, mechanicOf, merit, meritComponent, turns, type HeldMerit, type MeritFamily, type MeritName } from "#/domain/merits"
+import { Door, KEYHOLE, MARK_IN_HAND, NAME_IN_HAND, Reach, litOf, setStaged, stagedOf, type Hand } from "#/components/game/MeritRing"
+import { Mark } from "#/components/game/merit-marks"
+import { ringName } from "#/components/game/merit-ring-look"
 
 const FAMILIES = ["all", "mental", "physical", "social", "awakened"] as const
 type FamilyKnob = (typeof FAMILIES)[number]
@@ -139,10 +125,9 @@ const MIDDLE = CARD / 2
 /** The key as it hangs in hand on the ring: a stub of the ring's line, the
  * mark at its in-hand size, the short name. Static — the wheel's sizes
  * without the wheel. */
-function KeyInHand({ h, pool }: { h: HeldMerit; pool: Pool }) {
-  const lit = litOf(pool, h)
-  const turns = turnsOf(h)
-  const ink = lit ? "var(--ember)" : turns ? "var(--accent)" : "var(--ink)"
+function KeyInHand({ h, hand }: { h: HeldMerit; hand: Hand }) {
+  const lit = litOf(hand, h)
+  const ink = lit ? "var(--ember)" : turns(h) ? "var(--accent)" : "var(--ink)"
   return (
     <div className="relative" style={{ height: CARD }}>
       <span aria-hidden className="absolute inset-y-0 left-[6px] w-px" style={{ background: "var(--line)" }} />
@@ -166,12 +151,12 @@ function KeyInHand({ h, pool }: { h: HeldMerit; pool: Pool }) {
   )
 }
 
-function Card({ h, pool, canToggle }: { h: HeldMerit; pool: Pool; canToggle: boolean }) {
+function Card({ h, hand }: { h: HeldMerit; hand: Hand }) {
   return (
     <div className="relative grid grid-cols-[minmax(0,15rem)_1fr] gap-x-8 rounded-[4px] px-4 py-3" style={{ background: "var(--panel)" }}>
-      <Reach h={h} pool={pool} middle={MIDDLE + 12} />
-      <KeyInHand h={h} pool={pool} />
-      <Door h={h} pool={pool} canToggle={canToggle} middle={MIDDLE} height={CARD} />
+      <Reach h={h} hand={hand} middle={MIDDLE + 12} />
+      <KeyInHand h={h} hand={hand} />
+      <Door h={h} hand={hand} middle={MIDDLE} height={CARD} />
     </div>
   )
 }
@@ -182,10 +167,11 @@ function Gallery() {
   const { turned, family } = Route.useSearch()
   const navigate = Route.useNavigate()
   const pool = useDicePool(SESSION_ID)
-  const canToggle = pool.state === "idle" || pool.state === "building"
+  // the sample's purse: Destiny at its sample dots, two pips gone this chapter
+  const hand: Hand = { pool, destiny: { current: 2, capacity: 4 } }
 
   // the turned knob: every turnable key into the one shared pool, a purse
-  // one pip spent; off takes them all back. The ref guards StrictMode's
+  // one pip staged; off takes them all back. The ref guards StrictMode's
   // double-run of the effect, which toggled every key twice.
   const applied = useRef<boolean | null>(null)
   useEffect(() => {
@@ -193,8 +179,8 @@ function Gallery() {
     applied.current = turned
     SAMPLE.forEach((h) => {
       const mech = mechanicOf(h)
-      if (mech.kind === "dice" && litOf(pool, h) !== turned) toggleDice(pool, h, mech.dice)
-      if (mech.kind === "purse" && (spentOf(pool, h) > 0) !== turned) spend(pool, h, turned ? 1 : 0)
+      if (mech._tag === "dice" && litOf(hand, h) !== turned) pool.toggleComponent(meritComponent(h))
+      if (mech._tag === "purse" && (stagedOf(hand) > 0) !== turned) setStaged(hand, turned ? 1 : 0)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turned])
@@ -245,7 +231,7 @@ function Gallery() {
               {shown
                 .filter((h) => merit(h.name).family === f)
                 .map((h) => (
-                  <Card key={keyOf(h)} h={h} pool={pool} canToggle={canToggle} />
+                  <Card key={heldName(h)} h={h} hand={hand} />
                 ))}
             </div>
           </section>

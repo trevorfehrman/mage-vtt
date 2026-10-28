@@ -15,6 +15,7 @@ import {
   bonusTo,
   unlocks,
   purseOf,
+  meritComponent,
   sourcesOf,
   turns,
   type MeritTraits,
@@ -272,5 +273,14 @@ describe("Merit mechanic: the gate and the purse", () => {
     expect(Option.getOrNull(purseOf(held))).toEqual({ held: { name: "Destiny", dots: 2 }, capacity: 4 })
     expect(Option.isNone(purseOf([{ name: "Resources", dots: 2 }]))).toBe(true)
     expect(turns({ name: "Destiny", dots: 2 })).toBe(true)
+  })
+})
+
+describe("Merit mechanic: what a turned key lands in the pool", () => {
+  it("a dice key lands a merit component under the holding's name, its dice by the mechanic", () => {
+    expect(meritComponent({ name: "Danger Sense", dots: 2 })).toEqual({ type: "merit", name: "Danger Sense", dots: 2 })
+    expect(meritComponent({ name: "Status", dots: 1, label: "Mysterium" })).toEqual({
+      type: "merit", name: "Status (Mysterium)", dots: 1,
+    })
   })
 })

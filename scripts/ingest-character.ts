@@ -173,8 +173,16 @@ const program = Effect.gen(function* () {
   // truth for all of them, so the ingested rows are stamped here — the
   // character file never declares them (and a hand-written aspect, name or
   // page would be silently corrected).
+  // The health box is just added (MAG-59): a Giant's track is one box longer
+  // than the file's seven, so the track is padded to the sheet's Health —
+  // never cut, and never touched when it already fits.
+  const padding = Math.max(0, sheet.health - data.healthTrack.length)
+  if (padding > 0) {
+    console.log(`Padding the health track by ${padding} box(es) to ${sheet.health} — Size ${sheet.size}.`)
+  }
   const stamped = {
     ...data,
+    healthTrack: [...data.healthTrack, ...Array.from({ length: padding }, () => "empty" as const)],
     ...(data.knownRotes
       ? {
           knownRotes: data.knownRotes.map((rote, i) => ({
