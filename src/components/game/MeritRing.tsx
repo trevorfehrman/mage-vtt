@@ -12,7 +12,7 @@
 // key opens: the family, the name and dots, the book's sentence, a Fighting
 // Style's ladder, and at its foot the act in the game's words only ("+2
 // dice", Destiny's pips) — no English hat on what the look already says.
-// Clicking the key in hand, or the keyhole, turns it: ember runs down the
+// Clicking the key in hand turns it: ember runs down the
 // reach, light spills through the door's edge, the key's mark lifts as the
 // door's sigil, and the dice land in the pool under the Merit's name.
 //
@@ -632,7 +632,7 @@ export function Reach({ h, hand, middle }: { h: HeldMerit; hand: Hand; middle: n
 }
 
 /** The door: what the key in hand opens. Its edge is a line broken around
- * the keyhole, and the keyhole is the turn. Light spills through the edge
+ * the keyhole — the lock the key in hand reaches. Light spills through the edge
  * once the key is turned; the door bears the key's mark as its sigil; the
  * page scrolls inside the door's fixed height and fades at its foot while
  * there is more; the act sits at the bottom right. `pageRef` lets the wheel
@@ -662,7 +662,6 @@ export function Door({
     // re-measured for the page in hand
   }, [h])
   const lit = litOf(hand, h)
-  const acts = turns(h)
   // the reach and the keyhole are ink (ember when turned); a still key's
   // line stopping short says it, nothing else fades
   const ink = lit ? "var(--ember)" : "var(--ink)"
@@ -681,16 +680,16 @@ export function Door({
       />
       <span aria-hidden className="absolute left-0 top-0 w-px" style={{ height: middle - KEYHOLE / 2 - 4, background: "var(--line)" }} />
       <span aria-hidden className="absolute left-0 bottom-0 w-px" style={{ top: middle + KEYHOLE / 2 + 4, background: "var(--line)" }} />
-      <button
-        type="button"
-        disabled={!canToggle(hand) || !acts}
-        onClick={() => turnKey(hand, h)}
-        aria-label={lit ? `Let ${h.name} go` : `Turn ${h.name}`}
-        className={`mv-key absolute grid place-items-center ${acts ? "" : "cursor-default"}`}
+      {/* the keyhole is the lock, not a button (owner, 2026-10-28: "the
+          keyhole can't be the activation for Destiny or anything else") —
+          the turn is the key in hand's click, and the act at the foot */}
+      <span
+        aria-hidden
+        className="absolute grid place-items-center"
         style={{ left: -KEYHOLE / 2, top: middle - KEYHOLE / 2, width: KEYHOLE, height: KEYHOLE, color: ink, transition: "color 0.3s" }}
       >
         <Keyhole size={KEYHOLE} lit={lit} />
-      </button>
+      </span>
       {/* the sigil: whole, anchored in the bottom-right corner, lifting
           while the key is turned */}
       <span aria-hidden className="pointer-events-none absolute inset-0">
