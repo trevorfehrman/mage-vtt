@@ -15,7 +15,7 @@ import { MERIT_NAMES, merit, type HeldMerit, type MeritFamily, type MeritName } 
 import {
   Door,
   KEYHOLE,
-  MARKS,
+
   MARK_IN_HAND,
   Mark,
   NAME_IN_HAND,
@@ -108,7 +108,7 @@ function LineupItem({ label, children }: { label: string; children: React.ReactN
 }
 
 function Lineup() {
-  const drawn = MERIT_NAMES.filter((n) => MARKS[n] !== undefined)
+  const drawn = MERIT_NAMES
   const row = (title: string, items: React.ReactNode) => (
     <div className="grid grid-cols-[6rem_1fr] items-start gap-3">
       <span className="mv-data pt-2 text-[9px] uppercase tracking-[0.14em]" style={{ color: "var(--dim)" }}>
@@ -156,10 +156,10 @@ function KeyInHand({ h, pool }: { h: HeldMerit; pool: Pool }) {
         </span>
       </div>
       {/* the mark again, small, as every other key on the ring sees it */}
-      <span aria-hidden className="absolute left-[18px] flex items-center gap-2" style={{ bottom: 10, color: MARKS[h.name] === undefined ? "var(--dim)" : ink, opacity: 0.8 }}>
+      <span aria-hidden className="absolute left-[18px] flex items-center gap-2" style={{ bottom: 10, color: ink, opacity: 0.8 }}>
         <Mark name={h.name} size={26} turned={lit} />
         <span className="mv-data text-[9px] uppercase tracking-[0.12em]" style={{ color: "var(--dim)" }}>
-          {MARKS[h.name] === undefined ? "no mark yet" : "at 26"}
+          at 26
         </span>
       </span>
     </div>
@@ -201,7 +201,6 @@ function Gallery() {
 
   const shown = family === "all" ? SAMPLE : SAMPLE.filter((h) => merit(h.name).family === family)
   const families: ReadonlyArray<MeritFamily> = family === "all" ? ["mental", "physical", "social", "awakened"] : [family]
-  const drawn = MERIT_NAMES.filter((n) => MARKS[n] !== undefined).length
 
   return (
     <div className="min-h-screen px-8 py-6" style={{ background: "var(--bg)", color: "var(--ink)" }}>
@@ -210,7 +209,7 @@ function Gallery() {
           <div className="grid gap-1">
             <h1 className="mv-h text-[22px] leading-none">Merit keys</h1>
             <p className="text-[12px]" style={{ color: "var(--dim)" }}>
-              Every Merit as key and door. {drawn} of {MERIT_NAMES.length} marks drawn; the rest show the fallback. The keyhole at {KEYHOLE}px.
+              Every Merit as key and door, all {MERIT_NAMES.length} marks drawn. The keyhole at {KEYHOLE}px.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-[11px]">

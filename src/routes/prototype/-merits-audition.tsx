@@ -122,7 +122,8 @@ export const spend = (pool: Pool, h: HeldMerit, k: number) => {
 // (24-box, round caps, a bindi or barb as signature). Eight for the audition;
 // the other forty-five are drawn only if the marks carry it.
 
-export const MARKS: Partial<Record<MeritName, ReactNode>> = {
+// Total over the vocabulary (MAG-68): the compiler refuses a Merit without a mark.
+export const MARKS: Record<MeritName, ReactNode> = {
   // ── Mental (MAG-68, batch 1) ──
   // the plumb line — a bar, a string, the bob hanging true
   "Common Sense": <><path d="M7.5 4 H16.5" /><path d="M12 4 V15.5" /><circle cx="12" cy="17.6" r="1.6" fill="currentColor" stroke="none" /></>,
@@ -175,6 +176,54 @@ export const MARKS: Partial<Record<MeritName, ReactNode>> = {
   "Sleepwalker Retainer": <><circle cx="8.5" cy="8.5" r="1.8" fill="currentColor" stroke="none" /><circle cx="14.5" cy="14.5" r="4" /><circle cx="14.5" cy="14.5" r="1.2" fill="currentColor" stroke="none" /></>,
   // the held stone — another's soul stone, in the fist
   Thrall: <><path d="M7 5.5 Q3.5 12 7 18.5" /><path d="M17 5.5 Q20.5 12 17 18.5" /><path d="M12 8.5 L15 12 L12 15.5 L9 12 Z" /><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" /></>,
+  // ── Physical (MAG-68, batch 4) ──
+  // the even pair — one line, a hand to either side at the same height
+  Ambidextrous: <><path d="M12 3.5 V20.5" /><circle cx="6.5" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="17.5" cy="12" r="1.5" fill="currentColor" stroke="none" /></>,
+  // the slip — the body bends aside, the blow passes
+  "Brawling Dodge": <><path d="M12 3 C12 9 6 10 6 13 C6 16 12 16.5 12 21" /><circle cx="17" cy="12" r="1.4" fill="currentColor" stroke="none" /></>,
+  // the needle — it always finds north
+  "Direction Sense": <><path d="M12 20.5 V5" /><path d="M8.5 8.5 L12 4.5 L15.5 8.5" /><circle cx="12" cy="20.5" r="1.3" fill="currentColor" stroke="none" /></>,
+  // the blade in two parts — struck out of the hand
+  Disarm: <><path d="M5 19 L11 13" /><path d="M13.5 10.5 L19 5" /><circle cx="19.5" cy="19" r="1.3" fill="currentColor" stroke="none" /></>,
+  // the flick — two strokes before the eye catches up
+  "Fast Reflexes": <><path d="M6.5 17 L10.5 7" /><path d="M12.5 17 L16.5 7" /><circle cx="19" cy="5.5" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the point — the blade, and the ring where it balances
+  "Fighting Finesse": <><path d="M5.5 18.5 L10.4 13.6 M13.6 10.4 L18.5 5.5" /><circle cx="12" cy="12" r="2.3" /></>,
+  // the stance — rooted, the belt tied
+  "Fighting Style: Kung Fu": <><path d="M5 20 L12 6 L19 20" /><path d="M8.3 14.5 H15.7" /><circle cx="12" cy="3.4" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the pair upright — two blades, a hilt in each hand (the opposite bars
+  // were Gunslinger's twin at 26px)
+  "Fighting Style: Two Weapons": <><path d="M8 3.5 V16.5" /><path d="M16 3.5 V16.5" /><circle cx="8" cy="19.5" r="1.4" fill="currentColor" stroke="none" /><circle cx="16" cy="19.5" r="1.4" fill="currentColor" stroke="none" /></>,
+  // the heel and the wind behind it
+  "Fleet of Foot": <><path d="M3.5 9.5 H10" /><path d="M3.5 13.5 H8" /><path d="M5.5 17.5 H9" /><circle cx="16" cy="12" r="2.2" fill="currentColor" stroke="none" /></>,
+  // the drop-in — back onto the line, anywhere along it (the opened ring
+  // was Dream's crescent at 26px)
+  "Fresh Start": <><path d="M3.5 16 H20.5" /><path d="M12 4 V12.5" /><path d="M8.8 9.5 L12 12.8 L15.2 9.5" /><circle cx="12" cy="19.5" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the one who stands over — planted, head above the rest
+  Giant: <><path d="M12 20 V7.5" /><path d="M5 20 H19" /><circle cx="12" cy="4.6" r="1.5" fill="currentColor" stroke="none" /></>,
+  // the double muzzle — two barrels, one direction
+  Gunslinger: <><path d="M4 9.5 H14" /><circle cx="16.5" cy="9.5" r="1.3" fill="currentColor" stroke="none" /><path d="M4 14.5 H14" /><circle cx="16.5" cy="14.5" r="1.3" fill="currentColor" stroke="none" /></>,
+  // the unbroken — a line the wound does not break
+  "Iron Stamina": <><path d="M3.5 12 H20.5" /><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" /></>,
+  // the gut that holds anything
+  "Iron Stomach": <><path d="M7 6 V13 A5 5 0 0 0 17 13 V6" /><circle cx="12" cy="13" r="1.3" fill="currentColor" stroke="none" /></>,
+  // the roof — nothing gets in
+  "Natural Immunity": <><path d="M4.5 11.5 L12 4.5 L19.5 11.5" /><circle cx="12" cy="15" r="1.5" fill="currentColor" stroke="none" /></>,
+  // the draw — out before the eye
+  "Quick Draw": <><path d="M7.5 16.5 L18 6" /><path d="M12.5 6 H18 V11.5" /><circle cx="6" cy="18" r="1.4" fill="currentColor" stroke="none" /></>,
+  // the stitch — the wound closes
+  "Quick Healer": <><path d="M3.5 12 H20.5" /><path d="M9.5 8.5 L14.5 15.5 M14.5 8.5 L9.5 15.5" /></>,
+  // the bearer — shoulders under the weight
+  "Strong Back": <><path d="M4.5 14 Q12 8.5 19.5 14" /><path d="M12 11 V20.5" /><circle cx="12" cy="5.5" r="1.7" fill="currentColor" stroke="none" /></>,
+  // the bellows — drawn in, held
+  "Strong Lungs": <><path d="M8 5.5 Q14 12 8 18.5" /><path d="M16 5.5 Q10 12 16 18.5" /><circle cx="12" cy="21" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the swerve — the road thrown around what is in it (two curved tracks
+  // were Fast Reflexes' two strokes at 26px)
+  "Stunt Driver": <><path d="M3.5 16 H8.5 C10 16 10 7 12 7 C14 7 14 16 15.5 16 H20.5" /><circle cx="12" cy="19.5" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the drop that does not take — poison, shed
+  "Toxin Resistance": <><path d="M12 3.5 C8.5 9 7 12 7 14.5 A5 5 0 0 0 17 14.5 C17 12 15.5 9 12 3.5 Z" /><circle cx="12" cy="21.5" r="1.1" fill="currentColor" stroke="none" /></>,
+  // the parry — the blade stands, the stroke glances off
+  "Weaponry Dodge": <><path d="M13 3.5 V20.5" /><path d="M5 16.5 L11 10.5" /><circle cx="4" cy="18" r="1.3" fill="currentColor" stroke="none" /></>,
   // ── Awakened and others ──
   // the Atlantean tongue — a tongue of flame rising from parted lips
   "High Speech": <><path d="M6 15 Q12 20 18 15" /><path d="M12 14.5 C9.8 11.5 13.4 9.4 12 5.6" /><circle cx="12" cy="4" r="1.2" fill="currentColor" stroke="none" /></>,
@@ -215,7 +264,7 @@ export function Mark({ name, size, turned }: { name: MeritName; size: number | "
         filter: turned ? "drop-shadow(0 0 5px var(--ember-glow))" : undefined,
       }}
     >
-      {MARKS[name] ?? <circle cx="12" cy="12" r="6" />}
+      {MARKS[name]}
     </svg>
   )
 }
