@@ -458,6 +458,19 @@ describe("containmentOutlook (issue #45: the informed bet, double shrink and all
     expect(outlook.castPool).toBe(3)
   })
 
+  it("Iron Stamina's cancelled points lift the penalty the bet pays (MAG-59)", () => {
+    // Containing 2 on a track with 3 empties leaves one empty: −2, cancelled to −1.
+    const outlook = containmentOutlook({
+      track: track(3, 4),
+      declaredPool: 5,
+      paradoxSuccesses: 2,
+      contained: 2,
+      cancels: 1,
+    })
+    expect(outlook.penaltyAfter).toBe(-1)
+    expect(outlook.castPool).toBe(4)
+  })
+
   it("eaten counts the felt's ghosts and never exceeds the pool", () => {
     // Uncontained 3 + new penalty −1 eats 4 of 5 declared dice.
     const shrunkTwice = containmentOutlook({

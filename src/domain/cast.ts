@@ -574,10 +574,12 @@ export const containmentOutlook = (input: {
   declaredPool: number
   paradoxSuccesses: number
   contained: number
+  /** Points of wound penalty the sheet cancels (Iron Stamina, MAG-59). */
+  cancels?: number
 }): ContainmentOutlook => {
   const after = containOnTrack(input.track, input.contained)
-  const penaltyBefore = woundPenalty(input.track)
-  const penaltyAfter = woundPenalty(after)
+  const penaltyBefore = woundPenalty(input.track, input.cancels)
+  const penaltyAfter = woundPenalty(after, input.cancels)
   const uncontained = input.paradoxSuccesses - input.contained
   const castPool = finalCastPool({
     declaredPool: input.declaredPool,

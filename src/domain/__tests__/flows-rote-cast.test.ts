@@ -107,6 +107,26 @@ const cast = (
   }).pipe(Effect.provide(store.layer), Random.withSeed("rote-seed"))
 
 describe("Flows.roteCast.castRote (covert rote, issue #18)", () => {
+  it.effect("High Speech without the Merit fails HighSpeechNeedsMerit, untouched (MAG-59)", () =>
+    Effect.gen(function* () {
+      const store = seed() // Aldous holds no Merits
+      const exit = yield* cast(store, { highSpeech: true }).pipe(Effect.exit)
+      expect(failureTag(exit)).toBe("HighSpeechNeedsMerit")
+      expect(store.rolls).toHaveLength(0)
+    }),
+  )
+
+  it.effect("with the Merit, High Speech is two more dice on a Rote (MAG-59)", () =>
+    Effect.gen(function* () {
+      const store = seed({
+        sheet: makeSheet({ knownRotes: KNOWN_ROTES, merits: [{ name: "High Speech", dots: 1 }] }),
+      })
+      yield* cast(store, { highSpeech: true })
+      // Presence 2 + Occult 4 + Death 3 + Rote Specialty 1 + High Speech 2
+      expect(store.rolls[0]!.result.poolSize).toBe(12)
+    }),
+  )
+
   it.effect("casts a known covert Rote: Attribute + Skill + Arcanum pool, one narrated entry", () =>
     Effect.gen(function* () {
       const store = seed()
@@ -352,7 +372,7 @@ describe("Flows.roteCast.castRote factors and Willpower (issues #12, #18)", () =
 
   it.effect("factors compose: potency, targets, High Speech, Willpower on one cast", () =>
     Effect.gen(function* () {
-      const store = seed()
+      const store = seed({ sheet: makeSheet({ knownRotes: KNOWN_ROTES, merits: [{ name: "High Speech", dots: 1 }] }) }) // the Merit to chant (MAG-59)
 
       // 10 base (specialty included) + 2 High Speech + 3 Willpower - 2 Potency - 2 targets = 11
       yield* cast(store, {

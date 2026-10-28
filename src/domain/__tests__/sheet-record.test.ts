@@ -3,7 +3,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { attainmentGates, SkillKey, specialtyComponent, specialtyComponentName } from "../character"
 import { buildPool, rollPool } from "../dice"
 import { cycleBox, toggleResistant } from "../health"
-import { makeAldousSheet } from "../testing/fixtures"
+import { makeAldousSheet, makeCorvinSheet } from "../testing/fixtures"
 
 /**
  * The record beyond the ratings (P-MAG-15): unspent experience and Mana a
@@ -81,6 +81,73 @@ describe("CharacterSheet: Skill Specialties (MAG-58)", () => {
       expect(roll.rolls).toHaveLength(5)
     }),
   )
+})
+
+describe("CharacterSheet: Merits (MAG-59)", () => {
+  it("a row without the column holds none; a stored list reads back whole, each holding its own entry", () => {
+    const bare = makeAldousSheet()
+    expect(bare.meritsHeld).toEqual([])
+    expect(bare.knowsHighSpeech).toBe(false)
+    const sheet = makeAldousSheet({
+      merits: [
+        { name: "High Speech", dots: 1 },
+        { name: "Allies", dots: 2, label: "Police" },
+        { name: "Allies", dots: 3, label: "Criminals" },
+      ],
+    })
+    expect(sheet.meritsHeld).toHaveLength(3)
+    expect(sheet.knowsHighSpeech).toBe(true)
+  })
+
+  it("a Merit outside the catalog, or at no dots, is not representable", () => {
+    expect(() => makeAldousSheet({ merits: [{ name: "Unseen Sense" as never, dots: 3 }] })).toThrow()
+    expect(() => makeAldousSheet({ merits: [{ name: "Resources", dots: 0 }] })).toThrow()
+    expect(() => makeAldousSheet({ merits: [{ name: "Sanctum", dots: 11 }] })).toThrow()
+  })
+
+  it("the template character holds High Speech; the bare fixture does not", () => {
+    expect(makeCorvinSheet().knowsHighSpeech).toBe(true)
+    expect(makeAldousSheet().knowsHighSpeech).toBe(false)
+  })
+
+  // The derived numbers read higher (grill 2026-10-27): Aldous is Dexterity 2,
+  // Composure 3 (+1 Moros), Strength 2, Stamina 2 — Initiative 6, Speed 9,
+  // Size 5, Health 7 on the plain sheet.
+  it("Fast Reflexes raises Initiative, Fleet of Foot Speed, Giant Size and so Health", () => {
+    const plain = makeAldousSheet()
+    expect([plain.initiative, plain.speed, plain.size, plain.health]).toEqual([6, 9, 5, 7])
+    const sheet = makeAldousSheet({
+      merits: [
+        { name: "Fast Reflexes", dots: 2 },
+        { name: "Fleet of Foot", dots: 1 },
+        { name: "Giant", dots: 4 },
+      ],
+    })
+    expect([sheet.initiative, sheet.speed, sheet.size, sheet.health]).toEqual([8, 10, 6, 8])
+  })
+
+  it("Iron Stamina cancels a point of wound penalty a dot, never past zero", () => {
+    const hurt = ["lethal", "lethal", "lethal", "lethal", "lethal", "lethal", "empty"] as const
+    expect(makeAldousSheet({ healthTrack: hurt }).woundPenalty).toBe(-2)
+    expect(makeAldousSheet({ healthTrack: hurt, merits: [{ name: "Iron Stamina", dots: 1 }] }).woundPenalty).toBe(-1)
+    expect(makeAldousSheet({ healthTrack: hurt, merits: [{ name: "Iron Stamina", dots: 3 }] }).woundPenalty).toBe(0)
+  })
+})
+
+describe("CharacterSheet: the Destiny purse (MAG-67)", () => {
+  it("Destiny •• is a purse of four, full until the column says otherwise; a sheet without it has none", () => {
+    const full = makeAldousSheet({ merits: [{ name: "Destiny", dots: 2 }] })
+    expect([full.destiny, full.destinyCapacity]).toEqual([4, 4])
+    const spent = makeAldousSheet({ merits: [{ name: "Destiny", dots: 2 }], destinyCurrent: 1 })
+    expect([spent.destiny, spent.destinyCapacity]).toEqual([1, 4])
+    const none = makeAldousSheet()
+    expect([none.destiny, none.destinyCapacity]).toEqual([0, 0])
+  })
+
+  it("a stale column past the capacity reads clamped — a re-ingest at fewer dots never shows more than the purse holds", () => {
+    const sheet = makeAldousSheet({ merits: [{ name: "Destiny", dots: 1 }], destinyCurrent: 4 })
+    expect(sheet.destiny).toBe(2)
+  })
 })
 
 describe("CharacterSheet: the words (MAG-61)", () => {

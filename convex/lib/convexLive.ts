@@ -237,6 +237,9 @@ export const convexLive = (
             ...(patch.willpowerCurrent !== undefined
               ? { willpowerCurrent: patch.willpowerCurrent }
               : {}),
+            ...(patch.destinyCurrent !== undefined
+              ? { destinyCurrent: patch.destinyCurrent }
+              : {}),
             ...(patch.hasMagicalTool !== undefined
               ? { hasMagicalTool: patch.hasMagicalTool }
               : {}),

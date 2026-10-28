@@ -43,6 +43,13 @@ export const Willpower = Schema.Number.check(
 ).pipe(Schema.brand("Willpower"))
 export type Willpower = typeof Willpower.Type
 
+/** Destiny dice in the purse (MAG-67): never negative, capped by the Merit's capacity at layer 3. */
+export const Destiny = Schema.Number.check(
+  Schema.isInt(),
+  Schema.isGreaterThanOrEqualTo(0),
+).pipe(Schema.brand("Destiny"))
+export type Destiny = typeof Destiny.Type
+
 /** One pool component's contribution: a trait's dots or a modifier, penalties negative. */
 export const ComponentDots = Schema.Number.check(
   Schema.isInt(),

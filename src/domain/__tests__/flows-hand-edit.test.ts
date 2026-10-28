@@ -647,6 +647,84 @@ describe("Flows.handEdit.markSheet (MAG-63)", () => {
   )
 })
 
+// The purse mark (MAG-67): the player refills Destiny, Willpower and Mana by
+// their own hand, through the same door as the track and Wisdom.
+describe("Flows.handEdit.markSheet: the purse mark (MAG-67)", () => {
+  const withDestiny = (destinyCurrent: number) =>
+    makeInMemory({
+      members: [aldous, briar, stella],
+      actor: { userId: PLAYER, isDev: false },
+      sheets: [makeSheet({ merits: [{ name: "Destiny", dots: 2 }], destinyCurrent })],
+    })
+
+  it.effect("the owning Player refills their Destiny: applied, no Override, the Chronicle names the purse", () =>
+    Effect.gen(function* () {
+      const store = withDestiny(1)
+
+      yield* markSheet({ sessionId: SESSION, characterId: CHARACTER, destinyCurrent: 4 }).pipe(
+        Effect.provide(store.layer),
+      )
+
+      expect(store.sheets.get(CHARACTER)!.destiny).toBe(4)
+      expect(store.sheetPatches).toEqual([{ characterId: CHARACTER, patch: { destinyCurrent: 4 } }])
+      const entry = store.messages[0]!
+      expect(entry.override).toBeNull()
+      expect(entry.text).toBe("Aldous marked Aldous: Destiny 1 → 4")
+    }),
+  )
+
+  it.effect("a purse never fills past its capacity — Destiny •• holds four, Willpower its rating, Mana its Gnosis cap", () =>
+    Effect.gen(function* () {
+      const store = withDestiny(1)
+
+      const destiny = yield* markSheet({ sessionId: SESSION, characterId: CHARACTER, destinyCurrent: 5 }).pipe(
+        Effect.provide(store.layer), Effect.flip,
+      )
+      expect(destiny.message).toBe("Destiny holds at most 4.")
+      // Aldous: Resolve 2 + Composure 3 + 1 (Moros) = Willpower 6; Gnosis 1 = Mana 10
+      const will = yield* markSheet({ sessionId: SESSION, characterId: CHARACTER, willpowerCurrent: 7 }).pipe(
+        Effect.provide(store.layer), Effect.flip,
+      )
+      expect(will.message).toBe("Willpower holds at most 6.")
+      const mana = yield* markSheet({ sessionId: SESSION, characterId: CHARACTER, manaCurrent: 11 }).pipe(
+        Effect.provide(store.layer), Effect.flip,
+      )
+      expect(mana.message).toBe("Mana holds at most 10.")
+      expect(store.sheetPatches).toHaveLength(0)
+      expect(store.messages).toHaveLength(0)
+    }),
+  )
+
+  it.effect("Willpower and Mana take the same mark, in one Chronicle line", () =>
+    Effect.gen(function* () {
+      const store = makeInMemory({
+        members: [aldous, briar, stella],
+        actor: { userId: PLAYER, isDev: false },
+        sheets: [makeSheet({ willpowerCurrent: 2, manaCurrent: 3 })],
+      })
+
+      yield* markSheet({ sessionId: SESSION, characterId: CHARACTER, willpowerCurrent: 6, manaCurrent: 10 }).pipe(
+        Effect.provide(store.layer),
+      )
+
+      expect(store.sheets.get(CHARACTER)!.willpowerCurrent).toBe(6)
+      expect(store.sheets.get(CHARACTER)!.manaCurrent).toBe(10)
+      expect(store.messages[0]!.text).toBe("Aldous marked Aldous: Mana 3 → 10, Willpower 2 → 6")
+    }),
+  )
+
+  it.effect("a sheet without the Destiny Merit has no purse to mark", () =>
+    Effect.gen(function* () {
+      const store = seed({ userId: PLAYER })
+
+      const err = yield* markSheet({ sessionId: SESSION, characterId: CHARACTER, destinyCurrent: 1 }).pipe(
+        Effect.provide(store.layer), Effect.flip,
+      )
+      expect(err.message).toBe("Destiny holds at most 0.")
+    }),
+  )
+})
+
 describe("Flows.handEdit.setMagicalTool (issue #107)", () => {
   it.effect("the owner flips their standing tool fact plainly — a quiet write", () =>
     Effect.gen(function* () {

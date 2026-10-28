@@ -27,6 +27,8 @@ import {
   pathTint,
 } from "./ArcanaGlyph"
 import { ArcanaSubstance, hasSubstance } from "./ArcanaSubstance"
+import { sourcesOf, type RaisedBy } from "#/domain/merits"
+import { MeritRing } from "./MeritRing"
 import { RoteBook } from "./RoteBook"
 import { TraitSky } from "./TraitSky"
 import { Separator } from "#/components/ui/separator"
@@ -35,7 +37,7 @@ import { DotRating } from "./DotRating"
 import { healthBoxGlyph, ResistantDot } from "./HealthGlyphs"
 import { ToolSwitch } from "./ToolSwitch"
 import { PoolNumerals } from "./CastHeaderStats"
-import { cycleBox, toggleResistant, woundPenalty } from "#/domain/health"
+import { cycleBox, toggleResistant } from "#/domain/health"
 import { WisdomMeter } from "./WisdomMeter"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
@@ -82,7 +84,7 @@ export function CharacterSheet({
   onSetMagicalTool,
   onMarkSheet,
 }: CharacterSheetProps) {
-  const penalty = woundPenalty(character.healthTrack)
+  const penalty = character.woundPenalty
   const canToggle =
     pool !== undefined && (pool.state === "idle" || pool.state === "building")
   const ruling = rulingArcanaOf(character.path)
@@ -177,8 +179,8 @@ export function CharacterSheet({
             <TooltipProvider>
               <div className="flex items-center gap-4 leading-none" style={{ fontSize: 15, height: 20 }}>
                 <Rating label="Defense" stat="defense" value={character.defense} />
-                <Rating label="Initiative" stat="initiative" value={character.initiative} />
-                <Rating label="Speed" stat="speed" value={character.speed} />
+                <Rating label="Initiative" stat="initiative" value={character.initiative} raisedBy={sourcesOf(character.meritsHeld, "initiative")} />
+                <Rating label="Speed" stat="speed" value={character.speed} raisedBy={sourcesOf(character.meritsHeld, "speed")} />
               </div>
               {/* unspent experience (MAG-57): the one advancement number the
                   sheet keeps so it isn't on paper; the Storyteller's to edit */}
@@ -326,6 +328,25 @@ export function CharacterSheet({
         </div>
       </Section>
 
+      {/* Merits (MAG-59; WoD p. 108, Mage p. 80) — the perks the record
+          holds, beside the human traits they were bought with, as a ring of
+          keys and a door (MeritRing): the key in hand's door says what it
+          opens, a turn lands its dice in the pool, Destiny's pips stage and
+          refill (MAG-67). Players don't edit the ring; it comes with the
+          ingest. Absent until any is held. */}
+      {character.meritsHeld.length > 0 && (
+        <Section title="Merits">
+          <MeritRing
+            held={character.meritsHeld}
+            hand={{
+              pool,
+              destiny: { current: character.destiny, capacity: character.destinyCapacity },
+              onMarkSheet,
+            }}
+          />
+        </Section>
+      )}
+
       {/* Arcana — the magic dashboard, after the human traits. */}
       <Section title="Arcana">
         <ArcanaDashboard arcana={character.arcana} ruling={ruling} cast={cast} />
@@ -387,17 +408,26 @@ function Section({ title, children }: { title: ReactNode; children: ReactNode })
   )
 }
 
+/** The few words a raised number says of its source (MAG-59): "Fast Reflexes +2". */
+const raisedWords = (raisedBy: ReadonlyArray<RaisedBy>): string =>
+  raisedBy.map((s) => `${s.held.name} +${s.bonus}`).join(", ")
+
 /** A combat rating in the numerals' grammar: its glyph, its number, and a
  * tooltip naming it on hover or focus (ADR-0021's focus ring). */
 function Rating({
   label,
   stat,
   value,
+  raisedBy = [],
 }: {
   label: string
   stat: "defense" | "initiative" | "speed"
   value: number
+  /** The Merits that raise this number (MAG-59): the numeral turns verdigris
+   * and the tooltip names them in a few words — "Initiative · Fast Reflexes +2". */
+  raisedBy?: ReadonlyArray<RaisedBy>
 }) {
+  const raised = raisedBy.length > 0
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -405,11 +435,11 @@ function Rating({
           <span className="inline-flex" style={{ color: "var(--dim)" }}>
             <StatGlyph stat={stat} size={16} />
           </span>
-          <span style={{ color: "var(--ink)" }}>{value}</span>
+          <span style={{ color: raised ? "var(--accent)" : "var(--ink)" }}>{value}</span>
         </span>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={4}>
-        {label}
+        {raised ? `${label} · ${raisedWords(raisedBy)}` : label}
       </TooltipContent>
     </Tooltip>
   )

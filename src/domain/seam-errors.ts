@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import { NotAMember, NotStoryteller, NotYourCharacter } from "./authz"
 import { InvalidPoolComponent } from "./dice"
-import { ArcanumTooWeak, InvalidCastDeclaration } from "./flows/casting"
+import { ArcanumTooWeak, HighSpeechNeedsMerit, InvalidCastDeclaration } from "./flows/casting"
 import {
   CombatAlreadyActive,
   DuplicateCombatant,
@@ -38,6 +38,7 @@ import {
   VulgarCastingNotYetSupported,
 } from "./rote-cast"
 import { InsufficientWillpower } from "./willpower-economy"
+import { InsufficientDestiny } from "./destiny-economy"
 
 /**
  * The enforcement seam's client-facing error union (ADR-0010, issue #36):
@@ -60,7 +61,9 @@ export const SeamError = Schema.Union([
   // Rules / precondition
   InsufficientMana,
   InsufficientWillpower,
+  InsufficientDestiny,
   ArcanumTooWeak,
+  HighSpeechNeedsMerit,
   VulgarCastingNotYetSupported,
   SpellNotVulgar,
   RoteNotKnown,

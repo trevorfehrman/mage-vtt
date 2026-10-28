@@ -148,6 +148,42 @@ describe("Flows.casting.castSpell (covert improvised tracer)", () => {
     }),
   )
 
+  it.effect("High Speech without the Merit fails HighSpeechNeedsMerit, untouched (MAG-59)", () =>
+    Effect.gen(function* () {
+      const store = seed() // Aldous holds no Merits
+
+      const exit = yield* castSpell({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        arcanum: "death",
+        level: 1,
+        highSpeech: true,
+      }).pipe(Effect.provide(store.layer), Random.withSeed("cast-seed"), Effect.exit)
+
+      expect(failureTag(exit)).toBe("HighSpeechNeedsMerit")
+      expect(store.rolls).toHaveLength(0)
+      expect(store.sheetPatches).toHaveLength(0)
+    }),
+  )
+
+  it.effect("with the Merit, High Speech is two more dice in the pool (MAG-59)", () =>
+    Effect.gen(function* () {
+      const store = seed({ sheet: makeSheet({ merits: [{ name: "High Speech", dots: 1 }] }) })
+
+      yield* castSpell({
+        sessionId: SESSION,
+        characterId: CHARACTER,
+        arcanum: "death",
+        level: 1,
+        highSpeech: true,
+      }).pipe(Effect.provide(store.layer), Random.withSeed("cast-seed"))
+
+      // Gnosis 1 + Death 3 + High Speech 2
+      expect(store.rolls[0]!.result.poolSize).toBe(6)
+      expect(store.rolls[0]!.summary).toContain("High Speech")
+    }),
+  )
+
   it.effect("an unpayable cost fails InsufficientMana atomically — no writes", () =>
     Effect.gen(function* () {
       const store = seed({ sheet: makeSheet({ manaCurrent: 0 }) })
@@ -470,7 +506,7 @@ describe("Flows.casting.castSpell spell factors (PRD #4 slice #9)", () => {
 
   it.effect("High Speech adds +2 dice", () =>
     Effect.gen(function* () {
-      const store = seed()
+      const store = seed({ sheet: makeSheet({ merits: [{ name: "High Speech", dots: 1 }] }) }) // the Merit to chant (MAG-59)
 
       yield* castDeath(store, { highSpeech: true })
 
@@ -487,7 +523,7 @@ describe("Flows.casting.castSpell spell factors (PRD #4 slice #9)", () => {
 
   it.effect("factors combine: potency 2 + 2 targets + High Speech", () =>
     Effect.gen(function* () {
-      const store = seed()
+      const store = seed({ sheet: makeSheet({ merits: [{ name: "High Speech", dots: 1 }] }) }) // the Merit to chant (MAG-59)
 
       yield* castDeath(store, { potency: 2, targets: 2, highSpeech: true })
 
@@ -659,7 +695,7 @@ describe("Flows.casting.castSpell willpower spend (PRD #11, issue #12)", () => {
 
   it.effect("willpower stacks with the other factors", () =>
     Effect.gen(function* () {
-      const store = seed()
+      const store = seed({ sheet: makeSheet({ merits: [{ name: "High Speech", dots: 1 }] }) }) // the Merit to chant (MAG-59)
 
       // 4 base + 2 High Speech + 3 Willpower - 2 Potency = 7
       yield* castDeath(store, {
