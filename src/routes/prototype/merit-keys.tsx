@@ -10,6 +10,7 @@ import { useEffect, useRef } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import type { Id } from "../../../convex/_generated/dataModel"
 import { useDicePool } from "#/hooks/use-dice-pool"
+import { ArcanaGlyph, OrderGlyph, PathGlyph, StatGlyph, ViceGlyph, VirtueGlyph } from "#/components/game/ArcanaGlyph"
 import { MERIT_NAMES, merit, type HeldMerit, type MeritFamily, type MeritName } from "#/domain/merits"
 import {
   Door,
@@ -82,6 +83,52 @@ const FAMILY_TITLE: Record<MeritFamily, string> = {
   physical: "Physical",
   social: "Social",
   awakened: "Awakened",
+}
+
+// ── The lineup: every glyph the app already draws, beside the drawn marks ────
+// A new mark must not collide with any of these (MAG-68): the open book was
+// the Mysterium's before it was Encyclopedic Knowledge's.
+
+const ARCANA = ["death", "fate", "forces", "life", "matter", "mind", "prime", "space", "spirit", "time"] as const
+const PATHS = ["acanthus", "mastigos", "moros", "obrimos", "thyrsus"] as const
+const ORDERS = ["adamantine arrow", "guardians of the veil", "mysterium", "silver ladder", "free council"] as const
+const VIRTUES = ["charity", "faith", "fortitude", "hope", "justice", "prudence", "temperance"] as const
+const VICES = ["envy", "gluttony", "greed", "lust", "pride", "wrath", "sloth"] as const
+const STATS = ["defense", "initiative", "speed", "wand"] as const
+
+function LineupItem({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <span className="grid justify-items-center gap-1 text-center" style={{ width: 76 }}>
+      <span className="grid size-[30px] place-items-center">{children}</span>
+      <span className="mv-data text-[8px] uppercase tracking-[0.08em] leading-tight" style={{ color: "var(--dim)" }}>
+        {label}
+      </span>
+    </span>
+  )
+}
+
+function Lineup() {
+  const drawn = MERIT_NAMES.filter((n) => MARKS[n] !== undefined)
+  const row = (title: string, items: React.ReactNode) => (
+    <div className="grid grid-cols-[6rem_1fr] items-start gap-3">
+      <span className="mv-data pt-2 text-[9px] uppercase tracking-[0.14em]" style={{ color: "var(--dim)" }}>
+        {title}
+      </span>
+      <div className="flex flex-wrap gap-y-2">{items}</div>
+    </div>
+  )
+  return (
+    <section className="grid gap-2 rounded-[4px] px-4 py-3" style={{ background: "var(--panel)", color: "var(--ink)" }}>
+      {row("Arcana", ARCANA.map((a) => <LineupItem key={a} label={a}><ArcanaGlyph arcanum={a} size={26} /></LineupItem>))}
+      {row("Paths", PATHS.map((a) => <LineupItem key={a} label={a}><PathGlyph path={a} size={26} /></LineupItem>))}
+      {row("Orders", ORDERS.map((a) => <LineupItem key={a} label={a}><OrderGlyph order={a} size={26} /></LineupItem>))}
+      {row("Virtues", VIRTUES.map((a) => <LineupItem key={a} label={a}><VirtueGlyph virtue={a} size={26} /></LineupItem>))}
+      {row("Vices", VICES.map((a) => <LineupItem key={a} label={a}><ViceGlyph vice={a} size={26} /></LineupItem>))}
+      {row("Stats", STATS.map((a) => <LineupItem key={a} label={a}><StatGlyph stat={a} size={26} /></LineupItem>))}
+      <span aria-hidden className="my-1 h-px" style={{ background: "var(--line)" }} />
+      {row("Marks", drawn.map((n) => <LineupItem key={n} label={ringName(n)}><Mark name={n} size={26} turned={false} /></LineupItem>))}
+    </section>
+  )
 }
 
 // ── A card: the key in hand, the reach, the door ─────────────────────────────
@@ -189,6 +236,7 @@ function Gallery() {
             ))}
           </div>
         </header>
+        <Lineup />
         {families.map((f) => (
           <section key={f} className="grid gap-3">
             <h2 className="mv-data text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--dim)" }}>

@@ -128,8 +128,9 @@ export const MARKS: Partial<Record<MeritName, ReactNode>> = {
   "Common Sense": <><path d="M7.5 4 H16.5" /><path d="M12 4 V15.5" /><circle cx="12" cy="17.6" r="1.6" fill="currentColor" stroke="none" /></>,
   // the knot in the thread — a line with one loop tied in it, so it is not forgotten
   "Eidetic Memory": <><path d="M3 13 H8.6 M15.4 13 H20" /><circle cx="12" cy="13" r="3.4" /><circle cx="21" cy="13" r="1.3" fill="currentColor" stroke="none" /></>,
-  // the open book — two leaves spread, the spine marked
-  "Encyclopedic Knowledge": <><path d="M3.5 7 Q8 5 12 8 V19 Q8 16 3.5 18 Z" /><path d="M20.5 7 Q16 5 12 8 V19 Q16 16 20.5 18 Z" /><circle cx="12" cy="4.6" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the ring of facts — many small things that together make a whole
+  // (the open book was the Mysterium's, the whorl was Forces'; the lineup rule)
+  "Encyclopedic Knowledge": <><circle cx="12.0" cy="5.0" r="1.25" fill="currentColor" stroke="none" /><circle cx="16.9" cy="7.1" r="1.25" fill="currentColor" stroke="none" /><circle cx="19.0" cy="12.0" r="1.25" fill="currentColor" stroke="none" /><circle cx="16.9" cy="16.9" r="1.25" fill="currentColor" stroke="none" /><circle cx="12.0" cy="19.0" r="1.25" fill="currentColor" stroke="none" /><circle cx="7.1" cy="16.9" r="1.25" fill="currentColor" stroke="none" /><circle cx="5.0" cy="12.0" r="1.25" fill="currentColor" stroke="none" /><circle cx="7.1" cy="7.1" r="1.25" fill="currentColor" stroke="none" /></>,
   // the sprig — a stem, two leaves, the bud
   "Holistic Awareness": <><path d="M12 20.5 V8" /><path d="M12 15 Q7.5 14.5 6.5 10" /><path d="M12 11.5 Q16.5 11 17.5 6.5" /><circle cx="12" cy="5.4" r="1.4" fill="currentColor" stroke="none" /></>,
   // the spoken line — one breath of speech, from its first word
