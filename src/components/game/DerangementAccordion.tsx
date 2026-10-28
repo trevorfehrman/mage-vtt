@@ -206,27 +206,31 @@ function Fold({ open, children }: { open: boolean; children: ReactNode }) {
 }
 
 /**
- * Depth by inversion (owner, 2026-10-28: "let the mild be the font color and
- * the severe be bg color"): a mild form's name is written in the ink, a
- * severe form's name stands on the ink. Shown, not said. The ink is the
- * derangement's own, or the hold's for a held form.
+ * Depth in the type alone (owner, 2026-10-28, after inversion proved "too
+ * intense": "use styling where they both have the color somehow. i think it
+ * has to be font only. i wonder if just making severe bold and italic"):
+ * both names in the ink; the mild form's name light (Cinzel 500), the
+ * severe form's name heavy and leaning (Cinzel 800, obliqued — the face has
+ * no italic of its own). Shown, not said. The ink is the derangement's own,
+ * or the hold's for a held form.
  */
 function Name({ name, severity, ink, size }: { name: string; severity: DerangementSeverity; ink: string; size: number }) {
-  return severity === "mild" ? (
-    <span className="mv-h leading-none" style={{ fontSize: size, color: ink }}>
-      {name}
-    </span>
-  ) : (
+  return (
     <span
-      className="mv-h rounded-[2px] leading-none"
-      style={{ fontSize: size, color: "var(--bg)", background: ink, padding: "3px 5px 2px" }}
+      className="mv-h leading-none"
+      style={{
+        fontSize: size,
+        color: ink,
+        fontWeight: severity === "severe" ? 800 : 500,
+        fontStyle: severity === "severe" ? "italic" : "normal",
+      }}
     >
       {name}
     </span>
   )
 }
 
-/** One pair in the list: "Depression / Melancholia", written and inverted; a second click on the chosen row turns the depth. */
+/** One pair in the list: "Depression / Melancholia", light and heavy; a second click on the chosen row turns the depth. */
 function PairRow({
   mild,
   severe,
@@ -411,9 +415,9 @@ function Rules({ def, nameSize }: { def: DerangementDef; nameSize: number }) {
 }
 
 /**
- * One standing derangement as a chip: its name, small, written in its
- * hold's ink or, if severe, on it, with the full reading in a tooltip. A
- * click opens the body on it.
+ * One standing derangement as a chip: its name, small, in its hold's ink,
+ * heavy and leaning if severe, with the full reading in a tooltip. A click
+ * opens the body on it.
  */
 function Chip({ held, at, onOpen }: { held: HeldDerangement; at: number; onOpen?: (() => void) | undefined }) {
   const def = derangement(held.name)
@@ -436,13 +440,10 @@ function Chip({ held, at, onOpen }: { held: HeldDerangement; at: number; onOpen?
           aria-label={`${held.name}, ${def.severity}: open the derangements`}
           className="mv-key mv-derange-chip flex items-center gap-2 rounded-[3px] px-2 transition-[box-shadow,background-color]"
           style={{ height: 24, ["--chip-ink" as string]: ink }}
-          data-severe={def.severity === "severe" ? "" : undefined}
         >
-          <span className="mv-h text-[13px] leading-none" style={{ color: def.severity === "severe" ? "var(--bg)" : ink }}>
-            {held.name}
-          </span>
+          <Name name={held.name} severity={def.severity} ink={ink} size={13} />
           {weight !== "" && (
-            <span className="mv-data text-[10px] leading-none" style={{ color: def.severity === "severe" ? "var(--bg)" : ink }}>
+            <span className="mv-data text-[10px] leading-none" style={{ color: ink }}>
               {weight}
             </span>
           )}

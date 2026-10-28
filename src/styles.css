@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Spectral:ital,wght@0,400;0,500;1,400;1,500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Spectral:ital,wght@0,400;0,500;1,400;1,500&display=swap");
 @import "tailwindcss";
 @plugin '@tailwindcss/typography';
 
@@ -556,15 +556,6 @@ pre code {
 .mv-derange-chip:hover {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-ink) 85%, transparent);
   background: color-mix(in srgb, var(--chip-ink) 16%, transparent);
-}
-/* severity by inversion: a severe one stands on its ink */
-.mv-derange-chip[data-severe] {
-  box-shadow: none;
-  background: var(--chip-ink);
-}
-.mv-derange-chip[data-severe]:hover {
-  box-shadow: none;
-  background: color-mix(in srgb, var(--chip-ink) 85%, white);
 }
 
 /* The meteor: a dash segment racing the line entry → exit (JS-driven CSS
