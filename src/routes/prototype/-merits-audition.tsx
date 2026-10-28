@@ -90,8 +90,20 @@ const MECHANIC: Partial<Record<MeritName, (dots: number) => Mechanic>> = {
 export const mechanicOf = (h: HeldMerit): Mechanic => MECHANIC[h.name]?.(h.dots) ?? { kind: "none" }
 
 export const keyOf = (h: HeldMerit) => `${h.name}${h.label === undefined ? "" : ` (${h.label})`}`
-/** The name on the ring: short, the door says the whole of it. */
-export const ringName = (name: MeritName) => name.replace(/^Fighting Style: /, "")
+/** The name on the ring: short, the door says the whole of it. A name
+ * over fifteen characters would run off the ring's column into the lock. */
+const SHORT_NAMES: Partial<Record<MeritName, string>> = {
+  "Encyclopedic Knowledge": "Encyclopedia",
+  "Holistic Awareness": "Holistic",
+  "Sleepwalker Retainer": "Sleepwalker",
+  "Natural Immunity": "Immunity",
+  "Toxin Resistance": "Toxins",
+  "Fighting Finesse": "Finesse",
+  "Fighting Style: Boxing": "Boxing",
+  "Fighting Style: Kung Fu": "Kung Fu",
+  "Fighting Style: Two Weapons": "Two Weapons",
+}
+export const ringName = (name: MeritName) => SHORT_NAMES[name] ?? name
 
 export type Pool = ReturnType<typeof useDicePool>
 
@@ -111,6 +123,20 @@ export const spend = (pool: Pool, h: HeldMerit, k: number) => {
 // the other forty-five are drawn only if the marks carry it.
 
 export const MARKS: Partial<Record<MeritName, ReactNode>> = {
+  // ── Mental (MAG-68, batch 1) ──
+  // the plumb line — a bar, a string, the bob hanging true
+  "Common Sense": <><path d="M7.5 4 H16.5" /><path d="M12 4 V15.5" /><circle cx="12" cy="17.6" r="1.6" fill="currentColor" stroke="none" /></>,
+  // the knot in the thread — a line with one loop tied in it, so it is not forgotten
+  "Eidetic Memory": <><path d="M3 13 H8.6 M15.4 13 H20" /><circle cx="12" cy="13" r="3.4" /><circle cx="21" cy="13" r="1.3" fill="currentColor" stroke="none" /></>,
+  // the open book — two leaves spread, the spine marked
+  "Encyclopedic Knowledge": <><path d="M3.5 7 Q8 5 12 8 V19 Q8 16 3.5 18 Z" /><path d="M20.5 7 Q16 5 12 8 V19 Q16 16 20.5 18 Z" /><circle cx="12" cy="4.6" r="1.2" fill="currentColor" stroke="none" /></>,
+  // the sprig — a stem, two leaves, the bud
+  "Holistic Awareness": <><path d="M12 20.5 V8" /><path d="M12 15 Q7.5 14.5 6.5 10" /><path d="M12 11.5 Q16.5 11 17.5 6.5" /><circle cx="12" cy="5.4" r="1.4" fill="currentColor" stroke="none" /></>,
+  // the spoken line — one breath of speech, from its first word
+  Language: <><path d="M4.5 12 C7 7 10 7 12 12 S17 17 19.5 12" /><circle cx="4" cy="12" r="1.3" fill="currentColor" stroke="none" /></>,
+  // the still pool — a round undisturbed over its waterline, the mind at its center
+  "Meditative Mind": <><circle cx="12" cy="10" r="6" /><path d="M4 20 H20" /><circle cx="12" cy="10" r="1.3" fill="currentColor" stroke="none" /></>,
+  // ── Awakened and others ──
   // the Atlantean tongue — a tongue of flame rising from parted lips
   "High Speech": <><path d="M6 15 Q12 20 18 15" /><path d="M12 14.5 C9.8 11.5 13.4 9.4 12 5.6" /><circle cx="12" cy="4" r="1.2" fill="currentColor" stroke="none" /></>,
   // the lidded eye, a barb of warning above it
