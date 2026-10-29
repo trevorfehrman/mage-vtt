@@ -33,6 +33,7 @@ import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "rea
 import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Eraser, Feather, Group, MousePointer2, Redo2, Search, Undo2, Ungroup } from "lucide-react"
 import { Option, Schema } from "effect"
+import { Input } from "#/components/ui/input"
 import { Book, clearPage, commit, editOpen, EMPTY_BOOK, GRID, INKS, emptyHistory, isOneGroup, openPage, redo, seedBook, toggleGroup, undo, type History, type Tool } from "./-notebook-page"
 import type { Feel, Rule } from "./-notebook-pad"
 
@@ -168,16 +169,18 @@ function Notebook() {
               )}
             </div>
             <div className="flex items-center gap-1">
-              {/* the word: a field in the hand, quiet until it holds a word; ⌘F lands here, Enter goes back to the page, Escape lets the word go */}
-              <label className="flex items-center gap-1.5" style={{ color: search === "" ? "var(--dim)" : "var(--accent)" }}>
-                <Search size={13} strokeWidth={1.6} aria-hidden />
-                <input
+              {/* the word: the repo's field (mv-field: mono, line border, accent on focus), at the tool buttons' height; ⌘F lands here, Enter goes back to the page, Escape lets the word go */}
+              <span className="relative flex items-center">
+                <Search size={13} strokeWidth={1.6} aria-hidden className="pointer-events-none absolute left-2" style={{ color: search === "" ? "var(--dim)" : "var(--accent)" }} />
+                <Input
                   ref={searchRef}
                   type="text"
                   aria-label="find"
                   placeholder="find…"
                   value={search}
                   spellCheck={false}
+                  className="h-7 w-[168px] pl-7 text-[12px]"
+                  style={{ borderRadius: 2 /* the tool buttons' rounded-sm; mv-field's own 3px would win over the utility */ }}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -190,21 +193,8 @@ function Notebook() {
                       toPad()
                     }
                   }}
-                  style={{
-                    width: 150,
-                    height: 22,
-                    padding: "0 2px",
-                    background: "transparent",
-                    border: 0,
-                    borderBottom: `1px solid ${search === "" ? "var(--line)" : "var(--accent)"}`,
-                    outline: "none",
-                    fontFamily: HAND,
-                    fontSize: 15,
-                    color: "var(--ink)",
-                    caretColor: "var(--accent)",
-                  }}
                 />
-              </label>
+              </span>
               <span className="mx-1 h-4 w-px" style={{ background: "var(--line)" }} />
               <ToolButton label={oneGroup ? "ungroup" : "group"} on={oneGroup} disabled={picked.length < 2} onClick={group}>
                 {oneGroup ? <Ungroup size={15} strokeWidth={1.6} /> : <Group size={15} strokeWidth={1.6} />}
