@@ -19,7 +19,8 @@
 // a notebook with its half folded around behind it ... feel. velocity ...
 // quickly thumb through their notebook even if just for fun but arrive on
 // the page they want quickly as well."
-// Knobs: ?rule=dots|lines|none; seed 1 / 8 / 40 written pages to thumb through.
+// Knobs: ?rule=dots|lines|none; ?gap=0|2|3|4 (the gutter a plate keeps inside
+// its lattice box, so neighboring notes have a margin); seed 1 / 8 / 40.
 // The book is kept in localStorage between reloads (owner, 2026-10-29: "we
 // can't test this iteratively if i have to fill out 10 pages or whatever
 // each time myself"); a fresh browser opens on the 8-page seed.
@@ -36,11 +37,15 @@ const Pad = lazy(() => import("./-notebook-pad").then((m) => ({ default: m.Noteb
 /** The hand: Kalam (owner, 2026-10-29: "kalam is the font"). */
 const HAND = "Kalam"
 const RULES = ["dots", "lines", "none"] as const
+const GAPS = [0, 2, 3, 4] as const
+type Gap = (typeof GAPS)[number]
+const isGap = (v: unknown): v is Gap => typeof v === "number" && (GAPS as ReadonlyArray<number>).includes(v)
 const isRule = (v: unknown): v is Rule => typeof v === "string" && (RULES as ReadonlyArray<string>).includes(v)
 
 export const Route = createFileRoute("/prototype/notebook")({
   validateSearch: (search: Record<string, unknown>) => ({
     rule: isRule(search.rule) ? search.rule : ("dots" as Rule),
+    gap: isGap(search.gap) ? search.gap : (3 as Gap),
   }),
   component: Notebook,
 })
@@ -58,7 +63,7 @@ const storedBook = (): Book => {
 }
 
 function Notebook() {
-  const { rule } = Route.useSearch()
+  const { rule, gap } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const [history, setHistory] = useState<History<Book>>(() => emptyHistory(EMPTY_BOOK))
   const [loaded, setLoaded] = useState(false)
@@ -158,7 +163,7 @@ function Notebook() {
           <div style={{ marginLeft: -16, marginRight: -16, marginBottom: -16, borderTop: "1px solid var(--line)" }}>
             <ClientOnly fallback={<div style={{ width: WIDTH, height: HEIGHT }} />}>
               <Suspense fallback={<div style={{ width: WIDTH, height: HEIGHT }} />}>
-                {loaded && <Pad font={HAND} tool={tool} inkColor={ink} rule={rule} picked={picked} onPicked={setPicked} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />}
+                {loaded && <Pad font={HAND} tool={tool} inkColor={ink} rule={rule} gap={gap} picked={picked} onPicked={setPicked} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />}
               </Suspense>
             </ClientOnly>
           </div>
@@ -173,10 +178,20 @@ function Notebook() {
         {RULES.map((r) => (
           <button
             key={r}
-            onClick={() => void navigate({ search: { rule: r }, replace: true })}
+            onClick={() => void navigate({ search: (s) => ({ ...s, rule: r }), replace: true })}
             className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${r === rule ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"}`}
           >
             {r}
+          </button>
+        ))}
+        <span className="mx-1 h-3 w-px bg-zinc-400" />
+        {GAPS.map((g) => (
+          <button
+            key={g}
+            onClick={() => void navigate({ search: (s) => ({ ...s, gap: g }), replace: true })}
+            className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${g === gap ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"}`}
+          >
+            gap {g}
           </button>
         ))}
         <span className="mx-1 h-3 w-px bg-zinc-400" />

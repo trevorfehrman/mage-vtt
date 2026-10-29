@@ -115,8 +115,8 @@ const PAD = 10
 const WORDS_TOP = 14
 const LINE_MID = WORDS_TOP + (HAND * LEAD) / 2
 const CELL_TOP = LINE_MID - CELL / 2
-/** A row's height for its lines: what the words need, rounded up to whole cells, never under two. */
-const rowHeight = (lines: number): number => Math.max(NOTE_H, Math.ceil((WORDS_TOP + lines * HAND * LEAD + 6) / GRID) * GRID)
+/** A row's height for its lines: what the words need plus the gutter, rounded up to whole cells, never under two. */
+const rowHeight = (lines: number, gap: number): number => Math.max(NOTE_H, Math.ceil((WORDS_TOP + lines * HAND * LEAD + 6 + gap * 2) / GRID) * GRID)
 /** The grip's reach from the row's corner, and the fade's depth at a scrolling row's foot. */
 const GRIP = 10
 const FADE = 28
@@ -191,8 +191,15 @@ const OBRIMOS_BINDI = "M11 6.8 A1 1 0 1 0 13 6.8 A1 1 0 1 0 11 6.8 Z"
 
 // --- The row's measure ---
 
-/** The words' column: after the spine, before the value's cell when there is one. */
-const titleWidth = (kind: NoteKind, w: number): number => w - SPINE_W - PAD * 2 - (takesValue(kind) ? CELL + PAD : 0)
+/**
+ * The words' column: inside the gutter, after the spine, before the value's
+ * cell when there is one. `w` is the row's width on the lattice; the plate
+ * is drawn `gap` px inside it on every side, so rows on neighboring cells
+ * keep a margin between them (owner, 2026-10-29: "snapping just a few
+ * pixels inside the dots? this way every note next to each other have
+ * margin").
+ */
+const titleWidth = (kind: NoteKind, w: number, gap: number): number => w - gap * 2 - SPINE_W - PAD * 2 - (takesValue(kind) ? CELL + PAD : 0)
 /** Konva measures text as it draws, so one offstage Text measures how many lines a title takes at a width. */
 const measurer = new Konva.Text({ fontSize: HAND, lineHeight: LEAD, wrap: "word" })
 const linesOf = (title: string, width: number, font: string): number => {
@@ -206,6 +213,7 @@ export function NotebookPad({
   tool,
   inkColor,
   rule,
+  gap,
   picked,
   onPicked,
   history,
@@ -217,6 +225,8 @@ export function NotebookPad({
   tool: Tool
   inkColor: string
   rule: Rule
+  /** The gutter: px the plate is drawn inside its lattice box, on every side. */
+  gap: number
   picked: ReadonlyArray<string>
   onPicked: (ids: ReadonlyArray<string>) => void
   history: History<Book>
@@ -292,7 +302,7 @@ export function NotebookPad({
   /** The row's size: from the page, or under the hand while it is being resized. 0 height = as tall as its words. */
   const sizeOf = (n: Note): { w: number; h: number } =>
     Option.match(resizing, { onNone: () => ({ w: n.w, h: n.h }), onSome: (r) => (r.id === n.id ? { w: r.w, h: r.h } : { w: n.w, h: n.h }) })
-  const linesAll = (n: Note): number => linesOf(wordsOf(n), titleWidth(n.kind, sizeOf(n).w), font)
+  const linesAll = (n: Note): number => linesOf(wordsOf(n), titleWidth(n.kind, sizeOf(n).w, gap), font)
   /** The page's room for one row: its height less the margin at head and foot. */
   const room = height - ORIGIN * 2
   /**
@@ -304,7 +314,7 @@ export function NotebookPad({
     sizeOf(n).h > 0 || Option.exists(editing, (ed) => ed.id === n.id) ? linesAll(n) : Math.min(MAX_LINES, linesAll(n))
   const heightOf = (n: Note): number => {
     const s = sizeOf(n)
-    return s.h > 0 ? s.h : Math.min(rowHeight(linesIn(n)), room)
+    return s.h > 0 ? s.h : Math.min(rowHeight(linesIn(n), gap), room)
   }
   /** Where the row sits: its place on the page, nudged up live if its growth would hang it past the foot. */
   const seatOf = (n: Note): { x: number; y: number } => within({ x: n.x, y: n.y }, sizeOf(n).w, heightOf(n), width, height)
@@ -400,8 +410,8 @@ export function NotebookPad({
         const emptyBlank = !preserveEmpty && title.trim() === "" && n.kind === "blank"
         // a row written past the cap keeps its height as a sized row, so nothing written is hidden without a
         // scroll; a row that grew past the page's foot is nudged up onto the lattice to fit
-        const lines = linesOf(title.trim(), titleWidth(n.kind, n.w), font)
-        const grown = n.h > 0 ? n.h : lines > MAX_LINES ? Math.min(rowHeight(lines), room) : rowHeight(lines)
+        const lines = linesOf(title.trim(), titleWidth(n.kind, n.w, gap), font)
+        const grown = n.h > 0 ? n.h : lines > MAX_LINES ? Math.min(rowHeight(lines, gap), room) : rowHeight(lines, gap)
         const seat = within({ x: n.x, y: n.y }, n.w, grown, width, height)
         const titled = revalue(retitle(page, ed.id, title.trim()), ed.id, number.trim())
         const written = n.h === 0 && lines > MAX_LINES ? resize(titled, ed.id, n.w, grown) : titled
@@ -638,14 +648,14 @@ export function NotebookPad({
     },
     onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => {
       e.cancelBubble = true
-      setResizing(Option.some({ id: n.id, w: e.target.x() + GRIP, h: e.target.y() + GRIP }))
+      setResizing(Option.some({ id: n.id, w: e.target.x() + GRIP + gap * 2, h: e.target.y() + GRIP + gap * 2 }))
     },
     onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => {
       e.cancelBubble = true
-      const w = clamp(Math.round((e.target.x() + GRIP) / GRID) * GRID, MIN_W, width - ORIGIN - seat.x)
-      const h = clamp(Math.round((e.target.y() + GRIP) / GRID) * GRID, MIN_H, height - ORIGIN - seat.y)
+      const w = clamp(Math.round((e.target.x() + GRIP + gap * 2) / GRID) * GRID, MIN_W, width - ORIGIN - seat.x)
+      const h = clamp(Math.round((e.target.y() + GRIP + gap * 2) / GRID) * GRID, MIN_H, height - ORIGIN - seat.y)
       // the grip rides back to the snapped corner itself: its props may not change if the size did not
-      e.target.to({ x: w - GRIP, y: h - GRIP, duration: 0.12, easing: Konva.Easings.EaseOut })
+      e.target.to({ x: w - gap * 2 - GRIP, y: h - gap * 2 - GRIP, duration: 0.12, easing: Konva.Easings.EaseOut })
       setResizing(Option.none())
       set(resize(page, n.id, w, h))
     },
@@ -824,14 +834,16 @@ export function NotebookPad({
         <Layer listening={!drawing && !view.lifted}>
           {page.notes.map((n) => {
             const look = kindLook(n.kind)
-            const { w } = sizeOf(n)
-            const h = heightOf(n)
+            // the row's box on the lattice, and the plate drawn a gutter inside it
+            const mw = sizeOf(n).w
+            const w = mw - gap * 2
+            const h = heightOf(n) - gap * 2
             const sized = sizeOf(n).h > 0
             const isSel = picked.includes(n.id)
             const blank = n.kind === "blank"
             const isEditing = Option.exists(editing, (ed) => ed.id === n.id)
             const valued = takesValue(n.kind)
-            const tw = titleWidth(n.kind, w)
+            const tw = titleWidth(n.kind, mw, gap)
             const cellX = w - PAD - CELL
             const cellY = CELL_TOP
             const seat = seatOf(n)
@@ -857,6 +869,7 @@ export function NotebookPad({
                 onDragMove={(e) => onDragMove(n.id, e.target)}
                 onDragEnd={(e) => onDragEnd(n.id, e.target)}
               >
+                <Group x={gap} y={gap}>
                 {/* the row: a solid plate a hair above the page, shadowed so rows stack, a crisp border in the kind's ink */}
                 <Rect x={0} y={0} width={w} height={h} fill={PLATE} cornerRadius={3} shadowColor="#000" shadowBlur={8} shadowOffsetY={2} shadowOpacity={0.5} />
                 <Rect
@@ -983,6 +996,7 @@ export function NotebookPad({
                     <Line points={[5, 7, 7, 5]} stroke={ACCENT} strokeWidth={1} opacity={0.8} lineCap="round" />
                   </Group>
                 )}
+                </Group>
               </Group>
             )
           })}
@@ -1041,7 +1055,7 @@ export function NotebookPad({
                 fillPatternY={ORIGIN}
               />
             )}
-            <QuietPage page={pageAt(book, view.i)} font={font} width={width} height={height} />
+            <QuietPage page={pageAt(book, view.i)} font={font} gap={gap} width={width} height={height} />
             <PageNumber n={view.i + 1} font={font} height={height} />
             <Rect
               x={width}
@@ -1064,11 +1078,12 @@ export function NotebookPad({
       {Option.match(Option.zipWith(editing, editingNote, (ed, n) => ({ ed, n })), {
         onNone: () => null,
         onSome: ({ ed, n }) => {
-          const { w } = sizeOf(n)
-          const h = heightOf(n)
+          const mw = sizeOf(n).w
+          const w = mw - gap * 2
+          const h = heightOf(n) - gap * 2
           const sized = sizeOf(n).h > 0
           const valued = takesValue(n.kind)
-          const tw = titleWidth(n.kind, w)
+          const tw = titleWidth(n.kind, mw, gap)
           const look = kindLook(n.kind)
           const seat = seatOf(n)
           const lines = linesIn(n)
@@ -1086,7 +1101,7 @@ export function NotebookPad({
           return (
             <div
               ref={editorRef}
-              style={{ position: "absolute", left: seat.x, top: seat.y, width: w, height: h, pointerEvents: "none" }}
+              style={{ position: "absolute", left: seat.x + gap, top: seat.y + gap, width: w, height: h, pointerEvents: "none" }}
               onPointerDown={onEditorPointerDown}
             >
               <textarea
@@ -1162,7 +1177,7 @@ export function NotebookPad({
         onNone: () => null,
         onSome: (n) => (
           <KindList
-            note={{ ...n, ...seatOf(n) }}
+            note={{ ...n, x: seatOf(n).x + gap, y: seatOf(n).y }}
             noteH={heightOf(n)}
             padHeight={height}
             onPick={(k) => {
@@ -1183,7 +1198,7 @@ function PageNumber({ n, font, height }: { n: number; font: string; height: numb
 }
 
 /** A page at rest, read-only: its rows and ink as the live page draws them, with nothing to touch. The lifting page is drawn with this. */
-function QuietPage({ page, font, width, height }: { page: Page; font: string; width: number; height: number }) {
+function QuietPage({ page, font, gap, width, height }: { page: Page; font: string; gap: number; width: number; height: number }) {
   const room = height - ORIGIN * 2
   return (
     <>
@@ -1191,13 +1206,14 @@ function QuietPage({ page, font, width, height }: { page: Page; font: string; wi
         const look = kindLook(n.kind)
         const blank = n.kind === "blank"
         const valued = takesValue(n.kind)
-        const tw = titleWidth(n.kind, n.w)
+        const tw = titleWidth(n.kind, n.w, gap)
         const lines = n.h > 0 ? linesOf(n.title, tw, font) : Math.min(MAX_LINES, linesOf(n.title, tw, font))
-        const h = n.h > 0 ? n.h : Math.min(rowHeight(lines), room)
-        const seat = within({ x: n.x, y: n.y }, n.w, h, width, height)
-        const w = n.w
+        const mh = n.h > 0 ? n.h : Math.min(rowHeight(lines, gap), room)
+        const seat = within({ x: n.x, y: n.y }, n.w, mh, width, height)
+        const w = n.w - gap * 2
+        const h = mh - gap * 2
         return (
-          <Group key={n.id} x={seat.x} y={seat.y}>
+          <Group key={n.id} x={seat.x + gap} y={seat.y + gap}>
             <Rect x={0} y={0} width={w} height={h} fill={PLATE} cornerRadius={3} shadowColor="#000" shadowBlur={8} shadowOffsetY={2} shadowOpacity={0.5} />
             <Rect x={0.5} y={0.5} width={w - 1} height={h - 1} cornerRadius={3} stroke={look.tint} strokeWidth={1} opacity={blank ? 0.3 : 0.55} />
             <Rect x={0.5} y={0.5} width={SPINE_W} height={h - 1} fill={look.tint} opacity={blank ? 0.04 : 0.1} cornerRadius={[3, 0, 0, 3]} />

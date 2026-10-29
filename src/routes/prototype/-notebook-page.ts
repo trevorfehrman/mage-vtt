@@ -354,7 +354,7 @@ export const seedBook = (n: number): Book => {
     const count = 2 + Math.floor(rnd() * 5)
     for (let k = 0; k < count; k++) {
       const [kind, title, number] = SEED_WORDS[Math.floor(rnd() * SEED_WORDS.length)]!
-      const w = GRID * (6 + Math.floor(rnd() * 8))
+      const w = GRID * ((takesValue(kind) ? 8 : 6) + Math.floor(rnd() * 8))
       const x = ORIGIN + GRID * Math.floor(rnd() * (cols - w / GRID))
       const y = ORIGIN + GRID * Math.floor(rnd() * (rows - 3))
       notes.push({ id: `s${p}-${k}`, kind, x, y, title, number, lasts: "", group: "", w, h: 0 })
