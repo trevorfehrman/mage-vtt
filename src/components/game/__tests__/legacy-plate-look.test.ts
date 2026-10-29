@@ -38,13 +38,15 @@ describe("legacyPlate", () => {
     expect(bokor.held).toBe(1)
   })
 
-  it("a reading says what the attainment does, what it mirrors, what it needs, and its rider", () => {
-    const skin = readingOf(legacy("Orphans of Proteus").attainments[0])
-    expect(skin.mirrors).toBe('after Life 2 "Self-Healing"')
-    expect(skin.needs).toBe("Gnosis 3 · Life 2 · Mind 1 · Animal Ken 2 or Survival 2")
-    expect(skin.synergy).toEqual(Option.none())
-    const gift = readingOf(legacy("Orphans of Proteus").attainments[1])
-    expect(gift.needs).toBe("Gnosis 5 · Life 3")
-    expect(Option.getOrThrow(gift.synergy).startsWith("with Matter 3: ")).toBe(true)
+  it("a reading carries the page's words, its prerequisites as the page prints them, and the rider", () => {
+    const orphans = legacy("Orphans of Proteus")
+    const skin = readingOf(orphans.attainments[0], orphans.primary)
+    expect(skin.text.startsWith("The mage gains the ability to regenerate wounds")).toBe(true)
+    expect(skin.prerequisites).toBe("Gnosis 3, Life 2 (primary), Mind 1, Animal Ken 2 or Survival 2")
+    expect(skin.rider).toEqual(Option.none())
+    const gift = readingOf(orphans.attainments[1], orphans.primary)
+    expect(gift.prerequisites).toBe("Gnosis 5, Life 3 (primary)")
+    expect(Option.getOrThrow(gift.rider).arcanum).toBe("Matter 3")
+    expect(Option.getOrThrow(gift.rider).text.startsWith("If the mage also knows Matter 3")).toBe(true)
   })
 })

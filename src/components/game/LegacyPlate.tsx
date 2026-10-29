@@ -33,6 +33,9 @@ const WING_JUT = 10
 // the derangement fold's own curve (MAG-60), so the two folds feel the same
 const OPEN = "420ms cubic-bezier(0.2, 0.8, 0.2, 1)"
 
+/** The three attainments' numerals (p. 344: "there are three stages of attainment"). */
+const NUMERALS = ["I", "II", "III"] as const
+
 const rungInk = (r: LegacyRung) => (r.reached ? "var(--ink)" : "var(--dim)")
 const gateInk = (r: LegacyRung) => (r.reached ? "var(--accent)" : "var(--dim)")
 
@@ -96,9 +99,15 @@ export function LegacyPlate({
   }
 
   const open = Option.getOrUndefined(openRung)
-  const shown = plate.rungs.find((r) => r.name === open)
-  const toggle = (name: string) =>
+  // the reading stays mounted while the fold shuts, so the shrink animates
+  // over the same words (owner, 2026-10-28: "the shrink needs to be animated too")
+  const [lastOpen, setLastOpen] = useState<string | undefined>(undefined)
+  const shown = plate.rungs.find((r) => r.name === (open ?? lastOpen))
+  const shownIndex = plate.rungs.findIndex((r) => r.name === shown?.name)
+  const toggle = (name: string) => {
+    setLastOpen(name)
     setOpenRung((prev) => (Option.contains(prev, name) ? Option.none() : Option.some(name)))
+  }
 
   return (
     <div
@@ -144,19 +153,40 @@ export function LegacyPlate({
         </ol>
       </div>
       {/* the reading (owner 2026-10-28: "don't we need to know what the
-          spells do"): the open attainment's paragraph beneath the row, in
-          the book's words — kept mounted and folded shut */}
-      <Fold open={shown !== undefined}>
+          spells do" / "a centered more dramatic ui, these 3 things are
+          supposed to be like super iconic"): the open attainment beneath the
+          row, centered — its numeral between two rules, its name, the page's
+          own paragraph at a reading measure, the prerequisites as the page
+          prints them, and the Optional Arcanum rider when there is one */}
+      <Fold open={open !== undefined}>
         {shown !== undefined && Option.isSome(shown.reading) && (
-          <div className="grid gap-1.5 border-t pt-3" style={{ borderColor: "var(--line)", marginTop: 12 }}>
-            <p className="leading-snug" style={{ fontSize: 13, color: "var(--ink)" }}>{shown.reading.value.effect}</p>
-            <p className="mv-data leading-snug" style={{ fontSize: 11, color: "var(--dim)" }}>
-              {shown.reading.value.mirrors} · needs {shown.reading.value.needs}
+          <div
+            className="grid justify-items-center gap-3 border-t text-center"
+            style={{ borderColor: "var(--line)", marginTop: 12, paddingTop: 16, paddingBottom: 4 }}
+          >
+            <span className="flex w-full items-center gap-4" aria-hidden>
+              <span className="mv-rule flex-1" style={{ transform: "scaleX(-1)" }} />
+              <span className="mv-h leading-none" style={{ fontSize: 22, color: "var(--tile, var(--accent))" }}>
+                {NUMERALS[shownIndex] ?? ""}
+              </span>
+              <span className="mv-rule flex-1" />
+            </span>
+            <span className="mv-h leading-none" style={{ fontSize: 20, color: rungInk(shown) }}>{shown.name}</span>
+            <span className="mv-eyebrow" style={{ color: gateInk(shown) }}>Gnosis {shown.gnosis}</span>
+            <p className="leading-relaxed" style={{ fontSize: 14, maxWidth: "62ch", color: "var(--ink)" }}>
+              {shown.reading.value.text}
             </p>
-            {Option.match(shown.reading.value.synergy, {
+            <p className="mv-data leading-snug" style={{ fontSize: 11, maxWidth: "62ch", color: "var(--dim)" }}>
+              Prerequisites: {shown.reading.value.prerequisites}
+            </p>
+            {Option.match(shown.reading.value.rider, {
               onNone: () => null,
-              onSome: (s) => (
-                <p className="leading-snug" style={{ fontSize: 12, color: "var(--dim)" }}>{s}</p>
+              onSome: (r) => (
+                <p className="leading-relaxed" style={{ fontSize: 13, maxWidth: "62ch", color: "var(--dim)" }}>
+                  <span className="mv-eyebrow" style={{ color: "var(--tile, var(--accent))" }}>Optional Arcanum: {r.arcanum}</span>
+                  <br />
+                  {r.text}
+                </p>
               ),
             })}
           </div>

@@ -12,13 +12,12 @@ import type { ArcanumName } from "#/domain/trait-keys"
 
 /** What an attainment does, in the book's words, for the fold beneath its name. */
 export type AttainmentReading = {
-  readonly effect: string
-  /** "after Life 2 "Self-Healing"" — the spell it mirrors. */
-  readonly mirrors: string
-  /** "Gnosis 3 · Life 2 · Mind 1 · Animal Ken 2 or Survival 2" */
-  readonly needs: string
-  /** "with Matter 3: …" — the Optional Arcanum rider, when the attainment has one. */
-  readonly synergy: Option.Option<string>
+  /** The attainment as the page prints it. */
+  readonly text: string
+  /** "Gnosis 3, Life 2 (primary), Mind 1, Animal Ken 2 or Survival 2" — as the page prints it. */
+  readonly prerequisites: string
+  /** The Optional Arcanum rider, when the attainment has one: its Arcanum and dots, and the page's words. */
+  readonly rider: Option.Option<{ readonly arcanum: string; readonly text: string }>
 }
 
 /** One attainment on the plate: its name, the Gnosis that opens it, whether this mage has reached it, and its reading when the catalog knows it. */
@@ -47,18 +46,17 @@ const skillWords = (req: SkillRequirement): string =>
     ? `${skillDisplayName(req.skill)} ${req.dots}`
     : req.options.map((o) => `${skillDisplayName(o.skill)} ${o.dots}`).join(" or ")
 
-export const readingOf = (att: Attainment): AttainmentReading => ({
-  effect: att.effect,
-  mirrors: `after ${att.mirrors}`,
-  needs: [
+export const readingOf = (att: Attainment, primary: ArcanumName): AttainmentReading => ({
+  text: att.text,
+  prerequisites: [
     `Gnosis ${att.gnosis}`,
-    ...att.arcana.map((a) => `${cap(a.arcanum)} ${a.dots}`),
+    ...att.arcana.map((a) => `${cap(a.arcanum)} ${a.dots}${a.arcanum === primary ? " (primary)" : ""}`),
     ...att.skills.map(skillWords),
-  ].join(" · "),
-  synergy: Option.map(
-    Option.fromUndefinedOr(att.synergy),
-    (s) => `with ${cap(s.arcanum)} ${s.dots}: ${s.effect}`,
-  ),
+  ].join(", "),
+  rider: Option.map(Option.fromUndefinedOr(att.synergy), (r) => ({
+    arcanum: `${cap(r.arcanum)} ${r.dots}`,
+    text: r.text,
+  })),
 })
 
 export const legacyPlate = (legacy: Legacy, gnosis: number): LegacyPlate => {
@@ -67,7 +65,7 @@ export const legacyPlate = (legacy: Legacy, gnosis: number): LegacyPlate => {
     name,
     gnosis: gate,
     reached: gnosis >= gate,
-    reading: Option.map(def, (d) => readingOf(d.attainments[i] ?? d.attainments[0])),
+    reading: Option.map(def, (d) => readingOf(d.attainments[i] ?? d.attainments[0], d.primary)),
   }))
   return {
     name: legacy.name,
