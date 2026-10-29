@@ -25,8 +25,29 @@ export const Note = Schema.Struct({
 })
 export type Note = typeof Note.Type
 
-export const Page = Schema.Struct({ notes: Schema.Array(Note) })
+/** One pen stroke: the pointer's points, flattened [x0, y0, x1, y1, …]. */
+export const Ink = Schema.Struct({
+  id: Schema.String,
+  points: Schema.Array(Schema.Number),
+  color: Schema.String,
+})
+export type Ink = typeof Ink.Type
+
+export const Page = Schema.Struct({ notes: Schema.Array(Note), ink: Schema.Array(Ink) })
 export type Page = typeof Page.Type
+
+export const EMPTY_PAGE: Page = { notes: [], ink: [] }
+
+/** What the pointer does on the page: pick and move, write, or draw. */
+export const Tool = Schema.Literals(["select", "text", "pen"])
+export type Tool = typeof Tool.Type
+
+/** The pen's inks: the page's own, the accent, the ember. */
+export const INKS: ReadonlyArray<{ readonly name: string; readonly color: string }> = [
+  { name: "bone", color: "#d7d2e0" },
+  { name: "verdigris", color: "#6fae97" },
+  { name: "ember", color: "#e29659" },
+]
 
 export type History = { readonly past: ReadonlyArray<Page>; readonly present: Page; readonly future: ReadonlyArray<Page> }
 
@@ -55,7 +76,7 @@ export const STAMPS: ReadonlyArray<Stamp> = [
   { kind: "condition", label: "Condition", title: "stunned", number: "−2", lasts: "", onMe: true },
   { kind: "mark", label: "Mark", title: "Brand — eyes of a goat", number: "", lasts: "", onMe: true },
   { kind: "scene", label: "Scene", title: "the Mausoleum", number: "", lasts: "", onMe: false },
-  { kind: "blank", label: "Blank", title: "…", number: "", lasts: "", onMe: false },
+  { kind: "blank", label: "Blank", title: "", number: "", lasts: "", onMe: false },
 ]
 
 /** The kind's eyebrow word and ink. */
@@ -87,7 +108,7 @@ const rng = (seed: number) => () => {
 }
 
 export const NOTE_W = 196
-export const noteHeight = (n: Note): number => (n.number === "" ? 70 : 92)
+export const noteHeight = (n: Note): number => (n.kind === "blank" ? 44 : n.number === "" ? 70 : 92)
 
 /**
  * A rectangle drawn in a hurry: one open stroke around the four sides, each
@@ -115,6 +136,7 @@ export const placeStamp = (page: Page, stamp: Stamp, nth: number): Page => {
   const col = page.notes.length % 3
   const row = Math.floor(page.notes.length / 3) % 4
   return {
+    ...page,
     notes: [
       ...page.notes,
       {
@@ -132,20 +154,38 @@ export const placeStamp = (page: Page, stamp: Stamp, nth: number): Page => {
   }
 }
 
+/** A note where the pen touched: the Text tool's click. */
+export const placeAt = (page: Page, stamp: Stamp, x: number, y: number, nth: number): Page => {
+  const id = `n${Date.now().toString(36)}${nth}`
+  const r = rng(hash(id))
+  return {
+    ...page,
+    notes: [
+      ...page.notes,
+      { id, kind: stamp.kind, x, y, rot: (r() - 0.5) * 4, title: stamp.title, number: stamp.number, lasts: stamp.lasts, onMe: stamp.onMe },
+    ],
+  }
+}
+
+export const addInk = (page: Page, ink: Ink): Page => ({ ...page, ink: [...page.ink, ink] })
+export const removeInk = (page: Page, id: string): Page => ({ ...page, ink: page.ink.filter((s) => s.id !== id) })
+
 export const moveNote = (page: Page, id: string, x: number, y: number): Page => ({
+  ...page,
   notes: page.notes.map((n) => (n.id === id ? { ...n, x, y } : n)),
 })
 export const retitle = (page: Page, id: string, title: string): Page => ({
+  ...page,
   notes: page.notes.map((n) => (n.id === id ? { ...n, title } : n)),
 })
-export const removeNote = (page: Page, id: string): Page => ({ notes: page.notes.filter((n) => n.id !== id) })
+export const removeNote = (page: Page, id: string): Page => ({ ...page, notes: page.notes.filter((n) => n.id !== id) })
 export const duplicateNote = (page: Page, id: string): Page =>
   Option.match(Arr.findFirst(page.notes, (n) => n.id === id), {
     onNone: () => page,
     onSome: (n) => {
       const nid = `${n.id}d${page.notes.length}`
       const r = rng(hash(nid))
-      return { notes: [...page.notes, { ...n, id: nid, x: n.x + 18, y: n.y + 22, rot: (r() - 0.5) * 5 }] }
+      return { ...page, notes: [...page.notes, { ...n, id: nid, x: n.x + 18, y: n.y + 22, rot: (r() - 0.5) * 5 }] }
     },
   })
 

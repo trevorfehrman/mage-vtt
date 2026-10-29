@@ -4,11 +4,12 @@
 // that are categorical ... neat and orderly but still handwritten and just a
 // little haphazard, like the notes of someone in a hurry under duress."
 // First audition: react-konva. (React Flow is the second, same stamps.)
-// Knobs: ?font=caveat|kalam|patrick. Mock data; no Convex. DELETE once specced.
+// Knobs: ?font=caveat|kalam|patrick. Tools: select, text, pen (three inks).
+// Mock data; no Convex. DELETE once specced.
 import { Suspense, lazy, useEffect, useState } from "react"
 import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Match } from "effect"
-import { STAMPS, emptyHistory, placeStamp, redo, undo, type History } from "./-notebook-page"
+import { EMPTY_PAGE, INKS, STAMPS, emptyHistory, placeStamp, redo, undo, type History, type Tool } from "./-notebook-page"
 
 const Pad = lazy(() => import("./-notebook-pad").then((m) => ({ default: m.NotebookPad })))
 
@@ -36,8 +37,10 @@ const HEIGHT = 440
 function Notebook() {
   const { font } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
-  const [history, setHistory] = useState<History>(() => emptyHistory({ notes: [] }))
+  const [history, setHistory] = useState<History>(() => emptyHistory(EMPTY_PAGE))
   const [stamped, setStamped] = useState(0)
+  const [tool, setTool] = useState<Tool>("select")
+  const [ink, setInk] = useState(INKS[0]!.color)
 
   // the three hands under audition, loaded only here
   useEffect(() => {
@@ -68,15 +71,52 @@ function Notebook() {
         </div>
 
         <div className="mv-panel mv-cornered grid gap-3 p-4">
-          <div className="flex items-center justify-between">
-            <span className="mv-eyebrow">Notebook</span>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="mv-eyebrow mr-1 whitespace-nowrap">Notebook</span>
+              {(["select", "text", "pen"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTool(t)}
+                  aria-pressed={tool === t}
+                  className="mv-eyebrow whitespace-nowrap rounded-sm border px-2 py-1"
+                  style={{
+                    borderColor: tool === t ? "var(--accent)" : "var(--line)",
+                    color: tool === t ? "var(--accent)" : undefined,
+                    cursor: "pointer",
+                  }}
+                >
+                  {t}
+                </button>
+              ))}
+              {tool === "pen" &&
+                INKS.map((c) => (
+                  <button
+                    key={c.name}
+                    type="button"
+                    onClick={() => setInk(c.color)}
+                    aria-pressed={ink === c.color}
+                    title={c.name}
+                    className="rounded-full"
+                    style={{
+                      width: 14,
+                      height: 14,
+                      background: c.color,
+                      outline: ink === c.color ? "1px solid var(--accent)" : "1px solid transparent",
+                      outlineOffset: 2,
+                      cursor: "pointer",
+                    }}
+                  />
+                ))}
+            </div>
             <div className="flex items-center gap-1.5">
               {STAMPS.map((s, i) => (
                 <button
                   key={s.kind}
                   type="button"
                   onClick={() => stamp(i)}
-                  className="mv-eyebrow rounded-sm border px-2 py-1 hover:text-[var(--accent)]"
+                  className="mv-eyebrow whitespace-nowrap rounded-sm border px-2 py-1 hover:text-[var(--accent)]"
                   style={{ borderColor: "var(--line)", background: "transparent", cursor: "pointer" }}
                   title="Stamp one onto the page"
                 >
@@ -88,7 +128,7 @@ function Notebook() {
                 type="button"
                 onClick={() => setHistory(undo)}
                 disabled={history.past.length === 0}
-                className="mv-eyebrow rounded-sm border px-2 py-1 disabled:opacity-40"
+                className="mv-eyebrow whitespace-nowrap rounded-sm border px-2 py-1 disabled:opacity-40"
                 style={{ borderColor: "var(--line)", cursor: "pointer" }}
               >
                 Undo
@@ -97,7 +137,7 @@ function Notebook() {
                 type="button"
                 onClick={() => setHistory(redo)}
                 disabled={history.future.length === 0}
-                className="mv-eyebrow rounded-sm border px-2 py-1 disabled:opacity-40"
+                className="mv-eyebrow whitespace-nowrap rounded-sm border px-2 py-1 disabled:opacity-40"
                 style={{ borderColor: "var(--line)", cursor: "pointer" }}
               >
                 Redo
@@ -107,13 +147,13 @@ function Notebook() {
           <div style={{ marginLeft: -16, marginRight: -16, marginBottom: -16, borderTop: "1px solid var(--line)" }}>
             <ClientOnly fallback={<div style={{ width: WIDTH, height: HEIGHT }} />}>
               <Suspense fallback={<div style={{ width: WIDTH, height: HEIGHT }} />}>
-                <Pad font={fontFamily(font)} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />
+                <Pad font={fontFamily(font)} tool={tool} inkColor={ink} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />
               </Suspense>
             </ClientOnly>
           </div>
         </div>
         <p className="mv-data" style={{ fontSize: 11, color: "var(--dim)" }}>
-          click selects · drag moves · double-click edits the title · ⌫ removes · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus
+          select: click picks, drag moves, double-click edits, ⌫ removes · text: click the page and write · pen: draw; click a stroke in select to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus
         </p>
       </div>
 
