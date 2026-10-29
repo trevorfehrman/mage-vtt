@@ -1,14 +1,11 @@
 // PROTOTYPE — throwaway (MAG-75 audition). The notebook's page as data,
 // free of any canvas library: the Schema, the pure edits, the history, the
-// kinds, the ruling. The route and the Konva pad both read this file.
-// No app imports; mock only.
+// kinds, the ruling, the groups. The route and the Konva pad both read this
+// file. No app imports; mock only.
 //
-// Look-and-feel round (owner, 2026-10-28/29): "a mage's notebook is
-// relatively neat. the handwriting is neat, a little scholarly ... click
-// anywhere and start the note ... helpfully align to something ... categories
-// need to be easy to swap ... easy to clear and change ... these notes can
-// have crisp designed borders so long as the text is handwriting font ...
-// the stamps need to be a bit more compact and conservative."
+// The mood (owner, 2026-10-29): "notebook, need, mage, methodical, this is
+// their second brain. quick, clear, revisable." Each note is a ledger row
+// with three places to touch: its symbol, its words, its value.
 import { Array as Arr, Match, Option, Schema } from "effect"
 
 // --- The page (what Convex would hold) ---
@@ -27,6 +24,8 @@ export const Note = Schema.Struct({
   number: Schema.String,
   /** "scene" = over when the scene closes; "" = until crossed out. */
   lasts: Schema.Literals(["scene", ""]),
+  /** The group this note moves with; "" when it moves alone. */
+  group: Schema.String,
 })
 export type Note = typeof Note.Type
 
@@ -41,6 +40,7 @@ export const Ink = Schema.Struct({
   color: Schema.String,
   /** True when a pen reported pressure; false for a mouse or trackpad. */
   pressured: Schema.Boolean,
+  group: Schema.String,
 })
 export type Ink = typeof Ink.Type
 
@@ -87,9 +87,18 @@ export const GRID_TICK_EVERY = 4
 export const snap = (v: number): number => Math.round((v - ORIGIN) / GRID) * GRID + ORIGIN
 export const snapPoint = (x: number, y: number): { x: number; y: number } => ({ x: snap(x), y: snap(y) })
 
-/** Eight cells wide; three tall with a kind, two as a plain note. */
+// --- The note's measure: a ledger row ---
+
+/** Eight cells wide. */
 export const NOTE_W = GRID * 8
-export const noteHeight = (n: Note): number => (n.kind === "blank" ? GRID * 2 : GRID * 3)
+/** Two cells tall; three when the words wrap to a second line. */
+export const NOTE_H = GRID * 2
+export const NOTE_H_TALL = GRID * 3
+/** The spine: the tinted column at the left that holds the symbol. */
+export const SPINE_W = 24
+/** The value's cell: a square at the right, centered on the row. */
+export const CELL = 26
+export const noteHeight = (lines: number): number => (lines > 1 ? NOTE_H_TALL : NOTE_H)
 
 /** Whether the kind carries a value beside its words. */
 export const takesValue = (kind: NoteKind): boolean =>
@@ -106,7 +115,7 @@ export const takesValue = (kind: NoteKind): boolean =>
 
 /**
  * The kind's word, ink, and sigil — a small mark in a 16-box, drawn in the
- * note's corner. SVG path data so Konva's Path and a DOM <path> both draw it.
+ * note's spine. SVG path data so Konva's Path and a DOM <path> both draw it.
  */
 export const kindLook = (kind: NoteKind): { word: string; tint: string; glyph: string } =>
   Match.value(kind).pipe(
@@ -122,8 +131,8 @@ export const kindLook = (kind: NoteKind): { word: string; tint: string; glyph: s
     Match.when("mark", () => ({ word: "mark", tint: "#e29659", glyph: "M8 2 V14 M3 5 L13 11 M3 11 L13 5" })),
     // the stage: a crescent, the scene's hour
     Match.when("scene", () => ({ word: "scene", tint: "#807b8f", glyph: "M11.5 2.5 A6 6 0 1 0 11.5 13.5 A4.6 4.6 0 1 1 11.5 2.5 Z" })),
-    // a plain note: a single line of the page
-    Match.when("blank", () => ({ word: "note", tint: "#807b8f", glyph: "M3 8 H13" })),
+    // a plain note: an empty seat for a symbol
+    Match.when("blank", () => ({ word: "note", tint: "#807b8f", glyph: "M8 3 A5 5 0 1 0 8 13 A5 5 0 1 0 8 3 Z" })),
     Match.exhaustive,
   )
 
@@ -134,7 +143,7 @@ export const placeAt = (page: Page, x: number, y: number, nth: number): Page => 
   const p = snapPoint(x, y)
   return {
     ...page,
-    notes: [...page.notes, { id: `n${Date.now().toString(36)}${nth}`, kind: "blank", x: p.x, y: p.y, title: "", number: "", lasts: "" }],
+    notes: [...page.notes, { id: `n${Date.now().toString(36)}${nth}`, kind: "blank", x: p.x, y: p.y, title: "", number: "", lasts: "", group: "" }],
   }
 }
 
@@ -146,11 +155,17 @@ const edit = (page: Page, ids: ReadonlyArray<string>, f: (n: Note) => Note): Pag
 })
 
 export type Move = { readonly id: string; readonly x: number; readonly y: number }
-/** Several notes settle at once: the dragged one and everything picked with it. */
-export const moveNotes = (page: Page, moves: ReadonlyArray<Move>): Page => ({
-  ...page,
+export type Shift = { readonly id: string; readonly dx: number; readonly dy: number }
+/** Several things settle at once: notes to where they landed, strokes by how far they were carried. */
+export const moveMany = (page: Page, moves: ReadonlyArray<Move>, shifts: ReadonlyArray<Shift>): Page => ({
   notes: page.notes.map((n) =>
     Option.match(Arr.findFirst(moves, (m) => m.id === n.id), { onNone: () => n, onSome: (m) => ({ ...n, x: m.x, y: m.y }) }),
+  ),
+  ink: page.ink.map((s) =>
+    Option.match(Arr.findFirst(shifts, (m) => m.id === s.id), {
+      onNone: () => s,
+      onSome: (m) => ({ ...s, points: s.points.map((v, i) => (i % 3 === 0 ? v + m.dx : i % 3 === 1 ? v + m.dy : v)) }),
+    }),
   ),
 })
 export const retitle = (page: Page, id: string, title: string): Page => edit(page, [id], (n) => ({ ...n, title }))
@@ -167,16 +182,66 @@ export const duplicateNotes = (page: Page, ids: ReadonlyArray<string>): Page => 
   ...page,
   notes: [
     ...page.notes,
-    ...page.notes.filter((n) => ids.includes(n.id)).map((n, i) => ({ ...n, id: `${n.id}d${page.notes.length + i}`, x: n.x + GRID, y: n.y + GRID })),
+    ...page.notes
+      .filter((n) => ids.includes(n.id))
+      .map((n, i) => ({ ...n, id: `${n.id}d${page.notes.length + i}`, x: n.x + GRID, y: n.y + GRID, group: "" })),
   ],
 })
 export const clearPage = (page: Page): Page => (page.notes.length === 0 && page.ink.length === 0 ? page : EMPTY_PAGE)
 
-/** The notes a sweep of the select tool takes: any whose box the sweep touches. */
-export const notesWithin = (page: Page, box: { x: number; y: number; w: number; h: number }): ReadonlyArray<string> => {
-  const x0 = Math.min(box.x, box.x + box.w)
-  const x1 = Math.max(box.x, box.x + box.w)
-  const y0 = Math.min(box.y, box.y + box.h)
-  const y1 = Math.max(box.y, box.y + box.h)
-  return page.notes.filter((n) => n.x < x1 && n.x + NOTE_W > x0 && n.y < y1 && n.y + noteHeight(n) > y0).map((n) => n.id)
+// --- Groups: things that move as one ---
+
+const groupOf = (page: Page, id: string): string =>
+  page.notes.find((n) => n.id === id)?.group ?? page.ink.find((s) => s.id === id)?.group ?? ""
+
+/** The ids with every member of any group among them: picking one picks the rest. */
+export const withGroups = (page: Page, ids: ReadonlyArray<string>): ReadonlyArray<string> => {
+  const groups = ids.map((id) => groupOf(page, id)).filter((g) => g !== "")
+  const members = [...page.notes, ...page.ink].filter((x) => groups.includes(x.group)).map((x) => x.id)
+  return [...ids, ...members.filter((id) => !ids.includes(id))]
 }
+/** True when the ids are exactly one whole group: the button then ungroups. */
+export const isOneGroup = (page: Page, ids: ReadonlyArray<string>): boolean => {
+  const groups = ids.map((id) => groupOf(page, id))
+  const g = groups[0]
+  return ids.length > 1 && g !== undefined && g !== "" && groups.every((x) => x === g) && withGroups(page, ids).length === ids.length
+}
+/** Bind the ids into one group, or loose them if they already are one. */
+export const toggleGroup = (page: Page, ids: ReadonlyArray<string>): Page => {
+  const group = isOneGroup(page, ids) ? "" : `g${Date.now().toString(36)}`
+  return {
+    notes: page.notes.map((n) => (ids.includes(n.id) ? { ...n, group } : n)),
+    ink: page.ink.map((s) => (ids.includes(s.id) ? { ...s, group } : s)),
+  }
+}
+
+// --- The sweep ---
+
+export type Box = { readonly x: number; readonly y: number; readonly w: number; readonly h: number }
+const overlaps = (a: Box, b: Box): boolean => {
+  const ax0 = Math.min(a.x, a.x + a.w)
+  const ax1 = Math.max(a.x, a.x + a.w)
+  const ay0 = Math.min(a.y, a.y + a.h)
+  const ay1 = Math.max(a.y, a.y + a.h)
+  return b.x < ax1 && b.x + b.w > ax0 && b.y < ay1 && b.y + b.h > ay0
+}
+/** A stroke's extent, from its points. */
+export const inkBox = (s: Ink): Box => {
+  let x0 = Infinity
+  let y0 = Infinity
+  let x1 = -Infinity
+  let y1 = -Infinity
+  for (let i = 0; i + 1 < s.points.length; i += 3) {
+    x0 = Math.min(x0, s.points[i]!)
+    x1 = Math.max(x1, s.points[i]!)
+    y0 = Math.min(y0, s.points[i + 1]!)
+    y1 = Math.max(y1, s.points[i + 1]!)
+  }
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }
+}
+/** What a sweep of the select tool takes: any note or stroke whose box the sweep touches, with their groups. */
+export const swept = (page: Page, box: Box, heightOf: (n: Note) => number): ReadonlyArray<string> =>
+  withGroups(page, [
+    ...page.notes.filter((n) => overlaps(box, { x: n.x, y: n.y, w: NOTE_W, h: heightOf(n) })).map((n) => n.id),
+    ...page.ink.filter((s) => overlaps(box, inkBox(s))).map((s) => s.id),
+  ])

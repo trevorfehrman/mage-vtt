@@ -6,6 +6,8 @@
 // neat, a little scholarly ... click anywhere and start the note ...
 // helpfully align to something ... categories need to be easy to swap ...
 // easy to clear and change ... how would a mage build a magic notebook."
+// Round three: "each note just needs three active areas, text value and
+// symbol ... it would be cool to have a group button as well."
 // Round two: "kalam is the font ... there are too many buttons in the tool
 // bar, it should be a typeset icon like Aa ... and a quill, undo and redo
 // icons and a clear icon. we also need a select tool."
@@ -13,8 +15,8 @@
 // Mock data; no Convex. DELETE once specced.
 import { Suspense, lazy, useEffect, useState, type ReactNode } from "react"
 import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router"
-import { Eraser, Feather, MousePointer2, Redo2, Undo2 } from "lucide-react"
-import { clearPage, EMPTY_PAGE, GRID, INKS, emptyHistory, redo, undo, type History, type Tool } from "./-notebook-page"
+import { Eraser, Feather, Group, MousePointer2, Redo2, Undo2, Ungroup } from "lucide-react"
+import { clearPage, commit, EMPTY_PAGE, GRID, INKS, emptyHistory, isOneGroup, redo, toggleGroup, undo, type History, type Tool } from "./-notebook-page"
 import type { Rule } from "./-notebook-pad"
 
 const Pad = lazy(() => import("./-notebook-pad").then((m) => ({ default: m.NotebookPad })))
@@ -40,6 +42,7 @@ function Notebook() {
   const [history, setHistory] = useState<History>(() => emptyHistory(EMPTY_PAGE))
   const [tool, setTool] = useState<Tool>("write")
   const [ink, setInk] = useState(INKS[0]!.color)
+  const [picked, setPicked] = useState<ReadonlyArray<string>>([])
 
   // the hand, loaded only here
   useEffect(() => {
@@ -58,6 +61,8 @@ function Notebook() {
       return next === h.present ? h : { past: [...h.past, h.present], present: next, future: [] }
     })
   const empty = history.present.notes.length === 0 && history.present.ink.length === 0
+  const oneGroup = isOneGroup(history.present, picked)
+  const group = () => setHistory((h) => commit(h, toggleGroup(h.present, picked)))
 
   return (
     <div className="min-h-screen" style={{ background: "var(--void, #07060a)", color: "var(--ink)" }}>
@@ -76,7 +81,7 @@ function Notebook() {
                 <MousePointer2 size={15} strokeWidth={1.6} />
               </ToolButton>
               <ToolButton label="write" on={tool === "write"} onClick={() => setTool("write")}>
-                <span style={{ fontFamily: HAND, fontSize: 16, lineHeight: 1, marginTop: -2 }}>Aa</span>
+                <span style={{ fontFamily: HAND, fontSize: 16, lineHeight: "16px", height: 16, display: "block", transform: "translateY(-1px)" }}>Aa</span>
               </ToolButton>
               <ToolButton label="pen" on={tool === "pen"} onClick={() => setTool("pen")}>
                 <Feather size={15} strokeWidth={1.6} />
@@ -105,6 +110,10 @@ function Notebook() {
               )}
             </div>
             <div className="flex items-center gap-1">
+              <ToolButton label={oneGroup ? "ungroup" : "group"} on={oneGroup} disabled={picked.length < 2} onClick={group}>
+                {oneGroup ? <Ungroup size={15} strokeWidth={1.6} /> : <Group size={15} strokeWidth={1.6} />}
+              </ToolButton>
+              <span className="mx-1 h-4 w-px" style={{ background: "var(--line)" }} />
               <ToolButton label="undo" on={false} disabled={history.past.length === 0} onClick={() => setHistory(undo)}>
                 <Undo2 size={15} strokeWidth={1.6} />
               </ToolButton>
@@ -120,13 +129,13 @@ function Notebook() {
           <div style={{ marginLeft: -16, marginRight: -16, marginBottom: -16, borderTop: "1px solid var(--line)" }}>
             <ClientOnly fallback={<div style={{ width: WIDTH, height: HEIGHT }} />}>
               <Suspense fallback={<div style={{ width: WIDTH, height: HEIGHT }} />}>
-                <Pad font={HAND} tool={tool} inkColor={ink} rule={rule} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />
+                <Pad font={HAND} tool={tool} inkColor={ink} rule={rule} picked={picked} onPicked={setPicked} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />
               </Suspense>
             </ClientOnly>
           </div>
         </div>
         <p className="mv-data" style={{ fontSize: 11, color: "var(--dim)" }}>
-          write: click the page and write · click a note to pick it, the fan or 1–7 swaps its kind, ⌫ removes · double-click rewrites · drag and it settles on the lattice · select: sweep, shift-click adds, ⌘A takes all; a drag moves them together · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus
+          write: click the page and write · a note has three places to touch: its symbol (the kinds), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · select: sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus
         </p>
       </div>
 
