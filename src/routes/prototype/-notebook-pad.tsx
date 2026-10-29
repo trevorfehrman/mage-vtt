@@ -332,13 +332,10 @@ export function NotebookPad({
     evt instanceof PointerEvent && evt.pointerType === "pen" ? { p: evt.pressure, real: true } : { p: 0.5, real: false }
 
   // the pointer on the bare page, by tool: the pen begins a stroke, select
-  // begins a sweep; the write tool waits for the click (below), because the
-  // mousedown's own default action moves focus to the pad and would blur an
-  // editor opened this early
+  // begins a sweep
   const onStageDown = (e: Konva.KonvaEventObject<PointerEvent>) => {
     const onPage = e.target === e.target.getStage()
     Match.value(tool).pipe(
-      Match.when("write", () => undefined),
       Match.when("select", () => {
         if (onPage) Option.map(pointer(), (p) => setSweep(Option.some({ x: p.x, y: p.y, w: 0, h: 0 })))
       }),
@@ -351,18 +348,18 @@ export function NotebookPad({
       Match.exhaustive,
     )
   }
-  // a click on the bare page: with a list open, something picked, or an
-  // editor just closed, it only shuts and clears; otherwise the write tool
-  // writes a note there and opens it
+  // a click on the bare page shuts the list and clears the pick; a
+  // double-click writes a note there and opens it (the click waits for the
+  // mouse to settle, because a mousedown's own default action would move
+  // focus and blur an editor opened this early)
   const onStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
     if (e.target !== e.target.getStage()) return
     if (Date.now() - settledAt.current < 250) return
-    if (Option.isSome(menu) || picked.length > 0 || Option.isSome(editing)) {
-      setMenu(Option.none())
-      onPicked([])
-      return
-    }
-    if (tool !== "write") return
+    setMenu(Option.none())
+    onPicked([])
+  }
+  const onStageDblClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (e.target !== e.target.getStage() || tool !== "select") return
     Option.map(pointer(), (p) => {
       stamped.current += 1
       const next = placeAt(page, p.x - 12, p.y - 12, stamped.current)
@@ -483,7 +480,6 @@ export function NotebookPad({
   }
 
   const drawing = tool === "pen"
-  const writing = tool === "write"
   const editingNote = Option.flatMap(editing, (ed) => noteById(ed.id))
   const menuNote = Option.flatMap(menu, noteById)
 
@@ -502,6 +498,7 @@ export function NotebookPad({
         height={height}
         onPointerDown={onStageDown}
         onClick={onStageClick}
+        onDblClick={onStageDblClick}
         onPointerMove={onStageMove}
         onPointerUp={onStageUp}
         onMouseLeave={onStageUp}
@@ -566,7 +563,7 @@ export function NotebookPad({
                   listening={false}
                 />
                 {/* the spine: the symbol's seat; click it and the kinds list opens */}
-                <Group onClick={() => writing && setMenu(Option.contains(menu, n.id) ? Option.none() : Option.some(n.id))}>
+                <Group onClick={() => setMenu(Option.contains(menu, n.id) ? Option.none() : Option.some(n.id))}>
                   <Rect x={0.5} y={0.5} width={SPINE_W} height={h - 1} fill={look.tint} opacity={blank ? 0.04 : 0.1} cornerRadius={[3, 0, 0, 3]} />
                   <Line points={[SPINE_W + 0.5, 1, SPINE_W + 0.5, h - 1]} stroke={look.tint} strokeWidth={1} opacity={blank ? 0.2 : 0.4} />
                   <Path
@@ -582,7 +579,7 @@ export function NotebookPad({
                   />
                 </Group>
                 {/* the words: the kind's word above, the title beneath, one left edge; click to write */}
-                <Group onClick={() => writing && openEditor(n, "title")}>
+                <Group onClick={(e) => !e.evt.shiftKey && openEditor(n, "title")}>
                   <Rect x={SPINE_W + 1} y={0} width={tw + PAD * 2 - 1} height={h} fill={INK} opacity={0.001} />
                   {!blank && (
                     <Text x={SPINE_W + PAD} y={7} text={look.word.toUpperCase()} fontFamily="JetBrains Mono" fontSize={9} letterSpacing={1.6} fill={look.tint} listening={false} />
@@ -608,7 +605,7 @@ export function NotebookPad({
                 </Group>
                 {/* the value's cell: a square centered on the row; faint and dashed until a value is written; click to write */}
                 {valued && (
-                  <Group onClick={() => writing && openEditor(n, "number")}>
+                  <Group onClick={(e) => !e.evt.shiftKey && openEditor(n, "number")}>
                     <Rect
                       x={cellX + 0.5}
                       y={cellY + 0.5}

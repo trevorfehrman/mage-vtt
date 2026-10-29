@@ -11,7 +11,11 @@
 // Round two: "kalam is the font ... there are too many buttons in the tool
 // bar, it should be a typeset icon like Aa ... and a quill, undo and redo
 // icons and a clear icon. we also need a select tool."
-// Knob: ?rule=dots|lines|none. Tools: select, write, pen (three inks).
+// Round four: "regardless of what cursor i'm on clicking on the symbol should
+// bring up that menu ... forgo the typography tool entirely if we left new
+// note to be a double click ... mark should be red ... boost should be blue
+// scene should be like a wine."
+// Knob: ?rule=dots|lines|none. Tools: select, pen (three inks).|lines|none. Tools: select, write, pen (three inks).
 // Mock data; no Convex. DELETE once specced.
 import { Suspense, lazy, useEffect, useState, type ReactNode } from "react"
 import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router"
@@ -40,7 +44,7 @@ function Notebook() {
   const { rule } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const [history, setHistory] = useState<History>(() => emptyHistory(EMPTY_PAGE))
-  const [tool, setTool] = useState<Tool>("write")
+  const [tool, setTool] = useState<Tool>("select")
   const [ink, setInk] = useState(INKS[0]!.color)
   const [picked, setPicked] = useState<ReadonlyArray<string>>([])
 
@@ -79,9 +83,6 @@ function Notebook() {
               <span className="mv-eyebrow mr-2 whitespace-nowrap">Notebook</span>
               <ToolButton label="select" on={tool === "select"} onClick={() => setTool("select")}>
                 <MousePointer2 size={15} strokeWidth={1.6} />
-              </ToolButton>
-              <ToolButton label="write" on={tool === "write"} onClick={() => setTool("write")}>
-                <span style={{ fontFamily: HAND, fontSize: 16, lineHeight: "16px", height: 16, display: "block", transform: "translateY(-1px)" }}>Aa</span>
               </ToolButton>
               <ToolButton label="pen" on={tool === "pen"} onClick={() => setTool("pen")}>
                 <Feather size={15} strokeWidth={1.6} />
@@ -135,7 +136,7 @@ function Notebook() {
           </div>
         </div>
         <p className="mv-data" style={{ fontSize: 11, color: "var(--dim)" }}>
-          write: click the page and write · a note has three places to touch: its symbol (the kinds), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · select: sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus
+          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus
         </p>
       </div>
 

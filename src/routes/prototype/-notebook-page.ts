@@ -49,8 +49,8 @@ export type Page = typeof Page.Type
 
 export const EMPTY_PAGE: Page = { notes: [], ink: [] }
 
-/** What the pointer does on the page: pick (and sweep), write (click = note), or draw. */
-export const Tool = Schema.Literals(["select", "write", "pen"])
+/** What the pointer does on the page: pick, touch, sweep and move (double-click on bare page writes a note), or draw. */
+export const Tool = Schema.Literals(["select", "pen"])
 export type Tool = typeof Tool.Type
 
 /** The pen's inks: the page's own, the accent, the ember. */
@@ -124,17 +124,22 @@ export const kindLook = (kind: NoteKind): { word: string; tint: string; glyph: s
     // a ward: the shield's shoulder and point
     Match.when("armor", () => ({ word: "armor", tint: "#d7d2e0", glyph: "M3 3 H13 V8.5 C13 11.5 8 14 8 14 C8 14 3 11.5 3 8.5 Z" })),
     // a lift: two chevrons rising
-    Match.when("boost", () => ({ word: "boost", tint: "#6fae97", glyph: "M3.5 8.5 L8 4 L12.5 8.5 M3.5 13 L8 8.5 L12.5 13" })),
+    Match.when("boost", () => ({ word: "boost", tint: "#6c9fd8", glyph: "M3.5 8.5 L8 4 L12.5 8.5 M3.5 13 L8 8.5 L12.5 13" })),
     // a weight: two chevrons sinking
-    Match.when("condition", () => ({ word: "condition", tint: "#b56d60", glyph: "M3.5 3 L8 7.5 L12.5 3 M3.5 7.5 L8 12 L12.5 7.5" })),
+    Match.when("condition", () => ({ word: "condition", tint: "#e29659", glyph: "M3.5 3 L8 7.5 L12.5 3 M3.5 7.5 L8 12 L12.5 7.5" })),
     // a brand: three strokes through one point
-    Match.when("mark", () => ({ word: "mark", tint: "#e29659", glyph: "M8 2 V14 M3 5 L13 11 M3 11 L13 5" })),
+    Match.when("mark", () => ({ word: "mark", tint: "#dc5a4f", glyph: "M8 2 V14 M3 5 L13 11 M3 11 L13 5" })),
     // the stage: a crescent, the scene's hour
-    Match.when("scene", () => ({ word: "scene", tint: "#807b8f", glyph: "M11.5 2.5 A6 6 0 1 0 11.5 13.5 A4.6 4.6 0 1 1 11.5 2.5 Z" })),
+    Match.when("scene", () => ({ word: "scene", tint: "#b8607f", glyph: "M11.5 2.5 A6 6 0 1 0 11.5 13.5 A4.6 4.6 0 1 1 11.5 2.5 Z" })),
     // a plain note: an empty seat for a symbol
     Match.when("blank", () => ({ word: "note", tint: "#807b8f", glyph: "M8 3 A5 5 0 1 0 8 13 A5 5 0 1 0 8 3 Z" })),
     Match.exhaustive,
   )
+
+// The kinds' inks (owner, 2026-10-29: "mark should be red ... boost should be
+// blue, scene should be like a wine"): spell verdigris, armor bone, boost
+// blue, condition ember, mark red, scene wine — each bright enough that its
+// 9px word clears the panel.
 
 // --- The edits ---
 
