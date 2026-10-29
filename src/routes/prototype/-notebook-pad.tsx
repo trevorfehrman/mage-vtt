@@ -132,6 +132,9 @@ const FEEL: Record<Feel, { power: number; timeConstant: number; stiffness: numbe
 }
 /** A trackpad stream's travel, in px, for one page. */
 const WHEEL_PAGE = 420
+/** How far past a cover the wheel can be pulled, in pages, and how it resists: a rubber band, not a wall. */
+const GIVE = 0.3
+const rubber = (d: number): number => GIVE * (1 - 1 / (1 + 2.5 * d))
 /** The plate: a hair above the panel. */
 const PLATE = "#121118"
 const HAND = 18
@@ -145,8 +148,14 @@ const PAD = 10
  * 2026-10-29: "the icons and values should be aligned and sized such that
  * when notes overlay each other both are visible").
  */
-const WORDS_TOP = 4
-const LINE_MID = WORDS_TOP + (HAND * LEAD) / 2
+const WORDS_TOP = 6
+/**
+ * The first line's visual middle. Kalam's ink rides high in its line box
+ * (ascent 19 / descent 10 at 18px, measured): the ink of a typical line
+ * centers about a pixel above the box's middle, so the symbol and the value
+ * center there, and a one-line row's words sit centered in its plate.
+ */
+const LINE_MID = WORDS_TOP + (HAND * LEAD) / 2 - 1
 const CELL_TOP = LINE_MID - CELL / 2
 /**
  * A row's height for its lines: what the words need plus the gutter, rounded
@@ -745,9 +754,11 @@ export function NotebookPad({
     // owed to the open page alone
   }, [book.open])
 
-  /** Coast from a velocity (pages per second) and land exactly on a page. The nominal target is a page away, since animate() skips an inertia whose target is the current value. */
+  /** A position pulled past a cover gives a little and resists, like a band; within the covers it is itself. */
+  const band = (v: number): number => (v < 0 ? -rubber(-v) : v > last ? last + rubber(v - last) : v)
+  /** Coast from a velocity (pages per second) and land exactly on a page; past a cover it springs back. The nominal target is a page away, since animate() skips an inertia whose target is the current value. */
   const coast = (v: number) =>
-    animate(pos, clamp(pos.get() + (v >= 0 ? 1 : -1), 0, last), {
+    animate(pos, pos.get() + (v >= 0 ? 1 : -1), {
       type: "inertia",
       velocity: v,
       power: FEEL[feel].power,
@@ -755,6 +766,8 @@ export function NotebookPad({
       modifyTarget: (t) => clamp(Math.round(t), 0, last),
       min: 0,
       max: last,
+      bounceStiffness: 320,
+      bounceDamping: 30,
       restDelta: 0.002,
     })
 
@@ -777,7 +790,13 @@ export function NotebookPad({
   const push = (by: number) => {
     settle()
     const resting = !chasing.current && Math.abs(pos.getVelocity()) < 0.05
-    target.current = clamp((resting ? Math.round(pos.get()) : target.current) + by, 0, last)
+    const want = (resting ? Math.round(pos.get()) : target.current) + by
+    target.current = clamp(want, 0, last)
+    // a push against a cover gives a little and comes back: the book has an end, not a wall
+    if (want !== target.current && resting) {
+      animate(pos, [target.current, target.current + by * GIVE * 0.6, target.current], { duration: 0.3, ease: "easeInOut" })
+      return
+    }
     chase(target.current)
   }
 
@@ -801,7 +820,7 @@ export function NotebookPad({
         if (Math.abs(dx) <= 4) return
         moved = true
       }
-      pos.set(clamp(from + dx / PITCH, 0, last))
+      pos.set(band(from + dx / PITCH))
     }
     const up = () => {
       window.removeEventListener("pointermove", move)
@@ -844,7 +863,7 @@ export function NotebookPad({
       }
       pos.stop()
       if (Option.isSome(editing) || Option.isSome(menu) || picked.length > 0) settle()
-      pos.set(clamp(pos.get() + delta / WHEEL_PAGE, 0, last))
+      pos.set(band(pos.get() + delta / WHEEL_PAGE))
       if (settling.current !== null) clearTimeout(settling.current)
       // once the stream is quiet the wheel coasts out on whatever speed it still has, and lands on a page
       settling.current = setTimeout(() => coast(pos.getVelocity()), 120)
