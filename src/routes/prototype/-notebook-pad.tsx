@@ -89,6 +89,11 @@ const PLATE = "#121118"
 const HAND = 18
 const LEAD = 1.1
 const PAD = 10
+/** The header line: the symbol, the kind's word and the value's cell are centered on this y. */
+const HEAD = 15
+/** Where the words hang from: beneath the header line on a kind's row, a little in on a plain row. */
+const WORDS_TOP_KIND = 24
+const WORDS_TOP_BLANK = 14
 /** The grip's reach from the row's corner, and the fade's depth at a scrolling row's foot. */
 const GRIP = 10
 const FADE = 28
@@ -625,12 +630,12 @@ export function NotebookPad({
             const valued = takesValue(n.kind)
             const tw = titleWidth(n.kind, w)
             const cellX = w - PAD - CELL
-            const cellY = Math.min((h - CELL) / 2, 11)
+            const cellY = HEAD - CELL / 2
             const seat = seatOf(n)
             const lines = linesIn(n)
             const lineBox = lines * HAND * LEAD
-            // the words' column: a plain row that sizes itself centers its words; a sized row, or a kind's row, hangs them from the top
-            const wordsTop = blank ? (sized ? 11 : (h - lineBox) / 2) : 19
+            // the words hang from a fixed top, so a new line never moves the lines already written
+            const wordsTop = blank ? WORDS_TOP_BLANK : WORDS_TOP_KIND
             const clipH = h - wordsTop - 6
             const over = Math.max(0, lineBox - clipH)
             const sc = clamp(scroll[n.id] ?? 0, 0, over)
@@ -668,7 +673,7 @@ export function NotebookPad({
                   <Line points={[SPINE_W + 0.5, 1, SPINE_W + 0.5, h - 1]} stroke={look.tint} strokeWidth={1} opacity={blank ? 0.2 : 0.4} />
                   <Path
                     x={SPINE_W / 2 - 8}
-                    y={Math.min(h / 2, 24) - 8}
+                    y={(blank ? Math.min(h / 2, 24) : HEAD) - 8}
                     data={look.glyph}
                     stroke={look.tint}
                     strokeWidth={1.3}
@@ -680,7 +685,7 @@ export function NotebookPad({
                 </Group>
                 {/* the words: the kind's word above, the title beneath, one left edge; click to write; a sized row's words scroll under the wheel and fade at the foot while there is more */}
                 <Group
-                  onClick={(e) => !e.evt.shiftKey && openEditor(n, "title")}
+                  onDblClick={() => openEditor(n, "title")}
                   onWheel={(e) => {
                     if (over === 0) return
                     e.evt.preventDefault()
@@ -689,7 +694,7 @@ export function NotebookPad({
                 >
                   <Rect x={SPINE_W + 1} y={0} width={tw + PAD * 2 - 1} height={h} fill={INK} opacity={0.001} />
                   {!blank && (
-                    <Text x={SPINE_W + PAD} y={7} text={look.word.toUpperCase()} fontFamily="JetBrains Mono" fontSize={9} letterSpacing={1.6} fill={look.tint} listening={false} />
+                    <Text x={SPINE_W + PAD} y={HEAD - 5} text={look.word.toUpperCase()} fontFamily="JetBrains Mono" fontSize={9} letterSpacing={1.6} fill={look.tint} listening={false} />
                   )}
                   {!isEditing && (
                     <Group clipX={SPINE_W + 1} clipY={wordsTop} clipWidth={tw + PAD * 2 - 1} clipHeight={sized ? clipH : h - wordsTop} listening={false}>
@@ -697,7 +702,7 @@ export function NotebookPad({
                         x={SPINE_W + PAD}
                         y={wordsTop - sc}
                         width={tw}
-                        {...(sized ? {} : { height: blank ? lineBox : h - 19 - 5, ellipsis: true })}
+                        {...(sized ? {} : { height: h - wordsTop - 4, ellipsis: true })}
                         verticalAlign="top"
                         text={blank && n.title === "" ? "write…" : n.title}
                         fontFamily={font}
@@ -758,7 +763,7 @@ export function NotebookPad({
                         verticalAlign="middle"
                         text={n.number}
                         fontFamily={font}
-                        fontSize={n.number.length > 2 ? 12 : 16}
+                        fontSize={n.number.length > 2 ? 11 : 14}
                         fill={look.tint}
                         listening={false}
                       />
@@ -829,8 +834,7 @@ export function NotebookPad({
           const look = kindLook(n.kind)
           const seat = seatOf(n)
           const lines = linesIn(n)
-          const lineBox = lines * HAND * LEAD
-          const wordsTop = blank ? (sized ? 11 : (h - lineBox) / 2) : 19
+          const wordsTop = blank ? WORDS_TOP_BLANK : WORDS_TOP_KIND
           const field = {
             pointerEvents: "auto" as const,
             fontFamily: font,
@@ -853,18 +857,32 @@ export function NotebookPad({
                 autoFocus={ed.focus === "title"}
                 defaultValue={n.title}
                 placeholder="write…"
-                onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
+                onFocus={(e) => {
+                  // the caret goes to the end — again a frame later, after the double-click that opened the editor has
+                  // landed on the fresh textarea and selected the word beneath it
+                  const el = e.currentTarget
+                  const end = () => el.setSelectionRange(el.value.length, el.value.length)
+                  end()
+                  requestAnimationFrame(end)
+                }}
                 onBlur={onEditorBlur}
                 onKeyDown={onEditorKey}
-                onChange={(e) => setEditing(Option.some({ ...ed, draft: e.currentTarget.value }))}
-                rows={sized ? undefined : lines}
+                onChange={(e) => {
+                  // the box grows with its words at once, before React's turn, so the caret never scrolls the text up
+                  if (!sized) {
+                    e.currentTarget.style.height = "auto"
+                    e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`
+                  }
+                  setEditing(Option.some({ ...ed, draft: e.currentTarget.value }))
+                }}
+                rows={1}
                 style={{
                   ...field,
                   position: "absolute",
                   left: SPINE_W + PAD,
                   top: wordsTop,
                   width: tw,
-                  ...(sized ? { height: h - wordsTop - 6, overflowY: "auto" as const, scrollbarWidth: "none" as const } : { overflow: "hidden" as const }),
+                  ...(sized ? { height: h - wordsTop - 6, overflowY: "auto" as const, scrollbarWidth: "none" as const } : { height: lines * HAND * LEAD, overflow: "hidden" as const }),
                   fontSize: HAND,
                   lineHeight: LEAD,
                   color: INK,
@@ -884,11 +902,11 @@ export function NotebookPad({
                     ...field,
                     position: "absolute",
                     left: w - PAD - CELL,
-                    top: Math.min((h - CELL) / 2, 11),
+                    top: HEAD - CELL / 2,
                     width: CELL,
                     height: CELL,
                     textAlign: "center",
-                    fontSize: 16,
+                    fontSize: 14,
                     lineHeight: 1,
                     color: look.tint,
                   }}

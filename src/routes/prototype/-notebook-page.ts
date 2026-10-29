@@ -102,8 +102,8 @@ export const NOTE_H = GRID * 2
 export const MAX_LINES = 3
 /** The spine: the tinted column at the left that holds the symbol. */
 export const SPINE_W = 24
-/** The value's cell: a square at the right, centered on the row. */
-export const CELL = 26
+/** The value's cell: a square at the right, on the row's header line with the kind's word and the symbol. */
+export const CELL = 22
 export const noteHeight = (lines: number): number => NOTE_H + GRID * (Math.min(MAX_LINES, Math.max(1, lines)) - 1)
 /** A note that would hang past the page's edge is nudged back onto the lattice inside it. */
 export const within = (p: { x: number; y: number }, w: number, h: number, pageW: number, pageH: number): { x: number; y: number } => ({
