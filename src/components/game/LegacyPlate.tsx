@@ -1,6 +1,7 @@
+import { useState, type CSSProperties, type ReactNode } from "react"
 import { Option } from "effect"
 import type { Legacy } from "#/domain/character"
-import { ArcanaGlyph, arcanumTint, isGrossArcanum } from "./ArcanaGlyph"
+import { ArcanaGlyph, PathGlyph, arcanumTint, isGrossArcanum, pathTint } from "./ArcanaGlyph"
 import { legacyPlate, type LegacyRung } from "./legacy-plate-look"
 
 // The Legacy plate (MAG-64; owner 2026-10-27: "this should be bright and
@@ -8,15 +9,20 @@ import { legacyPlate, type LegacyRung } from "./legacy-plate-look"
 // special newly styled section bolted on to the nameplate to make it feel
 // like you physically got bigger"). The Legacy is the one choice a mage
 // never reverses (Mage p. 344), so it is not a section of the sheet but a
-// growth of the title card: a raised piece riveted onto the card's edge,
-// bleeding to its sides, carrying the Legacy's name large, its primary
-// Arcanum as the emblem when the catalog knows it, and the three
-// attainments with their Gnosis gates — the reached ones in ink, the rest
-// waiting in the dim. Absent until a Legacy is chosen.
+// piece of the title card: the plinth beneath the emblem row, bordered as
+// the Arcana tiles are and tinted by the Legacy's primary Arcanum (owner,
+// 2026-10-28: no lighter ground than the card — "it gives it too much
+// emphasis"), carrying the Legacy's name large with its Arcanum and Path
+// emblems trailing it (never before it — the name keeps the card's left
+// edge), and the three attainments with their Gnosis gates, the reached
+// ones in ink, the rest waiting in the dim. An attainment's name opens its
+// reading beneath the row: what it does, in the book's words. Absent until
+// a Legacy is chosen.
 //
-// Three looks under audition on the rig; the card wears one.
+// Three looks were auditioned; the owner chose the plinth as the foundation
+// (2026-10-28). The pediment and wing stay on the rig's knob for now.
 
-/** Where the growth attaches: above the name, beneath the emblem row, or on the Gnosis flank. */
+/** Where the growth attaches: beneath the emblem row, above the name, or on the Gnosis flank. */
 export const LEGACY_LOOKS = ["plinth", "pediment", "wing"] as const
 export type LegacyLook = (typeof LEGACY_LOOKS)[number]
 
@@ -24,6 +30,7 @@ export type LegacyLook = (typeof LEGACY_LOOKS)[number]
 const CARD_PAD = 16
 /** How far the wing juts past the card's right edge — the piece that was bolted on. */
 const WING_JUT = 10
+const OPEN = "220ms ease"
 
 const rungInk = (r: LegacyRung) => (r.reached ? "var(--ink)" : "var(--dim)")
 const gateInk = (r: LegacyRung) => (r.reached ? "var(--accent)" : "var(--dim)")
@@ -38,30 +45,42 @@ export function LegacyPlate({
   look: LegacyLook
 }) {
   const plate = legacyPlate(legacy, gnosis)
-  const emblem = Option.match(plate.primary, {
-    onNone: () => null,
-    onSome: (a) => (
-      <span className="inline-flex shrink-0" style={{ color: arcanumTint(a) }} aria-hidden>
-        <ArcanaGlyph arcanum={a} size={look === "wing" ? 20 : 26} variant={isGrossArcanum(a) ? "seal" : "line"} />
-      </span>
-    ),
-  })
-  const eyebrow = Option.match(plate.nickname, {
-    onNone: () => "Legacy",
-    onSome: (n) => `Legacy · ${n}`,
-  })
+  const [openRung, setOpenRung] = useState<Option.Option<string>>(Option.none())
+  const tint = Option.getOrElse(Option.map(plate.primary, arcanumTint), () => "var(--accent)")
+  const tileVar = { "--tile": tint } as CSSProperties
+  const emblems = (size: number) => (
+    <>
+      {Option.match(plate.primary, {
+        onNone: () => null,
+        onSome: (a) => (
+          <span className="inline-flex shrink-0" style={{ color: arcanumTint(a) }} aria-hidden>
+            <ArcanaGlyph arcanum={a} size={size} variant={isGrossArcanum(a) ? "seal" : "line"} />
+          </span>
+        ),
+      })}
+      {Option.match(plate.path, {
+        onNone: () => null,
+        onSome: (p) => (
+          <span className="inline-flex shrink-0" style={{ color: pathTint(p) }} aria-hidden>
+            <PathGlyph path={p} size={size} />
+          </span>
+        ),
+      })}
+    </>
+  )
+  const label = `Legacy: ${plate.name}, ${plate.held} of ${plate.rungs.length} attainments`
 
   if (look === "wing") {
     return (
       <div
         className="mv-legacy-wing grid justify-items-end gap-2 text-right"
-        style={{ marginRight: -(CARD_PAD + WING_JUT), paddingLeft: 14, paddingRight: CARD_PAD + WING_JUT, paddingTop: 10, paddingBottom: 10 }}
-        aria-label={`Legacy: ${plate.name}, ${plate.held} of ${plate.rungs.length} attainments`}
+        style={{ ...tileVar, marginRight: -(CARD_PAD + WING_JUT), paddingLeft: 14, paddingRight: CARD_PAD + WING_JUT, paddingTop: 10, paddingBottom: 10 }}
+        aria-label={label}
       >
-        <span className="mv-eyebrow">{eyebrow}</span>
+        <span className="mv-eyebrow">Legacy</span>
         <span className="flex items-center gap-2">
           <span className="mv-h leading-none" style={{ fontSize: 19 }}>{plate.name}</span>
-          {emblem}
+          {emblems(18)}
         </span>
         <ol className="grid justify-items-end gap-1">
           {plate.rungs.map((r) => (
@@ -75,31 +94,80 @@ export function LegacyPlate({
     )
   }
 
-  const band = look === "pediment" ? "mv-legacy-pediment" : "mv-legacy-plinth"
+  const open = Option.getOrUndefined(openRung)
+  const shown = plate.rungs.find((r) => r.name === open)
+  const toggle = (name: string) =>
+    setOpenRung((prev) => (Option.contains(prev, name) ? Option.none() : Option.some(name)))
+
   return (
     <div
-      className={`mv-legacy-band ${band} flex flex-wrap items-center justify-between gap-x-8 gap-y-3`}
-      style={{
-        margin: look === "pediment" ? `-${CARD_PAD}px -${CARD_PAD}px 0` : `0 -${CARD_PAD}px -${CARD_PAD}px`,
-        padding: `12px ${CARD_PAD}px`,
-      }}
-      aria-label={`Legacy: ${plate.name}, ${plate.held} of ${plate.rungs.length} attainments`}
+      className={`mv-legacy-band ${look === "pediment" ? "mv-legacy-pediment" : "mv-legacy-plinth"} grid gap-3`}
+      style={{ ...tileVar, padding: "12px 14px" }}
+      aria-label={label}
     >
-      <div className="grid gap-1.5">
-        <span className="mv-eyebrow">{eyebrow}</span>
-        <span className="flex items-center gap-3">
-          {emblem}
-          <span className="mv-h leading-none" style={{ fontSize: 24 }}>{plate.name}</span>
-        </span>
+      <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3">
+        <div className="grid gap-1.5">
+          <span className="mv-eyebrow">Legacy</span>
+          <span className="flex items-center gap-3">
+            <span className="mv-h leading-none" style={{ fontSize: 24 }}>{plate.name}</span>
+            {emblems(22)}
+          </span>
+        </div>
+        <ol className="flex items-start gap-6">
+          {plate.rungs.map((r) => (
+            <li key={r.name} className="grid gap-1.5">
+              <span className="mv-eyebrow" style={{ color: gateInk(r) }}>Gnosis {r.gnosis}</span>
+              {Option.isSome(r.reading) ? (
+                <button
+                  type="button"
+                  onClick={() => toggle(r.name)}
+                  aria-expanded={open === r.name}
+                  className="mv-legacy-rung mv-h text-left leading-none"
+                  style={{ fontSize: 14, fontWeight: 500, color: rungInk(r) }}
+                >
+                  {r.name}
+                </button>
+              ) : (
+                <span className="mv-h leading-none" style={{ fontSize: 14, fontWeight: 500, color: rungInk(r) }}>{r.name}</span>
+              )}
+            </li>
+          ))}
+        </ol>
       </div>
-      <ol className="flex items-start gap-6">
-        {plate.rungs.map((r) => (
-          <li key={r.name} className="grid gap-1.5">
-            <span className="mv-eyebrow" style={{ color: gateInk(r) }}>Gnosis {r.gnosis}</span>
-            <span className="mv-h leading-none" style={{ fontSize: 14, fontWeight: 500, color: rungInk(r) }}>{r.name}</span>
-          </li>
-        ))}
-      </ol>
+      {/* the reading (owner 2026-10-28: "don't we need to know what the
+          spells do"): the open attainment's paragraph beneath the row, in
+          the book's words — kept mounted and folded shut */}
+      <Fold open={shown !== undefined}>
+        {shown !== undefined && Option.isSome(shown.reading) && (
+          <div className="grid gap-1.5 border-t pt-3" style={{ borderColor: "var(--line)" }}>
+            <p className="leading-snug" style={{ fontSize: 13, color: "var(--ink)" }}>{shown.reading.value.effect}</p>
+            <p className="mv-data leading-snug" style={{ fontSize: 11, color: "var(--dim)" }}>
+              {shown.reading.value.mirrors} · needs {shown.reading.value.needs}
+            </p>
+            {Option.match(shown.reading.value.synergy, {
+              onNone: () => null,
+              onSome: (s) => (
+                <p className="leading-snug" style={{ fontSize: 12, color: "var(--dim)" }}>{s}</p>
+              ),
+            })}
+          </div>
+        )}
+      </Fold>
+    </div>
+  )
+}
+
+/** Height animated open and shut, the grid-rows way: the content stays mounted and clips. */
+function Fold({ open, children }: { open: boolean; children: ReactNode }) {
+  return (
+    <div
+      className="grid"
+      style={{ gridTemplateRows: open ? "1fr" : "0fr", transition: `grid-template-rows ${OPEN}`, marginTop: open ? 0 : -12 }}
+      aria-hidden={!open}
+    >
+      <div style={{ overflow: "hidden", minHeight: 0, opacity: open ? 1 : 0, transition: `opacity ${OPEN}` }}>
+        {children}
+      </div>
     </div>
   )
 }

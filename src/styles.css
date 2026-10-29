@@ -1436,40 +1436,26 @@ a {
   .mv-plate-fog { animation: none; }
 }
 
-/* The Legacy plate (MAG-64): a raised piece riveted onto the title card —
- * the band bleeds to the card's sides above the name (pediment) or beneath
- * the emblem row (plinth); the wing juts past the Gnosis flank. The seam
- * is the join, and two rivets hold it. */
+/* The Legacy plate (MAG-64): the plinth beneath the title card's emblem
+ * row, bordered as the Arcana tiles are — one line, the Legacy's primary
+ * Arcanum tint folded into it — on the card's own ground, no lighter
+ * (owner, 2026-10-28). The wing juts past the Gnosis flank. An attainment's
+ * name is a button that opens its reading. */
 .mv-legacy-band,
 .mv-legacy-wing {
   position: relative;
-  background: var(--raise);
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--tile, var(--accent)) 45%, var(--line));
+  border-radius: 4px;
 }
-.mv-legacy-band::before,
-.mv-legacy-band::after,
-.mv-legacy-wing::before,
-.mv-legacy-wing::after {
-  content: "";
-  position: absolute;
-  width: 5px;
-  height: 5px;
-  background: var(--accent);
-  opacity: 0.7;
-  transform: rotate(45deg);
-  pointer-events: none;
+.mv-legacy-rung {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.15s;
 }
-.mv-legacy-plinth {
-  border-top: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+.mv-legacy-rung:hover,
+.mv-legacy-rung[aria-expanded="true"] {
+  color: var(--tile, var(--accent)) !important;
 }
-.mv-legacy-plinth::before { top: -3px; left: 10px; }
-.mv-legacy-plinth::after { top: -3px; right: 10px; }
-.mv-legacy-pediment {
-  border-bottom: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-}
-.mv-legacy-pediment::before { bottom: -3px; left: 10px; }
-.mv-legacy-pediment::after { bottom: -3px; right: 10px; }
-.mv-legacy-wing {
-  border-left: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-}
-.mv-legacy-wing::before { left: -3px; top: 10px; }
-.mv-legacy-wing::after { left: -3px; bottom: 10px; }
