@@ -698,12 +698,24 @@ export function NotebookPad({
       restDelta: 0.002,
     })
   /** Chase a page on a spring: it stops dead on the page. */
-  const chase = (target: number) => animate(pos, clamp(target, 0, last), { type: "spring", stiffness: 260, damping: 30, mass: 0.9 })
+  const chasing = useRef(false)
+  const chase = (target: number) => {
+    chasing.current = true
+    animate(pos, clamp(target, 0, last), {
+      type: "spring",
+      stiffness: 260,
+      damping: 30,
+      mass: 0.9,
+      onComplete: () => {
+        chasing.current = false
+      },
+    })
+  }
   const target = useRef(0)
-  /** A step: quick steps move the target further and the book accelerates after it. */
+  /** A step: quick steps move the target further and the book accelerates after it (a second press in the same instant counts, before the first has moved it). */
   const push = (by: number) => {
     settle()
-    const resting = Math.abs(pos.getVelocity()) < 0.05
+    const resting = !chasing.current && Math.abs(pos.getVelocity()) < 0.05
     target.current = clamp((resting ? Math.round(pos.get()) : target.current) + by, 0, last)
     chase(target.current)
   }
