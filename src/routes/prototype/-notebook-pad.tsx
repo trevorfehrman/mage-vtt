@@ -46,6 +46,7 @@ import {
   editOpen,
   GRID,
   GRID_TICK_EVERY,
+  isBlankPage,
   KINDS,
   kindLook,
   lastIndex,
@@ -94,8 +95,17 @@ type Resizing = { readonly id: string; readonly w: number; readonly h: number }
 
 /** The ruling knob the route hands down. */
 export type Rule = "dots" | "lines" | "none"
-/** The page-edge knob: a stack of sheet edges (the first audition), or a bare rail (owner: the stack "read as too skeuomorphic"). */
-export type Edge = "rail" | "stack"
+/**
+ * The turn knob. "drift": the leaving page fades as it drifts a little
+ * aside and the next fades in from the other side, over a lattice that
+ * never moves — the content changes, the book stays. "slide": the leaving
+ * page slides off and the next slides on, no shadow. (The first audition's
+ * shadowed sheet, with page edges stacked beside the sheet, was the owner's
+ * "way too skeuomorphic", 2026-10-29: "nothing reads as the book as a whole
+ * ... a bunch of these pagination problems are solved without x-axis
+ * extra-marginal ui by a better pagination component".)
+ */
+export type Turn = "drift" | "slide"
 /** Wheel events a row has already spent on its own words. */
 const spentByRow = new WeakSet<Event>()
 
@@ -105,11 +115,12 @@ const PEN = { size: 5, thinning: 0.65, smoothing: 0.55, streamline: 0.5, start: 
 const INK = "#d7d2e0"
 const DIM = "#807b8f"
 const ACCENT = "#6fae97"
-/** The page: the panel's own color, so a lifting page covers the one beneath. */
-const PANEL = "#0e0d13"
-/** The stacked page edges beside the page: how far they reach, and how many show before they compress. */
-const EDGE_W = 22
-const EDGE_SHOWN = 12
+/** How far a page drifts aside as it fades, in px. */
+const DRIFT = 18
+/** The pagination strip's ticks: pitch at most, and height; the open page's tick stands taller. */
+const TICK_PITCH = 7
+const TICK_H = 7
+const TICK_H_OPEN = 11
 /** A trackpad stream's travel, in px, for one page. */
 const WHEEL_PAGE = 420
 /** The plate: a hair above the panel. */
@@ -227,7 +238,7 @@ export function NotebookPad({
   inkColor,
   rule,
   gap,
-  edgeLook,
+  turnLook,
   picked,
   onPicked,
   history,
@@ -241,7 +252,7 @@ export function NotebookPad({
   rule: Rule
   /** The gutter: px the plate is drawn inside its lattice box, on every side. */
   gap: number
-  edgeLook: Edge
+  turnLook: Turn
   picked: ReadonlyArray<string>
   onPicked: (ids: ReadonlyArray<string>) => void
   history: History<Book>
@@ -277,6 +288,10 @@ export function NotebookPad({
   /** When the editor last closed, or a sweep last ended: the click that did it must not write or clear a pick. */
   const settledAt = useRef(0)
   const topRef = useRef<Konva.Layer>(null)
+  const notesRef = useRef<Konva.Layer>(null)
+  const inkRef = useRef<Konva.Layer>(null)
+  /** The page the position is nearest: the strip lights it. */
+  const [near, setNear] = useState(book.open)
   /** A page turned to is already written: its rows must not drift in as if just placed. */
   const skipArrive = useRef(false)
   const prevLive = useRef(liveIndex)
@@ -684,44 +699,49 @@ export function NotebookPad({
     setMenu(Option.none())
     if (picked.length > 0) onPicked([])
   }
-  useMotionValueEvent(pos, "change", (p) => {
+  /**
+   * Place the leaving page (the quiet layer) and the arriving page (the live
+   * layers) for a position: f is how far the turn has gone. Done by hand on
+   * the Konva nodes every frame; React never writes these attributes.
+   */
+  const place = (p: number) => {
     const i = clamp(Math.floor(p), 0, last)
     const f = clamp(p - i, 0, 1)
     const lifted = f > 0.002 && i < last
-    const top = topRef.current
-    if (top !== null) {
-      top.x(-f * width)
-      top.batchDraw()
-    }
+    const leaving = topRef.current
+    const arriving = [notesRef.current, inkRef.current]
+    Match.value(turnLook).pipe(
+      Match.when("drift", () => {
+        leaving?.setAttrs({ x: -DRIFT * f, opacity: 1 - f })
+        for (const l of arriving) l?.setAttrs({ x: lifted ? DRIFT * (1 - f) : 0, opacity: lifted ? f : 1 })
+      }),
+      Match.when("slide", () => {
+        leaving?.setAttrs({ x: -width * f, opacity: 1 })
+        for (const l of arriving) l?.setAttrs({ x: lifted ? width * (1 - f) : 0, opacity: 1 })
+      }),
+      Match.exhaustive,
+    )
+    leaving?.batchDraw()
+    for (const l of arriving) l?.batchDraw()
+    return { i, lifted }
+  }
+  useMotionValueEvent(pos, "change", (p) => {
+    const { i, lifted } = place(p)
     if (i !== view.i || lifted !== view.lifted) setView({ i, lifted })
+    const n = clamp(Math.round(p), 0, last)
+    if (n !== near) setNear(n)
     if (!lifted && i !== book.open) onHistory({ ...history, present: turnTo(book, i) })
   })
-  // the lifting page's layer is new each lift: it takes its place from the position before its first frame
+  // the leaving page's layer is new each turn: it takes its place from the position before its first frame
   useLayoutEffect(() => {
-    const top = topRef.current
-    if (top === null) return
-    const p = pos.get()
-    top.x(-(p - Math.floor(p)) * width)
-    top.batchDraw()
-  }, [view.lifted, view.i, pos, width])
+    place(pos.get())
+  }, [view.lifted, view.i, pos, width, turnLook])
   // the book opened elsewhere (undo, redo): the position follows
   useEffect(() => {
-    if (Math.round(pos.get()) !== book.open && !edgeDrag.current) chase(book.open)
+    if (Math.round(pos.get()) !== book.open && !scrubbing.current) chase(book.open)
     // owed to the open page alone
   }, [book.open])
 
-  /** Coast from a velocity (pages per second) and land exactly on a page. The nominal target is a page away, since animate() skips an inertia whose target is the current value. */
-  const coast = (v: number) =>
-    animate(pos, clamp(pos.get() + (v >= 0 ? 1 : -1), 0, last), {
-      type: "inertia",
-      velocity: v,
-      power: 0.4,
-      timeConstant: 200,
-      modifyTarget: (t) => clamp(Math.round(t), 0, last),
-      min: 0,
-      max: last,
-      restDelta: 0.002,
-    })
   /** Chase a page on a spring: it stops dead on the page. */
   const chasing = useRef(false)
   const chase = (target: number) => {
@@ -745,41 +765,45 @@ export function NotebookPad({
     chase(target.current)
   }
 
-  // a drag on either stack of page edges turns the book under the hand, then
-  // coasts; a tap steps one page that way. The press is followed on the
-  // window, as the sweep is: the strip is narrow and the first move has
-  // already left it.
-  const edgeDrag = useRef(false)
-  const edge = (side: "left" | "right") => ({
-    onPointerDown: (e: RPointerEvent<HTMLDivElement>) => {
-      pos.stop()
-      settle()
-      padRef.current?.focus({ preventScroll: true })
-      edgeDrag.current = true
-      const from = pos.get()
-      const x = e.clientX
-      let moved = false
-      const move = (ev: PointerEvent) => {
-        const dx = x - ev.clientX
-        if (!moved) {
-          if (Math.abs(dx) <= 3) return
-          moved = true
-        }
-        pos.set(clamp(from + dx / width, 0, last))
+  // the strip: one tick per page at the page's foot, the open one lit — the
+  // book as a whole, always in view. A press on a tick turns to that page; a
+  // press that travels scrubs the book under the hand, tick by tick, and
+  // lands on the nearest page when it lets go. Followed on the window, as
+  // the sweep is: the strip is thin and the first move has already left it.
+  const scrubbing = useRef(false)
+  const pitch = Math.min(TICK_PITCH, Math.floor((width - ORIGIN * 2 - 60) / (last + 1)))
+  const stripW = pitch * (last + 1)
+  const onStripDown = (e: RPointerEvent<HTMLDivElement>) => {
+    pos.stop()
+    settle()
+    padRef.current?.focus({ preventScroll: true })
+    scrubbing.current = true
+    const rect = e.currentTarget.getBoundingClientRect()
+    const at = (clientX: number) => clamp((clientX - rect.left) / pitch - 0.5, 0, last)
+    const pressed = Math.round(at(e.clientX))
+    let moved = false
+    const move = (ev: PointerEvent) => {
+      if (!moved) {
+        if (Math.abs(ev.clientX - e.clientX) <= 3) return
+        moved = true
       }
-      const up = () => {
-        window.removeEventListener("pointermove", move)
-        window.removeEventListener("pointerup", up)
-        window.removeEventListener("pointercancel", up)
-        edgeDrag.current = false
-        if (moved) coast(pos.getVelocity())
-        else push(side === "right" ? 1 : -1)
+      pos.set(at(ev.clientX))
+    }
+    const up = () => {
+      window.removeEventListener("pointermove", move)
+      window.removeEventListener("pointerup", up)
+      window.removeEventListener("pointercancel", up)
+      scrubbing.current = false
+      if (moved) chase(Math.round(pos.get()))
+      else {
+        target.current = pressed
+        chase(pressed)
       }
-      window.addEventListener("pointermove", move)
-      window.addEventListener("pointerup", up)
-      window.addEventListener("pointercancel", up)
-    },
-  })
+    }
+    window.addEventListener("pointermove", move)
+    window.addEventListener("pointerup", up)
+    window.addEventListener("pointercancel", up)
+  }
 
   // the wheel turns the book (owner, 2026-10-29: "naturally i want to be able
   // to mouse wheel through them"), as it turns the keyring: a mouse's notch
@@ -859,9 +883,10 @@ export function NotebookPad({
             ))}
             <Path data={OBRIMOS_BINDI} fill={ACCENT} />
           </Group>
-          <PageNumber n={liveIndex + 1} of={last + 1} font={font} height={height} />
+          {/* the number is the nearest page's, on the lattice that stays: two numerals never cross-fade over each other */}
+          <PageNumber n={near + 1} of={last + 1} font={font} height={height} />
         </Layer>
-        <Layer listening={!drawing && !view.lifted}>
+        <Layer ref={notesRef} listening={!drawing && !view.lifted}>
           {page.notes.map((n) => {
             const look = kindLook(n.kind)
             // the row's box on the lattice, and the plate drawn a gutter inside it
@@ -1032,7 +1057,7 @@ export function NotebookPad({
             )
           })}
         </Layer>
-        <Layer listening={!drawing && !view.lifted}>
+        <Layer ref={inkRef} listening={!drawing && !view.lifted}>
           {page.ink.map((s) => {
             const isSel = picked.includes(s.id)
             return (
@@ -1069,41 +1094,42 @@ export function NotebookPad({
             ),
           })}
         </Layer>
-        {/* the page lifting off: a quiet copy of it, slid by the position every frame; its shadow falls on the page beneath */}
+        {/* the leaving page: a quiet copy of its rows and ink, placed by the position every frame, over the lattice that stays */}
         {view.lifted && (
           <Layer ref={topRef} listening={false}>
-            <Rect x={0} y={0} width={width} height={height} fill={PANEL} />
-            {tile !== null && (
-              <Rect
-                x={0}
-                y={0}
-                width={width}
-                height={height}
-                fillPatternImage={tile as unknown as HTMLImageElement}
-                fillPatternRepeat="repeat"
-                fillPatternScale={{ x: 0.5, y: 0.5 }}
-                fillPatternX={ORIGIN}
-                fillPatternY={ORIGIN}
-              />
-            )}
             <QuietPage page={pageAt(book, view.i)} font={font} gap={gap} width={width} height={height} />
-            <PageNumber n={view.i + 1} of={last + 1} font={font} height={height} />
-            <Rect
-              x={width}
-              y={0}
-              width={18}
-              height={height}
-              fillLinearGradientStartPoint={{ x: 0, y: 0 }}
-              fillLinearGradientEndPoint={{ x: 18, y: 0 }}
-              fillLinearGradientColorStops={[0, "rgba(0,0,0,0.55)", 1, "rgba(0,0,0,0)"]}
-            />
           </Layer>
         )}
       </Stage>
 
-      {/* the stacked page edges: the pages turned, at the left; the pages to come, at the right — the handles that turn the book, hanging outside the sheet */}
-      <EdgeStack side="left" look={edgeLook} count={view.i} height={height} {...edge("left")} />
-      <EdgeStack side="right" look={edgeLook} count={last - view.i} height={height} {...edge("right")} />
+      {/* the strip: the whole book at the page's foot beside its number, one tick a page, the open one lit; press to turn, drag to scrub */}
+      <div
+        onPointerDown={onStripDown}
+        className="absolute touch-none select-none"
+        style={{ left: ORIGIN + 46, bottom: 0, width: stripW, height: 22, cursor: "pointer" }}
+        aria-label={`page ${near + 1} of ${last + 1}`}
+      >
+        {Array.from({ length: last + 1 }, (_, k) => {
+          const open = k === near
+          const blank = isBlankPage(pageAt(book, k))
+          return (
+            <span
+              key={k}
+              aria-hidden
+              className="absolute"
+              style={{
+                left: k * pitch + Math.floor(pitch / 2),
+                bottom: 5,
+                width: open ? 2 : 1,
+                height: open ? TICK_H_OPEN : TICK_H,
+                background: open ? ACCENT : INK,
+                opacity: open ? 1 : blank ? 0.2 : 0.45,
+                transition: "height 0.12s ease, opacity 0.12s ease",
+              }}
+            />
+          )
+        })}
+      </div>
 
       {/* the editor: the note's words, and its value when the kind takes one */}
       {Option.match(Option.zipWith(editing, editingNote, (ed, n) => ({ ed, n })), {
@@ -1309,75 +1335,6 @@ function QuietPage({ page, font, gap, width, height }: { page: Page; font: strin
         <Line key={s.id} points={outlineOf(s, false)} closed fill={s.color} opacity={0.92} lineJoin="round" />
       ))}
     </>
-  )
-}
-
-/**
- * The handles beside the page: drag one and the book turns under the hand;
- * tap it and it turns one page. Two looks. "rail": one hairline a hand's
- * reach outside the sheet, present only while there are pages that way,
- * brighter under the pointer — the count is in the page number, nothing
- * depicts a sheet. "stack": one hairline per page, each a little further
- * out and a little shorter, so the stack reads as sheets folded back (left)
- * or still to come (right); the owner read it as too skeuomorphic.
- */
-function EdgeStack({
-  side,
-  look,
-  count,
-  height,
-  ...handlers
-}: {
-  side: "left" | "right"
-  look: Edge
-  count: number
-  height: number
-  onPointerDown: (e: RPointerEvent<HTMLDivElement>) => void
-}) {
-  const [hot, setHot] = useState(false)
-  const shown = Math.min(count, EDGE_SHOWN)
-  const step = count <= EDGE_SHOWN ? 1.8 : (EDGE_SHOWN * 1.8) / count
-  const lines = look === "rail" ? [] : Array.from({ length: Math.min(count, 40) }, (_, k) => k + 1)
-  return (
-    <div
-      {...handlers}
-      onPointerEnter={() => setHot(true)}
-      onPointerLeave={() => setHot(false)}
-      className="absolute top-0 touch-none select-none"
-      style={{ [side]: -EDGE_W, width: EDGE_W, height, cursor: count > 0 ? "grab" : "default" }}
-      aria-label={side === "left" ? `${count} pages turned` : `${count} pages to come`}
-    >
-      {look === "rail" && count > 0 && (
-        <span
-          aria-hidden
-          className="absolute"
-          style={{
-            [side === "left" ? "right" : "left"]: 9,
-            top: ORIGIN,
-            bottom: ORIGIN,
-            width: 1,
-            background: INK,
-            opacity: hot ? 0.55 : 0.2,
-            transition: "opacity 0.15s ease",
-          }}
-        />
-      )}
-      {lines.map((k) => (
-        <span
-          key={k}
-          aria-hidden
-          className="absolute"
-          style={{
-            [side === "left" ? "right" : "left"]: Math.round(k * step * 10) / 10,
-            top: Math.min(k, shown) * 0.5 + 1,
-            bottom: Math.min(k, shown) * 0.5 + 1,
-            width: 1,
-            background: INK,
-            opacity: (hot ? 0.5 : 0.32) * Math.max(0.35, 1 - k / (EDGE_SHOWN * 1.6)),
-          }}
-        />
-      ))}
-    </div>
   )
 }
 
