@@ -134,6 +134,9 @@ const FEEL: Record<Feel, { power: number; timeConstant: number; stiffness: numbe
 const WHEEL_PAGE = 420
 /** How far past a cover the wheel can be pulled, in pages, and how it resists: a rubber band, not a wall. */
 const GIVE = 0.3
+/** How the page strains with it: degrees about its spine and px aside, per page of give. */
+const GIVE_DEG = 30
+const GIVE_PX = 36
 const rubber = (d: number): number => GIVE * (1 - 1 / (1 + 2.5 * d))
 /** The plate: a hair above the panel. */
 const PLATE = "#121118"
@@ -232,14 +235,6 @@ const rulingTile = (rule: Rule): HTMLCanvasElement | null => {
   return c
 }
 
-/** The Golden Key — Obrimos' Path glyph (the app's ArcanaGlyph motif, 24-box) as path data Konva can draw. */
-const OBRIMOS = [
-  "M8.8 6.8 A3.2 3.2 0 1 0 15.2 6.8 A3.2 3.2 0 1 0 8.8 6.8 Z",
-  "M12 10 V20 M12 20 L15.8 20 M12 16.6 H14.4",
-  "M12 20 L10.9 21.6",
-]
-const OBRIMOS_BINDI = "M11 6.8 A1 1 0 1 0 13 6.8 A1 1 0 1 0 11 6.8 Z"
-
 // --- The row's measure ---
 
 /**
@@ -313,8 +308,16 @@ export function NotebookPad({
   const drag = useRef<Option.Option<Drag>>(Option.none())
   /** When the editor last closed, or a sweep last ended: the click that did it must not write or clear a pick. */
   const settledAt = useRef(0)
-  /** The sheet: the page's box, which swings on its spine when the page in hand changes. */
-  const sheetRef = useRef<HTMLDivElement>(null)
+  // the sheet: the page's box swings on its spine when the page in hand
+  // changes (hinge, dip, fade), and strains with the wheel when it is pulled
+  // past a cover (give) — the springiness is on the page too (owner,
+  // 2026-10-29: "the springiness i wanted was kinda on the page itself")
+  const hinge = useMotionValue(0)
+  const dip = useMotionValue(0)
+  const fade = useMotionValue(1)
+  const give = useMotionValue(0)
+  const sheetRotate = useTransform([hinge, give], ([h, g]: number[]) => (h ?? 0) - (g ?? 0) * GIVE_DEG)
+  const sheetX = useTransform([dip, give], ([d, g]: number[]) => (d ?? 0) - (g ?? 0) * GIVE_PX)
   /** A page turned to is already written: its rows must not drift in as if just placed. */
   const skipArrive = useRef(false)
   const prevLive = useRef(liveIndex)
@@ -725,6 +728,8 @@ export function NotebookPad({
   useMotionValueEvent(pos, "change", (p) => {
     const n = clamp(Math.round(p), 0, last)
     if (n !== near) setNear(n)
+    // past a cover the page strains with the wheel, as far as the wheel gives
+    give.set(p < 0 ? p : p > last ? p - last : 0)
   })
   // the page in hand changed: the book opens there, and the page swings in —
   // but not for every page a flick sends past the middle (the ring's rule:
@@ -740,12 +745,12 @@ export function NotebookPad({
       mounted.current = true
       return
     }
-    const sheet = sheetRef.current
-    if (sheet !== null) {
-      // the swing is whole at a thumbing pace and a flutter at a riffle, never absent, so every turn is the same gesture
-      const k = clamp(1 - Math.abs(pos.getVelocity()) / RIFFLE, 0.3, 1)
-      animate(sheet, { transformPerspective: 1100, rotateY: [dir * HINGE * k, 0], x: [dir * 6 * k, 0], opacity: [1 - 0.65 * k, 1] }, { duration: SWING * k, ease: "easeOut" })
-    }
+    // the swing is whole at a thumbing pace and a flutter at a riffle, never absent, so every turn is the same gesture
+    const k = clamp(1 - Math.abs(pos.getVelocity()) / RIFFLE, 0.3, 1)
+    const swing = { duration: SWING * k, ease: "easeOut" as const }
+    animate(hinge, [dir * HINGE * k, 0], swing)
+    animate(dip, [dir * 6 * k, 0], swing)
+    animate(fade, [1 - 0.65 * k, 1], swing)
     // owed to the page in hand alone
   }, [near])
   // the book opened elsewhere (undo, redo): the wheel follows
@@ -885,7 +890,7 @@ export function NotebookPad({
       style={{ width, height: height + FOOTER_H, background: "var(--panel)", cursor: drawing ? "crosshair" : "default" }}
       data-fonts={fontsReady}
     >
-      <div ref={sheetRef} style={{ width, height, transformOrigin: "0 50%" }}>
+      <motion.div style={{ width, height, transformOrigin: "0 50%", transformPerspective: 1100, rotateY: sheetRotate, x: sheetX, opacity: fade }}>
       <Stage
         ref={stageRef}
         width={width}
@@ -897,7 +902,7 @@ export function NotebookPad({
         onPointerUp={onStageUp}
         onMouseLeave={onStageUp}
       >
-        {/* the ruling and the bookplate: the page itself, never listening */}
+        {/* the ruling: the page itself, never listening (the Path bookplate was tried here and taken out: "not atmospheric enough to matter") */}
         <Layer listening={false}>
           {tile !== null && (
             <Rect
@@ -912,12 +917,6 @@ export function NotebookPad({
               fillPatternY={ORIGIN}
             />
           )}
-          <Group x={width - 58} y={height - 58} scaleX={2} scaleY={2} opacity={0.26}>
-            {OBRIMOS.map((d) => (
-              <Path key={d} data={d} stroke={ACCENT} strokeWidth={1.4} lineCap="round" lineJoin="round" strokeScaleEnabled={false} />
-            ))}
-            <Path data={OBRIMOS_BINDI} fill={ACCENT} />
-          </Group>
         </Layer>
         <Layer listening={!drawing}>
           {page.notes.map((n) => {
@@ -1128,7 +1127,7 @@ export function NotebookPad({
           })}
         </Layer>
       </Stage>
-      </div>
+      </motion.div>
 
       {/* the wheel: the footer, the book's pages in a row, the one in hand at the middle */}
       <div
