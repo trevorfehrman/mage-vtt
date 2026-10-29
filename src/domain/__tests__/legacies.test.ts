@@ -1,7 +1,6 @@
 import { Option, Schema } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import {
-  ATTAINMENT_GATES,
   LEGACIES,
   LEGACY_NAMES,
   attainmentsHeld,
@@ -15,7 +14,7 @@ import {
   toSheetLegacy,
   type LegacyTraits,
 } from "../legacies"
-import { Legacy } from "../character"
+import { ATTAINMENT_GNOSIS, Legacy } from "../character"
 
 /** A sheet's traits for a prerequisite to read: the named dots, the rest zero. */
 const traits = (
@@ -33,14 +32,13 @@ describe("Legacy catalog", () => {
 
   it("every Legacy climbs the three gates in order: Gnosis 3, 5, 7", () => {
     for (const l of LEGACIES) {
-      expect(l.attainments.map((a) => a.gnosis)).toEqual([...ATTAINMENT_GATES])
+      expect(l.attainments.map((a) => a.gnosis)).toEqual([...ATTAINMENT_GNOSIS])
     }
   })
 
-  it("the primary Arcanum leads every attainment at 2, then 3, then 4 dots", () => {
+  it("every attainment asks the primary Arcanum at 2, then 3, then 4 dots (the Arcana in the page's order)", () => {
     for (const l of LEGACIES) {
-      expect(l.attainments.map((a) => a.arcana[0]?.arcanum)).toEqual([l.primary, l.primary, l.primary])
-      expect(l.attainments.map((a) => a.arcana[0]?.dots)).toEqual([2, 3, 4])
+      expect(l.attainments.map((a) => a.arcana.find((x) => x.arcanum === l.primary)?.dots)).toEqual([2, 3, 4])
     }
   })
 
@@ -78,7 +76,9 @@ describe("Legacy catalog", () => {
         expect(third.synergy.arcanum).toBe(second.synergy.arcanum)
       }
       for (const a of l.attainments) {
-        if (a.synergy !== undefined) expect(a.synergy.dots).toBe(a.arcana[0]?.dots)
+        if (a.synergy !== undefined) {
+          expect(a.synergy.dots).toBe(a.arcana.find((x) => x.arcanum === l.primary)?.dots)
+        }
       }
     }
     // The Scelesti's 1st carries its own conjunctional rider, Death 2 (p. 362).
@@ -117,9 +117,9 @@ describe("Legacy gates and prerequisites", () => {
   it("a shortfall names the first thing missing: Gnosis, then the Arcana, then the Skills", () => {
     const body = adept.attainments[0]
     expect(shortfall(body, traits(2, { life: 2, prime: 1 }, { athletics: 3 }))).toEqual(Option.some("Gnosis 3, currently 2"))
-    expect(shortfall(body, traits(3, { life: 1, prime: 1 }, { athletics: 3 }))).toEqual(Option.some("life 2, currently 1"))
-    expect(shortfall(body, traits(3, { life: 2 }, { athletics: 3 }))).toEqual(Option.some("prime 1, currently 0"))
-    expect(shortfall(body, traits(3, { life: 2, prime: 1 }, { athletics: 2 }))).toEqual(Option.some("athletics 3"))
+    expect(shortfall(body, traits(3, { life: 1, prime: 1 }, { athletics: 3 }))).toEqual(Option.some("Life 2, currently 1"))
+    expect(shortfall(body, traits(3, { life: 2 }, { athletics: 3 }))).toEqual(Option.some("Prime 1, currently 0"))
+    expect(shortfall(body, traits(3, { life: 2, prime: 1 }, { athletics: 2 }))).toEqual(Option.some("Athletics 3"))
     expect(shortfall(body, traits(3, { life: 2, prime: 1 }, { athletics: 3 }))).toEqual(Option.none())
   })
 
@@ -128,7 +128,7 @@ describe("Legacy gates and prerequisites", () => {
     expect(shortfall(skin, traits(3, { life: 2, mind: 1 }, { survival: 2 }))).toEqual(Option.none())
     expect(shortfall(skin, traits(3, { life: 2, mind: 1 }, { animalKen: 2 }))).toEqual(Option.none())
     expect(shortfall(skin, traits(3, { life: 2, mind: 1 }, { animalKen: 1, survival: 1 }))).toEqual(
-      Option.some("animalKen 2 or survival 2"),
+      Option.some("Animal Ken 2 or Survival 2"),
     )
   })
 
@@ -138,7 +138,7 @@ describe("Legacy gates and prerequisites", () => {
     expect(attainmentsHeld(adept, traits(7, { life: 3, prime: 1 }, { athletics: 3, brawl: 3 })).map((a) => a.name)).toEqual([
       "Body Temple", "Chi Force",
     ])
-    expect(joinRefusal(adept, traits(3, { life: 2, prime: 1 }, { athletics: 1 }))).toEqual(Option.some("athletics 3"))
+    expect(joinRefusal(adept, traits(3, { life: 2, prime: 1 }, { athletics: 1 }))).toEqual(Option.some("Athletics 3"))
     expect(joinRefusal(adept, traits(3, { life: 2, prime: 1 }, { athletics: 3 }))).toEqual(Option.none())
   })
 

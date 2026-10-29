@@ -74,8 +74,6 @@ interface CharacterSheetProps {
   /** The Scene open now (MAG-60): a Bedlam derangement bound to it stands
    * in the Derangements accordion while it is the open one. Absent in downtime. */
   activeSceneId?: SceneId | undefined
-  /** Where the Legacy plate attaches to the title card (MAG-64) — the rig's
-   * audition knob; the sheet wears the plinth until the owner picks. */
 }
 
 
@@ -392,8 +390,6 @@ export function CharacterSheet({
       <Section title="Arcana">
         <ArcanaDashboard arcana={character.arcana} ruling={ruling} cast={cast} />
       </Section>
-
-      {/* The Legacy left this spot for the title card (MAG-64). */}
 
       {/* Rotes — the character's book (issue #89), directly under the Arcana
           it belongs to: the sheet's magic stays contiguous (owner call

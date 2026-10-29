@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useState } from "react"
 import { Match, Option } from "effect"
 import { ChevronDown } from "lucide-react"
+import { Fold } from "./Fold"
 import {
   DERANGEMENT_PAIRS,
   derangement,
@@ -65,7 +66,6 @@ import { clockWords, chipOrder } from "./derangement-accordion-look"
  * compositor layer (`.mv-sheet-section`) so the shove holds 120Hz.
  */
 
-const OPEN = "420ms cubic-bezier(0.2, 0.8, 0.2, 1)"
 /** The spiral's half turn when the depth changes, on the line and in the chosen row alike. */
 const TURN = "transform 480ms cubic-bezier(0.2, 0.8, 0.2, 1)"
 /** The body's fixed height: enough for the longest pair read whole, the same for every pair. */
@@ -189,21 +189,6 @@ export function DerangementAccordion({
         </CollapsibleContent>
       </Collapsible>
     </TooltipProvider>
-  )
-}
-
-/** Height animated open and shut, the grid-rows way: the content stays mounted and clips. */
-function Fold({ open, children }: { open: boolean; children: ReactNode }) {
-  return (
-    <div
-      className="grid"
-      style={{ gridTemplateRows: open ? "1fr" : "0fr", transition: `grid-template-rows ${OPEN}` }}
-      aria-hidden={!open}
-    >
-      <div style={{ overflow: "hidden", minHeight: 0, opacity: open ? 1 : 0, transition: `opacity ${OPEN}` }}>
-        {children}
-      </div>
-    </div>
   )
 }
 

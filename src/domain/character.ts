@@ -293,8 +293,8 @@ export const SheetWord = Schema.Struct({
 })
 export type SheetWord = typeof SheetWord.Type
 
-/** The Gnosis each attainment opens at (p. 93): the first at 3, then 5, then 7. */
-const ATTAINMENT_GNOSIS = [3, 5, 7] as const
+/** The Gnosis each attainment opens at (p. 93, p. 344): the first at 3, then 5, then 7. */
+export const ATTAINMENT_GNOSIS = [3, 5, 7] as const
 
 /**
  * A Legacy (MAG-61; Mage p. 93): the mage's one specialization, chosen at

@@ -1,5 +1,12 @@
-import { Array as Arr, Option, Schema } from "effect"
-import { OrderName, PathName, rulingArcanaOf, type Legacy as SheetLegacy } from "./character"
+import { Array as Arr, Match, Option, Schema } from "effect"
+import {
+  ATTAINMENT_GNOSIS,
+  OrderName,
+  PathName,
+  rulingArcanaOf,
+  skillDisplayName,
+  type Legacy as SheetLegacy,
+} from "./character"
 import { ArcanumName, SkillKey } from "./trait-keys"
 
 // The Legacy catalog (MAG-64): the seven Legacies Mage: The Awakening stats
@@ -39,10 +46,6 @@ export const LEGACY_NAMES = [
 
 export const LegacyName = Schema.Literals([...LEGACY_NAMES])
 export type LegacyName = typeof LegacyName.Type
-
-/** The Gnosis each attainment opens at (p. 344): the first at 3, then 5, then 7. */
-export const ATTAINMENT_GATES = [3, 5, 7] as const
-export type AttainmentGate = (typeof ATTAINMENT_GATES)[number]
 
 const Dots = Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 1, maximum: 5 }))
 
@@ -84,7 +87,7 @@ export type Synergy = typeof Synergy.Type
 
 export const Attainment = Schema.Struct({
   name: Schema.String,
-  gnosis: Schema.Literals([...ATTAINMENT_GATES]),
+  gnosis: Schema.Literals([...ATTAINMENT_GNOSIS]),
   /** The Arcana dots required, the primary first. */
   arcana: Schema.Array(ArcanumDots),
   skills: Schema.Array(SkillRequirement),
@@ -125,7 +128,7 @@ export type LegacyDef = typeof LegacyDef.Type
 
 const CATALOG: Record<LegacyName, LegacyBody> = {
   "Orphans of Proteus": {
-    path: "Thyrsus", nickname: "Orphans", primary: "life", leftHanded: false, page: 346,
+    path: "Thyrsus", nickname: "Shifters", primary: "life", leftHanded: false, page: 346,
     oblations: "A sacred hunt; the ritual acting out of an animal's behavior; the ceremonial offering of food to animals; the ritual arrangement of rocks and stones; sacred gardening.",
     attainments: [
       {
@@ -217,7 +220,7 @@ const CATALOG: Record<LegacyName, LegacyBody> = {
     attainments: [
       {
         name: "Nigredo", gnosis: 3,
-        arcana: [arc("mind", 2), arc("matter", 1)], skills: [skill("crafts", 2), skill("occult", 1)],
+        arcana: [arc("matter", 1), arc("mind", 2)], skills: [skill("crafts", 2), skill("occult", 1)],
         mirrors: 'Mind 2 "Mental Shield" and Mind 1 "Aura Perception"',
         effect: "A permanent Mental Shield of Mind dots. An instant action studying a product of her Matter magic reads her own aura and gives +2 to Mind Augmentation spells on her Mental or Social Attributes that scene.",
         text: "The mage has a “Mental Shield” (p. 208) of indefinite duration that provides protection equal to her Mind dots. In addition, she may study any product of her practice of the Matter Arcanum, such as an altered or transformed object, and see in it a mirror of her own soul. She can perceive her own aura, similar to the “Aura Perception” spell, p. 205. No roll is involved; just an instant action spent examining the object to read what it tells about herself. Following this action, she gains a +2 dice modifier on any Mind Arcanum Augmentation spells that boost her Mental and/or Social Attributes, as long as they are cast within the same scene as her examination.",
@@ -246,7 +249,7 @@ const CATALOG: Record<LegacyName, LegacyBody> = {
     attainments: [
       {
         name: "Peer into the Mists", gnosis: 3,
-        arcana: [arc("space", 2), arc("life", 1)], skills: [],
+        arcana: [arc("life", 1), arc("space", 2)], skills: [],
         mirrors: 'Space 2 "Scrying"',
         effect: "Instant action, Wits + Survival + Space by sympathetic distance: a scrying window into any place with plant life — trees, flowers, even grass — hidden even from Mage Sight.",
         text: "The mage peers into the Mists, the continuum of Nature that lies hidden behind the mundane world, hidden even from the Mage Sight. Doing so allows him to scry into distant places as if he were using the “Scrying” spell, p. 235. He must scry through the medium of plant life — trees, flowers, bushes or even grass. As long as there is some form of plant life in the place he wishes to scry, the mage can see there. To peer into the Mists and spy the desired location (i.e., to open a scrying window), an instant action is performed and Wits + Survival + Space is rolled, modified by the sympathetic distance (see pp. 114-115). After he has established the window, a reflexive action is required to view through it.",
@@ -276,7 +279,7 @@ const CATALOG: Record<LegacyName, LegacyBody> = {
     attainments: [
       {
         name: "Magic Circle", gnosis: 3,
-        arcana: [arc("spirit", 2), arc("space", 1)], skills: [skill("occult", 2)],
+        arcana: [arc("space", 1), arc("spirit", 2)], skills: [skill("occult", 2)],
         mirrors: 'Spirit 2 "Gossamer Touch"',
         effect: "Instant action, no roll: a magic circle of radius Space dots; within it the mage touches Twilight spirits (not ghosts) and may work magic on them at a distance.",
         text: "The mage can physically interact with Twilight spirits (but not ghosts), similar to the “Gossamer Touch” spell (p. 247). He must first create a “magic circle,” and can affect spirits only while he is within the circle (although he can affect them with magic at a distance while he is standing in his circle). Creating the circle requires an instant action (no roll required), and its radius can equal the mage’s Space dots.",
@@ -350,25 +353,36 @@ export const legaciesOpenTo = (path: PathName, order: OrderName): ReadonlyArray<
 export const attainmentsReached = (def: LegacyDef, gnosis: number): ReadonlyArray<Attainment> =>
   def.attainments.filter((a) => gnosis >= a.gnosis)
 
-/** The traits a prerequisite reads off a sheet. */
-export type LegacyTraits = {
-  readonly gnosis: number
-  readonly arcana: Partial<Record<ArcanumName, number>>
-  readonly skills: Partial<Record<SkillKey, number>>
-}
+/** The traits a prerequisite reads off a sheet: the rated Arcana and Skills, the rest unrated. */
+export const LegacyTraits = Schema.Struct({
+  gnosis: Schema.Number,
+  arcana: Schema.Record(ArcanumName, Schema.optionalKey(Schema.Number)),
+  skills: Schema.Record(SkillKey, Schema.optionalKey(Schema.Number)),
+})
+export type LegacyTraits = typeof LegacyTraits.Type
 
 /** An unrated Arcanum or Skill is zero dots — WoD semantics, not a lookup fallback. */
 const dotsOf = (dots: number | undefined): number => dots ?? 0
 
 const skillMet = (traits: LegacyTraits, req: SkillRequirement): boolean =>
-  req._tag === "skill"
-    ? dotsOf(traits.skills[req.skill]) >= req.dots
-    : req.options.some((o) => dotsOf(traits.skills[o.skill]) >= o.dots)
+  Match.value(req).pipe(
+    Match.tag("skill", (r) => dotsOf(traits.skills[r.skill]) >= r.dots),
+    Match.tag("anyOf", (r) => r.options.some((o) => dotsOf(traits.skills[o.skill]) >= o.dots)),
+    Match.exhaustive,
+  )
 
-const skillWords = (req: SkillRequirement): string =>
-  req._tag === "skill"
-    ? `${req.skill} ${req.dots}`
-    : req.options.map((o) => `${o.skill} ${o.dots}`).join(" or ")
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+/** An Arcanum prerequisite in the page's words: "Life 2". */
+export const arcanumWords = (a: ArcanumDots): string => `${cap(a.arcanum)} ${a.dots}`
+
+/** A Skill prerequisite in the page's words: "Athletics 3", "Animal Ken 2 or Survival 2". */
+export const skillWords = (req: SkillRequirement): string =>
+  Match.value(req).pipe(
+    Match.tag("skill", (r) => `${skillDisplayName(r.skill)} ${r.dots}`),
+    Match.tag("anyOf", (r) => r.options.map((o) => `${skillDisplayName(o.skill)} ${o.dots}`).join(" or ")),
+    Match.exhaustive,
+  )
 
 /**
  * The first prerequisite of an attainment a sheet falls short of, in words
@@ -379,7 +393,7 @@ export const shortfall = (att: Attainment, traits: LegacyTraits): Option.Option<
   traits.gnosis < att.gnosis
     ? Option.some(`Gnosis ${att.gnosis}, currently ${traits.gnosis}`)
     : Arr.findFirst(att.arcana, (a) => dotsOf(traits.arcana[a.arcanum]) < a.dots).pipe(
-        Option.map((a) => `${a.arcanum} ${a.dots}, currently ${dotsOf(traits.arcana[a.arcanum])}`),
+        Option.map((a) => `${arcanumWords(a)}, currently ${dotsOf(traits.arcana[a.arcanum])}`),
         Option.orElse(() =>
           Arr.findFirst(att.skills, (s) => !skillMet(traits, s)).pipe(Option.map(skillWords)),
         ),

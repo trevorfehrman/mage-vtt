@@ -1,7 +1,7 @@
-import { Option } from "effect"
-import { attainmentGates, skillDisplayName, type Legacy, type PathName } from "#/domain/character"
-import { findLegacy, type Attainment, type SkillRequirement } from "#/domain/legacies"
-import type { ArcanumName } from "#/domain/trait-keys"
+import { Array as Arr, Option, Schema } from "effect"
+import { attainmentGates, PathName, type Legacy } from "#/domain/character"
+import { arcanumWords, findLegacy, skillWords, type Attainment } from "#/domain/legacies"
+import { ArcanumName } from "#/domain/trait-keys"
 
 // The Legacy plate's look (MAG-64), pure: what the growth on the nameplate
 // draws, read off the sheet's Legacy and the mage's Gnosis. The sheet's
@@ -10,53 +10,54 @@ import type { ArcanumName } from "#/domain/trait-keys"
 // Path as emblems, and each attainment carries its reading. A shopped or
 // founded Legacy draws its names without them.
 
+/** The Optional Arcanum rider: its Arcanum and dots ("Matter 3"), and the page's words. */
+export const Rider = Schema.Struct({ arcanum: Schema.String, text: Schema.String })
+export type Rider = typeof Rider.Type
+
 /** What an attainment does, in the book's words, for the fold beneath its name. */
-export type AttainmentReading = {
+export const AttainmentReading = Schema.Struct({
   /** The attainment as the page prints it. */
-  readonly text: string
+  text: Schema.String,
   /** "Gnosis 3, Life 2 (primary), Mind 1, Animal Ken 2 or Survival 2" — as the page prints it. */
-  readonly prerequisites: string
-  /** The Optional Arcanum rider, when the attainment has one: its Arcanum and dots, and the page's words. */
-  readonly rider: Option.Option<{ readonly arcanum: string; readonly text: string }>
-}
+  prerequisites: Schema.String,
+  rider: Schema.Option(Rider),
+})
+export type AttainmentReading = typeof AttainmentReading.Type
 
 /** One attainment on the plate: its name, the Gnosis that opens it, whether this mage has reached it, and its reading when the catalog knows it. */
-export type LegacyRung = {
-  readonly name: string
-  readonly gnosis: number
-  readonly reached: boolean
-  readonly reading: Option.Option<AttainmentReading>
-}
+export const LegacyRung = Schema.Struct({
+  name: Schema.String,
+  gnosis: Schema.Number,
+  reached: Schema.Boolean,
+  reading: Schema.Option(AttainmentReading),
+})
+export type LegacyRung = typeof LegacyRung.Type
 
-export type LegacyPlate = {
-  readonly name: string
+export const LegacyPlate = Schema.Struct({
+  name: Schema.String,
   /** The catalog's primary Arcanum, when the catalog knows this Legacy. */
-  readonly primary: Option.Option<ArcanumName>
+  primary: Schema.Option(ArcanumName),
   /** The catalog's parent Path, when the catalog knows it and it is one Path. */
-  readonly path: Option.Option<PathName>
-  readonly rungs: ReadonlyArray<LegacyRung>
+  path: Schema.Option(PathName),
+  rungs: Schema.Array(LegacyRung),
   /** How many of the three the mage holds. */
-  readonly held: number
-}
+  held: Schema.Number,
+})
+export type LegacyPlate = typeof LegacyPlate.Type
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-
-const skillWords = (req: SkillRequirement): string =>
-  req._tag === "skill"
-    ? `${skillDisplayName(req.skill)} ${req.dots}`
-    : req.options.map((o) => `${skillDisplayName(o.skill)} ${o.dots}`).join(" or ")
-
-export const readingOf = (att: Attainment, primary: ArcanumName): AttainmentReading => ({
+/**
+ * The reading of one attainment. The prerequisites line is the page's: its
+ * Arcana in the page's order, and "(primary)" only where the page prints
+ * it — on the first attainment, where the Legacy's primary Arcanum is named.
+ */
+export const readingOf = (att: Attainment, primary: ArcanumName, first: boolean): AttainmentReading => ({
   text: att.text,
   prerequisites: [
     `Gnosis ${att.gnosis}`,
-    ...att.arcana.map((a) => `${cap(a.arcanum)} ${a.dots}${a.arcanum === primary ? " (primary)" : ""}`),
+    ...att.arcana.map((a) => `${arcanumWords(a)}${first && a.arcanum === primary ? " (primary)" : ""}`),
     ...att.skills.map(skillWords),
   ].join(", "),
-  rider: Option.map(Option.fromUndefinedOr(att.synergy), (r) => ({
-    arcanum: `${cap(r.arcanum)} ${r.dots}`,
-    text: r.text,
-  })),
+  rider: Option.map(Option.fromUndefinedOr(att.synergy), (r) => ({ arcanum: arcanumWords(r), text: r.text })),
 })
 
 export const legacyPlate = (legacy: Legacy, gnosis: number): LegacyPlate => {
@@ -65,7 +66,9 @@ export const legacyPlate = (legacy: Legacy, gnosis: number): LegacyPlate => {
     name,
     gnosis: gate,
     reached: gnosis >= gate,
-    reading: Option.map(def, (d) => readingOf(d.attainments[i] ?? d.attainments[0], d.primary)),
+    reading: Option.flatMap(def, (d) =>
+      Option.map(Arr.get(d.attainments, i), (att) => readingOf(att, d.primary, i === 0)),
+    ),
   }))
   return {
     name: legacy.name,

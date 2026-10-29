@@ -1,7 +1,8 @@
-import { useState, type CSSProperties, type ReactNode } from "react"
+import { useState, type CSSProperties } from "react"
 import { Option } from "effect"
 import type { Legacy } from "#/domain/character"
 import { ArcanaGlyph, PathGlyph, arcanumTint, isGrossArcanum, pathTint } from "./ArcanaGlyph"
+import { Fold } from "./Fold"
 import { legacyPlate, type LegacyRung } from "./legacy-plate-look"
 
 // The Legacy plate (MAG-64; owner 2026-10-27: "this should be bright and
@@ -25,8 +26,6 @@ import { legacyPlate, type LegacyRung } from "./legacy-plate-look"
 
 /** The title card's padding, which the band bleeds through to the card's edges. */
 const CARD_PAD = 16
-// the derangement fold's own curve (MAG-60), so the two folds feel the same
-const OPEN = "420ms cubic-bezier(0.2, 0.8, 0.2, 1)"
 
 /** The three attainments' numerals (p. 344: "there are three stages of attainment"). */
 const NUMERALS = ["I", "II", "III"] as const
@@ -160,23 +159,6 @@ export function LegacyPlate({ legacy, gnosis }: { legacy: Legacy; gnosis: number
           </div>
         )}
       </Fold>
-    </div>
-  )
-}
-
-/** Height animated open and shut, the grid-rows way: the content stays
- * mounted and clips. The row gap above the reading lives inside the clipped
- * content, so nothing snaps when the fold starts or ends. */
-function Fold({ open, children }: { open: boolean; children: ReactNode }) {
-  return (
-    <div
-      className="grid"
-      style={{ gridTemplateRows: open ? "1fr" : "0fr", transition: `grid-template-rows ${OPEN}` }}
-      aria-hidden={!open}
-    >
-      <div style={{ overflow: "hidden", minHeight: 0, opacity: open ? 1 : 0, transition: `opacity ${OPEN}` }}>
-        {children}
-      </div>
     </div>
   )
 }
