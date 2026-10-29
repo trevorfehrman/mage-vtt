@@ -26,6 +26,10 @@ export const Note = Schema.Struct({
   lasts: Schema.Literals(["scene", ""]),
   /** The group this note moves with; "" when it moves alone. */
   group: Schema.String,
+  /** Width in px, a whole number of cells. */
+  w: Schema.Number,
+  /** Height in px, a whole number of cells; 0 = as tall as its words, up to the cap. */
+  h: Schema.Number,
 })
 export type Note = typeof Note.Type
 
@@ -89,8 +93,10 @@ export const snapPoint = (x: number, y: number): { x: number; y: number } => ({ 
 
 // --- The note's measure: a ledger row ---
 
-/** Eight cells wide. */
+/** Eight cells wide to start; a hand can resize to five at the least. */
 export const NOTE_W = GRID * 8
+export const MIN_W = GRID * 5
+export const MIN_H = GRID * 2
 /** Two cells tall; one more for each line the words wrap to, up to three lines. */
 export const NOTE_H = GRID * 2
 export const MAX_LINES = 3
@@ -100,8 +106,8 @@ export const SPINE_W = 24
 export const CELL = 26
 export const noteHeight = (lines: number): number => NOTE_H + GRID * (Math.min(MAX_LINES, Math.max(1, lines)) - 1)
 /** A note that would hang past the page's edge is nudged back onto the lattice inside it. */
-export const within = (p: { x: number; y: number }, h: number, pageW: number, pageH: number): { x: number; y: number } => ({
-  x: Math.max(ORIGIN, Math.min(p.x, snap(pageW - ORIGIN - NOTE_W))),
+export const within = (p: { x: number; y: number }, w: number, h: number, pageW: number, pageH: number): { x: number; y: number } => ({
+  x: Math.max(ORIGIN, Math.min(p.x, snap(pageW - ORIGIN - w))),
   y: Math.max(ORIGIN, Math.min(p.y, snap(pageH - ORIGIN - h))),
 })
 
@@ -153,7 +159,7 @@ export const placeAt = (page: Page, x: number, y: number, nth: number): Page => 
   const p = snapPoint(x, y)
   return {
     ...page,
-    notes: [...page.notes, { id: `n${Date.now().toString(36)}${nth}`, kind: "blank", x: p.x, y: p.y, title: "", number: "", lasts: "", group: "" }],
+    notes: [...page.notes, { id: `n${Date.now().toString(36)}${nth}`, kind: "blank", x: p.x, y: p.y, title: "", number: "", lasts: "", group: "", w: NOTE_W, h: 0 }],
   }
 }
 
@@ -184,6 +190,9 @@ export const raise = (page: Page, id: string): Page =>
     onNone: () => page,
     onSome: (n) => (page.notes[page.notes.length - 1] === n ? page : { ...page, notes: [...page.notes.filter((m) => m.id !== id), n] }),
   })
+/** A hand's resize: whole cells, never narrower or shorter than the least. */
+export const resize = (page: Page, id: string, w: number, h: number): Page =>
+  edit(page, [id], (n) => ({ ...n, w: Math.max(MIN_W, Math.round(w / GRID) * GRID), h: Math.max(MIN_H, Math.round(h / GRID) * GRID) }))
 export const retitle = (page: Page, id: string, title: string): Page => edit(page, [id], (n) => ({ ...n, title }))
 export const revalue = (page: Page, id: string, number: string): Page => edit(page, [id], (n) => ({ ...n, number }))
 /** Swap the kind of every picked note; a value the new kind cannot carry is dropped. */
@@ -258,6 +267,6 @@ export const inkBox = (s: Ink): Box => {
 /** What a sweep of the select tool takes: any note or stroke whose box the sweep touches, with their groups. */
 export const swept = (page: Page, box: Box, heightOf: (n: Note) => number): ReadonlyArray<string> =>
   withGroups(page, [
-    ...page.notes.filter((n) => overlaps(box, { x: n.x, y: n.y, w: NOTE_W, h: heightOf(n) })).map((n) => n.id),
+    ...page.notes.filter((n) => overlaps(box, { x: n.x, y: n.y, w: n.w, h: heightOf(n) })).map((n) => n.id),
     ...page.ink.filter((s) => overlaps(box, inkBox(s))).map((s) => s.id),
   ])

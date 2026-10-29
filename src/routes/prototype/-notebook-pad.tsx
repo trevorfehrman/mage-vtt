@@ -11,7 +11,16 @@
 // revisable." So a note is a ledger row: a tinted spine on the left holding
 // its symbol (click: the list of kinds opens beneath), the words beside it
 // (click: write), and a square cell for the value at the right (click:
-// write). Strokes pick, sweep and move like notes; groups move as one.
+// write); the symbol opens its list in every tool. A double-click on bare
+// page writes a note. Strokes pick, sweep and move like notes; groups move as
+// one.
+// Round five: "what if a user wants to take a very long note ... let them
+// resize the note and then add a clear scroll container ... fade ... to make
+// it clear there's more to read ... resizing by drag should be a thing. the
+// increments should be smooth but still snap to the dots." A picked row
+// shows a grip at its corner; the grip follows the hand smoothly and the row
+// snaps to whole cells on release. A row a hand has sized keeps its size and
+// its words scroll inside it, fading at the foot while there is more.
 import { useEffect, useMemo, useRef, useState, type FocusEvent as RFocusEvent, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react"
 import { Match, Option } from "effect"
 import { Group, Layer, Line, Path, Rect, Stage, Text } from "react-konva"
@@ -27,8 +36,9 @@ import {
   KINDS,
   kindLook,
   MAX_LINES,
+  MIN_H,
+  MIN_W,
   moveMany,
-  NOTE_W,
   noteHeight,
   ORIGIN,
   placeAt,
@@ -36,6 +46,7 @@ import {
   redo,
   rekind,
   removeMany,
+  resize,
   retitle,
   revalue,
   snapPoint,
@@ -61,6 +72,8 @@ import {
 type Editing = { readonly id: string; readonly focus: "title" | "number"; readonly draft: string }
 /** A drag in flight: everything moving, and where each node began. */
 type Drag = { readonly ids: ReadonlyArray<string>; readonly origin: Record<string, { x: number; y: number }> }
+/** A resize in flight: the row and the size under the hand, before it snaps. */
+type Resizing = { readonly id: string; readonly w: number; readonly h: number }
 
 /** The ruling knob the route hands down. */
 export type Rule = "dots" | "lines" | "none"
@@ -71,9 +84,16 @@ const PEN = { size: 5, thinning: 0.65, smoothing: 0.55, streamline: 0.5, start: 
 const INK = "#d7d2e0"
 const DIM = "#807b8f"
 const ACCENT = "#6fae97"
+/** The plate: a hair above the panel. */
+const PLATE = "#121118"
 const HAND = 18
 const LEAD = 1.1
 const PAD = 10
+/** The grip's reach from the row's corner, and the fade's depth at a scrolling row's foot. */
+const GRIP = 10
+const FADE = 28
+
+const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v))
 
 /** The stroke's outline as Konva's flat point list, from the triples the page stores. */
 const outlineOf = (ink: Ink, live: boolean): number[] => {
@@ -144,12 +164,12 @@ const OBRIMOS_BINDI = "M11 6.8 A1 1 0 1 0 13 6.8 A1 1 0 1 0 11 6.8 Z"
 // --- The row's measure ---
 
 /** The words' column: after the spine, before the value's cell when there is one. */
-const titleWidth = (n: Note): number => NOTE_W - SPINE_W - PAD * 2 - (takesValue(n.kind) ? CELL + PAD : 0)
-/** Konva measures text as it draws, so one offstage Text measures how many lines a title takes. */
+const titleWidth = (kind: NoteKind, w: number): number => w - SPINE_W - PAD * 2 - (takesValue(kind) ? CELL + PAD : 0)
+/** Konva measures text as it draws, so one offstage Text measures how many lines a title takes at a width. */
 const measurer = new Konva.Text({ fontSize: HAND, lineHeight: LEAD, wrap: "word" })
-const linesOf = (n: Note, title: string, font: string): number => {
+const linesOf = (title: string, width: number, font: string): number => {
   if (title === "") return 1
-  measurer.setAttrs({ text: title, width: titleWidth(n), fontFamily: font })
+  measurer.setAttrs({ text: title, width, fontFamily: font })
   return Math.max(1, Math.round(measurer.height() / (HAND * LEAD)))
 }
 
@@ -182,6 +202,9 @@ export function NotebookPad({
   const [menu, setMenu] = useState<Option.Option<string>>(Option.none())
   const [stroke, setStroke] = useState<Option.Option<Ink>>(Option.none())
   const [sweep, setSweep] = useState<Option.Option<Box>>(Option.none())
+  const [resizing, setResizing] = useState<Option.Option<Resizing>>(Option.none())
+  /** How far each sized row's words are scrolled; the page does not remember this. */
+  const [scroll, setScroll] = useState<Record<string, number>>({})
   const [fontsReady, setFontsReady] = useState(0)
   const stamped = useRef(0)
   const stageRef = useRef<Konva.Stage>(null)
@@ -216,12 +239,23 @@ export function NotebookPad({
   const noteById = (id: string): Option.Option<Note> => Option.fromNullishOr(page.notes.find((n) => n.id === id))
   const pickedNotes = page.notes.filter((n) => picked.includes(n.id))
   const nodeOf = (id: string): Option.Option<Konva.Node> => Option.fromNullishOr(stageRef.current?.findOne(`#${id}`))
-  /** The row's height: from its words, or from the draft while they are being written. */
+
+  // --- the row's measure, live: its words as drafted, its size as the hand holds it ---
+
+  /** The row's words: from the page, or from the draft while they are being written. */
   const wordsOf = (n: Note): string => Option.match(editing, { onNone: () => n.title, onSome: (ed) => (ed.id === n.id ? ed.draft : n.title) })
-  const linesIn = (n: Note): number => Math.min(MAX_LINES, linesOf(n, wordsOf(n), font))
-  const heightOf = (n: Note): number => noteHeight(linesIn(n))
+  /** The row's size: from the page, or under the hand while it is being resized. 0 height = as tall as its words. */
+  const sizeOf = (n: Note): { w: number; h: number } =>
+    Option.match(resizing, { onNone: () => ({ w: n.w, h: n.h }), onSome: (r) => (r.id === n.id ? { w: r.w, h: r.h } : { w: n.w, h: n.h }) })
+  const linesAll = (n: Note): number => linesOf(wordsOf(n), titleWidth(n.kind, sizeOf(n).w), font)
+  /** The lines a row shows: all of them when a hand has sized it (they scroll), up to the cap when it sizes itself. */
+  const linesIn = (n: Note): number => (sizeOf(n).h > 0 ? linesAll(n) : Math.min(MAX_LINES, linesAll(n)))
+  const heightOf = (n: Note): number => {
+    const s = sizeOf(n)
+    return s.h > 0 ? s.h : noteHeight(linesIn(n))
+  }
   /** Where the row sits: its place on the page, nudged up live if its growth would hang it past the foot. */
-  const seatOf = (n: Note): { x: number; y: number } => within({ x: n.x, y: n.y }, heightOf(n), width, height)
+  const seatOf = (n: Note): { x: number; y: number } => within({ x: n.x, y: n.y }, sizeOf(n).w, heightOf(n), width, height)
 
   const removePicked = () => {
     if (picked.length === 0) return
@@ -271,7 +305,7 @@ export function NotebookPad({
     }
   }
 
-  // --- picking: a click takes one (and its group), shift-click adds or removes, a sweep takes a region ---
+  // --- picking: a click takes one (and its group) and raises it, shift-click adds or removes, a sweep takes a region ---
 
   const pick = (id: string, shift: boolean) => {
     const ids = withGroups(page, [id])
@@ -297,8 +331,8 @@ export function NotebookPad({
         const number = keep ? (valueRef.current?.value ?? n.number) : n.number
         const emptyBlank = title.trim() === "" && n.kind === "blank"
         // a row that grew past the page's foot is nudged up onto the lattice to fit
-        const grown = noteHeight(linesOf(n, title.trim(), font))
-        const seat = within({ x: n.x, y: n.y }, grown, width, height)
+        const grown = n.h > 0 ? n.h : noteHeight(Math.min(MAX_LINES, linesOf(title.trim(), titleWidth(n.kind, n.w), font)))
+        const seat = within({ x: n.x, y: n.y }, n.w, grown, width, height)
         const written = revalue(retitle(page, ed.id, title.trim()), ed.id, number.trim())
         set(emptyBlank ? removeMany(page, [ed.id]) : seat.y === n.y && seat.x === n.x ? written : moveMany(written, [{ id: ed.id, ...seat }], []))
         if (emptyBlank) onPicked([])
@@ -464,14 +498,13 @@ export function NotebookPad({
       set(moveMany(page, moves, shifts))
     }
     for (const x of d.ids) {
-      const isNote = page.notes.some((n) => n.id === x)
-      if (!isNote) {
+      const note = page.notes.find((n) => n.id === x)
+      if (note === undefined) {
         shifts.push({ id: x, dx, dy })
         continue
       }
-      const note = page.notes.find((n) => n.id === x)
       Option.map(x === id ? Option.some(node) : nodeOf(x), (target) => {
-        const p = within(snapPoint(target.x(), target.y()), note === undefined ? 0 : heightOf(note), width, height)
+        const p = within(snapPoint(target.x(), target.y()), note.w, heightOf(note), width, height)
         moves.push({ id: x, x: p.x, y: p.y })
         landing += 1
         target.to({
@@ -502,6 +535,37 @@ export function NotebookPad({
     node.offsetY(5)
     node.to({ opacity: 1, offsetY: 0, duration: 0.18, easing: Konva.Easings.EaseOut })
   }
+
+  // --- resizing: the grip follows the hand; the row snaps to whole cells when the hand lets go ---
+
+  /** The grip's drag events must not reach the row, whose own drag handlers would read the grip as a move. */
+  const grip = (n: Note, seat: { x: number; y: number }) => ({
+    dragBoundFunc: (pos: { x: number; y: number }) => ({
+      x: clamp(pos.x, seat.x + MIN_W - GRIP, width - ORIGIN - GRIP),
+      y: clamp(pos.y, seat.y + MIN_H - GRIP, height - ORIGIN - GRIP),
+    }),
+    onMouseDown: (e: Konva.KonvaEventObject<MouseEvent>) => {
+      e.cancelBubble = true
+    },
+    onDragStart: (e: Konva.KonvaEventObject<DragEvent>) => {
+      e.cancelBubble = true
+      setMenu(Option.none())
+      setResizing(Option.some({ id: n.id, w: n.w, h: heightOf(n) }))
+    },
+    onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => {
+      e.cancelBubble = true
+      setResizing(Option.some({ id: n.id, w: e.target.x() + GRIP, h: e.target.y() + GRIP }))
+    },
+    onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => {
+      e.cancelBubble = true
+      const w = clamp(Math.round((e.target.x() + GRIP) / GRID) * GRID, MIN_W, width - ORIGIN - seat.x)
+      const h = clamp(Math.round((e.target.y() + GRIP) / GRID) * GRID, MIN_H, height - ORIGIN - seat.y)
+      // the grip rides back to the snapped corner itself: its props may not change if the size did not
+      e.target.to({ x: w - GRIP, y: h - GRIP, duration: 0.12, easing: Konva.Easings.EaseOut })
+      setResizing(Option.none())
+      set(resize(page, n.id, w, h))
+    },
+  })
 
   const drawing = tool === "pen"
   const editingNote = Option.flatMap(editing, (ed) => noteById(ed.id))
@@ -552,16 +616,26 @@ export function NotebookPad({
         <Layer listening={!drawing}>
           {page.notes.map((n) => {
             const look = kindLook(n.kind)
+            const { w } = sizeOf(n)
             const h = heightOf(n)
+            const sized = sizeOf(n).h > 0
             const isSel = picked.includes(n.id)
             const blank = n.kind === "blank"
             const isEditing = Option.exists(editing, (ed) => ed.id === n.id)
             const valued = takesValue(n.kind)
-            const tw = titleWidth(n)
-            const cellX = NOTE_W - PAD - CELL
-            const cellY = (h - CELL) / 2
+            const tw = titleWidth(n.kind, w)
+            const cellX = w - PAD - CELL
+            const cellY = Math.min((h - CELL) / 2, 11)
             const seat = seatOf(n)
-            const lineBox = linesIn(n) * HAND * LEAD
+            const lines = linesIn(n)
+            const lineBox = lines * HAND * LEAD
+            // the words' column: a plain row that sizes itself centers its words; a sized row, or a kind's row, hangs them from the top
+            const wordsTop = blank ? (sized ? 11 : (h - lineBox) / 2) : 19
+            const clipH = h - wordsTop - 6
+            const over = Math.max(0, lineBox - clipH)
+            const sc = clamp(scroll[n.id] ?? 0, 0, over)
+            // the fade takes at most half the words' window, so a short row still shows its words
+            const fade = Math.min(FADE, Math.floor(clipH / 2))
             return (
               <Group
                 key={n.id}
@@ -576,11 +650,11 @@ export function NotebookPad({
                 onDragEnd={(e) => onDragEnd(n.id, e.target)}
               >
                 {/* the row: a solid plate a hair above the page, shadowed so rows stack, a crisp border in the kind's ink */}
-                <Rect x={0} y={0} width={NOTE_W} height={h} fill="#121118" cornerRadius={3} shadowColor="#000" shadowBlur={8} shadowOffsetY={2} shadowOpacity={0.5} />
+                <Rect x={0} y={0} width={w} height={h} fill={PLATE} cornerRadius={3} shadowColor="#000" shadowBlur={8} shadowOffsetY={2} shadowOpacity={0.5} />
                 <Rect
                   x={0.5}
                   y={0.5}
-                  width={NOTE_W - 1}
+                  width={w - 1}
                   height={h - 1}
                   cornerRadius={3}
                   stroke={isSel ? ACCENT : look.tint}
@@ -594,7 +668,7 @@ export function NotebookPad({
                   <Line points={[SPINE_W + 0.5, 1, SPINE_W + 0.5, h - 1]} stroke={look.tint} strokeWidth={1} opacity={blank ? 0.2 : 0.4} />
                   <Path
                     x={SPINE_W / 2 - 8}
-                    y={h / 2 - 8}
+                    y={Math.min(h / 2, 24) - 8}
                     data={look.glyph}
                     stroke={look.tint}
                     strokeWidth={1.3}
@@ -604,32 +678,63 @@ export function NotebookPad({
                     {...(blank ? { dash: [2, 2.5] } : {})}
                   />
                 </Group>
-                {/* the words: the kind's word above, the title beneath, one left edge; click to write */}
-                <Group onClick={(e) => !e.evt.shiftKey && openEditor(n, "title")}>
+                {/* the words: the kind's word above, the title beneath, one left edge; click to write; a sized row's words scroll under the wheel and fade at the foot while there is more */}
+                <Group
+                  onClick={(e) => !e.evt.shiftKey && openEditor(n, "title")}
+                  onWheel={(e) => {
+                    if (over === 0) return
+                    e.evt.preventDefault()
+                    setScroll((s) => ({ ...s, [n.id]: clamp((s[n.id] ?? 0) + e.evt.deltaY, 0, over) }))
+                  }}
+                >
                   <Rect x={SPINE_W + 1} y={0} width={tw + PAD * 2 - 1} height={h} fill={INK} opacity={0.001} />
                   {!blank && (
                     <Text x={SPINE_W + PAD} y={7} text={look.word.toUpperCase()} fontFamily="JetBrains Mono" fontSize={9} letterSpacing={1.6} fill={look.tint} listening={false} />
                   )}
                   {!isEditing && (
-                    <Text
-                      x={SPINE_W + PAD}
-                      y={blank ? (h - lineBox) / 2 : 19}
-                      width={tw}
-                      height={blank ? lineBox : h - 19 - 5}
-                      verticalAlign="top"
-                      text={blank && n.title === "" ? "write…" : n.title}
-                      fontFamily={font}
-                      fontSize={HAND}
-                      lineHeight={LEAD}
-                      fill={blank && n.title === "" ? DIM : INK}
-                      opacity={blank && n.title === "" ? 0.6 : 1}
-                      wrap="word"
-                      ellipsis
+                    <Group clipX={SPINE_W + 1} clipY={wordsTop} clipWidth={tw + PAD * 2 - 1} clipHeight={sized ? clipH : h - wordsTop} listening={false}>
+                      <Text
+                        x={SPINE_W + PAD}
+                        y={wordsTop - sc}
+                        width={tw}
+                        {...(sized ? {} : { height: blank ? lineBox : h - 19 - 5, ellipsis: true })}
+                        verticalAlign="top"
+                        text={blank && n.title === "" ? "write…" : n.title}
+                        fontFamily={font}
+                        fontSize={HAND}
+                        lineHeight={LEAD}
+                        fill={blank && n.title === "" ? DIM : INK}
+                        opacity={blank && n.title === "" ? 0.6 : 1}
+                        wrap="word"
+                      />
+                    </Group>
+                  )}
+                  {!isEditing && sized && over - sc > 2 && (
+                    <Rect
+                      x={SPINE_W + 1}
+                      y={wordsTop + clipH - fade}
+                      width={tw + PAD * 2 - 1}
+                      height={fade}
+                      fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+                      fillLinearGradientEndPoint={{ x: 0, y: fade }}
+                      fillLinearGradientColorStops={[0, "rgba(18,17,24,0)", 1, PLATE]}
+                      listening={false}
+                    />
+                  )}
+                  {!isEditing && sized && sc > 2 && (
+                    <Rect
+                      x={SPINE_W + 1}
+                      y={wordsTop}
+                      width={tw + PAD * 2 - 1}
+                      height={fade}
+                      fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+                      fillLinearGradientEndPoint={{ x: 0, y: fade }}
+                      fillLinearGradientColorStops={[0, PLATE, 1, "rgba(18,17,24,0)"]}
                       listening={false}
                     />
                   )}
                 </Group>
-                {/* the value's cell: a square centered on the row; faint and dashed until a value is written; click to write */}
+                {/* the value's cell: a square on the row's first line; faint and dashed until a value is written; click to write */}
                 {valued && (
                   <Group onClick={(e) => !e.evt.shiftKey && openEditor(n, "number")}>
                     <Rect
@@ -658,6 +763,14 @@ export function NotebookPad({
                         listening={false}
                       />
                     )}
+                  </Group>
+                )}
+                {/* the grip: a picked row's corner; drag it and the row follows, snapping to whole cells on release */}
+                {isSel && !isEditing && (
+                  <Group x={w - GRIP} y={h - GRIP} draggable {...grip(n, seat)}>
+                    <Rect x={-8} y={-8} width={18} height={18} fill={INK} opacity={0.001} />
+                    <Line points={[1, 7, 7, 1]} stroke={ACCENT} strokeWidth={1} opacity={0.8} lineCap="round" />
+                    <Line points={[5, 7, 7, 5]} stroke={ACCENT} strokeWidth={1} opacity={0.8} lineCap="round" />
                   </Group>
                 )}
               </Group>
@@ -707,13 +820,17 @@ export function NotebookPad({
       {Option.match(Option.zipWith(editing, editingNote, (ed, n) => ({ ed, n })), {
         onNone: () => null,
         onSome: ({ ed, n }) => {
+          const { w } = sizeOf(n)
           const h = heightOf(n)
+          const sized = sizeOf(n).h > 0
           const blank = n.kind === "blank"
           const valued = takesValue(n.kind)
-          const tw = titleWidth(n)
+          const tw = titleWidth(n.kind, w)
           const look = kindLook(n.kind)
           const seat = seatOf(n)
-          const lineBox = linesIn(n) * HAND * LEAD
+          const lines = linesIn(n)
+          const lineBox = lines * HAND * LEAD
+          const wordsTop = blank ? (sized ? 11 : (h - lineBox) / 2) : 19
           const field = {
             pointerEvents: "auto" as const,
             fontFamily: font,
@@ -727,7 +844,7 @@ export function NotebookPad({
           return (
             <div
               ref={editorRef}
-              style={{ position: "absolute", left: seat.x, top: seat.y, width: NOTE_W, height: h, pointerEvents: "none" }}
+              style={{ position: "absolute", left: seat.x, top: seat.y, width: w, height: h, pointerEvents: "none" }}
               onPointerDown={onEditorPointerDown}
               onPointerMove={onEditorPointerMove}
             >
@@ -740,18 +857,18 @@ export function NotebookPad({
                 onBlur={onEditorBlur}
                 onKeyDown={onEditorKey}
                 onChange={(e) => setEditing(Option.some({ ...ed, draft: e.currentTarget.value }))}
-                rows={linesIn(n)}
+                rows={sized ? undefined : lines}
                 style={{
                   ...field,
                   position: "absolute",
                   left: SPINE_W + PAD,
-                  top: blank ? (h - lineBox) / 2 : 19,
+                  top: wordsTop,
                   width: tw,
+                  ...(sized ? { height: h - wordsTop - 6, overflowY: "auto" as const, scrollbarWidth: "none" as const } : { overflow: "hidden" as const }),
                   fontSize: HAND,
                   lineHeight: LEAD,
                   color: INK,
                   resize: "none",
-                  overflow: "hidden",
                 }}
               />
               {valued && (
@@ -766,8 +883,8 @@ export function NotebookPad({
                   style={{
                     ...field,
                     position: "absolute",
-                    left: NOTE_W - PAD - CELL,
-                    top: (h - CELL) / 2,
+                    left: w - PAD - CELL,
+                    top: Math.min((h - CELL) / 2, 11),
                     width: CELL,
                     height: CELL,
                     textAlign: "center",
