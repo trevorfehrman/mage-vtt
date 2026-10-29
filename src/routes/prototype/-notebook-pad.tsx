@@ -1251,8 +1251,11 @@ export function NotebookPad({
                 height: TAB_H,
                 padding: 0,
                 background: out ? `color-mix(in srgb, ${look.tint} 14%, ${PLATE})` : PLATE,
-                border: `1px solid ${out ? look.tint : `color-mix(in srgb, ${look.tint} 40%, transparent)`}`,
-                borderLeft: 0,
+                // longhands, not the shorthand: React re-applies only the property that changed, and a changed
+                // `border` shorthand would bring the left side back (owner: "the left border ... appears and remains")
+                borderStyle: "solid",
+                borderWidth: "1px 1px 1px 0",
+                borderColor: out ? look.tint : `color-mix(in srgb, ${look.tint} 40%, transparent)`,
                 borderRadius: "0 4px 4px 0",
                 color: out ? look.tint : `color-mix(in srgb, ${look.tint} 72%, transparent)`,
                 opacity: some || out ? 1 : 0.3,
