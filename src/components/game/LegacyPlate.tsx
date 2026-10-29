@@ -19,17 +19,12 @@ import { legacyPlate, type LegacyRung } from "./legacy-plate-look"
 // reading beneath the row: what it does, in the book's words. Absent until
 // a Legacy is chosen.
 //
-// Three looks were auditioned; the owner chose the plinth as the foundation
-// (2026-10-28). The pediment and wing stay on the rig's knob for now.
-
-/** Where the growth attaches: beneath the emblem row, above the name, or on the Gnosis flank. */
-export const LEGACY_LOOKS = ["plinth", "pediment", "wing"] as const
-export type LegacyLook = (typeof LEGACY_LOOKS)[number]
+// Three looks were auditioned (a pediment above the name, a wing on the
+// Gnosis flank, the plinth); the owner chose the plinth (2026-10-28), and
+// the other two are gone.
 
 /** The title card's padding, which the band bleeds through to the card's edges. */
 const CARD_PAD = 16
-/** How far the wing juts past the card's right edge — the piece that was bolted on. */
-const WING_JUT = 10
 // the derangement fold's own curve (MAG-60), so the two folds feel the same
 const OPEN = "420ms cubic-bezier(0.2, 0.8, 0.2, 1)"
 
@@ -39,15 +34,7 @@ const NUMERALS = ["I", "II", "III"] as const
 const rungInk = (r: LegacyRung) => (r.reached ? "var(--ink)" : "var(--dim)")
 const gateInk = (r: LegacyRung) => (r.reached ? "var(--accent)" : "var(--dim)")
 
-export function LegacyPlate({
-  legacy,
-  gnosis,
-  look,
-}: {
-  legacy: Legacy
-  gnosis: number
-  look: LegacyLook
-}) {
+export function LegacyPlate({ legacy, gnosis }: { legacy: Legacy; gnosis: number }) {
   const plate = legacyPlate(legacy, gnosis)
   const [openRung, setOpenRung] = useState<Option.Option<string>>(Option.none())
   const tint = Option.getOrElse(Option.map(plate.primary, arcanumTint), () => "var(--accent)")
@@ -74,30 +61,6 @@ export function LegacyPlate({
   )
   const label = `Legacy: ${plate.name}, ${plate.held} of ${plate.rungs.length} attainments`
 
-  if (look === "wing") {
-    return (
-      <div
-        className="mv-legacy-wing grid justify-items-end gap-2 text-right"
-        style={{ ...tileVar, marginRight: -(CARD_PAD + WING_JUT), paddingLeft: 14, paddingRight: CARD_PAD + WING_JUT, paddingTop: 10, paddingBottom: 10 }}
-        aria-label={label}
-      >
-        <span className="mv-eyebrow">Legacy</span>
-        <span className="flex items-center gap-2">
-          <span className="mv-h leading-none" style={{ fontSize: 19 }}>{plate.name}</span>
-          {emblems(18)}
-        </span>
-        <ol className="grid justify-items-end gap-1">
-          {plate.rungs.map((r) => (
-            <li key={r.name} className="flex items-baseline gap-2 leading-none">
-              <span style={{ fontSize: 13, color: rungInk(r) }}>{r.name}</span>
-              <span className="mv-data" style={{ fontSize: 11, width: "1.2em", textAlign: "right", color: gateInk(r) }}>{r.gnosis}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
-    )
-  }
-
   const open = Option.getOrUndefined(openRung)
   // the reading stays mounted while the fold shuts, so the shrink animates
   // over the same words (owner, 2026-10-28: "the shrink needs to be animated too")
@@ -111,14 +74,14 @@ export function LegacyPlate({
 
   return (
     <div
-      className={`mv-legacy-band ${look === "pediment" ? "mv-legacy-pediment" : "mv-legacy-plinth"}`}
+      className="mv-legacy-band"
       style={{
         ...tileVar,
         // the addition bleeds through the card's padding to its edges
         // (owner, 2026-10-28: "an addition to the sheet not contained within it")
         // one pixel past the card's edge, where the card's own corner ticks
         // sit, so the band's border and the ticks share a line
-        margin: look === "pediment" ? `-${CARD_PAD + 1}px -${CARD_PAD + 1}px 0` : `0 -${CARD_PAD + 1}px -${CARD_PAD + 1}px`,
+        margin: `0 -${CARD_PAD + 1}px -${CARD_PAD + 1}px`,
         padding: `12px ${CARD_PAD}px`,
       }}
       aria-label={label}

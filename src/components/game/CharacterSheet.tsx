@@ -41,7 +41,7 @@ import { PoolNumerals } from "./CastHeaderStats"
 import { cycleBox, toggleResistant } from "#/domain/health"
 import { WisdomMeter } from "./WisdomMeter"
 import { DerangementAccordion } from "./DerangementAccordion"
-import { LegacyPlate, type LegacyLook } from "./LegacyPlate"
+import { LegacyPlate } from "./LegacyPlate"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
@@ -76,7 +76,6 @@ interface CharacterSheetProps {
   activeSceneId?: SceneId | undefined
   /** Where the Legacy plate attaches to the title card (MAG-64) — the rig's
    * audition knob; the sheet wears the plinth until the owner picks. */
-  legacyLook?: LegacyLook | undefined
 }
 
 
@@ -93,7 +92,6 @@ export function CharacterSheet({
   onSetMagicalTool,
   onMarkSheet,
   activeSceneId,
-  legacyLook = "plinth",
 }: CharacterSheetProps) {
   const penalty = character.woundPenalty
   const canToggle =
@@ -122,21 +120,9 @@ export function CharacterSheet({
           and concept line is gone (owner: players know who they are). */}
       <div
         className={`mv-cornered mv-panel grid gap-4 p-4 ${
-          character.legacy === undefined
-            ? ""
-            : legacyLook === "plinth"
-              ? "mv-legacy-grown-bottom"
-              : legacyLook === "pediment"
-                ? "mv-legacy-grown-top"
-                : ""
+          character.legacy === undefined ? "" : "mv-legacy-grown"
         }`}
       >
-        {/* The Legacy plate (MAG-64) — the growth bolted onto the card:
-            above the name as a pediment, beneath the emblem row as a
-            plinth, or on the Gnosis flank as a wing. Absent until chosen. */}
-        {character.legacy !== undefined && legacyLook === "pediment" && (
-          <LegacyPlate legacy={character.legacy} gnosis={character.gnosis} look="pediment" />
-        )}
         <div className="flex items-start justify-between gap-6">
           <div className="grid gap-3">
             <span className="flex items-center gap-3">
@@ -240,9 +226,6 @@ export function CharacterSheet({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            {character.legacy !== undefined && legacyLook === "wing" && (
-              <LegacyPlate legacy={character.legacy} gnosis={character.gnosis} look="wing" />
-            )}
           </div>
         </div>
         {/* Derangements (MAG-60; owner 2026-10-28): the accordion beneath the
@@ -329,8 +312,10 @@ export function CharacterSheet({
             )}
           </span>
         </div>
-        {character.legacy !== undefined && legacyLook === "plinth" && (
-          <LegacyPlate legacy={character.legacy} gnosis={character.gnosis} look="plinth" />
+        {/* The Legacy plate (MAG-64) — the growth bolted onto the card,
+            the plinth beneath the emblem row. Absent until chosen. */}
+        {character.legacy !== undefined && (
+          <LegacyPlate legacy={character.legacy} gnosis={character.gnosis} />
         )}
       </div>
 

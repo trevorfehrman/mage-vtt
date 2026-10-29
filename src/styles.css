@@ -1442,10 +1442,9 @@ a {
  * the Arcana tiles are with the Legacy's primary Arcanum tint folded in,
  * and a hairline engraved inside it (owner: "a prestigious addition"). The
  * plate takes over the card's corner: the card's own tick at that corner
- * yields to the plate's, in the tint. The wing juts past the Gnosis flank.
- * An attainment's name is a button that opens its reading. */
-.mv-legacy-band,
-.mv-legacy-wing {
+ * yields to the plate's, in the tint. An attainment's name is a button
+ * that opens its reading. */
+.mv-legacy-band {
   position: relative;
   background: var(--panel);
   border: 1px solid color-mix(in srgb, var(--tile, var(--accent)) 45%, var(--line));
@@ -1454,30 +1453,21 @@ a {
     inset 0 0 0 3px var(--panel),
     inset 0 0 0 4px color-mix(in srgb, var(--tile, var(--accent)) 22%, transparent);
 }
-.mv-legacy-plinth::after,
-.mv-legacy-pediment::before {
+.mv-legacy-band::after {
   content: "";
   position: absolute;
+  bottom: -1px;
+  right: -1px;
   width: 9px;
   height: 9px;
   pointer-events: none;
+  border-bottom: 1px solid;
+  border-right: 1px solid;
   border-color: var(--tile, var(--accent));
   opacity: 0.8;
 }
-.mv-legacy-plinth::after {
-  bottom: -1px;
-  right: -1px;
-  border-bottom: 1px solid;
-  border-right: 1px solid;
-}
-.mv-legacy-pediment::before {
-  top: -1px;
-  left: -1px;
-  border-top: 1px solid;
-  border-left: 1px solid;
-}
-.mv-legacy-grown-bottom::after,
-.mv-legacy-grown-top::before {
+/* the card that has grown the plate yields its own bottom-right tick to it */
+.mv-legacy-grown::after {
   display: none;
 }
 .mv-legacy-rung {
