@@ -101,8 +101,14 @@ export function LegacyPlate({
 
   return (
     <div
-      className={`mv-legacy-band ${look === "pediment" ? "mv-legacy-pediment" : "mv-legacy-plinth"} grid gap-3`}
-      style={{ ...tileVar, padding: "12px 14px" }}
+      className={`mv-legacy-band ${look === "pediment" ? "mv-legacy-pediment" : "mv-legacy-plinth"}`}
+      style={{
+        ...tileVar,
+        // the addition bleeds through the card's padding to its edges
+        // (owner, 2026-10-28: "an addition to the sheet not contained within it")
+        margin: look === "pediment" ? `-${CARD_PAD}px -${CARD_PAD}px 0` : `0 -${CARD_PAD}px -${CARD_PAD}px`,
+        padding: `12px ${CARD_PAD}px`,
+      }}
       aria-label={label}
     >
       <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3">
@@ -139,7 +145,7 @@ export function LegacyPlate({
           the book's words — kept mounted and folded shut */}
       <Fold open={shown !== undefined}>
         {shown !== undefined && Option.isSome(shown.reading) && (
-          <div className="grid gap-1.5 border-t pt-3" style={{ borderColor: "var(--line)" }}>
+          <div className="grid gap-1.5 border-t pt-3" style={{ borderColor: "var(--line)", marginTop: 12 }}>
             <p className="leading-snug" style={{ fontSize: 13, color: "var(--ink)" }}>{shown.reading.value.effect}</p>
             <p className="mv-data leading-snug" style={{ fontSize: 11, color: "var(--dim)" }}>
               {shown.reading.value.mirrors} · needs {shown.reading.value.needs}
@@ -157,12 +163,14 @@ export function LegacyPlate({
   )
 }
 
-/** Height animated open and shut, the grid-rows way: the content stays mounted and clips. */
+/** Height animated open and shut, the grid-rows way: the content stays
+ * mounted and clips. The row gap above the reading lives inside the clipped
+ * content, so nothing snaps when the fold starts or ends. */
 function Fold({ open, children }: { open: boolean; children: ReactNode }) {
   return (
     <div
       className="grid"
-      style={{ gridTemplateRows: open ? "1fr" : "0fr", transition: `grid-template-rows ${OPEN}`, marginTop: open ? 0 : -12 }}
+      style={{ gridTemplateRows: open ? "1fr" : "0fr", transition: `grid-template-rows ${OPEN}` }}
       aria-hidden={!open}
     >
       <div style={{ overflow: "hidden", minHeight: 0, opacity: open ? 1 : 0, transition: `opacity ${OPEN}` }}>

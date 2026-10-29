@@ -1436,18 +1436,37 @@ a {
   .mv-plate-fog { animation: none; }
 }
 
-/* The Legacy plate (MAG-64): the plinth beneath the title card's emblem
- * row, bordered as the Arcana tiles are — one line, the Legacy's primary
- * Arcanum tint folded into it — on the card's own ground, no lighter
- * (owner, 2026-10-28). The wing juts past the Gnosis flank. An attainment's
+/* The Legacy plate (MAG-64): an addition to the title card, not a thing
+ * inside it (owner, 2026-10-28) — the plinth bleeds to the card's edges
+ * beneath the emblem row on the card's own ground, bordered in one line as
+ * the Arcana tiles are, the Legacy's primary Arcanum tint folded in, and
+ * riveted at the seam. The wing juts past the Gnosis flank. An attainment's
  * name is a button that opens its reading. */
 .mv-legacy-band,
 .mv-legacy-wing {
   position: relative;
   background: var(--panel);
   border: 1px solid color-mix(in srgb, var(--tile, var(--accent)) 45%, var(--line));
-  border-radius: 4px;
 }
+.mv-legacy-band::before,
+.mv-legacy-band::after,
+.mv-legacy-wing::before,
+.mv-legacy-wing::after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: color-mix(in srgb, var(--tile, var(--accent)) 70%, var(--ink));
+  opacity: 0.8;
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+.mv-legacy-plinth::before { top: -3px; left: 10px; }
+.mv-legacy-plinth::after { top: -3px; right: 10px; }
+.mv-legacy-pediment::before { bottom: -3px; left: 10px; }
+.mv-legacy-pediment::after { bottom: -3px; right: 10px; }
+.mv-legacy-wing::before { left: -3px; top: 10px; }
+.mv-legacy-wing::after { left: -3px; bottom: 10px; }
 .mv-legacy-rung {
   background: none;
   border: 0;
