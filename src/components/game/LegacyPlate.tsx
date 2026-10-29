@@ -179,7 +179,9 @@ export function LegacyPlate({
             <p className="leading-relaxed text-left" style={{ fontSize: 14, maxWidth: "62ch", color: "var(--ink)" }}>
               {shown.reading.value.text}
             </p>
-            <p className="mv-data leading-snug text-left" style={{ fontSize: 11, maxWidth: "62ch", color: "var(--dim)" }}>
+            {/* one short line, so it sits centered like the headings; only
+                the paragraphs run ragged right */}
+            <p className="mv-data leading-snug" style={{ fontSize: 11, maxWidth: "62ch", color: "var(--dim)" }}>
               Prerequisites: {shown.reading.value.prerequisites}
             </p>
             {Option.match(shown.reading.value.rider, {
