@@ -15,12 +15,16 @@
 // bring up that menu ... forgo the typography tool entirely if we left new
 // note to be a double click ... mark should be red ... boost should be blue
 // scene should be like a wine."
-// Knob: ?rule=dots|lines|none. Tools: select, pen (three inks).|lines|none. Tools: select, write, pen (three inks).
+// The pagination round: "a note is an item on a page, a page is a page ...
+// a notebook with its half folded around behind it ... feel. velocity ...
+// quickly thumb through their notebook even if just for fun but arrive on
+// the page they want quickly as well."
+// Knobs: ?rule=dots|lines|none; seed 1 / 8 / 40 written pages to thumb through.
 // Mock data; no Convex. DELETE once specced.
 import { Suspense, lazy, useEffect, useState, type ReactNode } from "react"
 import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Eraser, Feather, Group, MousePointer2, Redo2, Undo2, Ungroup } from "lucide-react"
-import { clearPage, commit, EMPTY_PAGE, GRID, INKS, emptyHistory, isOneGroup, redo, toggleGroup, undo, type History, type Tool } from "./-notebook-page"
+import { clearPage, commit, editOpen, EMPTY_BOOK, GRID, INKS, emptyHistory, isOneGroup, openPage, redo, seedBook, toggleGroup, undo, type Book, type History, type Tool } from "./-notebook-page"
 import type { Rule } from "./-notebook-pad"
 
 const Pad = lazy(() => import("./-notebook-pad").then((m) => ({ default: m.NotebookPad })))
@@ -43,7 +47,7 @@ const HEIGHT = GRID * 18
 function Notebook() {
   const { rule } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
-  const [history, setHistory] = useState<History>(() => emptyHistory(EMPTY_PAGE))
+  const [history, setHistory] = useState<History<Book>>(() => emptyHistory(EMPTY_BOOK))
   const [tool, setTool] = useState<Tool>("select")
   const [ink, setInk] = useState(INKS[0]!.color)
   const [picked, setPicked] = useState<ReadonlyArray<string>>([])
@@ -59,14 +63,15 @@ function Notebook() {
     }
   }, [])
 
-  const clear = () =>
-    setHistory((h) => {
-      const next = clearPage(h.present)
-      return next === h.present ? h : { past: [...h.past, h.present], present: next, future: [] }
-    })
-  const empty = history.present.notes.length === 0 && history.present.ink.length === 0
-  const oneGroup = isOneGroup(history.present, picked)
-  const group = () => setHistory((h) => commit(h, toggleGroup(h.present, picked)))
+  const page = openPage(history.present)
+  const clear = () => setHistory((h) => commit(h, editOpen(h.present, clearPage)))
+  const empty = page.notes.length === 0 && page.ink.length === 0
+  const oneGroup = isOneGroup(page, picked)
+  const group = () => setHistory((h) => commit(h, editOpen(h.present, (p) => toggleGroup(p, picked))))
+  const seed = (n: number) => {
+    setHistory(emptyHistory(seedBook(n)))
+    setPicked([])
+  }
 
   return (
     <div className="min-h-screen" style={{ background: "var(--void, #07060a)", color: "var(--ink)" }}>
@@ -136,7 +141,7 @@ function Notebook() {
           </div>
         </div>
         <p className="mv-data" style={{ fontSize: 11, color: "var(--dim)" }}>
-          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · a picked row has a grip at its corner: drag it to resize, it snaps to the dots; a sized row scrolls under the wheel · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus
+          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · a picked row has a grip at its corner: drag it to resize, it snaps to the dots; a sized row scrolls under the wheel · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus · turn the page: drag or tap the stacked edges, swipe sideways, ← → · the book always has a blank page at the back
         </p>
       </div>
 
@@ -149,6 +154,12 @@ function Notebook() {
             className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${r === rule ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"}`}
           >
             {r}
+          </button>
+        ))}
+        <span className="mx-1 h-3 w-px bg-zinc-400" />
+        {[1, 8, 40].map((n) => (
+          <button key={n} onClick={() => seed(n)} className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap hover:bg-zinc-300">
+            seed {n}
           </button>
         ))}
       </div>

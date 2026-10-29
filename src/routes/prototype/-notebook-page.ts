@@ -64,17 +64,60 @@ export const INKS: ReadonlyArray<{ readonly name: string; readonly color: string
   { name: "ember", color: "#e29659" },
 ]
 
-export type History = { readonly past: ReadonlyArray<Page>; readonly present: Page; readonly future: ReadonlyArray<Page> }
+// --- The book: pages in order, one of them open ---
+//
+// Pagination round (owner, 2026-10-29): "a note is an item on a page, a page
+// is a page" — "this is a notebook with its half folded around behind it,
+// like a person in the field using it." The book always ends on one blank
+// page, so it never runs out; the open page is the one the hand is on.
 
-export const emptyHistory = (present: Page): History => ({ past: [], present, future: [] })
-export const commit = (h: History, next: Page): History =>
+export const Book = Schema.Struct({ pages: Schema.Array(Page), open: Schema.Number })
+export type Book = typeof Book.Type
+
+export const isBlankPage = (p: Page): boolean => p.notes.length === 0 && p.ink.length === 0
+export const EMPTY_BOOK: Book = { pages: [EMPTY_PAGE], open: 0 }
+
+/** The page at an index; past the back, a blank. */
+export const pageAt = (book: Book, i: number): Page => book.pages[i] ?? EMPTY_PAGE
+export const openPage = (book: Book): Page => pageAt(book, book.open)
+/** The last page's index: the blank at the back. */
+export const lastIndex = (book: Book): number => book.pages.length - 1
+/** Turn to a page; the index is held within the book. */
+export const turnTo = (book: Book, i: number): Book => {
+  const open = Math.max(0, Math.min(lastIndex(book), Math.round(i)))
+  return open === book.open ? book : { ...book, open }
+}
+/**
+ * The book keeps exactly one blank page at the back: writing on the last
+ * page grows the book by one; clearing the page before a blank sheds the
+ * spare — never the page the hand is on.
+ */
+const tidy = (book: Book): Book => {
+  const pages = [...book.pages]
+  const last = pages[pages.length - 1]
+  if (last === undefined || !isBlankPage(last)) pages.push(EMPTY_PAGE)
+  while (pages.length >= 2 && isBlankPage(pages[pages.length - 1]!) && isBlankPage(pages[pages.length - 2]!) && pages.length - 1 > book.open) pages.pop()
+  return pages.length === book.pages.length && pages.every((p, i) => p === book.pages[i]) ? book : { ...book, pages }
+}
+/** An edit of the open page. */
+export const editOpen = (book: Book, f: (page: Page) => Page): Book => {
+  const before = openPage(book)
+  const after = f(before)
+  if (after === before) return book
+  return tidy({ ...book, pages: book.pages.map((p, i) => (i === book.open ? after : p)) })
+}
+
+export type History<T = Book> = { readonly past: ReadonlyArray<T>; readonly present: T; readonly future: ReadonlyArray<T> }
+
+export const emptyHistory = <T,>(present: T): History<T> => ({ past: [], present, future: [] })
+export const commit = <T,>(h: History<T>, next: T): History<T> =>
   next === h.present ? h : { past: [...h.past, h.present], present: next, future: [] }
-export const undo = (h: History): History =>
+export const undo = <T,>(h: History<T>): History<T> =>
   Option.match(Arr.last(h.past), {
     onNone: () => h,
     onSome: (prev) => ({ past: h.past.slice(0, -1), present: prev, future: [h.present, ...h.future] }),
   })
-export const redo = (h: History): History =>
+export const redo = <T,>(h: History<T>): History<T> =>
   Option.match(Arr.head(h.future), {
     onNone: () => h,
     onSome: (next) => ({ past: [...h.past, h.present], present: next, future: h.future.slice(1) }),
@@ -271,3 +314,52 @@ export const swept = (page: Page, box: Box, heightOf: (n: Note) => number): Read
     ...page.notes.filter((n) => overlaps(box, { x: n.x, y: n.y, w: n.w, h: heightOf(n) })).map((n) => n.id),
     ...page.ink.filter((s) => overlaps(box, inkBox(s))).map((s) => s.id),
   ])
+
+// --- A seeded book, for thumbing through on the rig ---
+
+const SEED_WORDS: ReadonlyArray<readonly [NoteKind, string, string]> = [
+  ["spell", "Mage Sight on the archive door — resonance of grief, old", ""],
+  ["armor", "Shielding (Forces), scene", "3"],
+  ["boost", "Perfected Luck on the lockpick", "+2"],
+  ["condition", "Shaken after the Abyssal thing in the stairwell", "−1"],
+  ["mark", "The Seer's agent knows my face now", "1"],
+  ["scene", "Dockside warehouse, 3am, tide out", ""],
+  ["blank", "Ask Kestrel about the ledger with the burnt corner", ""],
+  ["blank", "Why does the compass spin near the fountain?", ""],
+  ["spell", "Postcognition, the fountain — 7 successes, saw a ring", ""],
+  ["blank", "Suspects: the archivist · the twins · Halloran", ""],
+  ["condition", "Spent, Mana 2 of 11", "−2"],
+  ["boost", "Nimbus flared, Gnosis +1 to Awakening checks tonight", "+1"],
+  ["blank", "Buy chalk. Lots of chalk.", ""],
+  ["scene", "Sanctum, after", ""],
+  ["armor", "Mage Armor (Matter)", "2"],
+  ["mark", "Owed: one favor to the Guardians", "1"],
+]
+/** A deterministic hand: a tiny LCG, so the same seed thumbs the same book. */
+const lcg = (seed: number) => {
+  let x = seed >>> 0
+  return () => {
+    x = (x * 1664525 + 1013904223) >>> 0
+    return x / 4294967296
+  }
+}
+/** A book of n written pages (and the blank at the back), each page a few rows settled on the lattice. */
+export const seedBook = (n: number): Book => {
+  const rnd = lcg(n * 7919 + 17)
+  const cols = 32
+  const rows = 18
+  const pages: Page[] = []
+  for (let p = 0; p < n; p++) {
+    const notes: Note[] = []
+    const count = 2 + Math.floor(rnd() * 5)
+    for (let k = 0; k < count; k++) {
+      const [kind, title, number] = SEED_WORDS[Math.floor(rnd() * SEED_WORDS.length)]!
+      const w = GRID * (6 + Math.floor(rnd() * 8))
+      const x = ORIGIN + GRID * Math.floor(rnd() * (cols - w / GRID))
+      const y = ORIGIN + GRID * Math.floor(rnd() * (rows - 3))
+      notes.push({ id: `s${p}-${k}`, kind, x, y, title, number, lasts: "", group: "", w, h: 0 })
+    }
+    pages.push({ notes, ink: [] })
+  }
+  return tidy({ pages, open: 0 })
+}
