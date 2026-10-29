@@ -779,11 +779,11 @@ describe("Flows.handEdit.setMagicalTool (issue #107)", () => {
 })
 
 /**
- * The derangement marks (MAG-60): the player takes one by its cause and the
- * flow works out what it hangs from — the dot one above Wisdom now, or the
- * Bedlam clock: the open Scene at Wisdom 5+, an expiry from the Wisdom
- * table below. Shedding is the mark in reverse; a bought-back dot sheds
- * its own.
+ * The derangement marks (MAG-60): the player takes one by name and the
+ * flow works out what it hangs from — lasting, unless marked as a Bedlam's,
+ * whose clock is the open Scene at Wisdom 5+ or an expiry from the Wisdom
+ * table below. Shedding is the mark in reverse; a pair is one affliction at
+ * two depths, so taking a name drops its partner.
  */
 describe("Flows.handEdit.markSheet — derangements (MAG-60)", () => {
   const openScene = {

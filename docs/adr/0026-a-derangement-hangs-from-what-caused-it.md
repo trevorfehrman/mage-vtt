@@ -47,16 +47,20 @@ own paper gesture (ADR-0025).
    card's title row, its heading — the opener, a caret beside it — on
    Health's and Wisdom's left edge, always present. Beneath the heading,
    always: the held ones as small chips, the name in the display serif (it
-   is fiction) in its hold's ink — the wound's bruise for a lasting one,
-   Paradox red for a Bedlam's — with the full reading in a tooltip on
-   hover; or, holding none, the sentence "You are not deranged." Either
-   opens the body; a chip opens it on its own pair at its own depth. The
-   body is two-sided: the nine pairs as rows that say both names, and the
-   chosen pair's two forms read whole — what sets it off and the roll that
-   resists, the bout, the Bedlam weakness — parted by a line with the
-   *turn* on it, a half-lit disc lit toward the live form, the other form
-   dimmed; a click on the turn or on the dimmed form turns it, the mild
-   form live by default. One button at the corner: *Derange* takes the
+   is fiction) in its hold's ink — the derangement's own absinthe
+   (`--derange`) for a lasting one, Paradox red for a Bedlam's — with the
+   full reading in a tooltip on hover; or, holding none, the sentence "You
+   are not deranged." Either opens the body; a chip opens it on its own
+   pair at its own depth. The body is two-sided: the nine pairs as rows
+   that say both names parted by the spiral, and the chosen pair's two
+   forms read whole — what sets it off and the roll that resists, the
+   bout, the Bedlam weakness in its own red band — parted by a line with
+   the *turn* on it, the spiral, which twists half a turn when the depth
+   changes, the other form dimmed; a click on the turn, on the dimmed
+   form, or a second click on the chosen row turns it, the mild form live
+   by default. Depth is shown in the type alone: both names in the ink,
+   the mild light, the severe heavy and leaning. How a held one is held
+   (its hold) is not read on the sheet; the table tracks it. One button at the corner: *Derange* takes the
    live form, *Compose* — Resolve + Composure being what resists a
    derangement — puts a held one down.
 3. **The player marks it**, through `markSheet`: `derangement: { name,

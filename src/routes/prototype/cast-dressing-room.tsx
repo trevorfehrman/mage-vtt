@@ -374,7 +374,6 @@ const RIG_SCENE = SceneId.make("rig-scene")
 
 function DressingRoom() {
   const { rung, seat, wisdom } = Route.useSearch()
-  const casterNow = arctusSheet
   // MAG-52: the sheet's tool switch flips a local copy (no server here).
   const [toolInHand, setToolInHand] = useState(false)
   // MAG-56: the Wisdom knob rides the shown sheet too, so the meter and the
@@ -460,7 +459,7 @@ function DressingRoom() {
     containment: async (draftContainedSuccesses: number) =>
       setDrafted((prev) => ({ ...prev, [rung]: { ...prev[rung], draftContainedSuccesses } })),
   }
-  const mySheet = seat === "caster" ? casterNow : null
+  const mySheet = seat === "caster" ? arctusSheet : null
 
   const PEOPLE = [
     { id: CASTER, name: "The Little Bear" },
@@ -534,7 +533,7 @@ function DressingRoom() {
       mySheet={mySheet}
       // Every seat watches the caster's cockpit (note 14) — the rig hands
       // all three the same Arctus track.
-      casterSheet={casterNow}
+      casterSheet={arctusSheet}
       adjust={adjust}
       drafts={drafts}
     />
@@ -570,7 +569,6 @@ function DressingRoom() {
 
   return (
     <>
-      <div className="contents">
       <SessionLayout
         sessionName="The Dressing Room"
         inviteCode="PROTO-96"
@@ -631,7 +629,6 @@ function DressingRoom() {
         }
         onClearPool={pool.reset}
       />
-      </div>
 
       {/* The knobs — deliberately foreign to the mv language so nobody
           mistakes them for the design under audition. */}

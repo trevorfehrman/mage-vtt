@@ -1,12 +1,12 @@
 import { Option } from "effect"
 import { isBedlamHold, type HeldDerangement } from "#/domain/derangements"
 
-// The zone's pure look rules (MAG-60), kept out of the component so they can
+// The accordion's pure look rules (MAG-60), kept out of the component so they can
 // be tested flat (ADR-0014/0019): the order the standing derangements stand
 // in, and the clock's few words.
 
-/** The zone's order: the lasting ones first, then the Bedlam ones, each in the order they were marked. */
-export const shelfOrder = (standing: ReadonlyArray<HeldDerangement>): ReadonlyArray<HeldDerangement> => [
+/** The accordion's order: the lasting ones first, then the Bedlam ones, each in the order they were marked. */
+export const chipOrder = (standing: ReadonlyArray<HeldDerangement>): ReadonlyArray<HeldDerangement> => [
   ...standing.filter((d) => !isBedlamHold(d.hold)),
   ...standing.filter((d) => isBedlamHold(d.hold)),
 ]
@@ -14,7 +14,7 @@ export const shelfOrder = (standing: ReadonlyArray<HeldDerangement>): ReadonlyAr
 /**
  * Time left in the fewest words: "40m" under an hour, "3h" under two days,
  * "5d" beyond — hours and days to the nearest, so a clock just stamped for
- * 24 hours says 24h, not 25h. None means the clock has run out (the shelf
+ * 24 hours says 24h, not 25h. None means the clock has run out (the accordion
  * won't show it).
  */
 export const clockWords = (expiresAt: number, at: number): Option.Option<string> => {

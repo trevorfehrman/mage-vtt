@@ -21,7 +21,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "#/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#/components/ui/tooltip"
 import { DerangementGlyph } from "./DerangementGlyph"
 import { ParadoxGlyph } from "./ParadoxGlyph"
-import { clockWords, shelfOrder } from "./derangement-shelf-look"
+import { clockWords, chipOrder } from "./derangement-accordion-look"
 
 /**
  * The Derangements accordion (MAG-60; owner 2026-10-28, after the zone:
@@ -66,6 +66,8 @@ import { clockWords, shelfOrder } from "./derangement-shelf-look"
  */
 
 const OPEN = "420ms cubic-bezier(0.2, 0.8, 0.2, 1)"
+/** The spiral's half turn when the depth changes, on the line and in the chosen row alike. */
+const TURN = "transform 480ms cubic-bezier(0.2, 0.8, 0.2, 1)"
 /** The body's fixed height: enough for the longest pair read whole, the same for every pair. */
 const BODY = 464
 
@@ -100,7 +102,7 @@ export function DerangementAccordion({
   onMark?: ((mark: SheetMark) => void) | undefined
 }) {
   const at = useNow()
-  const standing = shelfOrder(
+  const standing = chipOrder(
     standingDerangements(held, { wisdom, sceneId: Option.fromUndefinedOr(activeSceneId), at }),
   )
   const [open, setOpen] = useState(false)
@@ -141,7 +143,6 @@ export function DerangementAccordion({
             {standing.length === 0 ? (
               <button
                 type="button"
-                disabled={!onMark}
                 onClick={() => setOpen((o) => !o)}
                 className="mv-key mv-derange-sentence text-left text-[12px] leading-none italic"
               >
@@ -255,8 +256,9 @@ function PairRow({
   onChoose: () => void
 }) {
   const heldInk = Option.map(held, (d) => inkOf(isBedlamHold(d.hold)))
+  // a held form in its hold's ink; every other name in the derangement's own
   const inkFor = (name: DerangementName) =>
-    Option.exists(held, (d) => d.name === name) ? Option.getOrElse(heldInk, () => "var(--derange)") : "var(--derange)"
+    Option.match(heldInk, { onNone: () => "var(--derange)", onSome: (ink) => (Option.exists(held, (d) => d.name === name) ? ink : "var(--derange)") })
   return (
     <button
       type="button"
@@ -279,7 +281,7 @@ function PairRow({
         className="grid place-items-center"
         style={{
           color: "var(--derange)",
-          transition: "transform 480ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+          transition: TURN,
           transform: chosen && depth === "severe" ? "rotate(180deg)" : "none",
         }}
       >
@@ -373,7 +375,7 @@ function Turn({ depth, onTurn }: { depth: DerangementSeverity; onTurn: (depth: D
     >
       <span
         className="grid place-items-center"
-        style={{ transition: "transform 480ms cubic-bezier(0.2, 0.8, 0.2, 1)", transform: toSevere ? "none" : "rotate(180deg)" }}
+        style={{ transition: TURN, transform: toSevere ? "none" : "rotate(180deg)" }}
       >
         <DerangementGlyph size={16} />
       </span>
@@ -398,7 +400,7 @@ function Form({ def, live, onLive }: { def: DerangementDef; live: boolean; onLiv
 
 /**
  * The full reading of one form, shared by the body and the chip's tooltip:
- * its name — written in the ink, or on it if severe — what sets
+ * its name — light if mild, heavy and leaning if severe — what sets
  * it off and the roll that resists, what it does, and its Bedlam weakness in
  * its own band. How it is held is the table's to track (owner, 2026-10-28).
  */
@@ -407,7 +409,7 @@ function Rules({ def, nameSize }: { def: DerangementDef; nameSize: number }) {
     <>
       <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <Name name={def.name} severity={def.severity} ink="var(--derange)" size={nameSize} />
-        {def.extreme && <span className="mv-eyebrow">· life-altering trauma to acquire, save by Bedlam</span>}
+        {def.extreme && <span className="mv-eyebrow">· life-altering trauma to acquire, except through Bedlam</span>}
       </span>
       <span className="mv-data text-[11px] leading-snug" style={{ color: "var(--dim)" }}>
         {def.trigger} · resist with {def.resist}
@@ -424,7 +426,9 @@ function Rules({ def, nameSize }: { def: DerangementDef; nameSize: number }) {
         }}
       >
         <span className="mv-eyebrow flex items-center gap-1.5" style={{ color: "var(--paradox)" }}>
-          <ParadoxGlyph size={10} ink="currentColor" title="" />
+          <span aria-hidden>
+            <ParadoxGlyph size={10} ink="currentColor" />
+          </span>
           Bedlam
         </span>
         <span className="text-[11.5px] leading-snug" style={{ color: "color-mix(in srgb, var(--ink) 88%, transparent)" }}>
@@ -451,24 +455,40 @@ function Chip({ held, at, onOpen }: { held: HeldDerangement; at: number; onOpen?
     Match.exhaustive,
   )
   const weight = bedlam ? [weaknessWords(def.bedlam), ...Option.toArray(clock)].filter((w) => w !== "").join(" · ") : ""
+  const body = (
+    <>
+      <Name name={held.name} severity={def.severity} ink={ink} size={13} />
+      {weight !== "" && (
+        <span className="mv-data text-[10px] leading-none" style={{ color: ink }}>
+          {weight}
+        </span>
+      )}
+    </>
+  )
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button
-          type="button"
-          disabled={!onOpen}
-          onClick={onOpen}
-          aria-label={`${held.name}, ${def.severity}: open the derangements`}
-          className="mv-key mv-derange-chip flex items-center gap-2 rounded-[3px] px-2 transition-[box-shadow,background-color]"
-          style={{ height: 24, ["--chip-ink" as string]: ink }}
-        >
-          <Name name={held.name} severity={def.severity} ink={ink} size={13} />
-          {weight !== "" && (
-            <span className="mv-data text-[10px] leading-none" style={{ color: ink }}>
-              {weight}
-            </span>
-          )}
-        </button>
+        {onOpen ? (
+          <button
+            type="button"
+            onClick={onOpen}
+            aria-label={`${held.name}, ${def.severity}: open the derangements`}
+            className="mv-key mv-derange-chip flex items-center gap-2 rounded-[3px] px-2 transition-[box-shadow,background-color]"
+            style={{ height: 24, ["--chip-ink" as string]: ink }}
+          >
+            {body}
+          </button>
+        ) : (
+          // read-only: a span, not a disabled button, so the tooltip still answers the pointer
+          <span
+            tabIndex={0}
+            aria-label={`${held.name}, ${def.severity}`}
+            className="mv-derange-chip flex items-center gap-2 rounded-[3px] px-2"
+            style={{ height: 24, ["--chip-ink" as string]: ink }}
+          >
+            {body}
+          </span>
+        )}
       </TooltipTrigger>
       <TooltipContent side="bottom" align="start" sideOffset={6} className="max-w-[46ch] px-3 py-2.5 text-pretty">
         <span className="grid gap-1.5 text-left">

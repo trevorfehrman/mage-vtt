@@ -89,7 +89,9 @@ export function WisdomMeter({
             aria-label={rank <= wisdom ? `Erase Wisdom dot ${rank}` : `Fill Wisdom dot ${rank}`}
             aria-pressed={rank <= wisdom}
             aria-disabled={Option.isNone(tapWisdomCell(wisdom, rank))}
-            className="block cursor-pointer rounded-[2px]"
+            // the gate says why (ADR-0021): the first dot cannot be erased, Wisdom has no 0
+            title={Option.isNone(tapWisdomCell(wisdom, rank)) ? "Wisdom has no 0" : undefined}
+            className={`block rounded-[2px] ${Option.isNone(tapWisdomCell(wisdom, rank)) ? "mv-refuse" : "cursor-pointer"}`}
             style={cellStyle(rank <= wisdom)}
           />
         ) : (

@@ -1,11 +1,11 @@
 import { Option } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import { SceneId } from "#/domain/ids"
-import { clockWords, shelfOrder } from "../derangement-shelf-look"
+import { clockWords, chipOrder } from "../derangement-accordion-look"
 
-describe("the derangement zone's look (MAG-60)", () => {
+describe("the derangement accordion's look (MAG-60)", () => {
   it("lasting ones stand first, then the Bedlam ones, each as marked", () => {
-    const names = shelfOrder([
+    const names = chipOrder([
       { name: "Depression", hold: { _tag: "scene", sceneId: SceneId.make("s") } },
       { name: "Suspicion", hold: { _tag: "lasting" } },
       { name: "Anxiety", hold: { _tag: "until", expiresAt: 5 } },

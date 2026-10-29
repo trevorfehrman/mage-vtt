@@ -98,12 +98,13 @@ expiry stamped from the Wisdom table). Whether it stands is derived against
 the moment, never cleaned up. It is drawn in the **Derangements
 accordion** beneath the title card's title row: the heading is the opener,
 beneath it the held ones as small **chips** (the name in serif, in its
-hold's ink — the wound's bruise for a lasting one, Paradox red for a
-Bedlam's — the full reading in a tooltip) or the sentence "You are not
-deranged."; folded beneath, the nine pairs as rows ("Depression /
-Melancholia") beside the chosen pair's two forms read whole, parted by the
-**turn** — a half-lit disc on the line, lit toward the live form — and the
-one button at the corner: **Derange** takes the live form, **Compose** puts
+hold's ink — the derangement's own absinthe `--derange` for a lasting one,
+Paradox red for a Bedlam's — the full reading in a tooltip) or the sentence
+"You are not deranged."; folded beneath, the nine pairs as rows ("Depression
+⌾ Melancholia", the spiral between) beside the chosen pair's two forms read
+whole, parted by the **turn** — the spiral on the line, twisting with the
+depth — the severe form's name heavy and leaning, the mild light, both in
+the ink; and the one button in the footer: **Derange** takes the live form, **Compose** puts
 it down (Resolve + Composure being what resists a derangement). The
 **player marks it** through `markSheet` by name — lasting from the sheet;
 `bedlam` is the door the cast card will pass later — and puts it down the

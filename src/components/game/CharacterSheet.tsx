@@ -71,8 +71,8 @@ interface CharacterSheetProps {
    * Present on your own sheet and, for the Storyteller, on anyone's; the
    * server's ladder decides and a refusal speaks at the mark. */
   onMarkSheet?: ((mark: SheetMark) => Promise<unknown>) | undefined
-  /** The Scene open now (MAG-60): a Bedlam derangement bound to it hangs
-   * under the Wisdom meter while it is the open one. Absent in downtime. */
+  /** The Scene open now (MAG-60): a Bedlam derangement bound to it stands
+   * in the Derangements accordion while it is the open one. Absent in downtime. */
   activeSceneId?: SceneId | undefined
 }
 
@@ -105,9 +105,6 @@ export function CharacterSheet({
     pool?.isComponentActive(type, name) ?? false
 
   const interactive = pool !== undefined
-  // MAG-60: the lost Wisdom cell a derangement badge (or its slot) is
-  // pointing at under the hover, lit on the meter above; and the open
-  // derangement list's context — closed, a dot, or Bedlam
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-6">

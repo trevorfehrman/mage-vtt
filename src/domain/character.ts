@@ -433,9 +433,9 @@ export class CharacterSheet extends Schema.Class<CharacterSheet>("CharacterSheet
   // full. Capacity is shape — twice the Merit's dots — so the column is
   // only ever read clamped to it.
   destinyCurrent: Schema.optionalKey(Destiny),
-  // Derangements held (MAG-60): each hung from what caused it — a lost
-  // Wisdom dot, a Scene, a clock. Absent means none. Whether one still
-  // stands is read against the moment, never cleaned up.
+  // Derangements held (MAG-60): each hung from what caused it — lasting,
+  // a Scene, a clock. Absent means none. Whether one still stands is read
+  // against the moment, never cleaned up.
   derangements: Schema.optionalKey(Schema.Array(HeldDerangement)),
   // The record's words (MAG-61): the nimbus sentence, the Legacy, the cabal
   // and consilium names. None change a roll; all absent until written.

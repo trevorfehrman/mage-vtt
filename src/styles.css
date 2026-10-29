@@ -56,13 +56,13 @@
   --paradox: #e34b4b;
   --scorch: #000; /* the Paradox die's center: burned through the felt, opaque, blacker than the void */
   --mana: #6f93ae; /* Mana's identity blue — verdigris's own recipe, hue-turned to water */
-  --will: #ab8ee6;
+  --will: #ab8ee6; /* Willpower's identity — amethyst; brighter than the other inks because a violet tint sinks into the void faster than verdigris does */
   /* The derangement's ink (MAG-60; owner 2026-10-28: "what can we do as a
    * different color for derangements" — red is Paradox's, the ember is the
    * hand's, blue Mana's, violet Will's, verdigris the world's): absinthe —
    * the sick green of the wormwood glass, madness's old color, hue-turned
    * well off verdigris's teal. Chosen 2026-10-28 ("absinthe is perfect"). */
-  --derange: #aebb4d; /* Willpower's identity — amethyst; brighter than the other inks because a violet tint sinks into the void faster than verdigris does */
+  --derange: #aebb4d;
   /* Filled tide-chip text (pass 3, note 6): the owner's explicit call is
    * white on the tide's own ground. That runs ~2.5:1 against accent/ember —
    * a standing exception to ADR-0021's 4.5 floor, flagged for the owner's
