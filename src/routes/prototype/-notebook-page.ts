@@ -91,14 +91,19 @@ export const snapPoint = (x: number, y: number): { x: number; y: number } => ({ 
 
 /** Eight cells wide. */
 export const NOTE_W = GRID * 8
-/** Two cells tall; three when the words wrap to a second line. */
+/** Two cells tall; one more for each line the words wrap to, up to three lines. */
 export const NOTE_H = GRID * 2
-export const NOTE_H_TALL = GRID * 3
+export const MAX_LINES = 3
 /** The spine: the tinted column at the left that holds the symbol. */
 export const SPINE_W = 24
 /** The value's cell: a square at the right, centered on the row. */
 export const CELL = 26
-export const noteHeight = (lines: number): number => (lines > 1 ? NOTE_H_TALL : NOTE_H)
+export const noteHeight = (lines: number): number => NOTE_H + GRID * (Math.min(MAX_LINES, Math.max(1, lines)) - 1)
+/** A note that would hang past the page's edge is nudged back onto the lattice inside it. */
+export const within = (p: { x: number; y: number }, h: number, pageW: number, pageH: number): { x: number; y: number } => ({
+  x: Math.max(ORIGIN, Math.min(p.x, snap(pageW - ORIGIN - NOTE_W))),
+  y: Math.max(ORIGIN, Math.min(p.y, snap(pageH - ORIGIN - h))),
+})
 
 /** Whether the kind carries a value beside its words. */
 export const takesValue = (kind: NoteKind): boolean =>
@@ -173,6 +178,12 @@ export const moveMany = (page: Page, moves: ReadonlyArray<Move>, shifts: Readonl
     }),
   ),
 })
+/** A picked note rises above the rest: the page keeps the order it draws in. */
+export const raise = (page: Page, id: string): Page =>
+  Option.match(Arr.findFirst(page.notes, (n) => n.id === id), {
+    onNone: () => page,
+    onSome: (n) => (page.notes[page.notes.length - 1] === n ? page : { ...page, notes: [...page.notes.filter((m) => m.id !== id), n] }),
+  })
 export const retitle = (page: Page, id: string, title: string): Page => edit(page, [id], (n) => ({ ...n, title }))
 export const revalue = (page: Page, id: string, number: string): Page => edit(page, [id], (n) => ({ ...n, number }))
 /** Swap the kind of every picked note; a value the new kind cannot carry is dropped. */

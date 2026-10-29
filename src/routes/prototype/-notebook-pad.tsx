@@ -26,11 +26,13 @@ import {
   GRID_TICK_EVERY,
   KINDS,
   kindLook,
+  MAX_LINES,
   moveMany,
   NOTE_W,
   noteHeight,
   ORIGIN,
   placeAt,
+  raise,
   redo,
   rekind,
   removeMany,
@@ -43,6 +45,7 @@ import {
   toggleGroup,
   undo,
   withGroups,
+  within,
   type Box,
   type History,
   type Ink,
@@ -54,7 +57,8 @@ import {
   type Tool,
 } from "./-notebook-page"
 
-type Editing = { readonly id: string; readonly focus: "title" | "number" }
+/** The note being written, and the words as they stand mid-edit, so the row grows while the hand is still moving. */
+type Editing = { readonly id: string; readonly focus: "title" | "number"; readonly draft: string }
 /** A drag in flight: everything moving, and where each node began. */
 type Drag = { readonly ids: ReadonlyArray<string>; readonly origin: Record<string, { x: number; y: number }> }
 
@@ -143,10 +147,10 @@ const OBRIMOS_BINDI = "M11 6.8 A1 1 0 1 0 13 6.8 A1 1 0 1 0 11 6.8 Z"
 const titleWidth = (n: Note): number => NOTE_W - SPINE_W - PAD * 2 - (takesValue(n.kind) ? CELL + PAD : 0)
 /** Konva measures text as it draws, so one offstage Text measures how many lines a title takes. */
 const measurer = new Konva.Text({ fontSize: HAND, lineHeight: LEAD, wrap: "word" })
-const linesOf = (n: Note, font: string): number => {
-  if (n.kind === "blank" || n.title === "") return 1
-  measurer.setAttrs({ text: n.title, width: titleWidth(n), fontFamily: font })
-  return Math.min(2, Math.max(1, Math.round(measurer.height() / (HAND * LEAD))))
+const linesOf = (n: Note, title: string, font: string): number => {
+  if (title === "") return 1
+  measurer.setAttrs({ text: title, width: titleWidth(n), fontFamily: font })
+  return Math.max(1, Math.round(measurer.height() / (HAND * LEAD)))
 }
 
 export function NotebookPad({
@@ -205,10 +209,19 @@ export function NotebookPad({
   }, [font])
 
   const set = (next: Page) => onHistory(commit(history, next))
+  /** A change the history need not remember (the draw order). */
+  const replace = (next: Page) => {
+    if (next !== page) onHistory({ ...history, present: next })
+  }
   const noteById = (id: string): Option.Option<Note> => Option.fromNullishOr(page.notes.find((n) => n.id === id))
   const pickedNotes = page.notes.filter((n) => picked.includes(n.id))
   const nodeOf = (id: string): Option.Option<Konva.Node> => Option.fromNullishOr(stageRef.current?.findOne(`#${id}`))
-  const heightOf = (n: Note): number => noteHeight(linesOf(n, font))
+  /** The row's height: from its words, or from the draft while they are being written. */
+  const wordsOf = (n: Note): string => Option.match(editing, { onNone: () => n.title, onSome: (ed) => (ed.id === n.id ? ed.draft : n.title) })
+  const linesIn = (n: Note): number => Math.min(MAX_LINES, linesOf(n, wordsOf(n), font))
+  const heightOf = (n: Note): number => noteHeight(linesIn(n))
+  /** Where the row sits: its place on the page, nudged up live if its growth would hang it past the foot. */
+  const seatOf = (n: Note): { x: number; y: number } => within({ x: n.x, y: n.y }, heightOf(n), width, height)
 
   const removePicked = () => {
     if (picked.length === 0) return
@@ -265,6 +278,7 @@ export function NotebookPad({
     const allIn = ids.every((x) => picked.includes(x))
     if (shift) onPicked(allIn ? picked.filter((p) => !ids.includes(p)) : [...picked, ...ids.filter((x) => !picked.includes(x))])
     else if (!allIn) onPicked(ids)
+    if (!shift) replace(raise(page, id))
     if (!Option.contains(menu, id)) setMenu(Option.none())
   }
 
@@ -273,7 +287,7 @@ export function NotebookPad({
   const openEditor = (n: Note, focus: "title" | "number") => {
     onPicked([n.id])
     setMenu(Option.none())
-    setEditing(Option.some({ id: n.id, focus }))
+    setEditing(Option.some({ id: n.id, focus, draft: n.title }))
   }
   const closeEditor = (keep: boolean) =>
     Option.map(editing, (ed) => {
@@ -282,7 +296,11 @@ export function NotebookPad({
         const title = keep ? (titleRef.current?.value ?? n.title) : n.title
         const number = keep ? (valueRef.current?.value ?? n.number) : n.number
         const emptyBlank = title.trim() === "" && n.kind === "blank"
-        set(emptyBlank ? removeMany(page, [ed.id]) : revalue(retitle(page, ed.id, title.trim()), ed.id, number.trim()))
+        // a row that grew past the page's foot is nudged up onto the lattice to fit
+        const grown = noteHeight(linesOf(n, title.trim(), font))
+        const seat = within({ x: n.x, y: n.y }, grown, width, height)
+        const written = revalue(retitle(page, ed.id, title.trim()), ed.id, number.trim())
+        set(emptyBlank ? removeMany(page, [ed.id]) : seat.y === n.y && seat.x === n.x ? written : moveMany(written, [{ id: ed.id, ...seat }], []))
         if (emptyBlank) onPicked([])
       })
       setEditing(Option.none())
@@ -451,8 +469,9 @@ export function NotebookPad({
         shifts.push({ id: x, dx, dy })
         continue
       }
+      const note = page.notes.find((n) => n.id === x)
       Option.map(x === id ? Option.some(node) : nodeOf(x), (target) => {
-        const p = snapPoint(target.x(), target.y())
+        const p = within(snapPoint(target.x(), target.y()), note === undefined ? 0 : heightOf(note), width, height)
         moves.push({ id: x, x: p.x, y: p.y })
         landing += 1
         target.to({
@@ -469,14 +488,19 @@ export function NotebookPad({
     }
     if (landing === 0) land()
   }
-  /** A note that has just appeared lands: a short drift down onto its place. */
+  /**
+   * A note that has just appeared lands: a short drift down onto its place.
+   * The drift rides on the node's offset, never its position — position is
+   * React's, and a tween that wrote it back late would pin the note where it
+   * first appeared (a row nudged up from the foot while it was being written
+   * stayed put, 2026-10-29).
+   */
   const arrive = (node: Konva.Group | null) => {
     if (node === null || node.getAttr("landed") === true) return
     node.setAttr("landed", true)
-    const y = node.y()
     node.opacity(0)
-    node.y(y - 5)
-    node.to({ opacity: 1, y, duration: 0.18, easing: Konva.Easings.EaseOut })
+    node.offsetY(5)
+    node.to({ opacity: 1, offsetY: 0, duration: 0.18, easing: Konva.Easings.EaseOut })
   }
 
   const drawing = tool === "pen"
@@ -536,21 +560,23 @@ export function NotebookPad({
             const tw = titleWidth(n)
             const cellX = NOTE_W - PAD - CELL
             const cellY = (h - CELL) / 2
+            const seat = seatOf(n)
+            const lineBox = linesIn(n) * HAND * LEAD
             return (
               <Group
                 key={n.id}
                 id={n.id}
                 ref={arrive}
-                x={n.x}
-                y={n.y}
+                x={seat.x}
+                y={seat.y}
                 draggable={!drawing}
                 onMouseDown={(e) => pick(n.id, e.evt.shiftKey)}
                 onDragStart={() => onDragStart(n.id)}
                 onDragMove={(e) => onDragMove(n.id, e.target)}
                 onDragEnd={(e) => onDragEnd(n.id, e.target)}
               >
-                {/* the row: a plate, a crisp border in the kind's ink */}
-                <Rect x={0} y={0} width={NOTE_W} height={h} fill={INK} opacity={0.03} cornerRadius={3} />
+                {/* the row: a solid plate a hair above the page, shadowed so rows stack, a crisp border in the kind's ink */}
+                <Rect x={0} y={0} width={NOTE_W} height={h} fill="#121118" cornerRadius={3} shadowColor="#000" shadowBlur={8} shadowOffsetY={2} shadowOpacity={0.5} />
                 <Rect
                   x={0.5}
                   y={0.5}
@@ -587,10 +613,10 @@ export function NotebookPad({
                   {!isEditing && (
                     <Text
                       x={SPINE_W + PAD}
-                      y={blank ? 0 : 19}
+                      y={blank ? (h - lineBox) / 2 : 19}
                       width={tw}
-                      height={blank ? h : h - 19 - 5}
-                      verticalAlign={blank ? "middle" : "top"}
+                      height={blank ? lineBox : h - 19 - 5}
+                      verticalAlign="top"
                       text={blank && n.title === "" ? "write…" : n.title}
                       fontFamily={font}
                       fontSize={HAND}
@@ -686,6 +712,8 @@ export function NotebookPad({
           const valued = takesValue(n.kind)
           const tw = titleWidth(n)
           const look = kindLook(n.kind)
+          const seat = seatOf(n)
+          const lineBox = linesIn(n) * HAND * LEAD
           const field = {
             pointerEvents: "auto" as const,
             fontFamily: font,
@@ -699,7 +727,7 @@ export function NotebookPad({
           return (
             <div
               ref={editorRef}
-              style={{ position: "absolute", left: n.x, top: n.y, width: NOTE_W, height: h, pointerEvents: "none" }}
+              style={{ position: "absolute", left: seat.x, top: seat.y, width: NOTE_W, height: h, pointerEvents: "none" }}
               onPointerDown={onEditorPointerDown}
               onPointerMove={onEditorPointerMove}
             >
@@ -711,12 +739,13 @@ export function NotebookPad({
                 onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
                 onBlur={onEditorBlur}
                 onKeyDown={onEditorKey}
-                rows={blank ? 1 : 2}
+                onChange={(e) => setEditing(Option.some({ ...ed, draft: e.currentTarget.value }))}
+                rows={linesIn(n)}
                 style={{
                   ...field,
                   position: "absolute",
                   left: SPINE_W + PAD,
-                  top: blank ? (h - HAND * LEAD) / 2 : 19,
+                  top: blank ? (h - lineBox) / 2 : 19,
                   width: tw,
                   fontSize: HAND,
                   lineHeight: LEAD,
@@ -758,7 +787,7 @@ export function NotebookPad({
         onNone: () => null,
         onSome: (n) => (
           <KindList
-            note={n}
+            note={{ ...n, ...seatOf(n) }}
             noteH={heightOf(n)}
             padHeight={height}
             onPick={(k) => {
