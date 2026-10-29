@@ -406,6 +406,82 @@ person on one screen. Contrast a **Draft**, which is a durable server document
 (a Cast in the wings) that other actors can already see and act on.
 _Avoid_: Draft for unsent client state — Draft is taken by the Cast ladder.
 
+### The notebook
+
+**Notebook**:
+The mage's own pages on the Character Sheet (MAG-75, ADR-0027): a status
+space for the standing spells, wards, boosts, conditions, marks and scene
+tags a player used to keep on scratch paper — "a mini whiteboard that's
+personal to the mage ... their second brain. quick, clear, revisable." Nine
+pages, always. Read by no rule: nothing in the pool, the Cast ladder or the
+feed looks at it. Every member reads it; the hand that drives the sheet
+writes it.
+_Avoid_: Whiteboard, status board, standing-spell tracker.
+
+**Book**:
+The notebook as held: its nine Pages, the page open under the hand, and the
+page the ribbon marks. The open page is the hand's and is never stored.
+
+**Page**:
+One page of the Book: its Notes, its Ink, its Shapes, and one draw order
+over the notes and shapes (ink always draws over). The unit the server
+stores and a commit point writes.
+
+**Note**:
+A ledger row on a Page, squared to the lattice: a Kind in its spine, its
+words, and — when the kind carries one — its value in a cell at the right.
+The atom: no lists, boxes or rich text inside it.
+_Avoid_: Card, sticky, stamp (a stamp was the one-click button of the triage
+sketch; the note is what it would have placed).
+
+**Kind** (of a Note):
+What a note is, from the closed list — note, spell, armor, boost, condition,
+mark, scene — each with its sigil and its ink. Armor, boost, condition and
+mark carry a value; spell, scene and a plain note do not.
+_Avoid_: Category, type, tag.
+
+**Ink**:
+A quill stroke: the pointer's points with their pressure, in one of the six
+kind inks. Picked, moved and grouped like a note; never snapped.
+
+**Shape**:
+A rectangle or an ellipse in a kind ink, filled none, hatch or wash —
+freeform, nothing about it snaps. Under or over notes in the page's one
+draw order.
+
+**Group**:
+Notes, ink and shapes bound to move as one; picking one picks the rest.
+
+**The lattice**:
+The dot ruling every note's corner lands on (a pitch of 24px, half a pitch
+in from the page's edge). Notes snap to it; ink and shapes do not.
+_Avoid_: Grid.
+
+**The wheel**:
+The footer under the page: the page numbers in a row, the one in hand at
+the middle, dragged, flicked, notched or keyed through — built as the Merit
+keyring's ring is. The page above shows one page only, swinging in on its
+spine when the page in hand changes.
+_Avoid_: Pagination, pager.
+
+**The ribbon**:
+The bookmark hanging from the page's foot over one page's number — a memory
+tool only; dragged along the numbers to mark another page, tapped to turn
+there. Stored, unlike the open page.
+
+**The thin book**:
+The Book read by one Kind (a tab held out at the page's right edge) or by a
+word (⌘F): pages holding none fall out, the other notes hide on the pages
+that stay, positions untouched, and the wheel runs over what is left. The
+same book — nothing is generated, nothing is read-only.
+_Avoid_: Filter, index page.
+
+**Commit point**:
+An edit the notebook's history remembers (a note placed, a stroke laid, a
+move settled) — as against the turns of the page and the ribbon's moves,
+which it does not. The write points: the Pages that changed go to the
+server whole; undo and redo stay in the hand.
+
 ### The feed
 
 **Activity**:
