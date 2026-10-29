@@ -39,7 +39,7 @@ import {
   MIN_H,
   MIN_W,
   moveMany,
-  noteHeight,
+  NOTE_H,
   ORIGIN,
   placeAt,
   raise,
@@ -89,11 +89,12 @@ const PLATE = "#121118"
 const HAND = 18
 const LEAD = 1.1
 const PAD = 10
-/** The header line: the symbol's top, the kind's word's cap top and the value cell's top edge all sit on this y. */
-const HEAD_TOP = 9
-/** Where the words hang from: beneath the header line on a kind's row, a little in on a plain row. */
-const WORDS_TOP_KIND = 24
-const WORDS_TOP_BLANK = 14
+/** Where the words hang from; the symbol and the value's cell center on the first line of them. */
+const WORDS_TOP = 14
+const LINE_MID = WORDS_TOP + (HAND * LEAD) / 2
+const CELL_TOP = LINE_MID - CELL / 2
+/** A row's height for its lines: what the words need, rounded up to whole cells, never under two. */
+const rowHeight = (lines: number): number => Math.max(NOTE_H, Math.ceil((WORDS_TOP + lines * HAND * LEAD + 6) / GRID) * GRID)
 /** The grip's reach from the row's corner, and the fade's depth at a scrolling row's foot. */
 const GRIP = 10
 const FADE = 28
@@ -264,7 +265,7 @@ export function NotebookPad({
     sizeOf(n).h > 0 || Option.exists(editing, (ed) => ed.id === n.id) ? linesAll(n) : Math.min(MAX_LINES, linesAll(n))
   const heightOf = (n: Note): number => {
     const s = sizeOf(n)
-    return s.h > 0 ? s.h : Math.min(noteHeight(linesIn(n)), room)
+    return s.h > 0 ? s.h : Math.min(rowHeight(linesIn(n)), room)
   }
   /** Where the row sits: its place on the page, nudged up live if its growth would hang it past the foot. */
   const seatOf = (n: Note): { x: number; y: number } => within({ x: n.x, y: n.y }, sizeOf(n).w, heightOf(n), width, height)
@@ -345,7 +346,7 @@ export function NotebookPad({
         // a row written past the cap keeps its height as a sized row, so nothing written is hidden without a
         // scroll; a row that grew past the page's foot is nudged up onto the lattice to fit
         const lines = linesOf(title.trim(), titleWidth(n.kind, n.w), font)
-        const grown = n.h > 0 ? n.h : lines > MAX_LINES ? Math.min(noteHeight(lines), room) : noteHeight(lines)
+        const grown = n.h > 0 ? n.h : lines > MAX_LINES ? Math.min(rowHeight(lines), room) : rowHeight(lines)
         const seat = within({ x: n.x, y: n.y }, n.w, grown, width, height)
         const titled = revalue(retitle(page, ed.id, title.trim()), ed.id, number.trim())
         const written = n.h === 0 && lines > MAX_LINES ? resize(titled, ed.id, n.w, grown) : titled
@@ -367,7 +368,11 @@ export function NotebookPad({
       e.preventDefault()
       closeEditor(true)
     }
-    if (e.key === "Escape") closeEditor(false)
+    // Escape shuts an open list first, and only then abandons the edit
+    if (e.key === "Escape") {
+      if (Option.isSome(menu)) setMenu(Option.none())
+      else closeEditor(false)
+    }
   }
   // a press inside the editor that travels becomes a drag of the note: the
   // edit commits, Konva is told where the pointer is, and the note's group
@@ -640,12 +645,12 @@ export function NotebookPad({
             const valued = takesValue(n.kind)
             const tw = titleWidth(n.kind, w)
             const cellX = w - PAD - CELL
-            const cellY = HEAD_TOP
+            const cellY = CELL_TOP
             const seat = seatOf(n)
             const lines = linesIn(n)
             const lineBox = lines * HAND * LEAD
             // the words hang from a fixed top, so a new line never moves the lines already written
-            const wordsTop = blank ? WORDS_TOP_BLANK : WORDS_TOP_KIND
+            const wordsTop = WORDS_TOP
             const clipH = h - wordsTop - 6
             const over = Math.max(0, lineBox - clipH)
             const sc = clamp(scroll[n.id] ?? 0, 0, over)
@@ -677,13 +682,18 @@ export function NotebookPad({
                   opacity={isSel ? 1 : blank ? 0.3 : 0.55}
                   listening={false}
                 />
-                {/* the spine: the symbol's seat; click it and the kinds list opens */}
-                <Group onClick={() => setMenu(Option.contains(menu, n.id) ? Option.none() : Option.some(n.id))}>
+                {/* the spine: the symbol's seat; click it and the kinds list opens — over an open editor too, whose focus a press here leaves alone */}
+                <Group
+                  onMouseDown={(e) => {
+                    if (isEditing) e.evt.preventDefault()
+                  }}
+                  onClick={() => setMenu(Option.contains(menu, n.id) ? Option.none() : Option.some(n.id))}
+                >
                   <Rect x={0.5} y={0.5} width={SPINE_W} height={h - 1} fill={look.tint} opacity={blank ? 0.04 : 0.1} cornerRadius={[3, 0, 0, 3]} />
                   <Line points={[SPINE_W + 0.5, 1, SPINE_W + 0.5, h - 1]} stroke={look.tint} strokeWidth={1} opacity={blank ? 0.2 : 0.4} />
                   <Path
                     x={SPINE_W / 2 - 8}
-                    y={blank ? Math.min(h / 2, 24) - 8 : HEAD_TOP - look.top}
+                    y={Math.min(h / 2, LINE_MID) - 8}
                     data={look.glyph}
                     stroke={look.tint}
                     strokeWidth={1.3}
@@ -693,7 +703,7 @@ export function NotebookPad({
                     {...(blank ? { dash: [2, 2.5] } : {})}
                   />
                 </Group>
-                {/* the words: the kind's word above, the title beneath, one left edge; click to write; a sized row's words scroll under the wheel and fade at the foot while there is more */}
+                {/* the words: double-click to write; a sized row's words scroll under the wheel and fade at the foot while there is more */}
                 <Group
                   onDblClick={() => openEditor(n, "title")}
                   onWheel={(e) => {
@@ -703,9 +713,6 @@ export function NotebookPad({
                   }}
                 >
                   <Rect x={SPINE_W + 1} y={0} width={tw + PAD * 2 - 1} height={h} fill={INK} opacity={0.001} />
-                  {!blank && (
-                    <Text x={SPINE_W + PAD} y={HEAD_TOP - 1} text={look.word.toUpperCase()} fontFamily="JetBrains Mono" fontSize={9} letterSpacing={1.6} fill={look.tint} listening={false} />
-                  )}
                   {!isEditing && (
                     <Group clipX={SPINE_W + 1} clipY={wordsTop} clipWidth={tw + PAD * 2 - 1} clipHeight={sized ? clipH : h - wordsTop} listening={false}>
                       <Text
@@ -749,7 +756,7 @@ export function NotebookPad({
                     />
                   )}
                 </Group>
-                {/* the value's cell: a square on the row's first line; faint and dashed until a value is written; click to write */}
+                {/* the value's cell: a square centered on the first line of words; faint and dashed until a value is written; click to write */}
                 {valued && (
                   <Group onClick={(e) => !e.evt.shiftKey && openEditor(n, "number")}>
                     <Rect
@@ -838,13 +845,12 @@ export function NotebookPad({
           const { w } = sizeOf(n)
           const h = heightOf(n)
           const sized = sizeOf(n).h > 0
-          const blank = n.kind === "blank"
           const valued = takesValue(n.kind)
           const tw = titleWidth(n.kind, w)
           const look = kindLook(n.kind)
           const seat = seatOf(n)
           const lines = linesIn(n)
-          const wordsTop = blank ? WORDS_TOP_BLANK : WORDS_TOP_KIND
+          const wordsTop = WORDS_TOP
           const field = {
             pointerEvents: "auto" as const,
             fontFamily: font,
@@ -915,7 +921,7 @@ export function NotebookPad({
                     ...field,
                     position: "absolute",
                     left: w - PAD - CELL,
-                    top: HEAD_TOP,
+                    top: CELL_TOP,
                     width: CELL,
                     height: CELL,
                     textAlign: "center",
