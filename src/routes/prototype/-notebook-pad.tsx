@@ -1121,9 +1121,10 @@ export function NotebookPad({
     const by = Math.min(h.y0, h.y1)
     const bw = Math.abs(h.x1 - h.x0)
     const bh = Math.abs(h.y1 - h.y0)
-    // Konva's hit canvas fills every shape unless told not to: an unfilled box lets a click through to what is beneath it
+    // Konva's hit canvas fills every shape unless told not to: an unfilled box lets a click through to what is beneath it —
+    // until it is picked, when its inside is a handle too (owner, 2026-10-29: "should i be able to drag a selected shape with no fill from the inside")
     const filling = Match.value(h.fill).pipe(
-      Match.when("none", () => ({ fillEnabled: false })),
+      Match.when("none", () => ({ fillEnabled: isSel })),
       Match.when("wash", () => ({ fill: washOf(h.color, 0.12) })),
       Match.when("hatch", () => ({
         fillPatternImage: hatchTile(h.color) as unknown as HTMLImageElement /* Konva draws any CanvasImageSource; its type names only an image */,
