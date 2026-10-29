@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent } fro
 import { Match, Option } from "effect"
 import { Group, Layer, Line, Rect, Stage, Text } from "react-konva"
 import type Konva from "konva"
+import { getStroke } from "perfect-freehand"
 import {
   addInk,
   commit,
@@ -36,6 +37,16 @@ type Picked = { readonly kind: "note"; readonly id: string } | { readonly kind: 
 type Editing = { readonly id: string; readonly x: number; readonly y: number; readonly w: number; readonly text: string }
 
 const BLANK = STAMPS[STAMPS.length - 1]!
+
+/** The pen's character (perfect-freehand): a nib that thins with speed or pressure, smoothed, tapered at both ends. */
+const PEN = { size: 5, thinning: 0.65, smoothing: 0.55, streamline: 0.5, start: { taper: 24 }, end: { taper: 32 } }
+
+/** The stroke's outline as Konva's flat point list, from the triples the page stores. */
+const outlineOf = (ink: Ink, live: boolean): number[] => {
+  const triples: Array<[number, number, number]> = []
+  for (let i = 0; i + 2 < ink.points.length; i += 3) triples.push([ink.points[i]!, ink.points[i + 1]!, ink.points[i + 2]!])
+  return getStroke(triples, { ...PEN, simulatePressure: !ink.pressured, last: !live }).flat()
+}
 
 export function NotebookPad({
   font,
@@ -117,12 +128,15 @@ export function NotebookPad({
 
   const pointer = (): Option.Option<{ x: number; y: number }> =>
     Option.fromNullishOr(stageRef.current?.getPointerPosition())
+  /** The pen's pressure when the device reports one; a mouse says 0.5 and we say so. */
+  const pressureOf = (evt: Event): { p: number; real: boolean } =>
+    evt instanceof PointerEvent && evt.pointerType === "pen" ? { p: evt.pressure, real: true } : { p: 0.5, real: false }
 
   // the pointer on the bare page, by tool: select clears the pick, pen
   // begins a stroke; the text tool waits for the click (below), because the
   // mousedown's own default action moves focus to the pad and would blur an
   // editor opened this early
-  const onStageDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+  const onStageDown = (e: Konva.KonvaEventObject<PointerEvent>) => {
     const onPage = e.target === e.target.getStage()
     Match.value(tool).pipe(
       Match.when("select", () => {
@@ -131,7 +145,8 @@ export function NotebookPad({
       Match.when("text", () => undefined),
       Match.when("pen", () => {
         Option.map(pointer(), (p) => {
-          setStroke(Option.some({ id: `i${Date.now().toString(36)}`, points: [p.x, p.y], color: inkColor }))
+          const pr = pressureOf(e.evt)
+          setStroke(Option.some({ id: `i${Date.now().toString(36)}`, points: [p.x, p.y, pr.p], color: inkColor, pressured: pr.real }))
         })
       }),
       Match.exhaustive,
@@ -151,15 +166,16 @@ export function NotebookPad({
       }
     })
   }
-  const onStageMove = () => {
+  const onStageMove = (e: Konva.KonvaEventObject<PointerEvent>) => {
     if (tool !== "pen" || Option.isNone(stroke)) return
     Option.map(pointer(), (p) => {
-      setStroke(Option.some({ ...stroke.value, points: [...stroke.value.points, p.x, p.y] }))
+      const pr = pressureOf(e.evt)
+      setStroke(Option.some({ ...stroke.value, points: [...stroke.value.points, p.x, p.y, pr.p], pressured: stroke.value.pressured || pr.real }))
     })
   }
   const onStageUp = () => {
     if (Option.isNone(stroke)) return
-    if (stroke.value.points.length >= 4) set(addInk(page, stroke.value))
+    if (stroke.value.points.length >= 6) set(addInk(page, stroke.value))
     setStroke(Option.none())
   }
 
@@ -178,10 +194,10 @@ export function NotebookPad({
         ref={stageRef}
         width={width}
         height={height}
-        onMouseDown={onStageDown}
+        onPointerDown={onStageDown}
         onClick={onStageClick}
-        onMouseMove={onStageMove}
-        onMouseUp={onStageUp}
+        onPointerMove={onStageMove}
+        onPointerUp={onStageUp}
         onMouseLeave={onStageUp}
       >
         <Layer listening={!drawing}>
@@ -259,14 +275,14 @@ export function NotebookPad({
             return (
               <Line
                 key={s.id}
-                points={[...s.points]}
-                stroke={s.color}
-                strokeWidth={isSel ? 3 : 2}
-                opacity={isSel ? 1 : 0.9}
-                tension={0.4}
-                lineCap="round"
+                points={outlineOf(s, false)}
+                closed
+                fill={s.color}
+                opacity={isSel ? 1 : 0.92}
                 lineJoin="round"
-                hitStrokeWidth={14}
+                hitStrokeWidth={10}
+                stroke={isSel ? "#6fae97" : s.color}
+                strokeWidth={isSel ? 1 : 0.5}
                 {...(isSel ? { shadowColor: "#6fae97", shadowBlur: 6 } : {})}
                 onMouseDown={() => setPicked(Option.some({ kind: "ink", id: s.id }))}
               />
@@ -275,7 +291,7 @@ export function NotebookPad({
           {Option.match(stroke, {
             onNone: () => null,
             onSome: (s) => (
-              <Line points={[...s.points]} stroke={s.color} strokeWidth={2} opacity={0.9} tension={0.4} lineCap="round" lineJoin="round" listening={false} />
+              <Line points={outlineOf(s, true)} closed fill={s.color} opacity={0.92} lineJoin="round" listening={false} />
             ),
           })}
         </Layer>

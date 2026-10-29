@@ -25,11 +25,17 @@ export const Note = Schema.Struct({
 })
 export type Note = typeof Note.Type
 
-/** One pen stroke: the pointer's points, flattened [x0, y0, x1, y1, …]. */
+/**
+ * One pen stroke: the pointer's points with their pressure, flattened
+ * [x0, y0, p0, x1, y1, p1, …]. A mouse reports 0.5 for every point, so a
+ * stroke with no real pressure takes its weight from speed instead.
+ */
 export const Ink = Schema.Struct({
   id: Schema.String,
   points: Schema.Array(Schema.Number),
   color: Schema.String,
+  /** True when a pen reported pressure; false for a mouse or trackpad. */
+  pressured: Schema.Boolean,
 })
 export type Ink = typeof Ink.Type
 
