@@ -145,8 +145,8 @@ export const NOTE_H = GRID * 2
 export const MAX_LINES = 3
 /** The spine: the tinted column at the left that holds the symbol. */
 export const SPINE_W = 24
-/** The value's cell: a square at the right, on the row's header line with the kind's word and the symbol. */
-export const CELL = 22
+/** The value's cell: a square at the right, on the row's header line with the symbol — small enough that the header fits the row's first cell. */
+export const CELL = 18
 /** A note that would hang past the page's edge is nudged back onto the lattice inside it. */
 export const within = (p: { x: number; y: number }, w: number, h: number, pageW: number, pageH: number): { x: number; y: number } => ({
   x: Math.max(ORIGIN, Math.min(p.x, snap(pageW - ORIGIN - w))),

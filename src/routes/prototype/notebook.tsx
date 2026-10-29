@@ -30,13 +30,15 @@ import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router
 import { Eraser, Feather, Group, MousePointer2, Redo2, Undo2, Ungroup } from "lucide-react"
 import { Option, Schema } from "effect"
 import { Book, clearPage, commit, editOpen, EMPTY_BOOK, GRID, INKS, emptyHistory, isOneGroup, openPage, redo, seedBook, toggleGroup, undo, type History, type Tool } from "./-notebook-page"
-import type { Rule } from "./-notebook-pad"
+import type { Edge, Rule } from "./-notebook-pad"
 
 const Pad = lazy(() => import("./-notebook-pad").then((m) => ({ default: m.NotebookPad })))
 
 /** The hand: Kalam (owner, 2026-10-29: "kalam is the font"). */
 const HAND = "Kalam"
 const RULES = ["dots", "lines", "none"] as const
+const EDGES = ["rail", "stack"] as const
+const isEdge = (v: unknown): v is Edge => typeof v === "string" && (EDGES as ReadonlyArray<string>).includes(v)
 const GAPS = [0, 2, 3, 4] as const
 type Gap = (typeof GAPS)[number]
 const isGap = (v: unknown): v is Gap => typeof v === "number" && (GAPS as ReadonlyArray<number>).includes(v)
@@ -46,6 +48,7 @@ export const Route = createFileRoute("/prototype/notebook")({
   validateSearch: (search: Record<string, unknown>) => ({
     rule: isRule(search.rule) ? search.rule : ("dots" as Rule),
     gap: isGap(search.gap) ? search.gap : (3 as Gap),
+    edge: isEdge(search.edge) ? search.edge : ("rail" as Edge),
   }),
   component: Notebook,
 })
@@ -63,7 +66,7 @@ const storedBook = (): Book => {
 }
 
 function Notebook() {
-  const { rule, gap } = Route.useSearch()
+  const { rule, gap, edge } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const [history, setHistory] = useState<History<Book>>(() => emptyHistory(EMPTY_BOOK))
   const [loaded, setLoaded] = useState(false)
@@ -163,13 +166,13 @@ function Notebook() {
           <div style={{ marginLeft: -16, marginRight: -16, marginBottom: -16, borderTop: "1px solid var(--line)" }}>
             <ClientOnly fallback={<div style={{ width: WIDTH, height: HEIGHT }} />}>
               <Suspense fallback={<div style={{ width: WIDTH, height: HEIGHT }} />}>
-                {loaded && <Pad font={HAND} tool={tool} inkColor={ink} rule={rule} gap={gap} picked={picked} onPicked={setPicked} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />}
+                {loaded && <Pad font={HAND} tool={tool} inkColor={ink} rule={rule} gap={gap} edgeLook={edge} picked={picked} onPicked={setPicked} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />}
               </Suspense>
             </ClientOnly>
           </div>
         </div>
         <p className="mv-data" style={{ fontSize: 11, color: "var(--dim)" }}>
-          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · a picked row has a grip at its corner: drag it to resize, it snaps to the dots; a sized row scrolls under the wheel · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus · turn the page: drag or tap the stacked edges, swipe sideways, ← → · the book always has a blank page at the back
+          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · a picked row has a grip at its corner: drag it to resize, it snaps to the dots; a sized row scrolls under the wheel · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus · turn the page: the wheel, drag or tap the rails beside the page, ← → · the book always has a blank page at the back
         </p>
       </div>
 
@@ -182,6 +185,16 @@ function Notebook() {
             className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${r === rule ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"}`}
           >
             {r}
+          </button>
+        ))}
+        <span className="mx-1 h-3 w-px bg-zinc-400" />
+        {EDGES.map((e) => (
+          <button
+            key={e}
+            onClick={() => void navigate({ search: (s) => ({ ...s, edge: e }), replace: true })}
+            className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${e === edge ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"}`}
+          >
+            {e}
           </button>
         ))}
         <span className="mx-1 h-3 w-px bg-zinc-400" />

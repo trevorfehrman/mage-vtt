@@ -94,6 +94,10 @@ type Resizing = { readonly id: string; readonly w: number; readonly h: number }
 
 /** The ruling knob the route hands down. */
 export type Rule = "dots" | "lines" | "none"
+/** The page-edge knob: a stack of sheet edges (the first audition), or a bare rail (owner: the stack "read as too skeuomorphic"). */
+export type Edge = "rail" | "stack"
+/** Wheel events a row has already spent on its own words. */
+const spentByRow = new WeakSet<Event>()
 
 /** The pen's character (perfect-freehand): a nib that thins with speed or pressure, smoothed, tapered at both ends. */
 const PEN = { size: 5, thinning: 0.65, smoothing: 0.55, streamline: 0.5, start: { taper: 24 }, end: { taper: 32 } }
@@ -106,13 +110,22 @@ const PANEL = "#0e0d13"
 /** The stacked page edges beside the page: how far they reach, and how many show before they compress. */
 const EDGE_W = 22
 const EDGE_SHOWN = 12
+/** A trackpad stream's travel, in px, for one page. */
+const WHEEL_PAGE = 420
 /** The plate: a hair above the panel. */
 const PLATE = "#121118"
 const HAND = 18
 const LEAD = 1.1
 const PAD = 10
-/** Where the words hang from; the symbol and the value's cell center on the first line of them. */
-const WORDS_TOP = 14
+/**
+ * Where the words hang from; the symbol and the value's cell center on the
+ * first line of them. The whole header line lives in the row's first
+ * lattice cell, so a row laid one cell over another leaves the symbol,
+ * the first words and the value of the one beneath in view (owner,
+ * 2026-10-29: "the icons and values should be aligned and sized such that
+ * when notes overlay each other both are visible").
+ */
+const WORDS_TOP = 4
 const LINE_MID = WORDS_TOP + (HAND * LEAD) / 2
 const CELL_TOP = LINE_MID - CELL / 2
 /** A row's height for its lines: what the words need plus the gutter, rounded up to whole cells, never under two. */
@@ -214,6 +227,7 @@ export function NotebookPad({
   inkColor,
   rule,
   gap,
+  edgeLook,
   picked,
   onPicked,
   history,
@@ -227,6 +241,7 @@ export function NotebookPad({
   rule: Rule
   /** The gutter: px the plate is drawn inside its lattice box, on every side. */
   gap: number
+  edgeLook: Edge
   picked: ReadonlyArray<string>
   onPicked: (ids: ReadonlyArray<string>) => void
   history: History<Book>
@@ -766,17 +781,32 @@ export function NotebookPad({
     },
   })
 
-  // a sideways swipe on the page turns it directly (the OS supplies the momentum) and it snaps once the stream is quiet; up and down stays the rows'
+  // the wheel turns the book (owner, 2026-10-29: "naturally i want to be able
+  // to mouse wheel through them"), as it turns the keyring: a mouse's notch
+  // — a whole, large delta with a gap before it — steps a page; a trackpad's
+  // stream, up and down or sideways, drives the position directly (the OS
+  // supplies the momentum) and it snaps once the stream is quiet. A sized
+  // row's words take the wheel first, and mark the event spent.
   const settling = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastWheel = useRef(0)
   useEffect(() => {
     const el = padRef.current
     if (el === null) return
     const onWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return
+      if (spentByRow.has(e)) return
       e.preventDefault()
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+      const now = e.timeStamp
+      const gap = now - lastWheel.current
+      lastWheel.current = now
+      const notch = Number.isInteger(delta) && Math.abs(delta) >= 40 && gap > 80
+      if (notch) {
+        push(Math.sign(delta))
+        return
+      }
       pos.stop()
       if (Option.isSome(editing) || Option.isSome(menu) || picked.length > 0) settle()
-      pos.set(clamp(pos.get() + e.deltaX / width, 0, last))
+      pos.set(clamp(pos.get() + delta / WHEEL_PAGE, 0, last))
       if (settling.current !== null) clearTimeout(settling.current)
       settling.current = setTimeout(() => chase(Math.round(pos.get())), 120)
     }
@@ -829,7 +859,7 @@ export function NotebookPad({
             ))}
             <Path data={OBRIMOS_BINDI} fill={ACCENT} />
           </Group>
-          <PageNumber n={liveIndex + 1} font={font} height={height} />
+          <PageNumber n={liveIndex + 1} of={last + 1} font={font} height={height} />
         </Layer>
         <Layer listening={!drawing && !view.lifted}>
           {page.notes.map((n) => {
@@ -910,6 +940,7 @@ export function NotebookPad({
                   onWheel={(e) => {
                     if (over === 0) return
                     e.evt.preventDefault()
+                    spentByRow.add(e.evt)
                     setScroll((s) => ({ ...s, [n.id]: clamp((s[n.id] ?? 0) + e.evt.deltaY, 0, over) }))
                   }}
                 >
@@ -1056,7 +1087,7 @@ export function NotebookPad({
               />
             )}
             <QuietPage page={pageAt(book, view.i)} font={font} gap={gap} width={width} height={height} />
-            <PageNumber n={view.i + 1} font={font} height={height} />
+            <PageNumber n={view.i + 1} of={last + 1} font={font} height={height} />
             <Rect
               x={width}
               y={0}
@@ -1071,8 +1102,8 @@ export function NotebookPad({
       </Stage>
 
       {/* the stacked page edges: the pages turned, at the left; the pages to come, at the right — the handles that turn the book, hanging outside the sheet */}
-      <EdgeStack side="left" count={view.i} height={height} {...edge("left")} />
-      <EdgeStack side="right" count={last - view.i} height={height} {...edge("right")} />
+      <EdgeStack side="left" look={edgeLook} count={view.i} height={height} {...edge("left")} />
+      <EdgeStack side="right" look={edgeLook} count={last - view.i} height={height} {...edge("right")} />
 
       {/* the editor: the note's words, and its value when the kind takes one */}
       {Option.match(Option.zipWith(editing, editingNote, (ed, n) => ({ ed, n })), {
@@ -1192,9 +1223,9 @@ export function NotebookPad({
   )
 }
 
-/** The page's number, in the hand, at the foot's outer corner — the mage numbered the pages. */
-function PageNumber({ n, font, height }: { n: number; font: string; height: number }) {
-  return <Text x={ORIGIN + 3} y={height - ORIGIN - 15} text={String(n)} fontFamily={font} fontSize={13} fill={DIM} opacity={0.8} listening={false} />
+/** The page's number and the book's length, in the hand, at the foot — the mage numbered the pages. */
+function PageNumber({ n, of, font, height }: { n: number; of: number; font: string; height: number }) {
+  return <Text x={ORIGIN + 3} y={height - ORIGIN - 15} text={`${n} / ${of}`} fontFamily={font} fontSize={13} fill={DIM} opacity={0.8} listening={false} />
 }
 
 /** A page at rest, read-only: its rows and ink as the live page draws them, with nothing to touch. The lifting page is drawn with this. */
@@ -1282,19 +1313,23 @@ function QuietPage({ page, font, gap, width, height }: { page: Page; font: strin
 }
 
 /**
- * The page edges stacked beside the page: one hairline per page, each a
- * little further out and a little shorter than the last, so the stack reads
- * as sheets folded back (left) or still to come (right). Past a dozen the
- * lines close up rather than reach further. The strip is the handle: drag
- * it and the book turns under the hand; tap it and it turns one page.
+ * The handles beside the page: drag one and the book turns under the hand;
+ * tap it and it turns one page. Two looks. "rail": one hairline a hand's
+ * reach outside the sheet, present only while there are pages that way,
+ * brighter under the pointer — the count is in the page number, nothing
+ * depicts a sheet. "stack": one hairline per page, each a little further
+ * out and a little shorter, so the stack reads as sheets folded back (left)
+ * or still to come (right); the owner read it as too skeuomorphic.
  */
 function EdgeStack({
   side,
+  look,
   count,
   height,
   ...handlers
 }: {
   side: "left" | "right"
+  look: Edge
   count: number
   height: number
   onPointerDown: (e: RPointerEvent<HTMLDivElement>) => void
@@ -1302,7 +1337,7 @@ function EdgeStack({
   const [hot, setHot] = useState(false)
   const shown = Math.min(count, EDGE_SHOWN)
   const step = count <= EDGE_SHOWN ? 1.8 : (EDGE_SHOWN * 1.8) / count
-  const lines = Array.from({ length: Math.min(count, 40) }, (_, k) => k + 1)
+  const lines = look === "rail" ? [] : Array.from({ length: Math.min(count, 40) }, (_, k) => k + 1)
   return (
     <div
       {...handlers}
@@ -1312,6 +1347,21 @@ function EdgeStack({
       style={{ [side]: -EDGE_W, width: EDGE_W, height, cursor: count > 0 ? "grab" : "default" }}
       aria-label={side === "left" ? `${count} pages turned` : `${count} pages to come`}
     >
+      {look === "rail" && count > 0 && (
+        <span
+          aria-hidden
+          className="absolute"
+          style={{
+            [side === "left" ? "right" : "left"]: 9,
+            top: ORIGIN,
+            bottom: ORIGIN,
+            width: 1,
+            background: INK,
+            opacity: hot ? 0.55 : 0.2,
+            transition: "opacity 0.15s ease",
+          }}
+        />
+      )}
       {lines.map((k) => (
         <span
           key={k}
