@@ -19,6 +19,9 @@
 // a notebook with its half folded around behind it ... feel. velocity ...
 // quickly thumb through their notebook even if just for fun but arrive on
 // the page they want quickly as well."
+// The tabs round: seven tabs past the right edge; one held out thins the
+// book to its kind (pages without it fall out, other kinds hide, the wheel
+// runs over what is left).
 // Knobs: ?rule=dots|lines|none; ?gap=0|2|3|4 (the gutter a plate keeps inside
 // its lattice box); ?feel=soft|mid|far (the wheel's momentum); seed 1 / 8 / 40.
 // The book is kept in localStorage between reloads (owner, 2026-10-29: "we
@@ -172,7 +175,7 @@ function Notebook() {
           </div>
         </div>
         <p className="mv-data" style={{ fontSize: 11, color: "var(--dim)" }}>
-          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · a picked row has a grip at its corner: drag it to resize, it snaps to the dots; a sized row scrolls under the wheel · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus · turn the page: the wheel in the footer (drag it, tap a number, scroll over it), ← → · the book always has a blank page at the back
+          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · a picked row has a grip at its corner: drag it to resize, it snaps to the dots; a sized row scrolls under the wheel · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus · turn the page: the wheel in the footer (drag it, tap a number, scroll over it), ← → · the book always has a blank page at the back · the tabs at the right edge: hold one out and the book thins to that kind — pages without it fall out, the rest show only it, the wheel runs over what is left; click it again and the book is whole · with a tab out, a new note is of its kind
         </p>
       </div>
 

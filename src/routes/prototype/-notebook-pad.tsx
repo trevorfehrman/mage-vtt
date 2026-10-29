@@ -37,6 +37,14 @@
 // only, ever, and swings in on its spine when the page in hand changes at a
 // thumbing speed. A flick that sends many pages past the middle just swaps
 // the content, as the ring's door does.
+// The tabs round (owner, 2026-10-29): seven tabs, one per kind, past the
+// page's right edge "like a notebook's tags"; a tab held out THINS the book
+// — pages holding none of that kind fall out, the other kinds hide on the
+// pages that stay, and the wheel runs unchanged over the thinner book. The
+// wheel's numbers are the whole book's page numbers, so a thin book reads
+// 2 · 5 · 9: the gaps say what fell out. The wheel is driven over a VIEW
+// (indices into the whole book); when the view changes under it the page in
+// hand holds still and the other numbers close ranks or part around it.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent as RFocusEvent, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react"
 import { Match, Option } from "effect"
 import { Group, Layer, Line, Path, Rect, Stage, Text } from "react-konva"
@@ -51,15 +59,18 @@ import {
   editOpen,
   GRID,
   GRID_TICK_EVERY,
+  holds,
   KINDS,
   kindLook,
-  lastIndex,
   MAX_LINES,
   MIN_H,
   MIN_W,
   moveMany,
+  nearestSlot,
+  onlyKind,
   ORIGIN,
   pageAt,
+  pagesHolding,
   placeAt,
   raise,
   redo,
@@ -138,6 +149,13 @@ const GIVE = 0.3
 const GIVE_DEG = 30
 const GIVE_PX = 36
 const rubber = (d: number): number => GIVE * (1 - 1 / (1 + 2.5 * d))
+/** A number's slide to its new place when the book thins or fills, and how long a page that fell out takes to fall. */
+const SLIDE = { type: "spring" as const, stiffness: 300, damping: 30 }
+const DROP = 0.25
+/** The tabs: how far each stands past the page's edge, how tall, and how much further the one held out comes. */
+const TAB_W = 24
+const TAB_H = 40
+const TAB_OUT = 3
 /** The plate: a hair above the panel. */
 const PLATE = "#121118"
 const HAND = 18
@@ -283,13 +301,29 @@ export function NotebookPad({
   height: number
 }) {
   const book = history.present
-  const last = lastIndex(book)
-  /** The wheel's position, in pages: whole at rest, fractional in motion. */
+  /** The tab held out: the book is read by this kind alone. */
+  const [filter, setFilter] = useState<Option.Option<NoteKind>>(Option.none())
+  /** The page in hand stays in the thin book while the hand is on it, even once its last note of the kind is gone; −1 after a tab click, so the click may turn to the nearest page that holds the kind. */
+  const [pin, setPin] = useState(-1)
+  /** The view: the whole book's pages that are in the book as read, by index — every page when no tab is out. The wheel runs over the view; a position is a slot in it. */
+  const view = useMemo(() => {
+    const read = Option.match(filter, {
+      onNone: () => book.pages.map((_, i) => i),
+      onSome: (kind) => book.pages.flatMap((p, i) => (holds(p, kind) || i === pin ? [i] : [])),
+    })
+    return read.length === 0 ? [book.open] : read
+  }, [book.pages, book.open, filter, pin])
+  const last = view.length - 1
+  /** How many pages hold each kind: a tab for a kind the book has none of stays in. */
+  const holding = useMemo(() => KINDS.map((k) => pagesHolding(book, k).length), [book.pages])
+  /** The wheel's position, in slots of the view: whole at rest, fractional in motion. */
   const pos = useMotionValue(book.open)
-  /** The page in hand: the one the wheel is nearest. The page shows this one and no other. */
+  /** The page in hand, in the whole book: the view's page the wheel is nearest. The page shows this one and no other. */
   const [near, setNear] = useState(book.open)
   const liveIndex = near
   const page = pageAt(book, liveIndex)
+  /** The page as read: by one kind when a tab is out. Edits go to the page itself; the hand picks and sweeps only what it can see. */
+  const shown = Option.match(filter, { onNone: () => page, onSome: (kind) => onlyKind(page, kind) })
   const [editing, setEditing] = useState<Option.Option<Editing>>(Option.none())
   /** The note whose list of kinds is open beneath it. */
   const [menu, setMenu] = useState<Option.Option<string>>(Option.none())
@@ -398,7 +432,7 @@ export function NotebookPad({
     }
     if (meta && key === "a") {
       e.preventDefault()
-      onPicked([...page.notes.map((n) => n.id), ...page.ink.map((s) => s.id)])
+      onPicked([...shown.notes.map((n) => n.id), ...shown.ink.map((s) => s.id)])
       return
     }
     if (meta && key === "g" && picked.length > 1) {
@@ -559,9 +593,10 @@ export function NotebookPad({
     if (e.target !== e.target.getStage() || tool !== "select") return
     Option.map(pointer(), (p) => {
       stamped.current += 1
-      const next = placeAt(page, p.x - 12, p.y - 12, stamped.current)
-      set(next)
-      const n = next.notes[next.notes.length - 1]
+      const placed = placeAt(page, p.x - 12, p.y - 12, stamped.current)
+      const n = placed.notes[placed.notes.length - 1]
+      // with a tab out a new note is of its kind: a note the thin book would hide at once is no note to write
+      set(Option.match(filter, { onNone: () => placed, onSome: (kind) => (n ? rekind(placed, [n.id], kind) : placed) }))
       if (n) openEditor(n, "title")
     })
   }
@@ -597,7 +632,7 @@ export function NotebookPad({
       setSweep(Option.none())
       if (Math.abs(box.w) < 4 && Math.abs(box.h) < 4) return
       settledAt.current = Date.now()
-      const taken = swept(page, box, heightOf)
+      const taken = swept(shown, box, heightOf)
       onPicked(e.shiftKey ? [...picked, ...taken.filter((id) => !picked.includes(id))] : taken)
     }
     window.addEventListener("pointermove", move)
@@ -726,11 +761,36 @@ export function NotebookPad({
     if (picked.length > 0) onPicked([])
   }
   useMotionValueEvent(pos, "change", (p) => {
-    const n = clamp(Math.round(p), 0, last)
+    const n = view[clamp(Math.round(p), 0, last)] ?? near
     if (n !== near) setNear(n)
     // past a cover the page strains with the wheel, as far as the wheel gives
     give.set(p < 0 ? p : p > last ? p - last : 0)
   })
+  // the view changed under the wheel (a tab went out or came back, a page
+  // fell out of the thin book or filled in, undo): the page in hand keeps its
+  // place on the wheel and the other numbers close ranks or part around it;
+  // a page in hand that fell out turns to the nearest page that stayed
+  const viewKey = view.join(" ")
+  const seenView = useRef(viewKey)
+  /** How far every number on the wheel jumped with the page in hand when the view last changed; the numbers then slide to their new slots from there. */
+  const [shift, setShift] = useState({ by: 0 })
+  useLayoutEffect(() => {
+    if (seenView.current === viewKey) return
+    seenView.current = viewKey
+    const slot = view.indexOf(near)
+    const to = slot >= 0 ? slot : nearestSlot(view, near)
+    const from = pos.get()
+    pos.jump(to)
+    target.current = to
+    setShift({ by: to - from })
+    // the page at that slot is now in hand — said outright, since a jump to the slot the wheel already sits on says nothing
+    const held = view[to]
+    if (held !== undefined) {
+      setPin(held)
+      if (held !== near) setNear(held)
+    }
+    // owed to the view alone
+  }, [viewKey])
   // the page in hand changed: the book opens there, and the page swings in —
   // but not for every page a flick sends past the middle (the ring's rule:
   // that re-rasterized the page per row and dropped frames), only at a
@@ -740,6 +800,7 @@ export function NotebookPad({
   useEffect(() => {
     const dir = Math.sign(near - prevNear.current)
     prevNear.current = near
+    setPin(near)
     if (near !== book.open) onHistory({ ...history, present: turnTo(book, near) })
     if (!mounted.current) {
       mounted.current = true
@@ -755,7 +816,8 @@ export function NotebookPad({
   }, [near])
   // the book opened elsewhere (undo, redo): the wheel follows
   useEffect(() => {
-    if (Math.round(pos.get()) !== book.open && !turning.current) chase(book.open)
+    const slot = view.indexOf(book.open)
+    if (slot >= 0 && Math.round(pos.get()) !== slot && !turning.current) chase(slot)
     // owed to the open page alone
   }, [book.open])
 
@@ -877,6 +939,14 @@ export function NotebookPad({
     return () => el.removeEventListener("wheel", onWheel)
   })
 
+  /** A tab's click: hold it out and the book thins to its kind; click it again and the book is whole. */
+  const thin = (kind: NoteKind) => {
+    settle()
+    padRef.current?.focus({ preventScroll: true })
+    setPin(-1)
+    setFilter((f) => (Option.contains(f, kind) ? Option.none() : Option.some(kind)))
+  }
+
   const drawing = tool === "pen"
   const editingNote = Option.flatMap(editing, (ed) => noteById(ed.id))
   const menuNote = Option.flatMap(menu, noteById)
@@ -919,7 +989,7 @@ export function NotebookPad({
           )}
         </Layer>
         <Layer listening={!drawing}>
-          {page.notes.map((n) => {
+          {shown.notes.map((n) => {
             const look = kindLook(n.kind)
             // the row's box on the lattice, and the plate drawn a gutter inside it
             const mw = sizeOf(n).w
@@ -988,7 +1058,6 @@ export function NotebookPad({
                     lineCap="round"
                     lineJoin="round"
                     opacity={blank ? 0.45 : 1}
-                    {...(blank ? { dash: [2, 2.5] } : {})}
                   />
                 </Group>
                 {/* the words: double-click to write; a sized row's words scroll under the wheel and fade at the foot while there is more */}
@@ -1090,7 +1159,7 @@ export function NotebookPad({
           })}
         </Layer>
         <Layer listening={!drawing}>
-          {page.ink.map((s) => {
+          {shown.ink.map((s) => {
             const isSel = picked.includes(s.id)
             return (
               <Line
@@ -1143,13 +1212,61 @@ export function NotebookPad({
           maskImage: "linear-gradient(to right, transparent, black 22%, black 78%, transparent)",
           WebkitMaskImage: "linear-gradient(to right, transparent, black 22%, black 78%, transparent)",
         }}
-        aria-label={`page ${near + 1} of ${last + 1}`}
+        aria-label={`page ${near + 1} of ${book.pages.length}`}
       >
-        {Array.from({ length: last + 1 }, (_, k) => (
-          <WheelNumber key={k} k={k} pos={pos} blank={k === last} font={font} middle={width / 2} />
-        ))}
+        {book.pages.map((_, k) => {
+          const slot = view.indexOf(k)
+          return <WheelNumber key={k} k={k} slot={slot >= 0 ? slot : undefined} shift={shift} pos={pos} blank={k === book.pages.length - 1} font={font} middle={width / 2} />
+        })}
         {/* the reading mark: the number in hand stands over it */}
         <span aria-hidden className="absolute" style={{ left: width / 2 - 0.5, bottom: 3, width: 1, height: 5, background: ACCENT, opacity: 0.8 }} />
+      </div>
+
+      {/* the tabs: one per kind down the page's right edge, standing past the panel's border like a notebook's index tabs; the one held out is lit and comes further; a kind the book has none of stays in */}
+      <div className="absolute" style={{ left: width, top: 0, width: TAB_W + TAB_OUT + 1, height }}>
+        {KINDS.map((kind, i) => {
+          const look = kindLook(kind)
+          const out = Option.contains(filter, kind)
+          const some = (holding[i] ?? 0) > 0
+          const pitch = (height - ORIGIN * 2) / KINDS.length
+          return (
+            <button
+              key={kind}
+              type="button"
+              aria-label={look.word}
+              aria-pressed={out}
+              disabled={!some && !out}
+              onClick={() => thin(kind)}
+              onMouseEnter={(e) => {
+                if (!out && some) e.currentTarget.style.borderColor = `color-mix(in srgb, ${look.tint} 80%, transparent)`
+              }}
+              onMouseLeave={(e) => {
+                if (!out) e.currentTarget.style.borderColor = `color-mix(in srgb, ${look.tint} 40%, transparent)`
+              }}
+              className="absolute grid place-items-center"
+              style={{
+                left: 0,
+                top: ORIGIN + i * pitch + (pitch - TAB_H) / 2,
+                width: TAB_W + (out ? TAB_OUT : 0),
+                height: TAB_H,
+                padding: 0,
+                background: out ? `color-mix(in srgb, ${look.tint} 14%, ${PLATE})` : PLATE,
+                border: `1px solid ${out ? look.tint : `color-mix(in srgb, ${look.tint} 40%, transparent)`}`,
+                borderLeft: 0,
+                borderRadius: "0 4px 4px 0",
+                color: out ? look.tint : `color-mix(in srgb, ${look.tint} 72%, transparent)`,
+                opacity: some || out ? 1 : 0.3,
+                boxShadow: "2px 2px 6px rgba(0,0,0,.4)",
+                cursor: some || out ? "pointer" : "default",
+                transition: "width 120ms ease-out, background-color 120ms, border-color 120ms, color 120ms",
+              }}
+            >
+              <svg width={14} height={14} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d={look.glyph} />
+              </svg>
+            </button>
+          )
+        })}
       </div>
 
       {/* the editor: the note's words, and its value when the kind takes one */}
@@ -1273,20 +1390,36 @@ export function NotebookPad({
 /**
  * One page's number on the wheel, in the hand: its place, size and ink are
  * functions of the wheel's position, so it moves as continuously as the
- * wheel does. The blank page at the back is dim.
+ * wheel does. The blank page at the back is dim. The number is the page's
+ * in the whole book; its place is its slot in the view, and when the view
+ * changes it jumps with the page in hand and slides to its new slot from
+ * there — or, out of the view, keeps the slot it had and falls away.
  */
-function WheelNumber({ k, pos, blank, font, middle }: { k: number; pos: MotionValue<number>; blank: boolean; font: string; middle: number }) {
-  const dist = useTransform(pos, (p) => k - p)
+function WheelNumber({ k, slot, shift, pos, blank, font, middle }: { k: number; slot: number | undefined; shift: { by: number }; pos: MotionValue<number>; blank: boolean; font: string; middle: number }) {
+  const place = useMotionValue(slot ?? k)
+  const held = useMotionValue(slot === undefined ? 0 : 1)
+  const first = useRef(true)
+  useLayoutEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    if (shift.by !== 0) place.jump(place.get() + shift.by)
+    if (slot !== undefined) animate(place, slot, SLIDE)
+    animate(held, slot === undefined ? 0 : 1, { duration: DROP, ease: "easeOut" })
+  }, [slot, shift])
+  const dist = useTransform([place, pos], ([s, p]: number[]) => (s ?? 0) - (p ?? 0))
   const x = useTransform(dist, (d) => d * PITCH)
+  const y = useTransform(held, (h) => (1 - h) * 8)
   const lift = useTransform(dist, (d) => Math.max(0, 1 - Math.abs(d)))
   const fontSize = useTransform(lift, (l) => NUM + l * (NUM_IN_HAND - NUM))
-  const opacity = useTransform(dist, (d) => Math.max(0.2, 1 - Math.abs(d) * 0.22))
+  const opacity = useTransform([dist, held], ([d, h]: number[]) => Math.max(0.2, 1 - Math.abs(d ?? 0) * 0.22) * (h ?? 1))
   const color = useTransform(lift, (l) => (l > 0.5 ? ACCENT : blank ? DIM : INK))
   return (
     <motion.span
       aria-hidden
       className="absolute top-0 grid place-items-center"
-      style={{ left: middle - PITCH / 2, width: PITCH, height: FOOTER_H, x, fontSize, opacity, color, fontFamily: font, lineHeight: 1 }}
+      style={{ left: middle - PITCH / 2, width: PITCH, height: FOOTER_H, x, y, fontSize, opacity, color, fontFamily: font, lineHeight: 1 }}
     >
       {k + 1}
     </motion.span>

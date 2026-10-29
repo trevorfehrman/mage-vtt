@@ -107,6 +107,25 @@ export const editOpen = (book: Book, f: (page: Page) => Page): Book => {
   return tidy({ ...book, pages: book.pages.map((p, i) => (i === book.open ? after : p)) })
 }
 
+// --- The thin book: the whole book, read by one kind ---
+//
+// Tabs round (owner, 2026-10-29): a tab for each kind at the page's right
+// edge; clicking one thins the book — pages holding none of that kind drop
+// out, the other kinds hide on the pages that remain, positions untouched,
+// and the wheel runs unchanged over the thinner book; click it again and the
+// book is whole. Nothing is generated and nothing is read-only: the thin
+// book is the same book, and every page in it is still the page it was.
+
+/** Whether a page holds a note of the kind. */
+export const holds = (page: Page, kind: NoteKind): boolean => page.notes.some((n) => n.kind === kind)
+/** The pages that hold the kind, by index, in order. */
+export const pagesHolding = (book: Book, kind: NoteKind): ReadonlyArray<number> => book.pages.flatMap((p, i) => (holds(p, kind) ? [i] : []))
+/** The page read by one kind: its other kinds hidden, its ink kept. The notes are still on the page, where they were. */
+export const onlyKind = (page: Page, kind: NoteKind): Page => ({ ...page, notes: page.notes.filter((n) => n.kind === kind) })
+/** The slot in a view (indices into the whole book) nearest a page of the whole book; between two, the one after. */
+export const nearestSlot = (view: ReadonlyArray<number>, i: number): number =>
+  view.reduce((best, v, s) => (best < 0 || Math.abs(v - i) <= Math.abs(view[best]! - i) ? s : best), -1)
+
 export type History<T = Book> = { readonly past: ReadonlyArray<T>; readonly present: T; readonly future: ReadonlyArray<T> }
 
 export const emptyHistory = <T,>(present: T): History<T> => ({ past: [], present, future: [] })
@@ -186,8 +205,8 @@ export const kindLook = (kind: NoteKind): { word: string; tint: string; glyph: s
     Match.when("mark", () => ({ word: "mark", tint: "#dc5a4f", glyph: "M8 2 V14 M3 5 L13 11 M3 11 L13 5" })),
     // the stage: a crescent, the scene's hour
     Match.when("scene", () => ({ word: "scene", tint: "#b8607f", glyph: "M11.5 2.5 A6 6 0 1 0 11.5 13.5 A4.6 4.6 0 1 1 11.5 2.5 Z" })),
-    // a plain note: an empty seat for a symbol
-    Match.when("blank", () => ({ word: "note", tint: "#807b8f", glyph: "M8 3 A5 5 0 1 0 8 13 A5 5 0 1 0 8 3 Z" })),
+    // a plain note: a bullet, the simplest mark a hand makes before a line of words (owner, 2026-10-29: "bare notes deserve an icon, keep it very simple")
+    Match.when("blank", () => ({ word: "note", tint: "#807b8f", glyph: "M8 5.5 A2.5 2.5 0 1 0 8 10.5 A2.5 2.5 0 1 0 8 5.5 Z" })),
     Match.exhaustive,
   )
 
