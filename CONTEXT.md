@@ -370,9 +370,18 @@ free name with its own attainment names, so a Legacy shopped from a supplement
 or founded at the table (Gnosis 4, 6, 8) sits beside the seven; the catalog
 grows when a player takes one (owner, 2026-10-28: "implement the 7 book ones
 as our framework ... if and when we create our own legacies or shop around for
-them we'll implement them then"). Today a small section between Arcana and
-Rotes, the reached attainments in ink and the rest dim; absent until chosen.
-MAG-64 moves it onto the nameplate. Nimbus (the signature of the mage's magic, a
+them we'll implement them then"). On the sheet it is the **Legacy plate**
+(`LegacyPlate.tsx`, MAG-64): an addition to the title card, not a section —
+the plinth beneath the emblem row, bleeding to the card's edges, bordered as
+the Arcana tiles are in the primary Arcanum's tint with a hairline engraved
+inside, taking over the card's bottom corner tick. The name large with the
+Arcanum and Path glyphs trailing it; the three attainments right with their
+Gnosis gates, reached in ink, the rest dim. An attainment's name opens its
+**reading** beneath the row (the same fold curve as Derangements): numeral
+between two rules, name, gate, the page's paragraph verbatim at a centered
+62-character measure (ragged right), the prerequisites as the page prints
+them, and the Optional Arcanum rider. Absent until chosen. The old section
+between Arcana and Rotes is gone. Nimbus (the signature of the mage's magic, a
 sentence), Cabal (the mage's own group) and Consilium (the local mage
 council) live behind the **halo**, a small radiant ring beside the mage's
 name whose tooltip lists all three (owner, 2026-10-27).
