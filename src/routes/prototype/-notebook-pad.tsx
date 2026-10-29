@@ -1009,6 +1009,8 @@ export function NotebookPad({
       style={{ width, height: height + FOOTER_H, background: "var(--panel)", cursor: drawing ? "crosshair" : "default" }}
       data-fonts={fontsReady}
     >
+      {/* a selection in the editor is the marker's wash, not the browser's grey block (owner, 2026-10-29: "when you select text inside of the note box the color overlaps and looks weird") */}
+      <style>{`#notebook-pad textarea::selection, #notebook-pad input::selection { background: rgba(111, 174, 151, 0.3); color: ${INK}; }`}</style>
       <motion.div style={{ width, height, transformOrigin: "0 50%", transformPerspective: 1100, rotateY: sheetRotate, x: sheetX, opacity: fade }}>
       <Stage
         ref={stageRef}
