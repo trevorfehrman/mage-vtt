@@ -357,10 +357,22 @@ skill is in the pool, the toggle for the +1, named "Specialty: Goetia" among
 the pool's modifiers. Distinct from the **Rote Specialty**.
 
 **Legacy**:
-The mage's one specialization (MAG-61; Mage p. 93), chosen at Gnosis 3 or
-higher, with up to three attainments opening at Gnosis 3, 5 and 7. A small
-section between Arcana and Rotes, the reached attainments in ink and the rest
-dim; absent until chosen. Nimbus (the signature of the mage's magic, a
+The mage's one specialization (MAG-61; Mage pp. 344–367), a soul-crafting
+taught tutor to student and chosen once, at Gnosis 3 or higher, with three
+**attainments** opening at Gnosis 3, 5 and 7 — each the shadow of a spell made
+a mundane-looking ability (no Paradox, no Disbelief, no Mana, no Mage Sight
+signature), its primary Arcanum learned as if Ruling. The **Legacy catalog**
+(`src/domain/legacies.ts`, MAG-64) is the book's seven — Orphans of Proteus,
+Perfected Adept, Subtle Ones, Uncrowned Kings, Walkers in Mists, and the
+Left-Handed Scelesti and Tremere Lich — with each attainment's prerequisites,
+mirrored spell, one-line effect and synergistic rider. The sheet's Legacy is a
+free name with its own attainment names, so a Legacy shopped from a supplement
+or founded at the table (Gnosis 4, 6, 8) sits beside the seven; the catalog
+grows when a player takes one (owner, 2026-10-28: "implement the 7 book ones
+as our framework ... if and when we create our own legacies or shop around for
+them we'll implement them then"). Today a small section between Arcana and
+Rotes, the reached attainments in ink and the rest dim; absent until chosen.
+MAG-64 moves it onto the nameplate. Nimbus (the signature of the mage's magic, a
 sentence), Cabal (the mage's own group) and Consilium (the local mage
 council) live behind the **halo**, a small radiant ring beside the mage's
 name whose tooltip lists all three (owner, 2026-10-27).
