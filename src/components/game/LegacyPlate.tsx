@@ -30,7 +30,8 @@ export type LegacyLook = (typeof LEGACY_LOOKS)[number]
 const CARD_PAD = 16
 /** How far the wing juts past the card's right edge — the piece that was bolted on. */
 const WING_JUT = 10
-const OPEN = "220ms ease"
+// the derangement fold's own curve (MAG-60), so the two folds feel the same
+const OPEN = "420ms cubic-bezier(0.2, 0.8, 0.2, 1)"
 
 const rungInk = (r: LegacyRung) => (r.reached ? "var(--ink)" : "var(--dim)")
 const gateInk = (r: LegacyRung) => (r.reached ? "var(--accent)" : "var(--dim)")
@@ -106,7 +107,9 @@ export function LegacyPlate({
         ...tileVar,
         // the addition bleeds through the card's padding to its edges
         // (owner, 2026-10-28: "an addition to the sheet not contained within it")
-        margin: look === "pediment" ? `-${CARD_PAD}px -${CARD_PAD}px 0` : `0 -${CARD_PAD}px -${CARD_PAD}px`,
+        // one pixel past the card's edge, where the card's own corner ticks
+        // sit, so the band's border and the ticks share a line
+        margin: look === "pediment" ? `-${CARD_PAD + 1}px -${CARD_PAD + 1}px 0` : `0 -${CARD_PAD + 1}px -${CARD_PAD + 1}px`,
         padding: `12px ${CARD_PAD}px`,
       }}
       aria-label={label}

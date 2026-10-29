@@ -1437,36 +1437,49 @@ a {
 }
 
 /* The Legacy plate (MAG-64): an addition to the title card, not a thing
- * inside it (owner, 2026-10-28) — the plinth bleeds to the card's edges
+ * inside it (owner, 2026-10-28) — the plinth bleeds past the card's edges
  * beneath the emblem row on the card's own ground, bordered in one line as
- * the Arcana tiles are, the Legacy's primary Arcanum tint folded in, and
- * riveted at the seam. The wing juts past the Gnosis flank. An attainment's
- * name is a button that opens its reading. */
+ * the Arcana tiles are with the Legacy's primary Arcanum tint folded in,
+ * and a hairline engraved inside it (owner: "a prestigious addition"). The
+ * plate takes over the card's corner: the card's own tick at that corner
+ * yields to the plate's, in the tint. The wing juts past the Gnosis flank.
+ * An attainment's name is a button that opens its reading. */
 .mv-legacy-band,
 .mv-legacy-wing {
   position: relative;
   background: var(--panel);
   border: 1px solid color-mix(in srgb, var(--tile, var(--accent)) 45%, var(--line));
+  /* the engraved hairline, three pixels in */
+  box-shadow:
+    inset 0 0 0 3px var(--panel),
+    inset 0 0 0 4px color-mix(in srgb, var(--tile, var(--accent)) 22%, transparent);
 }
-.mv-legacy-band::before,
-.mv-legacy-band::after,
-.mv-legacy-wing::before,
-.mv-legacy-wing::after {
+.mv-legacy-plinth::after,
+.mv-legacy-pediment::before {
   content: "";
   position: absolute;
-  width: 5px;
-  height: 5px;
-  background: color-mix(in srgb, var(--tile, var(--accent)) 70%, var(--ink));
-  opacity: 0.8;
-  transform: rotate(45deg);
+  width: 9px;
+  height: 9px;
   pointer-events: none;
+  border-color: var(--tile, var(--accent));
+  opacity: 0.8;
 }
-.mv-legacy-plinth::before { top: -3px; left: 10px; }
-.mv-legacy-plinth::after { top: -3px; right: 10px; }
-.mv-legacy-pediment::before { bottom: -3px; left: 10px; }
-.mv-legacy-pediment::after { bottom: -3px; right: 10px; }
-.mv-legacy-wing::before { left: -3px; top: 10px; }
-.mv-legacy-wing::after { left: -3px; bottom: 10px; }
+.mv-legacy-plinth::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 1px solid;
+  border-right: 1px solid;
+}
+.mv-legacy-pediment::before {
+  top: -1px;
+  left: -1px;
+  border-top: 1px solid;
+  border-left: 1px solid;
+}
+.mv-legacy-grown-bottom::after,
+.mv-legacy-grown-top::before {
+  display: none;
+}
 .mv-legacy-rung {
   background: none;
   border: 0;

@@ -120,7 +120,17 @@ export function CharacterSheet({
           of mage: Path | Order | ruling Arcana | Virtue | Vice, one emblem
           grammar, with the standing tool fact at the corner. The given name
           and concept line is gone (owner: players know who they are). */}
-      <div className="mv-cornered mv-panel grid gap-4 p-4">
+      <div
+        className={`mv-cornered mv-panel grid gap-4 p-4 ${
+          character.legacy === undefined
+            ? ""
+            : legacyLook === "plinth"
+              ? "mv-legacy-grown-bottom"
+              : legacyLook === "pediment"
+                ? "mv-legacy-grown-top"
+                : ""
+        }`}
+      >
         {/* The Legacy plate (MAG-64) — the growth bolted onto the card:
             above the name as a pediment, beneath the emblem row as a
             plinth, or on the Gnosis flank as a wing. Absent until chosen. */}
