@@ -219,8 +219,6 @@ export function NotebookPad({
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const valueRef = useRef<HTMLInputElement>(null)
   const drag = useRef<Option.Option<Drag>>(Option.none())
-  /** Where a press inside the editor began; moving far enough from it hands the press to the note as a drag. */
-  const editorPress = useRef<Option.Option<{ x: number; y: number }>>(Option.none())
   /** When the editor last closed, or a sweep last ended: the click that did it must not write or clear a pick. */
   const settledAt = useRef(0)
 
@@ -336,13 +334,18 @@ export function NotebookPad({
     setMenu(Option.none())
     setEditing(Option.some({ id: n.id, focus, draft: n.title }))
   }
-  const closeEditor = (keep: boolean) =>
+  /**
+   * Close the editor: keep the words or abandon them. An empty plain note is
+   * normally removed — unless the editor is closing because the row is about
+   * to be dragged, when the note must stay to be dragged.
+   */
+  const closeEditor = (keep: boolean, preserveEmpty = false) =>
     Option.map(editing, (ed) => {
       settledAt.current = Date.now()
       Option.map(noteById(ed.id), (n) => {
         const title = keep ? (titleRef.current?.value ?? n.title) : n.title
         const number = keep ? (valueRef.current?.value ?? n.number) : n.number
-        const emptyBlank = title.trim() === "" && n.kind === "blank"
+        const emptyBlank = !preserveEmpty && title.trim() === "" && n.kind === "blank"
         // a row written past the cap keeps its height as a sized row, so nothing written is hidden without a
         // scroll; a row that grew past the page's foot is nudged up onto the lattice to fit
         const lines = linesOf(title.trim(), titleWidth(n.kind, n.w), font)
@@ -376,26 +379,30 @@ export function NotebookPad({
   }
   // a press inside the editor that travels becomes a drag of the note: the
   // edit commits, Konva is told where the pointer is, and the note's group
-  // takes the drag from there (Konva follows the window's pointer thereafter)
+  // takes the drag from there (Konva follows the window's pointer thereafter).
+  // The press is followed on the window, because the first move already
+  // leaves the editor's small box and lands on the canvas.
   const onEditorPointerDown = (e: RPointerEvent<HTMLElement>) => {
-    editorPress.current = Option.some({ x: e.clientX, y: e.clientY })
-  }
-  const onEditorPointerMove = (e: RPointerEvent<HTMLElement>) =>
-    Option.map(editorPress.current, (from) => {
-      if (e.buttons === 0) {
-        editorPress.current = Option.none()
-        return
-      }
-      if (Math.hypot(e.clientX - from.x, e.clientY - from.y) < 6) return
-      editorPress.current = Option.none()
-      Option.map(editing, (ed) => {
-        closeEditor(true)
-        const stage = stageRef.current
+    const from = { x: e.clientX, y: e.clientY }
+    const ed = editing
+    const stage = stageRef.current
+    const stop = () => {
+      window.removeEventListener("pointermove", move)
+      window.removeEventListener("pointerup", stop)
+    }
+    const move = (ev: PointerEvent) => {
+      if (Math.hypot(ev.clientX - from.x, ev.clientY - from.y) < 6) return
+      stop()
+      Option.map(ed, (open) => {
+        closeEditor(true, true)
         if (stage === null) return
-        stage.setPointersPositions(e.nativeEvent)
-        Option.map(nodeOf(ed.id), (node) => node.startDrag())
+        stage.setPointersPositions(ev)
+        Option.map(nodeOf(open.id), (node) => node.startDrag())
       })
-    })
+    }
+    window.addEventListener("pointermove", move)
+    window.addEventListener("pointerup", stop)
+  }
 
   const pointer = (): Option.Option<{ x: number; y: number }> =>
     Option.fromNullishOr(stageRef.current?.getPointerPosition())
@@ -486,6 +493,10 @@ export function NotebookPad({
   // --- moving: the dragged thing carries everything picked with it; notes settle on the lattice, strokes keep their shape ---
 
   const onDragStart = (id: string) => {
+    // a row dragged by its symbol while its editor is open takes its words with it and leaves no overlay behind
+    Option.map(editing, (ed) => {
+      if (ed.id === id) closeEditor(true, true)
+    })
     const ids = picked.includes(id) ? picked : withGroups(page, [id])
     const origin: Record<string, { x: number; y: number }> = {}
     for (const x of ids) Option.map(nodeOf(x), (node) => (origin[x] = node.position()))
@@ -866,7 +877,6 @@ export function NotebookPad({
               ref={editorRef}
               style={{ position: "absolute", left: seat.x, top: seat.y, width: w, height: h, pointerEvents: "none" }}
               onPointerDown={onEditorPointerDown}
-              onPointerMove={onEditorPointerMove}
             >
               <textarea
                 ref={titleRef}
