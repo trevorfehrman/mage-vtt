@@ -163,6 +163,8 @@ const TAB_H = 40
 const TAB_OUT = 3
 /** The plate: a hair above the panel. */
 const PLATE = "#121118"
+/** The accent at 30% over the plate, as one opaque color: what a selection in the editor wears. */
+const SELECTION = "#2e403e"
 const HAND = 18
 const LEAD = 1.1
 const PAD = 10
@@ -1009,8 +1011,8 @@ export function NotebookPad({
       style={{ width, height: height + FOOTER_H, background: "var(--panel)", cursor: drawing ? "crosshair" : "default" }}
       data-fonts={fontsReady}
     >
-      {/* a selection in the editor is the marker's wash, not the browser's grey block (owner, 2026-10-29: "when you select text inside of the note box the color overlaps and looks weird") */}
-      <style>{`#notebook-pad textarea::selection, #notebook-pad input::selection { background: rgba(111, 174, 151, 0.3); color: ${INK}; }`}</style>
+      {/* a selection in the editor is the marker's wash — OPAQUE (the accent at 30% mixed over the plate), because Kalam's glyph box is taller than the row's 1.1 line height, so each line's highlight spills into the next and a translucent one doubles up into a band where they meet (owner, 2026-10-29: "the bg color of the selection highlight overlaps with the next line ... and creates a darker band where they meet") */}
+      <style>{`#notebook-pad textarea::selection, #notebook-pad input::selection { background: ${SELECTION}; color: ${INK}; }`}</style>
       <motion.div style={{ width, height, transformOrigin: "0 50%", transformPerspective: 1100, rotateY: sheetRotate, x: sheetX, opacity: fade }}>
       <Stage
         ref={stageRef}
