@@ -20,7 +20,7 @@
 // quickly thumb through their notebook even if just for fun but arrive on
 // the page they want quickly as well."
 // Knobs: ?rule=dots|lines|none; ?gap=0|2|3|4 (the gutter a plate keeps inside
-// its lattice box); ?turn=drift|slide (how a page leaves); seed 1 / 8 / 40.
+// its lattice box); seed 1 / 8 / 40.
 // The book is kept in localStorage between reloads (owner, 2026-10-29: "we
 // can't test this iteratively if i have to fill out 10 pages or whatever
 // each time myself"); a fresh browser opens on the 8-page seed.
@@ -30,15 +30,13 @@ import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router
 import { Eraser, Feather, Group, MousePointer2, Redo2, Undo2, Ungroup } from "lucide-react"
 import { Option, Schema } from "effect"
 import { Book, clearPage, commit, editOpen, EMPTY_BOOK, GRID, INKS, emptyHistory, isOneGroup, openPage, redo, seedBook, toggleGroup, undo, type History, type Tool } from "./-notebook-page"
-import type { Rule, Turn } from "./-notebook-pad"
+import type { Rule } from "./-notebook-pad"
 
 const Pad = lazy(() => import("./-notebook-pad").then((m) => ({ default: m.NotebookPad })))
 
 /** The hand: Kalam (owner, 2026-10-29: "kalam is the font"). */
 const HAND = "Kalam"
 const RULES = ["dots", "lines", "none"] as const
-const TURNS = ["drift", "slide"] as const
-const isTurn = (v: unknown): v is Turn => typeof v === "string" && (TURNS as ReadonlyArray<string>).includes(v)
 const GAPS = [0, 2, 3, 4] as const
 type Gap = (typeof GAPS)[number]
 const isGap = (v: unknown): v is Gap => typeof v === "number" && (GAPS as ReadonlyArray<number>).includes(v)
@@ -48,7 +46,6 @@ export const Route = createFileRoute("/prototype/notebook")({
   validateSearch: (search: Record<string, unknown>) => ({
     rule: isRule(search.rule) ? search.rule : ("dots" as Rule),
     gap: isGap(search.gap) ? search.gap : (3 as Gap),
-    turn: isTurn(search.turn) ? search.turn : ("drift" as Turn),
   }),
   component: Notebook,
 })
@@ -66,7 +63,7 @@ const storedBook = (): Book => {
 }
 
 function Notebook() {
-  const { rule, gap, turn } = Route.useSearch()
+  const { rule, gap } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const [history, setHistory] = useState<History<Book>>(() => emptyHistory(EMPTY_BOOK))
   const [loaded, setLoaded] = useState(false)
@@ -164,15 +161,15 @@ function Notebook() {
             </div>
           </div>
           <div style={{ marginLeft: -16, marginRight: -16, marginBottom: -16, borderTop: "1px solid var(--line)" }}>
-            <ClientOnly fallback={<div style={{ width: WIDTH, height: HEIGHT }} />}>
-              <Suspense fallback={<div style={{ width: WIDTH, height: HEIGHT }} />}>
-                {loaded && <Pad font={HAND} tool={tool} inkColor={ink} rule={rule} gap={gap} turnLook={turn} picked={picked} onPicked={setPicked} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />}
+            <ClientOnly fallback={<div style={{ width: WIDTH, height: HEIGHT + 36 }} />}>
+              <Suspense fallback={<div style={{ width: WIDTH, height: HEIGHT + 36 }} />}>
+                {loaded && <Pad font={HAND} tool={tool} inkColor={ink} rule={rule} gap={gap} picked={picked} onPicked={setPicked} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />}
               </Suspense>
             </ClientOnly>
           </div>
         </div>
         <p className="mv-data" style={{ fontSize: 11, color: "var(--dim)" }}>
-          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · a picked row has a grip at its corner: drag it to resize, it snaps to the dots; a sized row scrolls under the wheel · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus · turn the page: the wheel, the strip at the foot (press a tick, or drag along it), ← → · the book always has a blank page at the back
+          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · a picked row has a grip at its corner: drag it to resize, it snaps to the dots; a sized row scrolls under the wheel · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus · turn the page: the wheel in the footer (drag it, tap a number, scroll over it), ← → · the book always has a blank page at the back
         </p>
       </div>
 
@@ -185,16 +182,6 @@ function Notebook() {
             className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${r === rule ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"}`}
           >
             {r}
-          </button>
-        ))}
-        <span className="mx-1 h-3 w-px bg-zinc-400" />
-        {TURNS.map((t) => (
-          <button
-            key={t}
-            onClick={() => void navigate({ search: (s) => ({ ...s, turn: t }), replace: true })}
-            className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${t === turn ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"}`}
-          >
-            {t}
           </button>
         ))}
         <span className="mx-1 h-3 w-px bg-zinc-400" />
