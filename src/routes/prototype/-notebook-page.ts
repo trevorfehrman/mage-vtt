@@ -92,28 +92,41 @@ export const Tool = Schema.Literals(["select", "pen", "shape"])
 export type Tool = typeof Tool.Type
 
 
-// --- The book: pages in order, one of them open ---
+// --- The book: nine pages, one of them open, one of them marked ---
 //
 // Pagination round (owner, 2026-10-29): "a note is an item on a page, a page
 // is a page" — "this is a notebook with its half folded around behind it,
-// like a person in the field using it." The book always ends on one blank
-// page, so it never runs out; the open page is the one the hand is on.
+// like a person in the field using it." The book is nine pages, always
+// (owner: "cap the pages at a default permanent 9 ... 1–9 seems good"); the
+// open page is the one the hand is on; the ribbon marks one page — "it's
+// literally just a bookmark ... a memory tool for the user."
 
-export const Book = Schema.Struct({ pages: Schema.Array(Page), open: Schema.Number })
+export const PAGES = 9
+export const Book = Schema.Struct({ pages: Schema.Array(Page), open: Schema.Number, mark: Schema.Number })
 export type Book = typeof Book.Type
 
 export const isBlankPage = (p: Page): boolean => p.notes.length === 0 && p.ink.length === 0 && p.shapes.length === 0
-export const EMPTY_BOOK: Book = { pages: [EMPTY_PAGE], open: 0 }
+export const EMPTY_BOOK: Book = { pages: Array.from({ length: PAGES }, () => EMPTY_PAGE), open: 0, mark: 0 }
+/** The ribbon laid at a page. */
+export const setMark = (book: Book, i: number): Book => {
+  const mark = Math.max(0, Math.min(PAGES - 1, Math.round(i)))
+  return mark === book.mark ? book : { ...book, mark }
+}
 
 /**
  * A book stored before shapes existed lacks `shapes` and `order` on its
- * pages: given them (empty shapes, the notes' order), it decodes.
+ * pages, and one stored before the ribbon lacks `mark` and may have any
+ * number of pages: given them (empty shapes, the notes' order, the ribbon at
+ * the front, nine pages), it decodes.
  */
 export const grownBook = (raw: unknown): unknown => {
   if (typeof raw !== "object" || raw === null || !("pages" in raw) || !Array.isArray(raw.pages)) return raw
+  const nine = [...raw.pages.slice(0, PAGES), ...Array.from({ length: Math.max(0, PAGES - raw.pages.length) }, () => EMPTY_PAGE)]
   return {
+    mark: 0,
     ...raw,
-    pages: raw.pages.map((p: unknown) => {
+    open: "open" in raw && typeof raw.open === "number" ? Math.min(raw.open, PAGES - 1) : 0,
+    pages: nine.map((p: unknown) => {
       if (typeof p !== "object" || p === null) return p
       const notes = "notes" in p && Array.isArray(p.notes) ? p.notes : []
       const grown = { shapes: [], order: notes.map((n: { id?: unknown }) => (typeof n.id === "string" ? n.id : "")), ...p }
@@ -128,31 +141,19 @@ export const grownBook = (raw: unknown): unknown => {
 /** The page at an index; past the back, a blank. */
 export const pageAt = (book: Book, i: number): Page => book.pages[i] ?? EMPTY_PAGE
 export const openPage = (book: Book): Page => pageAt(book, book.open)
-/** The last page's index: the blank at the back. */
+/** The last page's index. */
 export const lastIndex = (book: Book): number => book.pages.length - 1
 /** Turn to a page; the index is held within the book. */
 export const turnTo = (book: Book, i: number): Book => {
   const open = Math.max(0, Math.min(lastIndex(book), Math.round(i)))
   return open === book.open ? book : { ...book, open }
 }
-/**
- * The book keeps exactly one blank page at the back: writing on the last
- * page grows the book by one; clearing the page before a blank sheds the
- * spare — never the page the hand is on.
- */
-const tidy = (book: Book): Book => {
-  const pages = [...book.pages]
-  const last = pages[pages.length - 1]
-  if (last === undefined || !isBlankPage(last)) pages.push(EMPTY_PAGE)
-  while (pages.length >= 2 && isBlankPage(pages[pages.length - 1]!) && isBlankPage(pages[pages.length - 2]!) && pages.length - 1 > book.open) pages.pop()
-  return pages.length === book.pages.length && pages.every((p, i) => p === book.pages[i]) ? book : { ...book, pages }
-}
 /** An edit of the open page. */
 export const editOpen = (book: Book, f: (page: Page) => Page): Book => {
   const before = openPage(book)
   const after = f(before)
   if (after === before) return book
-  return tidy({ ...book, pages: book.pages.map((p, i) => (i === book.open ? after : p)) })
+  return { ...book, pages: book.pages.map((p, i) => (i === book.open ? after : p)) }
 }
 
 // --- The thin book: the whole book, read by one kind ---
@@ -509,13 +510,13 @@ const lcg = (seed: number) => {
     return x / 4294967296
   }
 }
-/** A book of n written pages (and the blank at the back), each page a few rows settled on the lattice. */
+/** A book of nine pages, the first n of them written, each a few rows settled on the lattice. */
 export const seedBook = (n: number): Book => {
   const rnd = lcg(n * 7919 + 17)
   const cols = 32
   const rows = 18
   const pages: Page[] = []
-  for (let p = 0; p < n; p++) {
+  for (let p = 0; p < Math.min(n, PAGES); p++) {
     const notes: Note[] = []
     const count = 2 + Math.floor(rnd() * 5)
     for (let k = 0; k < count; k++) {
@@ -527,5 +528,6 @@ export const seedBook = (n: number): Book => {
     }
     pages.push({ notes, ink: [], shapes: [], order: notes.map((n) => n.id) })
   }
-  return tidy({ pages, open: 0 })
+  while (pages.length < PAGES) pages.push(EMPTY_PAGE)
+  return { pages, open: 0, mark: 0 }
 }

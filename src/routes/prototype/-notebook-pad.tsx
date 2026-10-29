@@ -54,6 +54,13 @@
 // Konva's Transformer (auditioned at the owner's ask: "otherwise this looks
 // great"). Notes and shapes share one draw order, so a shape can be under or
 // over. Lines and arrows came out the same day: the quill beats them.
+// The ribbon (owner, 2026-10-29): "it's literally just a bookmark. i'm
+// envisioning a calming red and it should lay over the paginated number ...
+// just let the ribbon hang off the bottom and let me drag it over the
+// numbers. it's literally just a memory tool for the user." A ribbon hangs
+// from the page's foot over the marked page's number, under the number so
+// the number reads on it; drag it along the numbers to mark another page;
+// tap it to turn there. The book is nine pages, always.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent as RFocusEvent, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react"
 import { Match, Option } from "effect"
 import { Ellipse, Group, Layer, Line, Path, Rect, Stage, Text, Transformer } from "react-konva"
@@ -71,6 +78,7 @@ import {
   GRID,
   GRID_TICK_EVERY,
   holds,
+  isBlankPage,
   KINDS,
   kindLook,
   MAX_LINES,
@@ -96,6 +104,7 @@ import {
   resize,
   retitle,
   revalue,
+  setMark,
   shapeStands,
   snapPoint,
   SPINE_W,
@@ -163,6 +172,9 @@ const FEEL: Record<Feel, { power: number; timeConstant: number; stiffness: numbe
   mid: { power: 0.6, timeConstant: 280, stiffness: 320, damping: 33 },
   far: { power: 0.8, timeConstant: 360, stiffness: 400, damping: 37 },
 }
+/** The ribbon: a calming red, its width, and how far it hangs. */
+const RIBBON = "#a65852"
+const RIBBON_W = 14
 /** A trackpad stream's travel, in px, for one page. */
 const WHEEL_PAGE = 420
 /** How far past a cover the wheel can be pulled, in pages, and how it resists: a rubber band, not a wall. */
@@ -971,8 +983,11 @@ export function NotebookPad({
   }, [near])
   // the book opened elsewhere (undo, redo): the wheel follows
   useEffect(() => {
+    // a chase or a coast in flight is the wheel's own: the open page lags it by more than half a page at speed, and
+    // chasing that lag stopped End two pages in (found 2026-10-29)
+    if (turning.current || chasing.current || Math.abs(pos.getVelocity()) > 0.05) return
     const slot = view.indexOf(book.open)
-    if (slot >= 0 && Math.round(pos.get()) !== slot && !turning.current) chase(slot)
+    if (slot >= 0 && Math.round(pos.get()) !== slot) chase(slot)
     // owed to the open page alone
   }, [book.open])
 
@@ -1162,6 +1177,45 @@ export function NotebookPad({
         {body}
       </Group>
     )
+  }
+
+  // the ribbon: its slot on the wheel is the marked page's; while the hand holds it, it rides the hand (hold, px), then
+  // settles on the number it was dropped over and the mark moves there; a tap turns to the marked page
+  const hold = useMotionValue(0)
+  const markSlot = view.indexOf(book.mark)
+  const ribbonX = useTransform([pos, hold], ([p, h]: number[]) => (markSlot - (p ?? 0)) * PITCH + (h ?? 0))
+  const onRibbonDown = (e: RPointerEvent<HTMLSpanElement>) => {
+    e.stopPropagation()
+    settle()
+    padRef.current?.focus({ preventScroll: true })
+    const x0 = e.clientX
+    let moved = false
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - x0
+      if (!moved && Math.abs(dx) <= 4) return
+      moved = true
+      hold.set(dx)
+    }
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move)
+      window.removeEventListener("pointerup", up)
+      window.removeEventListener("pointercancel", up)
+      // a press that did not travel is a tap: the book turns to the marked page (travel is judged where the pointer let go, not only by the moves seen)
+      const dx = ev.clientX - x0
+      if (!moved && Math.abs(dx) <= 4) {
+        if (markSlot >= 0) chase(markSlot)
+        return
+      }
+      const to = clamp(Math.round(markSlot + dx / PITCH), 0, last)
+      const page = view[to]
+      if (page !== undefined && page !== book.mark) onHistory({ ...history, present: setMark(book, page) })
+      // the ribbon is where the hand left it; from there it settles onto the number
+      hold.jump((markSlot - to) * PITCH + dx)
+      animate(hold, 0, { type: "spring", stiffness: 420, damping: 32 })
+    }
+    window.addEventListener("pointermove", move)
+    window.addEventListener("pointerup", up)
+    window.addEventListener("pointercancel", up)
   }
 
   /** A tab's click: hold it out and the book thins to its kind; click it again and the book is whole. */
@@ -1474,9 +1528,28 @@ export function NotebookPad({
         }}
         aria-label={`page ${near + 1} of ${book.pages.length}`}
       >
-        {book.pages.map((_, k) => {
+        {/* the ribbon: hangs from the page's foot over the marked page's number, under the number; drag it along the numbers, tap it to turn there */}
+        <motion.span
+          role="button"
+          aria-label={`ribbon at page ${book.mark + 1}`}
+          onPointerDown={onRibbonDown}
+          className="absolute top-0"
+          style={{
+            left: width / 2 - RIBBON_W / 2,
+            width: RIBBON_W,
+            height: FOOTER_H - 1,
+            x: ribbonX,
+            opacity: markSlot >= 0 ? 1 : 0,
+            background: RIBBON,
+            clipPath: "polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%)",
+            boxShadow: "0 2px 5px rgba(0,0,0,.5)",
+            cursor: "grab",
+            touchAction: "none",
+          }}
+        />
+        {book.pages.map((p, k) => {
           const slot = view.indexOf(k)
-          return <WheelNumber key={k} k={k} slot={slot >= 0 ? slot : undefined} shift={shift} pos={pos} blank={k === book.pages.length - 1} font={font} middle={width / 2} />
+          return <WheelNumber key={k} k={k} slot={slot >= 0 ? slot : undefined} shift={shift} pos={pos} blank={isBlankPage(p)} marked={k === book.mark} font={font} middle={width / 2} />
         })}
         {/* the reading mark: the number in hand stands over it */}
         <span aria-hidden className="absolute" style={{ left: width / 2 - 0.5, bottom: 3, width: 1, height: 5, background: ACCENT, opacity: 0.8 }} />
@@ -1653,12 +1726,12 @@ export function NotebookPad({
 /**
  * One page's number on the wheel, in the hand: its place, size and ink are
  * functions of the wheel's position, so it moves as continuously as the
- * wheel does. The blank page at the back is dim. The number is the page's
+ * wheel does. A blank page's number is dim. The number is the page's
  * in the whole book; its place is its slot in the view, and when the view
  * changes it jumps with the page in hand and slides to its new slot from
  * there — or, out of the view, keeps the slot it had and falls away.
  */
-function WheelNumber({ k, slot, shift, pos, blank, font, middle }: { k: number; slot: number | undefined; shift: { by: number }; pos: MotionValue<number>; blank: boolean; font: string; middle: number }) {
+function WheelNumber({ k, slot, shift, pos, blank, marked, font, middle }: { k: number; slot: number | undefined; shift: { by: number }; pos: MotionValue<number>; blank: boolean; marked: boolean; font: string; middle: number }) {
   const place = useMotionValue(slot ?? k)
   const held = useMotionValue(slot === undefined ? 0 : 1)
   const first = useRef(true)
@@ -1677,7 +1750,8 @@ function WheelNumber({ k, slot, shift, pos, blank, font, middle }: { k: number; 
   const lift = useTransform(dist, (d) => Math.max(0, 1 - Math.abs(d)))
   const fontSize = useTransform(lift, (l) => NUM + l * (NUM_IN_HAND - NUM))
   const opacity = useTransform([dist, held], ([d, h]: number[]) => Math.max(0.2, 1 - Math.abs(d ?? 0) * 0.22) * (h ?? 1))
-  const color = useTransform(lift, (l) => (l > 0.5 ? ACCENT : blank ? DIM : INK))
+  // in hand the number is lit in the accent — unless it sits on the ribbon, where the ink reads and the accent on red does not
+  const color = useTransform(lift, (l) => (l > 0.5 ? (marked ? INK : ACCENT) : blank ? DIM : INK))
   return (
     <motion.span
       aria-hidden

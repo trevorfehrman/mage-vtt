@@ -67,8 +67,8 @@ const parseJson = Option.liftThrowable((raw: string): unknown => JSON.parse(raw)
 /** The stored book (grown, if it was stored before shapes), or the seed when there is none or it no longer parses. */
 const storedBook = (): Book => {
   const raw = window.localStorage.getItem(STORE)
-  if (raw === null) return seedBook(8)
-  return Option.getOrElse(Option.flatMap(parseJson(raw), (json) => decodeBook(grownBook(json))), () => seedBook(8))
+  if (raw === null) return seedBook(5)
+  return Option.getOrElse(Option.flatMap(parseJson(raw), (json) => decodeBook(grownBook(json))), () => seedBook(5))
 }
 
 function Notebook() {
@@ -257,7 +257,7 @@ function Notebook() {
           </div>
         </div>
         <p className="mv-data" style={{ fontSize: 11, color: "var(--dim)" }}>
-          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · a picked row has a grip at its corner: drag it to resize, it snaps to the dots; a sized row scrolls under the wheel · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · the quill and the shapes share the six kind inks · shape: drag a rectangle or an ellipse, filled none / hatch / wash — freeform, nothing snaps; a picked shape has handles; 1–7 recolor it; shapes and notes stack in one order, a pick raises · ⌘Z / ⇧⌘Z · ⌘D duplicates · ⌘X / ⌘C take what is picked, ⌘V puts it down on the page in hand (on another page: the same spot; on its own: a cell over) · the pad must have focus · turn the page: the wheel in the footer (drag it, tap a number, scroll over it), ← → · the book always has a blank page at the back · the tabs at the right edge: hold one out and the book thins to that kind — pages without it fall out, the rest show only it, the wheel runs over what is left; click it again and the book is whole · with a tab out, a new note is of its kind · ⌘F: a word in the header's field thins the book the same way, the word lit where the rows say it; Enter goes back to the page, Escape lets the word go
+          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · a picked row has a grip at its corner: drag it to resize, it snaps to the dots; a sized row scrolls under the wheel · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · the quill and the shapes share the six kind inks · shape: drag a rectangle or an ellipse, filled none / hatch / wash — freeform, nothing snaps; a picked shape has handles; 1–7 recolor it; shapes and notes stack in one order, a pick raises · ⌘Z / ⇧⌘Z · ⌘D duplicates · ⌘X / ⌘C take what is picked, ⌘V puts it down on the page in hand (on another page: the same spot; on its own: a cell over) · the pad must have focus · turn the page: the wheel in the footer (drag it, tap a number, scroll over it), ← → · the book is nine pages · the ribbon is a bookmark hanging over a page's number: drag it along the numbers to mark another page, tap it to turn there · the tabs at the right edge: hold one out and the book thins to that kind — pages without it fall out, the rest show only it, the wheel runs over what is left; click it again and the book is whole · with a tab out, a new note is of its kind · ⌘F: a word in the header's field thins the book the same way, the word lit where the rows say it; Enter goes back to the page, Escape lets the word go
         </p>
       </div>
 
@@ -293,7 +293,7 @@ function Notebook() {
           </button>
         ))}
         <span className="mx-1 h-3 w-px bg-zinc-400" />
-        {[1, 8, 40].map((n) => (
+        {[1, 5, 9].map((n) => (
           <button key={n} onClick={() => seed(n)} className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap hover:bg-zinc-300">
             seed {n}
           </button>
