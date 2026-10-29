@@ -48,13 +48,45 @@ export const Ink = Schema.Struct({
 })
 export type Ink = typeof Ink.Type
 
-export const Page = Schema.Struct({ notes: Schema.Array(Note), ink: Schema.Array(Ink) })
+// Shapes (owner, 2026-10-29): "enough but simple" — rectangle, ellipse,
+// line, arrow; the kind inks; fills none / hatch / wash; both points on the
+// lattice, so sloppy input lands crisp. The arrow is a dumb primitive: it
+// points, it is anchored to nothing. A shape is "like anything else, that can
+// be under or over" a note: the page keeps ONE draw order over notes and
+// shapes, and picking raises either to the top of it.
+export const ShapeKind = Schema.Literals(["rect", "ellipse", "line", "arrow"])
+export type ShapeKind = typeof ShapeKind.Type
+export const SHAPES: ReadonlyArray<ShapeKind> = ["rect", "ellipse", "line", "arrow"]
+export const Fill = Schema.Literals(["none", "hatch", "wash"])
+export type Fill = typeof Fill.Type
+export const FILLS: ReadonlyArray<Fill> = ["none", "hatch", "wash"]
+export const Shape = Schema.Struct({
+  id: Schema.String,
+  shape: ShapeKind,
+  /** Two lattice points: a box's corners, or a line's ends. */
+  x0: Schema.Number,
+  y0: Schema.Number,
+  x1: Schema.Number,
+  y1: Schema.Number,
+  color: Schema.String,
+  fill: Fill,
+  group: Schema.String,
+})
+export type Shape = typeof Shape.Type
+
+export const Page = Schema.Struct({
+  notes: Schema.Array(Note),
+  ink: Schema.Array(Ink),
+  shapes: Schema.Array(Shape),
+  /** The draw order of notes and shapes, by id, first beneath; ink always draws over. */
+  order: Schema.Array(Schema.String),
+})
 export type Page = typeof Page.Type
 
-export const EMPTY_PAGE: Page = { notes: [], ink: [] }
+export const EMPTY_PAGE: Page = { notes: [], ink: [], shapes: [], order: [] }
 
-/** What the pointer does on the page: pick, touch, sweep and move (double-click on bare page writes a note), or draw. */
-export const Tool = Schema.Literals(["select", "pen"])
+/** What the pointer does on the page: pick, touch, sweep and move (double-click on bare page writes a note), draw with the quill, or draw a shape. */
+export const Tool = Schema.Literals(["select", "pen", "shape"])
 export type Tool = typeof Tool.Type
 
 /** The pen's inks: the page's own, the accent, the ember. */
@@ -74,8 +106,24 @@ export const INKS: ReadonlyArray<{ readonly name: string; readonly color: string
 export const Book = Schema.Struct({ pages: Schema.Array(Page), open: Schema.Number })
 export type Book = typeof Book.Type
 
-export const isBlankPage = (p: Page): boolean => p.notes.length === 0 && p.ink.length === 0
+export const isBlankPage = (p: Page): boolean => p.notes.length === 0 && p.ink.length === 0 && p.shapes.length === 0
 export const EMPTY_BOOK: Book = { pages: [EMPTY_PAGE], open: 0 }
+
+/**
+ * A book stored before shapes existed lacks `shapes` and `order` on its
+ * pages: given them (empty shapes, the notes' order), it decodes.
+ */
+export const grownBook = (raw: unknown): unknown => {
+  if (typeof raw !== "object" || raw === null || !("pages" in raw) || !Array.isArray(raw.pages)) return raw
+  return {
+    ...raw,
+    pages: raw.pages.map((p: unknown) => {
+      if (typeof p !== "object" || p === null) return p
+      const notes = "notes" in p && Array.isArray(p.notes) ? p.notes : []
+      return { shapes: [], order: notes.map((n: { id?: unknown }) => (typeof n.id === "string" ? n.id : "")), ...p }
+    }),
+  }
+}
 
 /** The page at an index; past the back, a blank. */
 export const pageAt = (book: Book, i: number): Page => book.pages[i] ?? EMPTY_PAGE
@@ -232,13 +280,44 @@ export const kindLook = (kind: NoteKind): { word: string; tint: string; glyph: s
 /** A plain note where the pen touched, squared to the lattice: the write tool's click. */
 export const placeAt = (page: Page, x: number, y: number, nth: number): Page => {
   const p = snapPoint(x, y)
+  const id = `n${Date.now().toString(36)}${nth}`
   return {
     ...page,
-    notes: [...page.notes, { id: `n${Date.now().toString(36)}${nth}`, kind: "blank", x: p.x, y: p.y, title: "", number: "", lasts: "", group: "", w: NOTE_W, h: 0 }],
+    notes: [...page.notes, { id, kind: "blank", x: p.x, y: p.y, title: "", number: "", lasts: "", group: "", w: NOTE_W, h: 0 }],
+    order: [...page.order, id],
   }
 }
 
 export const addInk = (page: Page, ink: Ink): Page => ({ ...page, ink: [...page.ink, ink] })
+export const addShape = (page: Page, shape: Shape): Page => ({ ...page, shapes: [...page.shapes, shape], order: [...page.order, shape.id] })
+/** A shape's two points moved: snapped to the lattice. */
+export const reshape = (page: Page, id: string, pts: { x0: number; y0: number; x1: number; y1: number }): Page => ({
+  ...page,
+  shapes: page.shapes.map((s) => (s.id === id ? { ...s, x0: snap(pts.x0), y0: snap(pts.y0), x1: snap(pts.x1), y1: snap(pts.y1) } : s)),
+})
+/** The picked shapes in another ink. */
+export const recolor = (page: Page, ids: ReadonlyArray<string>, color: string): Page => ({
+  ...page,
+  shapes: page.shapes.map((s) => (ids.includes(s.id) ? { ...s, color } : s)),
+})
+/** A shape's box: its two points squared, a line's at least a hairline wide. */
+export const shapeBox = (s: Shape): Box => ({ x: Math.min(s.x0, s.x1), y: Math.min(s.y0, s.y1), w: Math.abs(s.x1 - s.x0), h: Math.abs(s.y1 - s.y0) })
+/** Whether a drag made a shape at all: a box at least a cell each way, a line at least a cell long. */
+export const shapeStands = (s: Shape): boolean =>
+  s.shape === "line" || s.shape === "arrow" ? Math.hypot(s.x1 - s.x0, s.y1 - s.y0) >= GRID : Math.abs(s.x1 - s.x0) >= GRID && Math.abs(s.y1 - s.y0) >= GRID
+/** Notes and shapes in the order they draw: the page's order first, then anything it does not name (a book stored before shapes), notes before shapes. */
+export type Drawn = { readonly note: Note } | { readonly shape: Shape }
+export const drawOrder = (page: Page): ReadonlyArray<Drawn> => {
+  const named = page.order.flatMap((id): ReadonlyArray<Drawn> => {
+    const n = page.notes.find((x) => x.id === id)
+    if (n !== undefined) return [{ note: n }]
+    const s = page.shapes.find((x) => x.id === id)
+    return s !== undefined ? [{ shape: s }] : []
+  })
+  const unnamedNotes: ReadonlyArray<Drawn> = page.notes.filter((n) => !page.order.includes(n.id)).map((note) => ({ note }))
+  const unnamedShapes: ReadonlyArray<Drawn> = page.shapes.filter((s) => !page.order.includes(s.id)).map((shape) => ({ shape }))
+  return [...named, ...unnamedNotes, ...unnamedShapes]
+}
 
 const edit = (page: Page, ids: ReadonlyArray<string>, f: (n: Note) => Note): Page => ({
   ...page,
@@ -258,13 +337,21 @@ export const moveMany = (page: Page, moves: ReadonlyArray<Move>, shifts: Readonl
       onSome: (m) => ({ ...s, points: s.points.map((v, i) => (i % 3 === 0 ? v + m.dx : i % 3 === 1 ? v + m.dy : v)) }),
     }),
   ),
+  shapes: page.shapes.map((s) =>
+    Option.match(Arr.findFirst(shifts, (m) => m.id === s.id), {
+      onNone: () => s,
+      onSome: (m) => ({ ...s, x0: s.x0 + m.dx, y0: s.y0 + m.dy, x1: s.x1 + m.dx, y1: s.y1 + m.dy }),
+    }),
+  ),
+  order: page.order,
 })
-/** A picked note rises above the rest: the page keeps the order it draws in. */
-export const raise = (page: Page, id: string): Page =>
-  Option.match(Arr.findFirst(page.notes, (n) => n.id === id), {
-    onNone: () => page,
-    onSome: (n) => (page.notes[page.notes.length - 1] === n ? page : { ...page, notes: [...page.notes.filter((m) => m.id !== id), n] }),
-  })
+/** A picked note or shape rises above the rest: the page keeps the order it draws in. */
+export const raise = (page: Page, id: string): Page => {
+  if (!page.notes.some((n) => n.id === id) && !page.shapes.some((s) => s.id === id)) return page
+  const order = drawOrder(page).map((d) => ("note" in d ? d.note.id : d.shape.id))
+  if (order[order.length - 1] === id) return page
+  return { ...page, order: [...order.filter((x) => x !== id), id] }
+}
 /** A hand's resize: whole cells, never narrower or shorter than the least. */
 export const resize = (page: Page, id: string, w: number, h: number): Page =>
   edit(page, [id], (n) => ({ ...n, w: Math.max(MIN_W, Math.round(w / GRID) * GRID), h: Math.max(MIN_H, Math.round(h / GRID) * GRID) }))
@@ -277,17 +364,14 @@ export const rekind = (page: Page, ids: ReadonlyArray<string>, kind: NoteKind): 
 export const removeMany = (page: Page, ids: ReadonlyArray<string>): Page => ({
   notes: page.notes.filter((n) => !ids.includes(n.id)),
   ink: page.ink.filter((s) => !ids.includes(s.id)),
+  shapes: page.shapes.filter((s) => !ids.includes(s.id)),
+  order: page.order.filter((id) => !ids.includes(id)),
 })
-export const duplicateNotes = (page: Page, ids: ReadonlyArray<string>): Page => ({
-  ...page,
-  notes: [
-    ...page.notes,
-    ...page.notes
-      .filter((n) => ids.includes(n.id))
-      .map((n, i) => ({ ...n, id: `${n.id}d${page.notes.length + i}`, x: n.x + GRID, y: n.y + GRID, group: "" })),
-  ],
-})
-export const clearPage = (page: Page): Page => (page.notes.length === 0 && page.ink.length === 0 ? page : EMPTY_PAGE)
+export const duplicateNotes = (page: Page, ids: ReadonlyArray<string>): Page => {
+  const copies = page.notes.filter((n) => ids.includes(n.id)).map((n, i) => ({ ...n, id: `${n.id}d${page.notes.length + i}`, x: n.x + GRID, y: n.y + GRID, group: "" }))
+  return { ...page, notes: [...page.notes, ...copies], order: [...page.order, ...copies.map((n) => n.id)] }
+}
+export const clearPage = (page: Page): Page => (isBlankPage(page) ? page : EMPTY_PAGE)
 
 // --- The clipboard: things taken off a page, to be put down on another ---
 //
@@ -302,6 +386,8 @@ export const clearPage = (page: Page): Page => (page.notes.length === 0 && page.
 export const taken = (page: Page, ids: ReadonlyArray<string>): Page => ({
   notes: page.notes.filter((n) => ids.includes(n.id)),
   ink: page.ink.filter((s) => ids.includes(s.id)),
+  shapes: page.shapes.filter((s) => ids.includes(s.id)),
+  order: drawOrder(page).map((d) => ("note" in d ? d.note.id : d.shape.id)).filter((id) => ids.includes(id)),
 })
 /** The fragment laid on a page, fresh, offset by `by` px both ways: the page, and the ids of what was laid down. */
 export const putDown = (page: Page, clip: Page, nth: number, by: number): { readonly page: Page; readonly ids: ReadonlyArray<string> } => {
@@ -320,18 +406,27 @@ export const putDown = (page: Page, clip: Page, nth: number, by: number): { read
     points: by === 0 ? s.points : s.points.map((v, k) => (k % 3 === 2 ? v : v + by)),
     group: regroup(s.group),
   }))
-  return { page: { notes: [...page.notes, ...notes], ink: [...page.ink, ...ink] }, ids: [...notes.map((n) => n.id), ...ink.map((s) => s.id)] }
+  const shapes = clip.shapes.map((s, i) => ({ ...s, id: `h${stamp}p${i}`, x0: s.x0 + by, y0: s.y0 + by, x1: s.x1 + by, y1: s.y1 + by, group: regroup(s.group) }))
+  // the fragment keeps its own draw order, laid above everything on the page
+  const fresh: Record<string, string> = {}
+  clip.notes.forEach((n, i) => (fresh[n.id] = notes[i]!.id))
+  clip.shapes.forEach((s, i) => (fresh[s.id] = shapes[i]!.id))
+  const laid = drawOrder(clip).map((d) => fresh["note" in d ? d.note.id : d.shape.id]!)
+  return {
+    page: { notes: [...page.notes, ...notes], ink: [...page.ink, ...ink], shapes: [...page.shapes, ...shapes], order: [...page.order, ...laid] },
+    ids: [...notes.map((n) => n.id), ...ink.map((s) => s.id), ...shapes.map((s) => s.id)],
+  }
 }
 
 // --- Groups: things that move as one ---
 
 const groupOf = (page: Page, id: string): string =>
-  page.notes.find((n) => n.id === id)?.group ?? page.ink.find((s) => s.id === id)?.group ?? ""
+  page.notes.find((n) => n.id === id)?.group ?? page.ink.find((s) => s.id === id)?.group ?? page.shapes.find((s) => s.id === id)?.group ?? ""
 
 /** The ids with every member of any group among them: picking one picks the rest. */
 export const withGroups = (page: Page, ids: ReadonlyArray<string>): ReadonlyArray<string> => {
   const groups = ids.map((id) => groupOf(page, id)).filter((g) => g !== "")
-  const members = [...page.notes, ...page.ink].filter((x) => groups.includes(x.group)).map((x) => x.id)
+  const members = [...page.notes, ...page.ink, ...page.shapes].filter((x) => groups.includes(x.group)).map((x) => x.id)
   return [...ids, ...members.filter((id) => !ids.includes(id))]
 }
 /** True when the ids are exactly one whole group: the button then ungroups. */
@@ -344,8 +439,10 @@ export const isOneGroup = (page: Page, ids: ReadonlyArray<string>): boolean => {
 export const toggleGroup = (page: Page, ids: ReadonlyArray<string>): Page => {
   const group = isOneGroup(page, ids) ? "" : `g${Date.now().toString(36)}`
   return {
+    ...page,
     notes: page.notes.map((n) => (ids.includes(n.id) ? { ...n, group } : n)),
     ink: page.ink.map((s) => (ids.includes(s.id) ? { ...s, group } : s)),
+    shapes: page.shapes.map((s) => (ids.includes(s.id) ? { ...s, group } : s)),
   }
 }
 
@@ -378,6 +475,7 @@ export const swept = (page: Page, box: Box, heightOf: (n: Note) => number): Read
   withGroups(page, [
     ...page.notes.filter((n) => overlaps(box, { x: n.x, y: n.y, w: n.w, h: heightOf(n) })).map((n) => n.id),
     ...page.ink.filter((s) => overlaps(box, inkBox(s))).map((s) => s.id),
+    ...page.shapes.filter((s) => overlaps(box, shapeBox(s))).map((s) => s.id),
   ])
 
 // --- A seeded book, for thumbing through on the rig ---
@@ -424,7 +522,7 @@ export const seedBook = (n: number): Book => {
       const y = ORIGIN + GRID * Math.floor(rnd() * (rows - 3))
       notes.push({ id: `s${p}-${k}`, kind, x, y, title, number, lasts: "", group: "", w, h: 0 })
     }
-    pages.push({ notes, ink: [] })
+    pages.push({ notes, ink: [], shapes: [], order: notes.map((n) => n.id) })
   }
   return tidy({ pages, open: 0 })
 }

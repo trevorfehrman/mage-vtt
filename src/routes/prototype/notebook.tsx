@@ -31,10 +31,10 @@
 // Mock data; no Convex. DELETE once specced.
 import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react"
 import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router"
-import { Eraser, Feather, Group, MousePointer2, Redo2, Search, Undo2, Ungroup } from "lucide-react"
+import { Circle, Eraser, Feather, Group, Minus, MousePointer2, MoveUpRight, Redo2, Search, Square, Undo2, Ungroup } from "lucide-react"
 import { Option, Schema } from "effect"
 import { Input } from "#/components/ui/input"
-import { Book, clearPage, commit, editOpen, EMPTY_BOOK, GRID, INKS, emptyHistory, isOneGroup, openPage, redo, seedBook, toggleGroup, undo, type History, type Tool } from "./-notebook-page"
+import { Book, clearPage, commit, editOpen, EMPTY_BOOK, FILLS, GRID, grownBook, INKS, isBlankPage, emptyHistory, isOneGroup, KINDS, kindLook, openPage, redo, seedBook, SHAPES, toggleGroup, undo, type Fill, type History, type ShapeKind, type Tool } from "./-notebook-page"
 import type { Feel, Rule } from "./-notebook-pad"
 
 const Pad = lazy(() => import("./-notebook-pad").then((m) => ({ default: m.NotebookPad })))
@@ -62,12 +62,13 @@ const WIDTH = GRID * 32
 const HEIGHT = GRID * 18
 /** Where the rig keeps the book between reloads. */
 const STORE = "mage-vtt:notebook-rig"
-const decodeBook = Schema.decodeUnknownOption(Schema.fromJsonString(Book))
-/** The stored book, or the seed when there is none or it no longer parses. */
+const decodeBook = Schema.decodeUnknownOption(Book)
+const parseJson = Option.liftThrowable((raw: string): unknown => JSON.parse(raw))
+/** The stored book (grown, if it was stored before shapes), or the seed when there is none or it no longer parses. */
 const storedBook = (): Book => {
   const raw = window.localStorage.getItem(STORE)
   if (raw === null) return seedBook(8)
-  return Option.getOrElse(decodeBook(raw), () => seedBook(8))
+  return Option.getOrElse(Option.flatMap(parseJson(raw), (json) => decodeBook(grownBook(json))), () => seedBook(8))
 }
 
 function Notebook() {
@@ -77,6 +78,10 @@ function Notebook() {
   const [loaded, setLoaded] = useState(false)
   const [tool, setTool] = useState<Tool>("select")
   const [ink, setInk] = useState(INKS[0]!.color)
+  /** The shape tool: which shape, in which kind's ink, filled how. */
+  const [shapeKind, setShapeKind] = useState<ShapeKind>("rect")
+  const [shapeInk, setShapeInk] = useState(kindLook("spell").tint)
+  const [fill, setFill] = useState<Fill>("none")
   const [picked, setPicked] = useState<ReadonlyArray<string>>([])
   /** The word the book is read by; empty, the book is whole. */
   const [search, setSearch] = useState("")
@@ -118,7 +123,7 @@ function Notebook() {
 
   const page = openPage(history.present)
   const clear = () => setHistory((h) => commit(h, editOpen(h.present, clearPage)))
-  const empty = page.notes.length === 0 && page.ink.length === 0
+  const empty = isBlankPage(page)
   const oneGroup = isOneGroup(page, picked)
   const group = () => setHistory((h) => commit(h, editOpen(h.present, (p) => toggleGroup(p, picked))))
   const seed = (n: number) => {
@@ -145,6 +150,53 @@ function Notebook() {
               <ToolButton label="pen" on={tool === "pen"} onClick={() => setTool("pen")}>
                 <Feather size={15} strokeWidth={1.6} />
               </ToolButton>
+              <ToolButton label="shape" on={tool === "shape"} onClick={() => setTool("shape")}>
+                <Square size={14} strokeWidth={1.6} />
+              </ToolButton>
+              {tool === "shape" && (
+                /* the shape's options, small so the header keeps its width: the four shapes, the six kind inks, and one fill button that cycles none → hatch → wash and shows which */
+                <span className="ml-2 flex items-center gap-0.5">
+                  {SHAPES.map((k) => (
+                    <ToolButton key={k} label={k} on={shapeKind === k} small onClick={() => setShapeKind(k)}>
+                      {k === "rect" ? <Square size={12} strokeWidth={1.6} /> : k === "ellipse" ? <Circle size={12} strokeWidth={1.6} /> : k === "line" ? <Minus size={12} strokeWidth={1.6} /> : <MoveUpRight size={12} strokeWidth={1.6} />}
+                    </ToolButton>
+                  ))}
+                  <span className="mx-1.5 h-4 w-px" style={{ background: "var(--line)" }} />
+                  <span className="flex items-center gap-[5px]">
+                    {KINDS.filter((k) => k !== "blank").map((k) => {
+                      const tint = kindLook(k).tint
+                      return (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => setShapeInk(tint)}
+                          aria-pressed={shapeInk === tint}
+                          aria-label={`${k} ink`}
+                          className="rounded-full"
+                          style={{ width: 10, height: 10, background: tint, outline: shapeInk === tint ? "1px solid var(--accent)" : "1px solid transparent", outlineOffset: 2, cursor: "pointer" }}
+                        />
+                      )
+                    })}
+                  </span>
+                  <span className="mx-1.5 h-4 w-px" style={{ background: "var(--line)" }} />
+                  <ToolButton label={`fill ${fill}`} on={fill !== "none"} small onClick={() => setFill(FILLS[(FILLS.indexOf(fill) + 1) % FILLS.length] ?? "none")}>
+                    <svg width={12} height={12} viewBox="0 0 12 12" aria-hidden>
+                      {fill === "hatch" && (
+                        <>
+                          <defs>
+                            <pattern id="mv-hatch" width="3.5" height="3.5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                              <line x1="0" y1="0" x2="0" y2="3.5" stroke="currentColor" strokeWidth="1" />
+                            </pattern>
+                          </defs>
+                          <rect x={1.5} y={1.5} width={9} height={9} fill="url(#mv-hatch)" />
+                        </>
+                      )}
+                      {fill === "wash" && <rect x={1.5} y={1.5} width={9} height={9} fill="currentColor" opacity={0.35} />}
+                      <rect x={1.5} y={1.5} width={9} height={9} fill="none" stroke="currentColor" strokeWidth={1} />
+                    </svg>
+                  </ToolButton>
+                </span>
+              )}
               {tool === "pen" && (
                 <span className="ml-2 flex items-center gap-2">
                   {INKS.map((c) => (
@@ -179,7 +231,7 @@ function Notebook() {
                   placeholder="find…"
                   value={search}
                   spellCheck={false}
-                  className="h-7 w-[168px] pl-7 text-[12px]"
+                  className="h-7 w-[140px] pl-7 text-[12px]"
                   style={{ borderRadius: 2 /* the tool buttons' rounded-sm; mv-field's own 3px would win over the utility */ }}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => {
@@ -215,13 +267,13 @@ function Notebook() {
           <div style={{ marginLeft: -16, marginRight: -16, marginBottom: -16, borderTop: "1px solid var(--line)" }}>
             <ClientOnly fallback={<div style={{ width: WIDTH, height: HEIGHT + 36 }} />}>
               <Suspense fallback={<div style={{ width: WIDTH, height: HEIGHT + 36 }} />}>
-                {loaded && <Pad font={HAND} tool={tool} inkColor={ink} rule={rule} gap={gap} feel={feel} search={search} picked={picked} onPicked={setPicked} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />}
+                {loaded && <Pad font={HAND} tool={tool} inkColor={ink} shapeKind={shapeKind} shapeInk={shapeInk} fill={fill} rule={rule} gap={gap} feel={feel} search={search} picked={picked} onPicked={setPicked} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />}
               </Suspense>
             </ClientOnly>
           </div>
         </div>
         <p className="mv-data" style={{ fontSize: 11, color: "var(--dim)" }}>
-          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · a picked row has a grip at its corner: drag it to resize, it snaps to the dots; a sized row scrolls under the wheel · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · ⌘X / ⌘C take what is picked, ⌘V puts it down on the page in hand (on another page: the same spot; on its own: a cell over) · the pad must have focus · turn the page: the wheel in the footer (drag it, tap a number, scroll over it), ← → · the book always has a blank page at the back · the tabs at the right edge: hold one out and the book thins to that kind — pages without it fall out, the rest show only it, the wheel runs over what is left; click it again and the book is whole · with a tab out, a new note is of its kind · ⌘F: a word in the header's field thins the book the same way, the word lit where the rows say it; Enter goes back to the page, Escape lets the word go
+          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · a picked row has a grip at its corner: drag it to resize, it snaps to the dots; a sized row scrolls under the wheel · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · shape: drag a rectangle, ellipse, line or arrow, in a kind's ink, filled none / hatch / wash — both points land on the dots; a picked shape has handles; 1–7 recolor it; shapes and notes stack in one order, a pick raises · ⌘Z / ⇧⌘Z · ⌘D duplicates · ⌘X / ⌘C take what is picked, ⌘V puts it down on the page in hand (on another page: the same spot; on its own: a cell over) · the pad must have focus · turn the page: the wheel in the footer (drag it, tap a number, scroll over it), ← → · the book always has a blank page at the back · the tabs at the right edge: hold one out and the book thins to that kind — pages without it fall out, the rest show only it, the wheel runs over what is left; click it again and the book is whole · with a tab out, a new note is of its kind · ⌘F: a word in the header's field thins the book the same way, the word lit where the rows say it; Enter goes back to the page, Escape lets the word go
         </p>
       </div>
 
@@ -267,8 +319,8 @@ function Notebook() {
   )
 }
 
-/** One toolbar control: an icon in a square, lit in the accent while its tool is in hand. */
-function ToolButton({ label, on, disabled, onClick, children }: { label: string; on: boolean; disabled?: boolean; onClick: () => void; children: ReactNode }) {
+/** One toolbar control: an icon in a square, lit in the accent while its tool is in hand; small for a tool's own options. */
+function ToolButton({ label, on, disabled, small, onClick, children }: { label: string; on: boolean; disabled?: boolean; small?: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
@@ -278,8 +330,8 @@ function ToolButton({ label, on, disabled, onClick, children }: { label: string;
       onClick={onClick}
       className="grid place-items-center rounded-sm border disabled:opacity-30"
       style={{
-        width: 28,
-        height: 28,
+        width: small ? 22 : 28,
+        height: small ? 22 : 28,
         borderColor: on ? "var(--accent)" : "var(--line)",
         color: on ? "var(--accent)" : "var(--ink)",
         background: "transparent",

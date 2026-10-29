@@ -48,16 +48,23 @@
 // ⌘F is the same mechanism keyed by a word from the field in the header:
 // pages with a match stay, the matching rows show, the matched words are
 // lit with a marker under them; a tab and a word compose.
+// Shapes (owner, 2026-10-29): rect, ellipse, line, arrow, in the kind inks,
+// fills none / hatch / wash; a drag on the page draws one, both points on the
+// lattice live; a picked shape wears Konva's Transformer (auditioned at the
+// owner's ask before anything of our own), its box snapped to the lattice.
+// Notes and shapes share one draw order, so a shape can be under or over.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent as RFocusEvent, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react"
 import { Match, Option } from "effect"
-import { Group, Layer, Line, Path, Rect, Stage, Text } from "react-konva"
+import { Arrow, Ellipse, Group, Layer, Line, Path, Rect, Stage, Text, Transformer } from "react-konva"
 import Konva from "konva"
 import { getStroke } from "perfect-freehand"
 import { animate, motion, useMotionValue, useMotionValueEvent, useTransform, type MotionValue } from "motion/react"
 import {
   addInk,
+  addShape,
   CELL,
   commit,
+  drawOrder,
   duplicateNotes,
   editOpen,
   GRID,
@@ -79,12 +86,16 @@ import {
   placeAt,
   putDown,
   raise,
+  recolor,
   redo,
   rekind,
   removeMany,
+  reshape,
   resize,
   retitle,
   revalue,
+  shapeStands,
+  snap,
   snapPoint,
   SPINE_W,
   swept,
@@ -97,12 +108,15 @@ import {
   within,
   type Book,
   type Box,
+  type Fill,
   type History,
   type Ink,
   type Move,
   type Note,
   type NoteKind,
   type Page,
+  type Shape,
+  type ShapeKind,
   type Shift,
   type Tool,
 } from "./-notebook-page"
@@ -203,6 +217,41 @@ const GRIP = 10
 const FADE = 28
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v))
+
+/** A shape's line. */
+const SHAPE_STROKE = 1.5
+/** A hex ink at an alpha, for a wash. */
+const washOf = (hex: string, alpha: number): string => {
+  const n = Number.parseInt(hex.slice(1), 16)
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
+}
+/** Hatch: a tile of one diagonal hairline in the ink, drawn once per ink; at 2× and scaled down, as the ruling is. */
+const hatchTiles = new Map<string, HTMLCanvasElement>()
+const hatchTile = (color: string): HTMLCanvasElement => {
+  const have = hatchTiles.get(color)
+  if (have !== undefined) return have
+  const span = 8
+  const c = document.createElement("canvas")
+  c.width = span * 2
+  c.height = span * 2
+  const g = c.getContext("2d")
+  if (g !== null) {
+    g.scale(2, 2)
+    g.strokeStyle = color
+    g.globalAlpha = 0.4
+    g.lineWidth = 1
+    g.beginPath()
+    g.moveTo(-1, span + 1)
+    g.lineTo(span + 1, -1)
+    g.moveTo(-1, 1)
+    g.lineTo(1, -1)
+    g.moveTo(span - 1, span + 1)
+    g.lineTo(span + 1, span - 1)
+    g.stroke()
+  }
+  hatchTiles.set(color, c)
+  return c
+}
 
 /** The stroke's outline as Konva's flat point list, from the triples the page stores. */
 const outlineOf = (ink: Ink, live: boolean): number[] => {
@@ -306,6 +355,9 @@ export function NotebookPad({
   font,
   tool,
   inkColor,
+  shapeKind,
+  shapeInk,
+  fill,
   rule,
   gap,
   feel,
@@ -320,6 +372,10 @@ export function NotebookPad({
   font: string
   tool: Tool
   inkColor: string
+  /** The shape tool's kind, ink and fill. */
+  shapeKind: ShapeKind
+  shapeInk: string
+  fill: Fill
   rule: Rule
   /** The gutter: px the plate is drawn inside its lattice box, on every side. */
   gap: number
@@ -380,6 +436,9 @@ export function NotebookPad({
   /** The note whose list of kinds is open beneath it. */
   const [menu, setMenu] = useState<Option.Option<string>>(Option.none())
   const [stroke, setStroke] = useState<Option.Option<Ink>>(Option.none())
+  /** A shape being drawn: its first point where the press was, its second under the hand, both on the lattice. */
+  const [shaping, setShaping] = useState<Option.Option<Shape>>(Option.none())
+  const trRef = useRef<Konva.Transformer>(null)
   const [sweep, setSweep] = useState<Option.Option<Box>>(Option.none())
   const [resizing, setResizing] = useState<Option.Option<Resizing>>(Option.none())
   /** How far each sized row's words are scrolled; the page does not remember this. */
@@ -509,7 +568,7 @@ export function NotebookPad({
     }
     if (meta && key === "a") {
       e.preventDefault()
-      onPicked([...shown.notes.map((n) => n.id), ...shown.ink.map((s) => s.id)])
+      onPicked([...shown.notes.map((n) => n.id), ...shown.ink.map((s) => s.id), ...shown.shapes.map((s) => s.id)])
       return
     }
     if (meta && key === "g" && picked.length > 1) {
@@ -537,11 +596,12 @@ export function NotebookPad({
       chase(e.key === "Home" ? 0 : last)
       return
     }
-    // 1–7 swap the picked notes' kind, in the list's order
+    // 1–7 swap the picked notes' kind, in the list's order — and a picked shape's ink, to that kind's
     const digit = Number.parseInt(e.key, 10)
-    if (pickedNotes.length > 0 && digit >= 1 && digit <= KINDS.length) {
+    const pickedShapes = page.shapes.filter((x) => picked.includes(x.id)).map((x) => x.id)
+    if ((pickedNotes.length > 0 || pickedShapes.length > 0) && digit >= 1 && digit <= KINDS.length) {
       const kind = KINDS[digit - 1]
-      if (kind !== undefined) set(rekind(page, picked, kind))
+      if (kind !== undefined) set(recolor(rekind(page, picked, kind), pickedShapes, kindLook(kind).tint))
     }
   }
 
@@ -653,6 +713,12 @@ export function NotebookPad({
           setStroke(Option.some({ id: `i${Date.now().toString(36)}`, points: [p.x, p.y, pr.p], color: inkColor, pressured: pr.real, group: "" }))
         })
       }),
+      Match.when("shape", () => {
+        Option.map(pointer(), (p) => {
+          const at = snapPoint(p.x, p.y)
+          setShaping(Option.some({ id: `h${Date.now().toString(36)}`, shape: shapeKind, x0: at.x, y0: at.y, x1: at.x, y1: at.y, color: shapeInk, fill, group: "" }))
+        })
+      }),
       Match.exhaustive,
     )
   }
@@ -678,6 +744,13 @@ export function NotebookPad({
     })
   }
   const onStageMove = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    if (tool === "shape") {
+      Option.map(Option.zipWith(shaping, pointer(), (sh, p) => ({ sh, p })), ({ sh, p }) => {
+        const at = snapPoint(p.x, p.y)
+        if (at.x !== sh.x1 || at.y !== sh.y1) setShaping(Option.some({ ...sh, x1: at.x, y1: at.y }))
+      })
+      return
+    }
     if (tool !== "pen" || Option.isNone(stroke)) return
     Option.map(pointer(), (p) => {
       const pr = pressureOf(e.evt)
@@ -685,6 +758,11 @@ export function NotebookPad({
     })
   }
   const onStageUp = () => {
+    // a shape stands once the drag is a cell or more; less is a slip
+    Option.map(shaping, (sh) => {
+      if (shapeStands(sh)) set(addShape(page, sh))
+      setShaping(Option.none())
+    })
     if (Option.isNone(stroke)) return
     if (stroke.value.points.length >= 6) set(addInk(page, stroke.value))
     setStroke(Option.none())
@@ -761,6 +839,20 @@ export function NotebookPad({
     for (const x of d.ids) {
       const note = page.notes.find((n) => n.id === x)
       if (note === undefined) {
+        // a shape settles on the lattice as a note does: its shift rounds to whole cells and its node rides there before resting
+        if (page.shapes.some((h) => h.id === x)) {
+          const sdx = Math.round(dx / GRID) * GRID
+          const sdy = Math.round(dy / GRID) * GRID
+          shifts.push({ id: x, dx: sdx, dy: sdy })
+          Option.map(x === id ? Option.some(node) : nodeOf(x), (target) => {
+            landing += 1
+            target.to({ x: sdx, y: sdy, duration: 0.16, easing: Konva.Easings.EaseOut, onFinish: () => {
+              landing -= 1
+              if (landing === 0) land()
+            } })
+          })
+          continue
+        }
         shifts.push({ id: x, dx, dy })
         continue
       }
@@ -1016,6 +1108,93 @@ export function NotebookPad({
     return () => el.removeEventListener("wheel", onWheel)
   })
 
+  // the Transformer takes the one picked shape, and lets go otherwise
+  const pickedShape = picked.length === 1 ? Option.fromNullishOr(page.shapes.find((h) => h.id === picked[0])) : Option.none<Shape>()
+  useEffect(() => {
+    const tr = trRef.current
+    if (tr === null) return
+    const node = Option.flatMap(pickedShape, (h) => nodeOf(h.id))
+    tr.nodes(Option.match(node, { onNone: () => [], onSome: (n) => [n] }))
+    tr.getLayer()?.batchDraw()
+  })
+  /** The Transformer's box held to the lattice: a line may be flat, a box is a cell at the least. */
+  const snapBox = (oldBox: { x: number; y: number; width: number; height: number; rotation: number }, box: { x: number; y: number; width: number; height: number; rotation: number }) => {
+    const flat = Option.exists(pickedShape, (h) => h.shape === "line" || h.shape === "arrow")
+    const x = snap(box.x)
+    const y = snap(box.y)
+    const w = snap(box.x + box.width) - x
+    const h = snap(box.y + box.height) - y
+    if (!flat && (Math.abs(w) < GRID || Math.abs(h) < GRID)) return oldBox
+    return { ...box, x, y, width: w, height: h }
+  }
+  /** The shape's two points read back from its transformed node (its group's transform over its own corners), then snapped; the node is put back as React has it. */
+  const onShapeTransformEnd = (h: Shape, group: Konva.Node) => {
+    const t = group.getAbsoluteTransform()
+    const corners = Match.value(h.shape).pipe(
+      Match.when("ellipse", () => {
+        const cx = (h.x0 + h.x1) / 2
+        const cy = (h.y0 + h.y1) / 2
+        const rx = Math.abs(h.x1 - h.x0) / 2
+        const ry = Math.abs(h.y1 - h.y0) / 2
+        return [t.point({ x: cx - rx, y: cy - ry }), t.point({ x: cx + rx, y: cy + ry })]
+      }),
+      Match.orElse(() => [t.point({ x: h.x0, y: h.y0 }), t.point({ x: h.x1, y: h.y1 })]),
+    )
+    group.setAttrs({ x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 })
+    set(reshape(page, h.id, { x0: corners[0]!.x, y0: corners[0]!.y, x1: corners[1]!.x, y1: corners[1]!.y }))
+  }
+
+  /** A shape drawn: the node in the kind's ink, filled as asked; one group holds it so a drag and the Transformer act on the group. */
+  const renderShape = (h: Shape, live: boolean) => {
+    const isSel = picked.includes(h.id)
+    const bx = Math.min(h.x0, h.x1)
+    const by = Math.min(h.y0, h.y1)
+    const bw = Math.abs(h.x1 - h.x0)
+    const bh = Math.abs(h.y1 - h.y0)
+    // Konva's hit canvas fills every shape unless told not to: an unfilled box lets a click through to what is beneath it
+    const filling = Match.value(h.fill).pipe(
+      Match.when("none", () => ({ fillEnabled: false })),
+      Match.when("wash", () => ({ fill: washOf(h.color, 0.12) })),
+      Match.when("hatch", () => ({
+        fillPatternImage: hatchTile(h.color) as unknown as HTMLImageElement /* Konva draws any CanvasImageSource; its type names only an image */,
+        fillPatternRepeat: "repeat",
+        fillPatternScale: { x: 0.5, y: 0.5 },
+      })),
+      Match.exhaustive,
+    )
+    const line = {
+      stroke: h.color,
+      strokeWidth: isSel ? SHAPE_STROKE + 0.5 : SHAPE_STROKE,
+      hitStrokeWidth: 10,
+      lineCap: "round" as const,
+      lineJoin: "round" as const,
+      opacity: live ? 0.7 : 0.95,
+      ...(isSel ? { shadowColor: ACCENT, shadowBlur: 6 } : {}),
+    }
+    const body = Match.value(h.shape).pipe(
+      Match.when("rect", () => <Rect x={bx} y={by} width={bw} height={bh} cornerRadius={2} {...filling} {...line} />),
+      Match.when("ellipse", () => <Ellipse x={bx + bw / 2} y={by + bh / 2} radiusX={bw / 2} radiusY={bh / 2} {...filling} {...line} />),
+      Match.when("line", () => <Line points={[h.x0, h.y0, h.x1, h.y1]} {...line} />),
+      Match.when("arrow", () => <Arrow points={[h.x0, h.y0, h.x1, h.y1]} pointerLength={9} pointerWidth={8} fill={h.color} {...line} />),
+      Match.exhaustive,
+    )
+    if (live) return <Group key={h.id} listening={false}>{body}</Group>
+    return (
+      <Group
+        key={h.id}
+        id={h.id}
+        draggable={!drawing}
+        onMouseDown={(e) => pick(h.id, e.evt.shiftKey)}
+        onDragStart={() => onDragStart(h.id)}
+        onDragMove={(e) => onDragMove(h.id, e.target)}
+        onDragEnd={(e) => onDragEnd(h.id, e.target)}
+        onTransformEnd={(e) => onShapeTransformEnd(h, e.target)}
+      >
+        {body}
+      </Group>
+    )
+  }
+
   /** A tab's click: hold it out and the book thins to its kind; click it again and the book is whole. */
   const thin = (kind: NoteKind) => {
     settle()
@@ -1024,7 +1203,8 @@ export function NotebookPad({
     setFilter((f) => (Option.contains(f, kind) ? Option.none() : Option.some(kind)))
   }
 
-  const drawing = tool === "pen"
+  /** The quill or a shape in hand: the page's things do not listen, so a press anywhere starts a mark. */
+  const drawing = tool !== "select"
   const editingNote = Option.flatMap(editing, (ed) => noteById(ed.id))
   const menuNote = Option.flatMap(menu, noteById)
 
@@ -1069,7 +1249,9 @@ export function NotebookPad({
           )}
         </Layer>
         <Layer listening={!drawing}>
-          {shown.notes.map((n) => {
+          {drawOrder(shown).map((d) => {
+            if ("shape" in d) return renderShape(d.shape, false)
+            const n = d.note
             const look = kindLook(n.kind)
             // the row's box on the lattice, and the plate drawn a gutter inside it
             const mw = sizeOf(n).w
@@ -1251,6 +1433,21 @@ export function NotebookPad({
               </Group>
             )
           })}
+          {Option.match(shaping, { onNone: () => null, onSome: (h) => renderShape(h, true) })}
+          <Transformer
+            ref={trRef}
+            rotateEnabled={false}
+            keepRatio={false}
+            ignoreStroke
+            anchorSize={7}
+            anchorCornerRadius={1}
+            anchorStroke={ACCENT}
+            anchorFill={PLATE}
+            anchorStrokeWidth={1}
+            borderStroke={ACCENT}
+            borderDash={[3, 3]}
+            boundBoxFunc={snapBox}
+          />
         </Layer>
         <Layer listening={!drawing}>
           {shown.ink.map((s) => {
