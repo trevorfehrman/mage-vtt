@@ -173,16 +173,19 @@ export function LegacyPlate({
             </span>
             <span className="mv-h leading-none" style={{ fontSize: 20, color: rungInk(shown) }}>{shown.name}</span>
             <span className="mv-eyebrow" style={{ color: gateInk(shown) }}>Gnosis {shown.gnosis}</span>
-            <p className="leading-relaxed" style={{ fontSize: 14, maxWidth: "62ch", color: "var(--ink)" }}>
+            {/* the paragraph is a paragraph — a centered column, ragged
+                right (owner: "the text shouldn't be center justified ...
+                keep it in the center") */}
+            <p className="leading-relaxed text-left" style={{ fontSize: 14, maxWidth: "62ch", color: "var(--ink)" }}>
               {shown.reading.value.text}
             </p>
-            <p className="mv-data leading-snug" style={{ fontSize: 11, maxWidth: "62ch", color: "var(--dim)" }}>
+            <p className="mv-data leading-snug text-left" style={{ fontSize: 11, maxWidth: "62ch", color: "var(--dim)" }}>
               Prerequisites: {shown.reading.value.prerequisites}
             </p>
             {Option.match(shown.reading.value.rider, {
               onNone: () => null,
               onSome: (r) => (
-                <p className="leading-relaxed" style={{ fontSize: 13, maxWidth: "62ch", color: "var(--dim)" }}>
+                <p className="leading-relaxed text-left" style={{ fontSize: 13, maxWidth: "62ch", color: "var(--dim)" }}>
                   <span className="mv-eyebrow" style={{ color: "var(--tile, var(--accent))" }}>Optional Arcanum: {r.arcanum}</span>
                   <br />
                   {r.text}
