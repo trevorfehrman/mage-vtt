@@ -89,8 +89,8 @@ const PLATE = "#121118"
 const HAND = 18
 const LEAD = 1.1
 const PAD = 10
-/** The header line: the symbol, the kind's word and the value's cell are centered on this y. */
-const HEAD = 15
+/** The header line: the symbol's top, the kind's word's cap top and the value cell's top edge all sit on this y. */
+const HEAD_TOP = 9
 /** Where the words hang from: beneath the header line on a kind's row, a little in on a plain row. */
 const WORDS_TOP_KIND = 24
 const WORDS_TOP_BLANK = 14
@@ -253,11 +253,18 @@ export function NotebookPad({
   const sizeOf = (n: Note): { w: number; h: number } =>
     Option.match(resizing, { onNone: () => ({ w: n.w, h: n.h }), onSome: (r) => (r.id === n.id ? { w: r.w, h: r.h } : { w: n.w, h: n.h }) })
   const linesAll = (n: Note): number => linesOf(wordsOf(n), titleWidth(n.kind, sizeOf(n).w), font)
-  /** The lines a row shows: all of them when a hand has sized it (they scroll), up to the cap when it sizes itself. */
-  const linesIn = (n: Note): number => (sizeOf(n).h > 0 ? linesAll(n) : Math.min(MAX_LINES, linesAll(n)))
+  /** The page's room for one row: its height less the margin at head and foot. */
+  const room = height - ORIGIN * 2
+  /**
+   * The lines a row shows: all of them when a hand has sized it (they scroll)
+   * or while it is being written (it grows), up to the cap when it sizes
+   * itself at rest.
+   */
+  const linesIn = (n: Note): number =>
+    sizeOf(n).h > 0 || Option.exists(editing, (ed) => ed.id === n.id) ? linesAll(n) : Math.min(MAX_LINES, linesAll(n))
   const heightOf = (n: Note): number => {
     const s = sizeOf(n)
-    return s.h > 0 ? s.h : noteHeight(linesIn(n))
+    return s.h > 0 ? s.h : Math.min(noteHeight(linesIn(n)), room)
   }
   /** Where the row sits: its place on the page, nudged up live if its growth would hang it past the foot. */
   const seatOf = (n: Note): { x: number; y: number } => within({ x: n.x, y: n.y }, sizeOf(n).w, heightOf(n), width, height)
@@ -335,10 +342,13 @@ export function NotebookPad({
         const title = keep ? (titleRef.current?.value ?? n.title) : n.title
         const number = keep ? (valueRef.current?.value ?? n.number) : n.number
         const emptyBlank = title.trim() === "" && n.kind === "blank"
-        // a row that grew past the page's foot is nudged up onto the lattice to fit
-        const grown = n.h > 0 ? n.h : noteHeight(Math.min(MAX_LINES, linesOf(title.trim(), titleWidth(n.kind, n.w), font)))
+        // a row written past the cap keeps its height as a sized row, so nothing written is hidden without a
+        // scroll; a row that grew past the page's foot is nudged up onto the lattice to fit
+        const lines = linesOf(title.trim(), titleWidth(n.kind, n.w), font)
+        const grown = n.h > 0 ? n.h : lines > MAX_LINES ? Math.min(noteHeight(lines), room) : noteHeight(lines)
         const seat = within({ x: n.x, y: n.y }, n.w, grown, width, height)
-        const written = revalue(retitle(page, ed.id, title.trim()), ed.id, number.trim())
+        const titled = revalue(retitle(page, ed.id, title.trim()), ed.id, number.trim())
+        const written = n.h === 0 && lines > MAX_LINES ? resize(titled, ed.id, n.w, grown) : titled
         set(emptyBlank ? removeMany(page, [ed.id]) : seat.y === n.y && seat.x === n.x ? written : moveMany(written, [{ id: ed.id, ...seat }], []))
         if (emptyBlank) onPicked([])
       })
@@ -630,7 +640,7 @@ export function NotebookPad({
             const valued = takesValue(n.kind)
             const tw = titleWidth(n.kind, w)
             const cellX = w - PAD - CELL
-            const cellY = HEAD - CELL / 2
+            const cellY = HEAD_TOP
             const seat = seatOf(n)
             const lines = linesIn(n)
             const lineBox = lines * HAND * LEAD
@@ -673,7 +683,7 @@ export function NotebookPad({
                   <Line points={[SPINE_W + 0.5, 1, SPINE_W + 0.5, h - 1]} stroke={look.tint} strokeWidth={1} opacity={blank ? 0.2 : 0.4} />
                   <Path
                     x={SPINE_W / 2 - 8}
-                    y={(blank ? Math.min(h / 2, 24) : HEAD) - 8}
+                    y={blank ? Math.min(h / 2, 24) - 8 : HEAD_TOP - look.top}
                     data={look.glyph}
                     stroke={look.tint}
                     strokeWidth={1.3}
@@ -694,7 +704,7 @@ export function NotebookPad({
                 >
                   <Rect x={SPINE_W + 1} y={0} width={tw + PAD * 2 - 1} height={h} fill={INK} opacity={0.001} />
                   {!blank && (
-                    <Text x={SPINE_W + PAD} y={HEAD - 5} text={look.word.toUpperCase()} fontFamily="JetBrains Mono" fontSize={9} letterSpacing={1.6} fill={look.tint} listening={false} />
+                    <Text x={SPINE_W + PAD} y={HEAD_TOP - 1} text={look.word.toUpperCase()} fontFamily="JetBrains Mono" fontSize={9} letterSpacing={1.6} fill={look.tint} listening={false} />
                   )}
                   {!isEditing && (
                     <Group clipX={SPINE_W + 1} clipY={wordsTop} clipWidth={tw + PAD * 2 - 1} clipHeight={sized ? clipH : h - wordsTop} listening={false}>
@@ -868,10 +878,11 @@ export function NotebookPad({
                 onBlur={onEditorBlur}
                 onKeyDown={onEditorKey}
                 onChange={(e) => {
-                  // the box grows with its words at once, before React's turn, so the caret never scrolls the text up
+                  // the box grows with its words at once, before React's turn, so the caret never scrolls the text
+                  // up; it stops at the page's room, and scrolls from there
                   if (!sized) {
                     e.currentTarget.style.height = "auto"
-                    e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`
+                    e.currentTarget.style.height = `${Math.min(e.currentTarget.scrollHeight, room - wordsTop - 6)}px`
                   }
                   setEditing(Option.some({ ...ed, draft: e.currentTarget.value }))
                 }}
@@ -882,7 +893,9 @@ export function NotebookPad({
                   left: SPINE_W + PAD,
                   top: wordsTop,
                   width: tw,
-                  ...(sized ? { height: h - wordsTop - 6, overflowY: "auto" as const, scrollbarWidth: "none" as const } : { height: lines * HAND * LEAD, overflow: "hidden" as const }),
+                  height: sized ? h - wordsTop - 6 : Math.min(lines * HAND * LEAD, room - wordsTop - 6),
+                  overflowY: "auto" as const,
+                  scrollbarWidth: "none" as const,
                   fontSize: HAND,
                   lineHeight: LEAD,
                   color: INK,
@@ -902,7 +915,7 @@ export function NotebookPad({
                     ...field,
                     position: "absolute",
                     left: w - PAD - CELL,
-                    top: HEAD - CELL / 2,
+                    top: HEAD_TOP,
                     width: CELL,
                     height: CELL,
                     textAlign: "center",

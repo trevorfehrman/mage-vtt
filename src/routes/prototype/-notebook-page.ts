@@ -104,7 +104,8 @@ export const MAX_LINES = 3
 export const SPINE_W = 24
 /** The value's cell: a square at the right, on the row's header line with the kind's word and the symbol. */
 export const CELL = 22
-export const noteHeight = (lines: number): number => NOTE_H + GRID * (Math.min(MAX_LINES, Math.max(1, lines)) - 1)
+/** A row's height for its lines: the pad decides when the cap applies. */
+export const noteHeight = (lines: number): number => NOTE_H + GRID * (Math.max(1, lines) - 1)
 /** A note that would hang past the page's edge is nudged back onto the lattice inside it. */
 export const within = (p: { x: number; y: number }, w: number, h: number, pageW: number, pageH: number): { x: number; y: number } => ({
   x: Math.max(ORIGIN, Math.min(p.x, snap(pageW - ORIGIN - w))),
@@ -126,24 +127,26 @@ export const takesValue = (kind: NoteKind): boolean =>
 
 /**
  * The kind's word, ink, and sigil — a small mark in a 16-box, drawn in the
- * note's spine. SVG path data so Konva's Path and a DOM <path> both draw it.
+ * note's spine, with the mark's own visual top inside the box so every
+ * sigil can be hung from the same line. SVG path data so Konva's Path and a
+ * DOM <path> both draw it.
  */
-export const kindLook = (kind: NoteKind): { word: string; tint: string; glyph: string } =>
+export const kindLook = (kind: NoteKind): { word: string; tint: string; glyph: string; top: number } =>
   Match.value(kind).pipe(
     // a casting: a sigil ring with its bindi
-    Match.when("spell", () => ({ word: "spell", tint: "#6fae97", glyph: "M8 2.5 A5.5 5.5 0 1 0 8 13.5 A5.5 5.5 0 1 0 8 2.5 Z M8 7 A1 1 0 1 0 8 9 A1 1 0 1 0 8 7 Z" })),
+    Match.when("spell", () => ({ word: "spell", tint: "#6fae97", glyph: "M8 2.5 A5.5 5.5 0 1 0 8 13.5 A5.5 5.5 0 1 0 8 2.5 Z M8 7 A1 1 0 1 0 8 9 A1 1 0 1 0 8 7 Z", top: 2.5 })),
     // a ward: the shield's shoulder and point
-    Match.when("armor", () => ({ word: "armor", tint: "#d7d2e0", glyph: "M3 3 H13 V8.5 C13 11.5 8 14 8 14 C8 14 3 11.5 3 8.5 Z" })),
+    Match.when("armor", () => ({ word: "armor", tint: "#d7d2e0", glyph: "M3 3 H13 V8.5 C13 11.5 8 14 8 14 C8 14 3 11.5 3 8.5 Z", top: 3 })),
     // a lift: two chevrons rising
-    Match.when("boost", () => ({ word: "boost", tint: "#6c9fd8", glyph: "M3.5 8.5 L8 4 L12.5 8.5 M3.5 13 L8 8.5 L12.5 13" })),
+    Match.when("boost", () => ({ word: "boost", tint: "#6c9fd8", glyph: "M3.5 8.5 L8 4 L12.5 8.5 M3.5 13 L8 8.5 L12.5 13", top: 4 })),
     // a weight: two chevrons sinking
-    Match.when("condition", () => ({ word: "condition", tint: "#e29659", glyph: "M3.5 3 L8 7.5 L12.5 3 M3.5 7.5 L8 12 L12.5 7.5" })),
+    Match.when("condition", () => ({ word: "condition", tint: "#e29659", glyph: "M3.5 3 L8 7.5 L12.5 3 M3.5 7.5 L8 12 L12.5 7.5", top: 3 })),
     // a brand: three strokes through one point
-    Match.when("mark", () => ({ word: "mark", tint: "#dc5a4f", glyph: "M8 2 V14 M3 5 L13 11 M3 11 L13 5" })),
+    Match.when("mark", () => ({ word: "mark", tint: "#dc5a4f", glyph: "M8 2 V14 M3 5 L13 11 M3 11 L13 5", top: 2 })),
     // the stage: a crescent, the scene's hour
-    Match.when("scene", () => ({ word: "scene", tint: "#b8607f", glyph: "M11.5 2.5 A6 6 0 1 0 11.5 13.5 A4.6 4.6 0 1 1 11.5 2.5 Z" })),
+    Match.when("scene", () => ({ word: "scene", tint: "#b8607f", glyph: "M11.5 2.5 A6 6 0 1 0 11.5 13.5 A4.6 4.6 0 1 1 11.5 2.5 Z", top: 2.5 })),
     // a plain note: an empty seat for a symbol
-    Match.when("blank", () => ({ word: "note", tint: "#807b8f", glyph: "M8 3 A5 5 0 1 0 8 13 A5 5 0 1 0 8 3 Z" })),
+    Match.when("blank", () => ({ word: "note", tint: "#807b8f", glyph: "M8 3 A5 5 0 1 0 8 13 A5 5 0 1 0 8 3 Z", top: 3 })),
     Match.exhaustive,
   )
 
