@@ -21,16 +21,17 @@
 // the page they want quickly as well."
 // The tabs round: seven tabs past the right edge; one held out thins the
 // book to its kind (pages without it fall out, other kinds hide, the wheel
-// runs over what is left).
+// runs over what is left). ⌘F: "probably just a search field in the header
+// of the notebook" — the same thinning keyed by a word, the words lit.
 // Knobs: ?rule=dots|lines|none; ?gap=0|2|3|4 (the gutter a plate keeps inside
 // its lattice box); ?feel=soft|mid|far (the wheel's momentum); seed 1 / 8 / 40.
 // The book is kept in localStorage between reloads (owner, 2026-10-29: "we
 // can't test this iteratively if i have to fill out 10 pages or whatever
 // each time myself"); a fresh browser opens on the 8-page seed.
 // Mock data; no Convex. DELETE once specced.
-import { Suspense, lazy, useEffect, useState, type ReactNode } from "react"
+import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react"
 import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router"
-import { Eraser, Feather, Group, MousePointer2, Redo2, Undo2, Ungroup } from "lucide-react"
+import { Eraser, Feather, Group, MousePointer2, Redo2, Search, Undo2, Ungroup } from "lucide-react"
 import { Option, Schema } from "effect"
 import { Book, clearPage, commit, editOpen, EMPTY_BOOK, GRID, INKS, emptyHistory, isOneGroup, openPage, redo, seedBook, toggleGroup, undo, type History, type Tool } from "./-notebook-page"
 import type { Feel, Rule } from "./-notebook-pad"
@@ -76,6 +77,23 @@ function Notebook() {
   const [tool, setTool] = useState<Tool>("select")
   const [ink, setInk] = useState(INKS[0]!.color)
   const [picked, setPicked] = useState<ReadonlyArray<string>>([])
+  /** The word the book is read by; empty, the book is whole. */
+  const [search, setSearch] = useState("")
+  const searchRef = useRef<HTMLInputElement>(null)
+  // ⌘F anywhere on the page goes to the field, not the browser's find
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault()
+        searchRef.current?.focus()
+        searchRef.current?.select()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+  /** The hand goes back to the pad, so the arrows and the keys work at once. */
+  const toPad = () => document.getElementById("notebook-pad")?.focus({ preventScroll: true })
 
   // the book comes back from the browser's store after mount (the server knows nothing of it), and goes back on every change
   useEffect(() => {
@@ -150,6 +168,44 @@ function Notebook() {
               )}
             </div>
             <div className="flex items-center gap-1">
+              {/* the word: a field in the hand, quiet until it holds a word; ⌘F lands here, Enter goes back to the page, Escape lets the word go */}
+              <label className="flex items-center gap-1.5" style={{ color: search === "" ? "var(--dim)" : "var(--accent)" }}>
+                <Search size={13} strokeWidth={1.6} aria-hidden />
+                <input
+                  ref={searchRef}
+                  type="text"
+                  aria-label="find"
+                  placeholder="find…"
+                  value={search}
+                  spellCheck={false}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      toPad()
+                    }
+                    if (e.key === "Escape") {
+                      e.preventDefault()
+                      setSearch("")
+                      toPad()
+                    }
+                  }}
+                  style={{
+                    width: 150,
+                    height: 22,
+                    padding: "0 2px",
+                    background: "transparent",
+                    border: 0,
+                    borderBottom: `1px solid ${search === "" ? "var(--line)" : "var(--accent)"}`,
+                    outline: "none",
+                    fontFamily: HAND,
+                    fontSize: 15,
+                    color: "var(--ink)",
+                    caretColor: "var(--accent)",
+                  }}
+                />
+              </label>
+              <span className="mx-1 h-4 w-px" style={{ background: "var(--line)" }} />
               <ToolButton label={oneGroup ? "ungroup" : "group"} on={oneGroup} disabled={picked.length < 2} onClick={group}>
                 {oneGroup ? <Ungroup size={15} strokeWidth={1.6} /> : <Group size={15} strokeWidth={1.6} />}
               </ToolButton>
@@ -169,13 +225,13 @@ function Notebook() {
           <div style={{ marginLeft: -16, marginRight: -16, marginBottom: -16, borderTop: "1px solid var(--line)" }}>
             <ClientOnly fallback={<div style={{ width: WIDTH, height: HEIGHT + 36 }} />}>
               <Suspense fallback={<div style={{ width: WIDTH, height: HEIGHT + 36 }} />}>
-                {loaded && <Pad font={HAND} tool={tool} inkColor={ink} rule={rule} gap={gap} feel={feel} picked={picked} onPicked={setPicked} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />}
+                {loaded && <Pad font={HAND} tool={tool} inkColor={ink} rule={rule} gap={gap} feel={feel} search={search} picked={picked} onPicked={setPicked} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />}
               </Suspense>
             </ClientOnly>
           </div>
         </div>
         <p className="mv-data" style={{ fontSize: 11, color: "var(--dim)" }}>
-          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · a picked row has a grip at its corner: drag it to resize, it snaps to the dots; a sized row scrolls under the wheel · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus · turn the page: the wheel in the footer (drag it, tap a number, scroll over it), ← → · the book always has a blank page at the back · the tabs at the right edge: hold one out and the book thins to that kind — pages without it fall out, the rest show only it, the wheel runs over what is left; click it again and the book is whole · with a tab out, a new note is of its kind
+          double-click the page and write · a note has three places to touch: its symbol (the kinds, in any tool), its words, its value · 1–7 also swaps the kind, ⌫ removes · drag and it settles on the lattice · a picked row has a grip at its corner: drag it to resize, it snaps to the dots; a sized row scrolls under the wheel · sweep, shift-click adds, ⌘A takes all; a drag moves them together; ⌘G groups them · pen: draw; click a stroke to pick it · ⌘Z / ⇧⌘Z · ⌘D duplicates · the pad must have focus · turn the page: the wheel in the footer (drag it, tap a number, scroll over it), ← → · the book always has a blank page at the back · the tabs at the right edge: hold one out and the book thins to that kind — pages without it fall out, the rest show only it, the wheel runs over what is left; click it again and the book is whole · with a tab out, a new note is of its kind · ⌘F: a word in the header's field thins the book the same way, the word lit where the rows say it; Enter goes back to the page, Escape lets the word go
         </p>
       </div>
 

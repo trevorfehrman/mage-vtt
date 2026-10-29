@@ -116,12 +116,24 @@ export const editOpen = (book: Book, f: (page: Page) => Page): Book => {
 // book is whole. Nothing is generated and nothing is read-only: the thin
 // book is the same book, and every page in it is still the page it was.
 
-/** Whether a page holds a note of the kind. */
-export const holds = (page: Page, kind: NoteKind): boolean => page.notes.some((n) => n.kind === kind)
-/** The pages that hold the kind, by index, in order. */
-export const pagesHolding = (book: Book, kind: NoteKind): ReadonlyArray<number> => book.pages.flatMap((p, i) => (holds(p, kind) ? [i] : []))
-/** The page read by one kind: its other kinds hidden, its ink kept. The notes are still on the page, where they were. */
-export const onlyKind = (page: Page, kind: NoteKind): Page => ({ ...page, notes: page.notes.filter((n) => n.kind === kind) })
+// ⌘F (owner, 2026-10-29: "probably just a search field in the header of
+// the notebook") is the same mechanism keyed by a word: pages with a match
+// stay, the rows that match are the ones shown, the matched words lit. A
+// tab and a word compose: both must hold.
+
+/** What a reading keeps: a note of the kind. */
+export const ofKind = (kind: NoteKind) => (n: Note): boolean => n.kind === kind
+/** What a reading keeps: a note whose words mention the query, any case; an empty query keeps every note. */
+export const mentions = (query: string) => {
+  const q = query.trim().toLowerCase()
+  return (n: Note): boolean => q === "" || n.title.toLowerCase().includes(q)
+}
+/** Whether a page holds a note the reading keeps. */
+export const holds = (page: Page, keep: (n: Note) => boolean): boolean => page.notes.some(keep)
+/** The pages that hold such a note, by index, in order. */
+export const pagesHolding = (book: Book, keep: (n: Note) => boolean): ReadonlyArray<number> => book.pages.flatMap((p, i) => (holds(p, keep) ? [i] : []))
+/** The page as read: only the notes the reading keeps, its ink kept. The notes are still on the page, where they were. */
+export const only = (page: Page, keep: (n: Note) => boolean): Page => ({ ...page, notes: page.notes.filter(keep) })
 /** The slot in a view (indices into the whole book) nearest a page of the whole book; between two, the one after. */
 export const nearestSlot = (view: ReadonlyArray<number>, i: number): number =>
   view.reduce((best, v, s) => (best < 0 || Math.abs(v - i) <= Math.abs(view[best]! - i) ? s : best), -1)

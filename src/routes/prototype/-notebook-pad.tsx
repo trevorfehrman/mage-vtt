@@ -45,6 +45,9 @@
 // 2 · 5 · 9: the gaps say what fell out. The wheel is driven over a VIEW
 // (indices into the whole book); when the view changes under it the page in
 // hand holds still and the other numbers close ranks or part around it.
+// ⌘F is the same mechanism keyed by a word from the field in the header:
+// pages with a match stay, the matching rows show, the matched words are
+// lit with a marker under them; a tab and a word compose.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent as RFocusEvent, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react"
 import { Match, Option } from "effect"
 import { Group, Layer, Line, Path, Rect, Stage, Text } from "react-konva"
@@ -63,11 +66,13 @@ import {
   KINDS,
   kindLook,
   MAX_LINES,
+  mentions,
   MIN_H,
   MIN_W,
   moveMany,
   nearestSlot,
-  onlyKind,
+  ofKind,
+  only,
   ORIGIN,
   pageAt,
   pagesHolding,
@@ -266,10 +271,31 @@ const rulingTile = (rule: Rule): HTMLCanvasElement | null => {
 const titleWidth = (kind: NoteKind, w: number, gap: number): number => w - gap * 2 - SPINE_W - PAD * 2 - (takesValue(kind) ? CELL + PAD : 0)
 /** Konva measures text as it draws, so one offstage Text measures how many lines a title takes at a width. */
 const measurer = new Konva.Text({ fontSize: HAND, lineHeight: LEAD, wrap: "word" })
+/** Set the measurer to a row's words at a width — cut at a height with an ellipsis, as the drawn row is when it sizes itself, or not at all. (Konva's height is "auto" by default, which its types do not say; setAttr takes it.) */
+const measure = (title: string, width: number, font: string, cutAt: number | undefined): void => {
+  measurer.setAttrs({ text: title, width, fontFamily: font })
+  measurer.setAttr("height", cutAt)
+  measurer.ellipsis(cutAt !== undefined)
+}
 const linesOf = (title: string, width: number, font: string): number => {
   if (title === "") return 1
-  measurer.setAttrs({ text: title, width, fontFamily: font })
+  measure(title, width, font, undefined)
   return Math.max(1, Math.round(measurer.height() / (HAND * LEAD)))
+}
+/** Where a word falls in a row's words: each place, by line and by px from the words' left, measured on the lines as Konva breaks them (with the ellipsis, when the row is cut at a height). */
+const litSpans = (title: string, width: number, font: string, query: string, cutAt: number | undefined): ReadonlyArray<{ line: number; x: number; w: number }> => {
+  if (title === "" || query === "") return []
+  measure(title, width, font, cutAt)
+  const spans: Array<{ line: number; x: number; w: number }> = []
+  measurer.textArr.forEach((row, line) => {
+    const lower = row.text.toLowerCase()
+    let at = lower.indexOf(query)
+    while (at >= 0) {
+      spans.push({ line, x: measurer.measureSize(row.text.slice(0, at)).width, w: measurer.measureSize(row.text.slice(at, at + query.length)).width })
+      at = lower.indexOf(query, at + query.length)
+    }
+  })
+  return spans
 }
 
 export function NotebookPad({
@@ -279,6 +305,7 @@ export function NotebookPad({
   rule,
   gap,
   feel,
+  search,
   picked,
   onPicked,
   history,
@@ -293,6 +320,8 @@ export function NotebookPad({
   /** The gutter: px the plate is drawn inside its lattice box, on every side. */
   gap: number
   feel: Feel
+  /** The word in the header's field: the book is read by it. */
+  search: string
   picked: ReadonlyArray<string>
   onPicked: (ids: ReadonlyArray<string>) => void
   history: History<Book>
@@ -305,26 +334,45 @@ export function NotebookPad({
   const [filter, setFilter] = useState<Option.Option<NoteKind>>(Option.none())
   /** The page in hand stays in the thin book while the hand is on it, even once its last note of the kind is gone; −1 after a tab click, so the click may turn to the nearest page that holds the kind. */
   const [pin, setPin] = useState(-1)
-  /** The view: the whole book's pages that are in the book as read, by index — every page when no tab is out. The wheel runs over the view; a position is a slot in it. */
+  // a changed word is a tab click: the page in hand is let go, so the book may turn to the nearest page that has it
+  const [seenSearch, setSeenSearch] = useState(search)
+  if (seenSearch !== search) {
+    setSeenSearch(search)
+    setPin(-1)
+  }
+  /** The reading: what a note must be to show — of the tab's kind and mentioning the word, when either is set; none when the book is read whole. */
+  const keep = useMemo((): Option.Option<(n: Note) => boolean> => {
+    const q = search.trim()
+    if (Option.isNone(filter) && q === "") return Option.none()
+    const kindOk = Option.match(filter, { onNone: () => () => true, onSome: ofKind })
+    const wordOk = mentions(q)
+    return Option.some((n: Note) => kindOk(n) && wordOk(n))
+  }, [filter, search])
+  /** The view: the whole book's pages that are in the book as read, by index — every page when the book is read whole. The wheel runs over the view; a position is a slot in it. */
   const view = useMemo(() => {
-    const read = Option.match(filter, {
+    const read = Option.match(keep, {
       onNone: () => book.pages.map((_, i) => i),
-      onSome: (kind) => book.pages.flatMap((p, i) => (holds(p, kind) || i === pin ? [i] : [])),
+      onSome: (k) => book.pages.flatMap((p, i) => (holds(p, k) || i === pin ? [i] : [])),
     })
     return read.length === 0 ? [book.open] : read
-  }, [book.pages, book.open, filter, pin])
+  }, [book.pages, book.open, keep, pin])
   const last = view.length - 1
   /** How many pages hold each kind: a tab for a kind the book has none of stays in. */
-  const holding = useMemo(() => KINDS.map((k) => pagesHolding(book, k).length), [book.pages])
+  const holding = useMemo(() => KINDS.map((k) => pagesHolding(book, ofKind(k)).length), [book.pages])
+  /** The word, as the marker finds it in a row's words. */
+  const query = search.trim().toLowerCase()
   /** The wheel's position, in slots of the view: whole at rest, fractional in motion. */
   const pos = useMotionValue(book.open)
   /** The page in hand, in the whole book: the view's page the wheel is nearest. The page shows this one and no other. */
   const [near, setNear] = useState(book.open)
   const liveIndex = near
   const page = pageAt(book, liveIndex)
-  /** The page as read: by one kind when a tab is out. Edits go to the page itself; the hand picks and sweeps only what it can see. */
-  const shown = Option.match(filter, { onNone: () => page, onSome: (kind) => onlyKind(page, kind) })
   const [editing, setEditing] = useState<Option.Option<Editing>>(Option.none())
+  /** The page as read: only what the reading keeps, when there is one — and the row being written, whatever it says yet. Edits go to the page itself; the hand picks and sweeps only what it can see. */
+  const shown = Option.match(keep, {
+    onNone: () => page,
+    onSome: (k) => only(page, (n) => k(n) || Option.exists(editing, (ed) => ed.id === n.id)),
+  })
   /** The note whose list of kinds is open beneath it. */
   const [menu, setMenu] = useState<Option.Option<string>>(Option.none())
   const [stroke, setStroke] = useState<Option.Option<Ink>>(Option.none())
@@ -954,6 +1002,7 @@ export function NotebookPad({
   return (
     <div
       ref={padRef}
+      id="notebook-pad"
       tabIndex={0}
       onKeyDown={onKey}
       className="relative outline-none"
@@ -1073,6 +1122,20 @@ export function NotebookPad({
                   <Rect x={SPINE_W + 1} y={0} width={tw + PAD * 2 - 1} height={h} fill={INK} opacity={0.001} />
                   {!isEditing && (
                     <Group clipX={SPINE_W + 1} clipY={wordsTop} clipWidth={tw + PAD * 2 - 1} clipHeight={sized ? clipH : h - wordsTop} listening={false}>
+                      {/* the word, lit: a marker under each place the words say it, laid on the lines as Konva breaks them */}
+                      {query !== "" &&
+                        litSpans(n.title, tw, font, query, sized ? undefined : h - wordsTop - 4).map((span, si) => (
+                          <Rect
+                            key={si}
+                            x={SPINE_W + PAD + span.x - 1}
+                            y={wordsTop - sc + span.line * HAND * LEAD + 1}
+                            width={span.w + 2}
+                            height={HAND * LEAD - 2}
+                            fill={ACCENT}
+                            opacity={0.22}
+                            cornerRadius={2}
+                          />
+                        ))}
                       <Text
                         x={SPINE_W + PAD}
                         y={wordsTop - sc}
