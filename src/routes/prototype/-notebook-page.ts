@@ -289,6 +289,40 @@ export const duplicateNotes = (page: Page, ids: ReadonlyArray<string>): Page => 
 })
 export const clearPage = (page: Page): Page => (page.notes.length === 0 && page.ink.length === 0 ? page : EMPTY_PAGE)
 
+// --- The clipboard: things taken off a page, to be put down on another ---
+//
+// (owner, 2026-10-29: the one real gap is to "move things around" — consolidate
+// the suspects onto a clean page.) What is taken is a page fragment: the
+// picked notes and strokes as they are. Putting it down gives everything
+// fresh ids and fresh groups (a group put down twice is two groups), at the
+// same place on the lattice — or one cell over when it is put down on the
+// page it was copied from, as a duplicate is.
+
+/** The picked notes and strokes, as a page fragment. */
+export const taken = (page: Page, ids: ReadonlyArray<string>): Page => ({
+  notes: page.notes.filter((n) => ids.includes(n.id)),
+  ink: page.ink.filter((s) => ids.includes(s.id)),
+})
+/** The fragment laid on a page, fresh, offset by `by` px both ways: the page, and the ids of what was laid down. */
+export const putDown = (page: Page, clip: Page, nth: number, by: number): { readonly page: Page; readonly ids: ReadonlyArray<string> } => {
+  const stamp = `${Date.now().toString(36)}${nth}`
+  const groups: Record<string, string> = {}
+  const regroup = (g: string): string => {
+    if (g === "") return ""
+    const fresh = groups[g] ?? `g${stamp}${Object.keys(groups).length}`
+    groups[g] = fresh
+    return fresh
+  }
+  const notes = clip.notes.map((n, i) => ({ ...n, id: `n${stamp}p${i}`, x: n.x + by, y: n.y + by, group: regroup(n.group) }))
+  const ink = clip.ink.map((s, i) => ({
+    ...s,
+    id: `i${stamp}p${i}`,
+    points: by === 0 ? s.points : s.points.map((v, k) => (k % 3 === 2 ? v : v + by)),
+    group: regroup(s.group),
+  }))
+  return { page: { notes: [...page.notes, ...notes], ink: [...page.ink, ...ink] }, ids: [...notes.map((n) => n.id), ...ink.map((s) => s.id)] }
+}
+
 // --- Groups: things that move as one ---
 
 const groupOf = (page: Page, id: string): string =>

@@ -77,6 +77,7 @@ import {
   pageAt,
   pagesHolding,
   placeAt,
+  putDown,
   raise,
   redo,
   rekind,
@@ -87,6 +88,7 @@ import {
   snapPoint,
   SPINE_W,
   swept,
+  taken,
   takesValue,
   toggleGroup,
   turnTo,
@@ -384,6 +386,8 @@ export function NotebookPad({
   const [scroll, setScroll] = useState<Record<string, number>>({})
   const [fontsReady, setFontsReady] = useState(0)
   const stamped = useRef(0)
+  /** What the hand holds between pages: a page fragment, the page it came from, and whether it was cut (a copy put down on its own page lands a cell over). */
+  const clip = useRef<Option.Option<{ readonly page: Page; readonly from: number; readonly cut: boolean }>>(Option.none())
   const stageRef = useRef<Konva.Stage>(null)
   const padRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<HTMLDivElement>(null)
@@ -478,6 +482,29 @@ export function NotebookPad({
     if (meta && key === "d" && pickedNotes.length > 0) {
       e.preventDefault()
       set(duplicateNotes(page, picked))
+      return
+    }
+    // ⌘X / ⌘C take what is picked; ⌘V puts it down on the page in hand, picked, so a drag can settle it
+    if (meta && (key === "x" || key === "c") && picked.length > 0) {
+      e.preventDefault()
+      clip.current = Option.some({ page: taken(page, picked), from: liveIndex, cut: key === "x" })
+      if (key === "x") {
+        set(removeMany(page, picked))
+        onPicked([])
+        setMenu(Option.none())
+      }
+      return
+    }
+    if (meta && key === "v" && Option.isSome(clip.current)) {
+      e.preventDefault()
+      const c = clip.current.value
+      stamped.current += 1
+      const laid = putDown(page, c.page, stamped.current, c.from === liveIndex && !c.cut ? GRID : 0)
+      set(laid.page)
+      onPicked(laid.ids)
+      setMenu(Option.none())
+      // what was just laid down is what the hand holds now, so a second ⌘V here lands a cell further on
+      clip.current = Option.some({ page: taken(laid.page, laid.ids), from: liveIndex, cut: false })
       return
     }
     if (meta && key === "a") {
