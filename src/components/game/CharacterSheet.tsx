@@ -1,7 +1,6 @@
 import { Fragment, type CSSProperties, type ReactNode } from "react"
 import { Option } from "effect"
 import {
-  attainmentGates,
   rulingArcanaOf,
   skillDisplayName,
   specialtyComponent,
@@ -42,6 +41,7 @@ import { PoolNumerals } from "./CastHeaderStats"
 import { cycleBox, toggleResistant } from "#/domain/health"
 import { WisdomMeter } from "./WisdomMeter"
 import { DerangementAccordion } from "./DerangementAccordion"
+import { LegacyPlate, type LegacyLook } from "./LegacyPlate"
 import type { useCast } from "#/hooks/use-cast"
 import type { useDicePool } from "#/hooks/use-dice-pool"
 
@@ -74,6 +74,9 @@ interface CharacterSheetProps {
   /** The Scene open now (MAG-60): a Bedlam derangement bound to it stands
    * in the Derangements accordion while it is the open one. Absent in downtime. */
   activeSceneId?: SceneId | undefined
+  /** Where the Legacy plate attaches to the title card (MAG-64) — the rig's
+   * audition knob; the sheet wears the plinth until the owner picks. */
+  legacyLook?: LegacyLook | undefined
 }
 
 
@@ -90,6 +93,7 @@ export function CharacterSheet({
   onSetMagicalTool,
   onMarkSheet,
   activeSceneId,
+  legacyLook = "plinth",
 }: CharacterSheetProps) {
   const penalty = character.woundPenalty
   const canToggle =
@@ -117,6 +121,12 @@ export function CharacterSheet({
           grammar, with the standing tool fact at the corner. The given name
           and concept line is gone (owner: players know who they are). */}
       <div className="mv-cornered mv-panel grid gap-4 p-4">
+        {/* The Legacy plate (MAG-64) — the growth bolted onto the card:
+            above the name as a pediment, beneath the emblem row as a
+            plinth, or on the Gnosis flank as a wing. Absent until chosen. */}
+        {character.legacy !== undefined && legacyLook === "pediment" && (
+          <LegacyPlate legacy={character.legacy} gnosis={character.gnosis} look="pediment" />
+        )}
         <div className="flex items-start justify-between gap-6">
           <div className="grid gap-3">
             <span className="flex items-center gap-3">
@@ -220,6 +230,9 @@ export function CharacterSheet({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            {character.legacy !== undefined && legacyLook === "wing" && (
+              <LegacyPlate legacy={character.legacy} gnosis={character.gnosis} look="wing" />
+            )}
           </div>
         </div>
         {/* Derangements (MAG-60; owner 2026-10-28): the accordion beneath the
@@ -306,6 +319,9 @@ export function CharacterSheet({
             )}
           </span>
         </div>
+        {character.legacy !== undefined && legacyLook === "plinth" && (
+          <LegacyPlate legacy={character.legacy} gnosis={character.gnosis} look="plinth" />
+        )}
       </div>
 
       {/* The trait matrix — directly beneath the title card: the mundane
@@ -382,33 +398,7 @@ export function CharacterSheet({
         <ArcanaDashboard arcana={character.arcana} ruling={ruling} cast={cast} />
       </Section>
 
-      {/* Legacy (MAG-61; Mage p. 93) — the mage's one specialization, its
-          attainments opening at Gnosis 3, 5 and 7: the reached ones in ink,
-          the rest waiting in the dim. Absent until chosen, and then a small
-          section of its own between the Arcana it grows from and the Rotes. */}
-      {character.legacy !== undefined && (
-        <Section title="Legacy">
-          <div className="mv-panel grid gap-3 rounded-[3px] p-4">
-            <span className="mv-h text-[22px] leading-none">{character.legacy.name}</span>
-            <ol className="grid gap-1.5">
-              {attainmentGates(character.legacy).map(({ name, gnosis }) => {
-                const reached = character.gnosis >= gnosis
-                return (
-                  <li key={name} className="flex items-baseline gap-3 text-[14px]">
-                    <span
-                      className="mv-data w-[5.5em] shrink-0 text-[11px] uppercase tracking-wider"
-                      style={{ color: reached ? "var(--accent)" : "var(--dim)" }}
-                    >
-                      Gnosis {gnosis}
-                    </span>
-                    <span style={{ color: reached ? "var(--ink)" : "var(--dim)" }}>{name}</span>
-                  </li>
-                )
-              })}
-            </ol>
-          </div>
-        </Section>
-      )}
+      {/* The Legacy left this spot for the title card (MAG-64). */}
 
       {/* Rotes — the character's book (issue #89), directly under the Arcana
           it belongs to: the sheet's magic stays contiguous (owner call

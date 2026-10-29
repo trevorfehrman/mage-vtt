@@ -41,6 +41,8 @@ import { CastCard } from "#/components/game/CastCard"
 import { CastMount } from "#/components/game/CastMount"
 import { isUnresolved } from "#/domain/cast"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
+import { LEGACY_LOOKS } from "#/components/game/LegacyPlate"
+import { legacy as legacyDef, toSheetLegacy } from "#/domain/legacies"
 import { pooledDice } from "#/machines/dice-pool"
 import { MessageBox } from "#/components/game/MessageBox"
 import { ChronicleSwitch, WorkingSlot } from "#/components/game/WorkingSlot"
@@ -89,11 +91,21 @@ type RigWisdom = (typeof WISDOM_ORDER)[number]
 const isWisdom = (v: unknown): v is RigWisdom =>
   (WISDOM_ORDER as ReadonlyArray<unknown>).includes(typeof v === "string" ? Number(v) : v)
 
+// MAG-64: the Legacy knob — which growth the title card wears (plinth,
+// pediment, wing), or none. On, the rig's Arctus is an Uncrowned King at
+// Gnosis 5 (two attainments reached, the third waiting) so reached and dim
+// can both be judged; off, the sheet carries no Legacy at all.
+const LEGACY_ORDER = [...LEGACY_LOOKS, "off"] as const
+type RigLegacy = (typeof LEGACY_ORDER)[number]
+const isLegacy = (v: unknown): v is RigLegacy =>
+  typeof v === "string" && (LEGACY_ORDER as ReadonlyArray<string>).includes(v)
+
 export const Route = createFileRoute("/prototype/cast-dressing-room")({
   validateSearch: (search: Record<string, unknown>) => ({
     rung: isRung(search.rung) ? search.rung : ("draft" as RigRung),
     seat: isSeat(search.seat) ? search.seat : ("caster" as RigSeat),
     wisdom: isWisdom(search.wisdom) ? (Number(search.wisdom) as RigWisdom) : (7 as RigWisdom),
+    legacy: isLegacy(search.legacy) ? search.legacy : ("plinth" as RigLegacy),
   }),
   component: DressingRoom,
 })
@@ -373,7 +385,7 @@ const RIG_SCENE = SceneId.make("rig-scene")
 // ── The rig ──────────────────────────────────────────────────────────────────
 
 function DressingRoom() {
-  const { rung, seat, wisdom } = Route.useSearch()
+  const { rung, seat, wisdom, legacy: legacyKnob } = Route.useSearch()
   // MAG-52: the sheet's tool switch flips a local copy (no server here).
   const [toolInHand, setToolInHand] = useState(false)
   // MAG-56: the Wisdom knob rides the shown sheet too, so the meter and the
@@ -418,8 +430,13 @@ function DressingRoom() {
         // turns for dice, a purse, a gate, a raised number, a ladder, story keys
         merits: [...RIG_MERITS],
         derangements: [...heldDerangements],
+        // MAG-64: the Legacy knob — a catalog Legacy at a Gnosis that has
+        // reached two of its three, or no Legacy at all
+        ...(legacyKnob === "off"
+          ? {}
+          : { gnosis: 5, legacy: toSheetLegacy(legacyDef("Uncrowned Kings")) }),
       }),
-    [toolInHand, wisdom, marks, heldDerangements],
+    [toolInHand, wisdom, marks, heldDerangements, legacyKnob],
   )
   const navigate = Route.useNavigate()
   const pool = useDicePool(SESSION_ID)
@@ -600,6 +617,7 @@ function DressingRoom() {
                 return Promise.resolve()
               }}
               activeSceneId={RIG_SCENE}
+              legacyLook={legacyKnob === "off" ? "plinth" : legacyKnob}
             />
           ) : (
             <p className="text-sm" style={{ color: "var(--bad)" }}>
@@ -646,6 +664,23 @@ function DressingRoom() {
               title="MAG-56: the caster's Wisdom — 10 amazing, 7 fine, 5 sketchy, 2 really bad; the resolved aftermath follows"
             >
               W{w}
+            </button>
+          ))}
+        </div>
+        <span className="h-4 w-px bg-zinc-400" />
+        <div className="flex items-center gap-1">
+          {LEGACY_ORDER.map((l) => (
+            <button
+              key={l}
+              onClick={() =>
+                void navigate({ search: (prev) => ({ ...prev, legacy: l }), replace: true })
+              }
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                l === legacyKnob ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"
+              }`}
+              title="MAG-64: where the Legacy plate attaches to the title card"
+            >
+              {l}
             </button>
           ))}
         </div>
