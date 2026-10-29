@@ -59,8 +59,10 @@
 // just let the ribbon hang off the bottom and let me drag it over the
 // numbers. it's literally just a memory tool for the user." A ribbon hangs
 // from the page's foot over the marked page's number, under the number so
-// the number reads on it; drag it along the numbers to mark another page;
-// tap it to turn there. The book is nine pages, always.
+// the number reads on it, and its tail hangs past the frame: the tail is the
+// handle ("the draggable part is the part beyond the frame") — drag it along
+// the numbers to mark another page; tap it to turn there. The book is nine
+// pages, always.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent as RFocusEvent, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react"
 import { Match, Option } from "effect"
 import { Ellipse, Group, Layer, Line, Path, Rect, Stage, Text, Transformer } from "react-konva"
@@ -172,9 +174,11 @@ const FEEL: Record<Feel, { power: number; timeConstant: number; stiffness: numbe
   mid: { power: 0.6, timeConstant: 280, stiffness: 320, damping: 33 },
   far: { power: 0.8, timeConstant: 360, stiffness: 400, damping: 37 },
 }
-/** The ribbon: a calming red, its width, and how far it hangs. */
+/** The ribbon: a calming red; its width; how far its tail hangs past the frame (the tail is the handle); the cut of its swallowtail. */
 const RIBBON = "#a65852"
-const RIBBON_W = 14
+const RIBBON_W = 24
+const TAIL = 26
+const NOTCH = 10
 /** A trackpad stream's travel, in px, for one page. */
 const WHEEL_PAGE = 420
 /** How far past a cover the wheel can be pulled, in pages, and how it resists: a rubber band, not a wall. */
@@ -1184,6 +1188,12 @@ export function NotebookPad({
   const hold = useMotionValue(0)
   const markSlot = view.indexOf(book.mark)
   const ribbonX = useTransform([pos, hold], ([p, h]: number[]) => (markSlot - (p ?? 0)) * PITCH + (h ?? 0))
+  /** The ribbon fades toward the wheel's ends as the numbers do (the wheel's mask does not reach it), and is gone when its page is out of the view. */
+  const ribbonAlpha = useTransform(ribbonX, (x) => {
+    if (markSlot < 0) return 0
+    const f = 0.5 + x / width
+    return clamp(Math.min(f, 1 - f) / 0.22, 0, 1)
+  })
   const onRibbonDown = (e: RPointerEvent<HTMLSpanElement>) => {
     e.stopPropagation()
     settle()
@@ -1512,6 +1522,31 @@ export function NotebookPad({
       </Stage>
       </motion.div>
 
+      {/* the ribbon: hangs from the page's foot, through the footer under the marked page's number, and past the frame; only its tail beyond the frame is the handle — drag it along the numbers, tap it to turn there */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute"
+        style={{
+          top: height,
+          left: width / 2 - RIBBON_W / 2,
+          width: RIBBON_W,
+          height: FOOTER_H + TAIL,
+          x: ribbonX,
+          opacity: ribbonAlpha,
+          background: RIBBON,
+          clipPath: `polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - ${NOTCH}px), 0 100%)`,
+          filter: "drop-shadow(0 2px 3px rgba(0,0,0,.5))",
+        }}
+      >
+        <span
+          role="button"
+          aria-label={`ribbon at page ${book.mark + 1}`}
+          onPointerDown={onRibbonDown}
+          className="pointer-events-auto absolute right-0 bottom-0 left-0"
+          style={{ height: TAIL + 4, cursor: "grab", touchAction: "none" }}
+        />
+      </motion.div>
+
       {/* the wheel: the footer, the book's pages in a row, the one in hand at the middle */}
       <div
         onPointerDown={onWheelDown}
@@ -1528,25 +1563,6 @@ export function NotebookPad({
         }}
         aria-label={`page ${near + 1} of ${book.pages.length}`}
       >
-        {/* the ribbon: hangs from the page's foot over the marked page's number, under the number; drag it along the numbers, tap it to turn there */}
-        <motion.span
-          role="button"
-          aria-label={`ribbon at page ${book.mark + 1}`}
-          onPointerDown={onRibbonDown}
-          className="absolute top-0"
-          style={{
-            left: width / 2 - RIBBON_W / 2,
-            width: RIBBON_W,
-            height: FOOTER_H - 1,
-            x: ribbonX,
-            opacity: markSlot >= 0 ? 1 : 0,
-            background: RIBBON,
-            clipPath: "polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%)",
-            boxShadow: "0 2px 5px rgba(0,0,0,.5)",
-            cursor: "grab",
-            touchAction: "none",
-          }}
-        />
         {book.pages.map((p, k) => {
           const slot = view.indexOf(k)
           return <WheelNumber key={k} k={k} slot={slot >= 0 ? slot : undefined} shift={shift} pos={pos} blank={isBlankPage(p)} marked={k === book.mark} font={font} middle={width / 2} />
