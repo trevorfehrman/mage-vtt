@@ -58,7 +58,6 @@ import {
   MIN_H,
   MIN_W,
   moveMany,
-  NOTE_H,
   ORIGIN,
   pageAt,
   placeAt,
@@ -120,9 +119,17 @@ const PITCH = 40
 /** the number in hand grows from NUM to NUM_IN_HAND */
 const NUM = 12
 const NUM_IN_HAND = 17
-/** the hinge: degrees a page swings in from, about its spine; below SWING_SPEED pages per second a page change swings */
+/** the hinge: degrees a page swings in from, about its spine, and how long; both shrink with the wheel's speed, to a flutter at RIFFLE pages per second */
 const HINGE = 14
-const SWING_SPEED = 3
+const SWING = 0.22
+const RIFFLE = 12
+/** The momentum knob: how far a flick carries, how quick a notch's chase is (owner: "smoother momentum and a little bit faster ... a touch more inertia"). */
+export type Feel = "soft" | "mid" | "far"
+const FEEL: Record<Feel, { power: number; timeConstant: number; stiffness: number; damping: number }> = {
+  soft: { power: 0.4, timeConstant: 200, stiffness: 240, damping: 29 },
+  mid: { power: 0.6, timeConstant: 280, stiffness: 320, damping: 33 },
+  far: { power: 0.8, timeConstant: 360, stiffness: 400, damping: 37 },
+}
 /** A trackpad stream's travel, in px, for one page. */
 const WHEEL_PAGE = 420
 /** The plate: a hair above the panel. */
@@ -141,8 +148,17 @@ const PAD = 10
 const WORDS_TOP = 4
 const LINE_MID = WORDS_TOP + (HAND * LEAD) / 2
 const CELL_TOP = LINE_MID - CELL / 2
-/** A row's height for its lines: what the words need plus the gutter, rounded up to whole cells, never under two. */
-const rowHeight = (lines: number, gap: number): number => Math.max(NOTE_H, Math.ceil((WORDS_TOP + lines * HAND * LEAD + 6 + gap * 2) / GRID) * GRID)
+/**
+ * A row's height for its lines: what the words need plus the gutter, rounded
+ * up to HALF cells, never under a cell and a half. Half cells, because the
+ * header must sit in the first cell (so stacked rows stay readable) and a
+ * one-line row two whole cells tall then floats its line high (owner,
+ * 2026-10-29: "for a single line default sized note the text is no longer
+ * centered in the y-axis. is this a pick your poison situation?"). A row a
+ * hand has sized still snaps to whole cells.
+ */
+const HALF = GRID / 2
+const rowHeight = (lines: number, gap: number): number => Math.max(GRID * 1.5, Math.ceil((WORDS_TOP + lines * HAND * LEAD + 6 + gap * 2) / HALF) * HALF)
 /** The grip's reach from the row's corner, and the fade's depth at a scrolling row's foot. */
 const GRIP = 10
 const FADE = 28
@@ -240,6 +256,7 @@ export function NotebookPad({
   inkColor,
   rule,
   gap,
+  feel,
   picked,
   onPicked,
   history,
@@ -253,6 +270,7 @@ export function NotebookPad({
   rule: Rule
   /** The gutter: px the plate is drawn inside its lattice box, on every side. */
   gap: number
+  feel: Feel
   picked: ReadonlyArray<string>
   onPicked: (ids: ReadonlyArray<string>) => void
   history: History<Book>
@@ -714,8 +732,10 @@ export function NotebookPad({
       return
     }
     const sheet = sheetRef.current
-    if (sheet !== null && Math.abs(pos.getVelocity()) < SWING_SPEED) {
-      animate(sheet, { transformPerspective: 1100, rotateY: [dir * HINGE, 0], x: [dir * 6, 0], opacity: [0.35, 1] }, { duration: 0.22, ease: "easeOut" })
+    if (sheet !== null) {
+      // the swing is whole at a thumbing pace and a flutter at a riffle, never absent, so every turn is the same gesture
+      const k = clamp(1 - Math.abs(pos.getVelocity()) / RIFFLE, 0.3, 1)
+      animate(sheet, { transformPerspective: 1100, rotateY: [dir * HINGE * k, 0], x: [dir * 6 * k, 0], opacity: [1 - 0.65 * k, 1] }, { duration: SWING * k, ease: "easeOut" })
     }
     // owed to the page in hand alone
   }, [near])
@@ -730,8 +750,8 @@ export function NotebookPad({
     animate(pos, clamp(pos.get() + (v >= 0 ? 1 : -1), 0, last), {
       type: "inertia",
       velocity: v,
-      power: 0.4,
-      timeConstant: 200,
+      power: FEEL[feel].power,
+      timeConstant: FEEL[feel].timeConstant,
       modifyTarget: (t) => clamp(Math.round(t), 0, last),
       min: 0,
       max: last,
@@ -744,8 +764,8 @@ export function NotebookPad({
     chasing.current = true
     animate(pos, clamp(target, 0, last), {
       type: "spring",
-      stiffness: 260,
-      damping: 30,
+      stiffness: FEEL[feel].stiffness,
+      damping: FEEL[feel].damping,
       mass: 0.9,
       onComplete: () => {
         chasing.current = false
@@ -826,7 +846,8 @@ export function NotebookPad({
       if (Option.isSome(editing) || Option.isSome(menu) || picked.length > 0) settle()
       pos.set(clamp(pos.get() + delta / WHEEL_PAGE, 0, last))
       if (settling.current !== null) clearTimeout(settling.current)
-      settling.current = setTimeout(() => chase(Math.round(pos.get())), 120)
+      // once the stream is quiet the wheel coasts out on whatever speed it still has, and lands on a page
+      settling.current = setTimeout(() => coast(pos.getVelocity()), 120)
     }
     el.addEventListener("wheel", onWheel, { passive: false })
     return () => el.removeEventListener("wheel", onWheel)

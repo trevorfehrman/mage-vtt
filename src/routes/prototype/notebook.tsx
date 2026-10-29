@@ -20,7 +20,7 @@
 // quickly thumb through their notebook even if just for fun but arrive on
 // the page they want quickly as well."
 // Knobs: ?rule=dots|lines|none; ?gap=0|2|3|4 (the gutter a plate keeps inside
-// its lattice box); seed 1 / 8 / 40.
+// its lattice box); ?feel=soft|mid|far (the wheel's momentum); seed 1 / 8 / 40.
 // The book is kept in localStorage between reloads (owner, 2026-10-29: "we
 // can't test this iteratively if i have to fill out 10 pages or whatever
 // each time myself"); a fresh browser opens on the 8-page seed.
@@ -30,13 +30,15 @@ import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router
 import { Eraser, Feather, Group, MousePointer2, Redo2, Undo2, Ungroup } from "lucide-react"
 import { Option, Schema } from "effect"
 import { Book, clearPage, commit, editOpen, EMPTY_BOOK, GRID, INKS, emptyHistory, isOneGroup, openPage, redo, seedBook, toggleGroup, undo, type History, type Tool } from "./-notebook-page"
-import type { Rule } from "./-notebook-pad"
+import type { Feel, Rule } from "./-notebook-pad"
 
 const Pad = lazy(() => import("./-notebook-pad").then((m) => ({ default: m.NotebookPad })))
 
 /** The hand: Kalam (owner, 2026-10-29: "kalam is the font"). */
 const HAND = "Kalam"
 const RULES = ["dots", "lines", "none"] as const
+const FEELS = ["soft", "mid", "far"] as const
+const isFeel = (v: unknown): v is Feel => typeof v === "string" && (FEELS as ReadonlyArray<string>).includes(v)
 const GAPS = [0, 2, 3, 4] as const
 type Gap = (typeof GAPS)[number]
 const isGap = (v: unknown): v is Gap => typeof v === "number" && (GAPS as ReadonlyArray<number>).includes(v)
@@ -46,6 +48,7 @@ export const Route = createFileRoute("/prototype/notebook")({
   validateSearch: (search: Record<string, unknown>) => ({
     rule: isRule(search.rule) ? search.rule : ("dots" as Rule),
     gap: isGap(search.gap) ? search.gap : (3 as Gap),
+    feel: isFeel(search.feel) ? search.feel : ("mid" as Feel),
   }),
   component: Notebook,
 })
@@ -63,7 +66,7 @@ const storedBook = (): Book => {
 }
 
 function Notebook() {
-  const { rule, gap } = Route.useSearch()
+  const { rule, gap, feel } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const [history, setHistory] = useState<History<Book>>(() => emptyHistory(EMPTY_BOOK))
   const [loaded, setLoaded] = useState(false)
@@ -163,7 +166,7 @@ function Notebook() {
           <div style={{ marginLeft: -16, marginRight: -16, marginBottom: -16, borderTop: "1px solid var(--line)" }}>
             <ClientOnly fallback={<div style={{ width: WIDTH, height: HEIGHT + 36 }} />}>
               <Suspense fallback={<div style={{ width: WIDTH, height: HEIGHT + 36 }} />}>
-                {loaded && <Pad font={HAND} tool={tool} inkColor={ink} rule={rule} gap={gap} picked={picked} onPicked={setPicked} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />}
+                {loaded && <Pad font={HAND} tool={tool} inkColor={ink} rule={rule} gap={gap} feel={feel} picked={picked} onPicked={setPicked} history={history} onHistory={setHistory} width={WIDTH} height={HEIGHT} />}
               </Suspense>
             </ClientOnly>
           </div>
@@ -182,6 +185,16 @@ function Notebook() {
             className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${r === rule ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"}`}
           >
             {r}
+          </button>
+        ))}
+        <span className="mx-1 h-3 w-px bg-zinc-400" />
+        {FEELS.map((f) => (
+          <button
+            key={f}
+            onClick={() => void navigate({ search: (s) => ({ ...s, feel: f }), replace: true })}
+            className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${f === feel ? "bg-zinc-900 text-zinc-100" : "hover:bg-zinc-300"}`}
+          >
+            {f}
           </button>
         ))}
         <span className="mx-1 h-3 w-px bg-zinc-400" />
