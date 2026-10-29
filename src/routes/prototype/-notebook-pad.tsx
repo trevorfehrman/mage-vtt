@@ -48,14 +48,15 @@
 // ⌘F is the same mechanism keyed by a word from the field in the header:
 // pages with a match stay, the matching rows show, the matched words are
 // lit with a marker under them; a tab and a word compose.
-// Shapes (owner, 2026-10-29): rect, ellipse, line, arrow, in the kind inks,
-// fills none / hatch / wash; a drag on the page draws one, both points on the
-// lattice live; a picked shape wears Konva's Transformer (auditioned at the
-// owner's ask before anything of our own), its box snapped to the lattice.
-// Notes and shapes share one draw order, so a shape can be under or over.
+// Shapes (owner, 2026-10-29): a rectangle or an ellipse in the kind inks,
+// fills none / hatch / wash; a drag on the page draws one, freeform — nothing
+// about a shape snaps ("this is freeform stuff imo"); a picked shape wears
+// Konva's Transformer (auditioned at the owner's ask: "otherwise this looks
+// great"). Notes and shapes share one draw order, so a shape can be under or
+// over. Lines and arrows came out the same day: the quill beats them.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent as RFocusEvent, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react"
 import { Match, Option } from "effect"
-import { Arrow, Ellipse, Group, Layer, Line, Path, Rect, Stage, Text, Transformer } from "react-konva"
+import { Ellipse, Group, Layer, Line, Path, Rect, Stage, Text, Transformer } from "react-konva"
 import Konva from "konva"
 import { getStroke } from "perfect-freehand"
 import { animate, motion, useMotionValue, useMotionValueEvent, useTransform, type MotionValue } from "motion/react"
@@ -74,6 +75,7 @@ import {
   kindLook,
   MAX_LINES,
   mentions,
+  MIN_SHAPE,
   MIN_H,
   MIN_W,
   moveMany,
@@ -95,7 +97,6 @@ import {
   retitle,
   revalue,
   shapeStands,
-  snap,
   snapPoint,
   SPINE_W,
   swept,
@@ -356,7 +357,6 @@ export function NotebookPad({
   tool,
   inkColor,
   shapeKind,
-  shapeInk,
   fill,
   rule,
   gap,
@@ -372,9 +372,8 @@ export function NotebookPad({
   font: string
   tool: Tool
   inkColor: string
-  /** The shape tool's kind, ink and fill. */
+  /** The shape tool's kind and fill; its ink is the quill's. */
   shapeKind: ShapeKind
-  shapeInk: string
   fill: Fill
   rule: Rule
   /** The gutter: px the plate is drawn inside its lattice box, on every side. */
@@ -715,8 +714,8 @@ export function NotebookPad({
       }),
       Match.when("shape", () => {
         Option.map(pointer(), (p) => {
-          const at = snapPoint(p.x, p.y)
-          setShaping(Option.some({ id: `h${Date.now().toString(36)}`, shape: shapeKind, x0: at.x, y0: at.y, x1: at.x, y1: at.y, color: shapeInk, fill, group: "" }))
+          const at = { x: Math.round(p.x), y: Math.round(p.y) }
+          setShaping(Option.some({ id: `h${Date.now().toString(36)}`, shape: shapeKind, x0: at.x, y0: at.y, x1: at.x, y1: at.y, color: inkColor, fill, group: "" }))
         })
       }),
       Match.exhaustive,
@@ -746,7 +745,7 @@ export function NotebookPad({
   const onStageMove = (e: Konva.KonvaEventObject<PointerEvent>) => {
     if (tool === "shape") {
       Option.map(Option.zipWith(shaping, pointer(), (sh, p) => ({ sh, p })), ({ sh, p }) => {
-        const at = snapPoint(p.x, p.y)
+        const at = { x: Math.round(p.x), y: Math.round(p.y) }
         if (at.x !== sh.x1 || at.y !== sh.y1) setShaping(Option.some({ ...sh, x1: at.x, y1: at.y }))
       })
       return
@@ -839,20 +838,7 @@ export function NotebookPad({
     for (const x of d.ids) {
       const note = page.notes.find((n) => n.id === x)
       if (note === undefined) {
-        // a shape settles on the lattice as a note does: its shift rounds to whole cells and its node rides there before resting
-        if (page.shapes.some((h) => h.id === x)) {
-          const sdx = Math.round(dx / GRID) * GRID
-          const sdy = Math.round(dy / GRID) * GRID
-          shifts.push({ id: x, dx: sdx, dy: sdy })
-          Option.map(x === id ? Option.some(node) : nodeOf(x), (target) => {
-            landing += 1
-            target.to({ x: sdx, y: sdy, duration: 0.16, easing: Konva.Easings.EaseOut, onFinish: () => {
-              landing -= 1
-              if (landing === 0) land()
-            } })
-          })
-          continue
-        }
+        // a stroke or a shape stays where the hand left it: nothing of theirs snaps
         shifts.push({ id: x, dx, dy })
         continue
       }
@@ -1117,29 +1103,13 @@ export function NotebookPad({
     tr.nodes(Option.match(node, { onNone: () => [], onSome: (n) => [n] }))
     tr.getLayer()?.batchDraw()
   })
-  /** The Transformer's box held to the lattice: a line may be flat, a box is a cell at the least. */
-  const snapBox = (oldBox: { x: number; y: number; width: number; height: number; rotation: number }, box: { x: number; y: number; width: number; height: number; rotation: number }) => {
-    const flat = Option.exists(pickedShape, (h) => h.shape === "line" || h.shape === "arrow")
-    const x = snap(box.x)
-    const y = snap(box.y)
-    const w = snap(box.x + box.width) - x
-    const h = snap(box.y + box.height) - y
-    if (!flat && (Math.abs(w) < GRID || Math.abs(h) < GRID)) return oldBox
-    return { ...box, x, y, width: w, height: h }
-  }
+  /** The Transformer's box is the hand's, smooth, only never smaller than a shape can be. */
+  const leastBox = (oldBox: { x: number; y: number; width: number; height: number; rotation: number }, box: { x: number; y: number; width: number; height: number; rotation: number }) =>
+    Math.abs(box.width) < MIN_SHAPE || Math.abs(box.height) < MIN_SHAPE ? oldBox : box
   /** The shape's two points read back from its transformed node (its group's transform over its own corners), then snapped; the node is put back as React has it. */
   const onShapeTransformEnd = (h: Shape, group: Konva.Node) => {
     const t = group.getAbsoluteTransform()
-    const corners = Match.value(h.shape).pipe(
-      Match.when("ellipse", () => {
-        const cx = (h.x0 + h.x1) / 2
-        const cy = (h.y0 + h.y1) / 2
-        const rx = Math.abs(h.x1 - h.x0) / 2
-        const ry = Math.abs(h.y1 - h.y0) / 2
-        return [t.point({ x: cx - rx, y: cy - ry }), t.point({ x: cx + rx, y: cy + ry })]
-      }),
-      Match.orElse(() => [t.point({ x: h.x0, y: h.y0 }), t.point({ x: h.x1, y: h.y1 })]),
-    )
+    const corners = [t.point({ x: Math.min(h.x0, h.x1), y: Math.min(h.y0, h.y1) }), t.point({ x: Math.max(h.x0, h.x1), y: Math.max(h.y0, h.y1) })]
     group.setAttrs({ x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 })
     set(reshape(page, h.id, { x0: corners[0]!.x, y0: corners[0]!.y, x1: corners[1]!.x, y1: corners[1]!.y }))
   }
@@ -1174,8 +1144,6 @@ export function NotebookPad({
     const body = Match.value(h.shape).pipe(
       Match.when("rect", () => <Rect x={bx} y={by} width={bw} height={bh} cornerRadius={2} {...filling} {...line} />),
       Match.when("ellipse", () => <Ellipse x={bx + bw / 2} y={by + bh / 2} radiusX={bw / 2} radiusY={bh / 2} {...filling} {...line} />),
-      Match.when("line", () => <Line points={[h.x0, h.y0, h.x1, h.y1]} {...line} />),
-      Match.when("arrow", () => <Arrow points={[h.x0, h.y0, h.x1, h.y1]} pointerLength={9} pointerWidth={8} fill={h.color} {...line} />),
       Match.exhaustive,
     )
     if (live) return <Group key={h.id} listening={false}>{body}</Group>
@@ -1446,7 +1414,7 @@ export function NotebookPad({
             anchorStrokeWidth={1}
             borderStroke={ACCENT}
             borderDash={[3, 3]}
-            boundBoxFunc={snapBox}
+            boundBoxFunc={leastBox}
           />
         </Layer>
         <Layer listening={!drawing}>

@@ -48,22 +48,24 @@ export const Ink = Schema.Struct({
 })
 export type Ink = typeof Ink.Type
 
-// Shapes (owner, 2026-10-29): "enough but simple" — rectangle, ellipse,
-// line, arrow; the kind inks; fills none / hatch / wash; both points on the
-// lattice, so sloppy input lands crisp. The arrow is a dumb primitive: it
-// points, it is anchored to nothing. A shape is "like anything else, that can
-// be under or over" a note: the page keeps ONE draw order over notes and
-// shapes, and picking raises either to the top of it.
-export const ShapeKind = Schema.Literals(["rect", "ellipse", "line", "arrow"])
+// Shapes (owner, 2026-10-29): "enough but simple" — a rectangle and an
+// ellipse, in the kind inks, filled none / hatch / wash. Lines and arrows
+// were built and taken out the same day ("i don't think line and arrow will
+// ever beat the quill"). Shapes are freeform: nothing about them snaps —
+// "sizing the shapes should be smooth and the placement shouldn't snap
+// either" — the lattice is for notes. A shape is "like anything else, that
+// can be under or over" a note: the page keeps ONE draw order over notes
+// and shapes, and picking raises either to the top of it.
+export const ShapeKind = Schema.Literals(["rect", "ellipse"])
 export type ShapeKind = typeof ShapeKind.Type
-export const SHAPES: ReadonlyArray<ShapeKind> = ["rect", "ellipse", "line", "arrow"]
+export const SHAPES: ReadonlyArray<ShapeKind> = ["rect", "ellipse"]
 export const Fill = Schema.Literals(["none", "hatch", "wash"])
 export type Fill = typeof Fill.Type
 export const FILLS: ReadonlyArray<Fill> = ["none", "hatch", "wash"]
 export const Shape = Schema.Struct({
   id: Schema.String,
   shape: ShapeKind,
-  /** Two lattice points: a box's corners, or a line's ends. */
+  /** The box's two corners, in px, wherever the hand put them. */
   x0: Schema.Number,
   y0: Schema.Number,
   x1: Schema.Number,
@@ -89,12 +91,6 @@ export const EMPTY_PAGE: Page = { notes: [], ink: [], shapes: [], order: [] }
 export const Tool = Schema.Literals(["select", "pen", "shape"])
 export type Tool = typeof Tool.Type
 
-/** The pen's inks: the page's own, the accent, the ember. */
-export const INKS: ReadonlyArray<{ readonly name: string; readonly color: string }> = [
-  { name: "bone", color: "#d7d2e0" },
-  { name: "verdigris", color: "#6fae97" },
-  { name: "ember", color: "#e29659" },
-]
 
 // --- The book: pages in order, one of them open ---
 //
@@ -120,7 +116,11 @@ export const grownBook = (raw: unknown): unknown => {
     pages: raw.pages.map((p: unknown) => {
       if (typeof p !== "object" || p === null) return p
       const notes = "notes" in p && Array.isArray(p.notes) ? p.notes : []
-      return { shapes: [], order: notes.map((n: { id?: unknown }) => (typeof n.id === "string" ? n.id : "")), ...p }
+      const grown = { shapes: [], order: notes.map((n: { id?: unknown }) => (typeof n.id === "string" ? n.id : "")), ...p }
+      // lines and arrows were shapes for an afternoon: a book that holds one lets it go
+      const shapes = Array.isArray(grown.shapes) ? grown.shapes.filter((h: { shape?: unknown }) => h.shape === "rect" || h.shape === "ellipse") : []
+      const kept = new Set<unknown>([...notes.map((n: { id?: unknown }) => n.id), ...shapes.map((h: { id?: unknown }) => h.id)])
+      return { ...grown, shapes, order: Array.isArray(grown.order) ? grown.order.filter((id: unknown) => kept.has(id)) : grown.order }
     }),
   }
 }
@@ -270,6 +270,9 @@ export const kindLook = (kind: NoteKind): { word: string; tint: string; glyph: s
     Match.exhaustive,
   )
 
+/** The inks the quill and the shapes draw in: the six kinds' (owner, 2026-10-29: "quill should have all the ink colors too"). */
+export const INKS: ReadonlyArray<{ readonly name: string; readonly color: string }> = KINDS.filter((k) => k !== "blank").map((k) => ({ name: k, color: kindLook(k).tint }))
+
 // The kinds' inks (owner, 2026-10-29: "mark should be red ... boost should be
 // blue, scene should be like a wine"): spell verdigris, armor bone, boost
 // blue, condition ember, mark red, scene wine — each bright enough that its
@@ -290,10 +293,10 @@ export const placeAt = (page: Page, x: number, y: number, nth: number): Page => 
 
 export const addInk = (page: Page, ink: Ink): Page => ({ ...page, ink: [...page.ink, ink] })
 export const addShape = (page: Page, shape: Shape): Page => ({ ...page, shapes: [...page.shapes, shape], order: [...page.order, shape.id] })
-/** A shape's two points moved: snapped to the lattice. */
+/** A shape's two corners moved: as the hand left them, to the pixel. */
 export const reshape = (page: Page, id: string, pts: { x0: number; y0: number; x1: number; y1: number }): Page => ({
   ...page,
-  shapes: page.shapes.map((s) => (s.id === id ? { ...s, x0: snap(pts.x0), y0: snap(pts.y0), x1: snap(pts.x1), y1: snap(pts.y1) } : s)),
+  shapes: page.shapes.map((s) => (s.id === id ? { ...s, x0: Math.round(pts.x0), y0: Math.round(pts.y0), x1: Math.round(pts.x1), y1: Math.round(pts.y1) } : s)),
 })
 /** The picked shapes in another ink. */
 export const recolor = (page: Page, ids: ReadonlyArray<string>, color: string): Page => ({
@@ -302,9 +305,9 @@ export const recolor = (page: Page, ids: ReadonlyArray<string>, color: string): 
 })
 /** A shape's box: its two points squared, a line's at least a hairline wide. */
 export const shapeBox = (s: Shape): Box => ({ x: Math.min(s.x0, s.x1), y: Math.min(s.y0, s.y1), w: Math.abs(s.x1 - s.x0), h: Math.abs(s.y1 - s.y0) })
-/** Whether a drag made a shape at all: a box at least a cell each way, a line at least a cell long. */
-export const shapeStands = (s: Shape): boolean =>
-  s.shape === "line" || s.shape === "arrow" ? Math.hypot(s.x1 - s.x0, s.y1 - s.y0) >= GRID : Math.abs(s.x1 - s.x0) >= GRID && Math.abs(s.y1 - s.y0) >= GRID
+/** The least a shape can be, each way; a drag under it is a slip and makes nothing. */
+export const MIN_SHAPE = 8
+export const shapeStands = (s: Shape): boolean => Math.abs(s.x1 - s.x0) >= MIN_SHAPE && Math.abs(s.y1 - s.y0) >= MIN_SHAPE
 /** Notes and shapes in the order they draw: the page's order first, then anything it does not name (a book stored before shapes), notes before shapes. */
 export type Drawn = { readonly note: Note } | { readonly shape: Shape }
 export const drawOrder = (page: Page): ReadonlyArray<Drawn> => {
