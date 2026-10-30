@@ -20,6 +20,7 @@ import { Schema } from "effect"
 import { CastStatus, TidesSnapshot } from "./cast"
 import { CombatParticipant } from "./combat-tracker"
 import { ConvexId } from "./schema-bridge"
+import { StoredPage } from "./notebook"
 import { StoredExplosion } from "./dice"
 import { OverrideKind } from "./override"
 import { ParadoxPoolModifier } from "./paradox"
@@ -453,4 +454,24 @@ export const MessageDoc = Schema.Struct({
   // hand-edit flow's system entries carry it (issue #19). Absent on chat.
   override: Schema.optionalKey(OverrideMarkerDoc),
   timestamp: Schema.Number,
+})
+
+/**
+ * Stored shape of one page of a mage's notebook (MAG-75, ADR-0027): the
+ * domain `Page` with its index on the row, keyed by the character it
+ * belongs to. Nine rows at most per character; a page with no row is blank.
+ * The notebook is read by no rule, so these two tables are written by plain
+ * mutations behind the membership gate, not through the enforcement seam.
+ */
+export const NotebookPageDoc = Schema.Struct({
+  sessionId: ConvexId("sessions"),
+  characterId: ConvexId("characters"),
+  ...StoredPage.fields,
+})
+
+/** The notebook's one fact that is not a page's: the ribbon's page. One row per character. */
+export const NotebookDoc = Schema.Struct({
+  sessionId: ConvexId("sessions"),
+  characterId: ConvexId("characters"),
+  mark: Schema.Number,
 })

@@ -8,6 +8,8 @@ import {
   CombatDoc,
   DiceRollDoc,
   MessageDoc,
+  NotebookDoc,
+  NotebookPageDoc,
   SceneDoc,
   SessionDoc,
   SessionMemberDoc,
@@ -143,5 +145,15 @@ export default defineSchema({
   // accumulator), and sessions hold few Casts — flows filter in memory.
   casts: defineTable(schemaToConvexValidator(CastDoc)).index("by_sessionId", [
     "sessionId",
+  ]),
+  // The mage's notebook (MAG-75, ADR-0027): one row per written page, and one
+  // row per character for the ribbon's mark. Read by no rule; written by
+  // plain mutations behind the membership gate (convex/notebook.ts).
+  notebookPages: defineTable(schemaToConvexValidator(NotebookPageDoc)).index(
+    "by_characterId_page",
+    ["characterId", "page"],
+  ),
+  notebooks: defineTable(schemaToConvexValidator(NotebookDoc)).index("by_characterId", [
+    "characterId",
   ]),
 })
