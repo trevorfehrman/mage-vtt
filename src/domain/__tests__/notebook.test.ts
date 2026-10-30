@@ -1,4 +1,4 @@
-import { Schema } from "effect"
+import { Option, Schema } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import {
   addInk,
@@ -299,10 +299,10 @@ describe("the thin book", () => {
   })
 
   it("finds the nearest slot in a view, the one after when between two", () => {
-    expect(nearestSlot([1, 4], 2)).toBe(0)
-    expect(nearestSlot([1, 4], 3)).toBe(1)
-    expect(nearestSlot([1, 5], 3)).toBe(1)
-    expect(nearestSlot([], 3)).toBe(-1)
+    expect(nearestSlot([1, 4], 2)).toEqual(Option.some(0))
+    expect(nearestSlot([1, 4], 3)).toEqual(Option.some(1))
+    expect(nearestSlot([1, 5], 3)).toEqual(Option.some(1))
+    expect(nearestSlot([], 3)).toEqual(Option.none())
   })
 })
 

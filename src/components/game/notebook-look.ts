@@ -14,6 +14,12 @@ import { CELL, GRID, KINDS, SPINE_W, takesValue, type NoteKind } from "#/domain/
 export const Tool = Schema.Literals(["select", "pen", "shape"])
 export type Tool = typeof Tool.Type
 
+/** A fresh name for a thing the hand makes: the clock and a count, so two made in one tick differ (the domain is clockless, ADR-0014). */
+export const freshStamp = (counter: { current: number }): string => {
+  counter.current += 1
+  return `${Date.now().toString(36)}${counter.current}`
+}
+
 /** The hand: Kalam (owner, 2026-10-29: "kalam is the font"). */
 export const HAND_FONT = "Kalam"
 export const HAND_FONT_HREF = "https://fonts.googleapis.com/css2?family=Kalam:wght@300;400&display=swap"
@@ -38,7 +44,9 @@ export const GAP = 3
  * The word names the kind in the list; the row itself shows only the sigil
  * and the ink (owner, 2026-10-29: "i just want the kind title out of there").
  */
-export const kindLook = (kind: NoteKind): { word: string; tint: string; glyph: string } =>
+export const KindLook = Schema.Struct({ word: Schema.String, tint: Schema.String, glyph: Schema.String })
+export type KindLook = typeof KindLook.Type
+export const kindLook = (kind: NoteKind): KindLook =>
   Match.value(kind).pipe(
     // a casting: a sigil ring with its bindi
     Match.when("spell", () => ({ word: "spell", tint: "#6fae97", glyph: "M8 2.5 A5.5 5.5 0 1 0 8 13.5 A5.5 5.5 0 1 0 8 2.5 Z M8 7 A1 1 0 1 0 8 9 A1 1 0 1 0 8 7 Z" })),
@@ -63,9 +71,16 @@ export const kindLook = (kind: NoteKind): { word: string; tint: string; glyph: s
 // 9px word clears the panel.
 
 /** The inks the quill and the shapes draw in: the six kinds' (owner, 2026-10-29: "quill should have all the ink colors too"). */
-export const INKS: ReadonlyArray<{ readonly name: string; readonly color: string }> = KINDS.filter((k) => k !== "blank").map((k) => ({ name: k, color: kindLook(k).tint }))
+export const InkChoice = Schema.Struct({ name: Schema.String, color: Schema.String })
+export type InkChoice = typeof InkChoice.Type
+export const INKS: ReadonlyArray<InkChoice> = KINDS.filter((k) => k !== "blank").map((k) => ({ name: k, color: kindLook(k).tint }))
 
 // ── The palette the pad draws in ───────────────────────────────────────────
+// Hex, not tokens, on purpose: Konva paints a canvas, where a CSS variable
+// cannot be read, so the four tokens the pad uses (--ink, --dim, --accent,
+// --panel) are pinned here at their values, and the six kind inks are the
+// notebook's own (chosen on the rig, 2026-10-29). If the tokens move, these
+// move with them.
 export const INK = "#d7d2e0"
 export const DIM = "#807b8f"
 export const ACCENT = "#6fae97"

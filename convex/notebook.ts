@@ -1,33 +1,45 @@
-import { Schema } from "effect"
 import { ConvexError, v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import type { Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { requireMember } from "./lib/auth"
-import { PAGES, Page, StoredPage } from "../src/domain/notebook"
+import { isDevUser } from "./lib/dev"
+import { NotebookRead, PAGES, Page } from "../src/domain/notebook"
 import { schemaToConvexValidator } from "../src/domain/schema-bridge"
 
 /**
  * The mage's notebook (MAG-75, ADR-0027): notes, read by no rule. These are
  * plain functions behind the membership gate, not the enforcement seam — a
  * note has no rule to enforce, no authority to fudge and no Chronicle line
- * to earn. Every member reads a character's notebook; the client decides
- * whose hand may write (the sheet's own gate: the owner, or the ST/Dev
- * driving it), and the server asks only that the hand is at the table and
- * the character is of it.
+ * to earn. Every member reads a character's notebook; the hand that drives
+ * the sheet writes it — the character's own member, the Storyteller, or a
+ * Dev — the same gate the sheet's marks walk on the client (`mayDrivePool`),
+ * held here too so the API is no wider than the sheet.
  */
 
 /** The character must be of the session the caller is a member of; a notebook is never reached across tables. */
 async function characterOf(ctx: QueryCtx | MutationCtx, sessionId: Id<"sessions">, characterId: Id<"characters">) {
-  await requireMember(ctx, sessionId)
+  const member = await requireMember(ctx, sessionId)
   const character = await ctx.db.get(characterId)
   if (character === null || character.sessionId !== sessionId) {
     throw new ConvexError("No such character at this table.")
   }
+  return { member, character }
+}
+
+/** The hand that may write: the character's own member, the Storyteller, or a Dev (ADR-0027). */
+async function requireHand(ctx: MutationCtx, sessionId: Id<"sessions">, characterId: Id<"characters">) {
+  const { member, character } = await characterOf(ctx, sessionId, characterId)
+  const mayWrite = member._id === character.sessionMemberId || member.role === "storyteller" || isDevUser(member.userId)
+  if (!mayWrite) throw new ConvexError("That notebook is not yours to write.")
   return character
 }
 
 const pageIndex = v.number()
+/** A page index is one of the nine; anything else is refused before the row is touched. */
+const requirePage = (n: number): void => {
+  if (!Number.isInteger(n) || n < 0 || n >= PAGES) throw new ConvexError(`The notebook has ${PAGES} pages.`)
+}
 /** The page's columns, each compiled from the domain Schema (ADR-0005): the mutation's args are the row's. */
 const pageFields = {
   notes: schemaToConvexValidator(Page.fields.notes),
@@ -35,9 +47,6 @@ const pageFields = {
   shapes: schemaToConvexValidator(Page.fields.shapes),
   order: schemaToConvexValidator(Page.fields.order),
 }
-/** What the query hands back: the written pages with their indices, and the mark. */
-const NotebookRead = Schema.Struct({ pages: Schema.Array(StoredPage), mark: Schema.Number })
-
 /** The written pages of a character's notebook and the ribbon's page; a page with no row is blank (the client fills the nine). */
 export const get = query({
   args: { sessionId: v.id("sessions"), characterId: v.id("characters") },
@@ -64,10 +73,8 @@ export const writePage = mutation({
   args: { sessionId: v.id("sessions"), characterId: v.id("characters"), page: pageIndex, ...pageFields },
   returns: v.id("notebookPages"),
   handler: async (ctx, args) => {
-    await characterOf(ctx, args.sessionId, args.characterId)
-    if (!Number.isInteger(args.page) || args.page < 0 || args.page >= PAGES) {
-      throw new ConvexError(`The notebook has ${PAGES} pages.`)
-    }
+    await requireHand(ctx, args.sessionId, args.characterId)
+    requirePage(args.page)
     const { sessionId, characterId, page, notes, ink, shapes, order } = args
     const existing = await ctx.db
       .query("notebookPages")
@@ -85,10 +92,8 @@ export const setMark = mutation({
   args: { sessionId: v.id("sessions"), characterId: v.id("characters"), mark: pageIndex },
   returns: v.id("notebooks"),
   handler: async (ctx, args) => {
-    await characterOf(ctx, args.sessionId, args.characterId)
-    if (!Number.isInteger(args.mark) || args.mark < 0 || args.mark >= PAGES) {
-      throw new ConvexError(`The notebook has ${PAGES} pages.`)
-    }
+    await requireHand(ctx, args.sessionId, args.characterId)
+    requirePage(args.mark)
     const existing = await ctx.db
       .query("notebooks")
       .withIndex("by_characterId", (q) => q.eq("characterId", args.characterId))

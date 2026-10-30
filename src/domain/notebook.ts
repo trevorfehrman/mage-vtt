@@ -20,7 +20,7 @@ import { Array as Arr, Match, Option, Record as Rec, Schema } from "effect"
 
 export const NoteKind = Schema.Literals(["blank", "spell", "armor", "boost", "condition", "mark", "scene"])
 export type NoteKind = typeof NoteKind.Type
-export const KINDS: ReadonlyArray<NoteKind> = ["blank", "spell", "armor", "boost", "condition", "mark", "scene"]
+export const KINDS: ReadonlyArray<NoteKind> = NoteKind.literals
 
 export const Note = Schema.Struct({
   id: Schema.String,
@@ -66,10 +66,10 @@ export type Ink = typeof Ink.Type
 // and shapes, and picking raises either to the top of it.
 export const ShapeKind = Schema.Literals(["rect", "ellipse"])
 export type ShapeKind = typeof ShapeKind.Type
-export const SHAPES: ReadonlyArray<ShapeKind> = ["rect", "ellipse"]
+export const SHAPES: ReadonlyArray<ShapeKind> = ShapeKind.literals
 export const Fill = Schema.Literals(["none", "hatch", "wash"])
 export type Fill = typeof Fill.Type
-export const FILLS: ReadonlyArray<Fill> = ["none", "hatch", "wash"]
+export const FILLS: ReadonlyArray<Fill> = Fill.literals
 export const Shape = Schema.Struct({
   id: Schema.String,
   shape: ShapeKind,
@@ -94,6 +94,10 @@ export const Page = Schema.Struct({
 export type Page = typeof Page.Type
 
 export const EMPTY_PAGE: Page = { notes: [], ink: [], shapes: [], order: [] }
+const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v))
+/** A stroke's points are stored flat in threes: this maps each (x, y, pressure) to another. */
+const mapPoints = (points: ReadonlyArray<number>, f: (x: number, y: number, p: number) => readonly [number, number, number]): ReadonlyArray<number> =>
+  Arr.makeBy(Math.floor(points.length / 3), (k) => f(points[k * 3]!, points[k * 3 + 1]!, points[k * 3 + 2]!)).flat()
 export const isBlankPage = (p: Page): boolean => p.notes.length === 0 && p.ink.length === 0 && p.shapes.length === 0
 
 /**
@@ -106,7 +110,7 @@ export const MAX_INK_POINTS = 2400
 export const thinned = (ink: Ink, max: number = MAX_INK_POINTS): Ink => {
   const count = Math.floor(ink.points.length / 3)
   if (count <= max) return ink
-  const points = Arr.makeBy(max, (i) => Math.round((i * (count - 1)) / (max - 1))).flatMap((k) => [ink.points[k * 3]!, ink.points[k * 3 + 1]!, ink.points[k * 3 + 2]!])
+  const points = Arr.makeBy(max, (i) => Math.round((i * (count - 1)) / (max - 1))).flatMap((k) => ink.points.slice(k * 3, k * 3 + 3))
   return { ...ink, points }
 }
 
@@ -124,7 +128,7 @@ export const Book = Schema.Struct({ pages: Schema.Array(Page), open: Schema.Numb
 export type Book = typeof Book.Type
 export const EMPTY_BOOK: Book = { pages: Arr.makeBy(PAGES, () => EMPTY_PAGE), open: 0, mark: 0 }
 
-const toPage = (i: number): number => Math.max(0, Math.min(PAGES - 1, Math.round(i)))
+const toPage = (i: number): number => clamp(Math.round(i), 0, PAGES - 1)
 /** The ribbon laid at a page. */
 export const setMark = (book: Book, i: number): Book => {
   const mark = toPage(i)
@@ -137,7 +141,7 @@ export const openPage = (book: Book): Page => pageAt(book, book.open)
 export const lastIndex = (book: Book): number => book.pages.length - 1
 /** Turn to a page; the index is held within the book. */
 export const turnTo = (book: Book, i: number): Book => {
-  const open = Math.max(0, Math.min(lastIndex(book), Math.round(i)))
+  const open = clamp(Math.round(i), 0, lastIndex(book))
   return open === book.open ? book : { ...book, open }
 }
 /** An edit of the open page. */
@@ -196,9 +200,21 @@ export const holds = (page: Page, keep: (n: Note) => boolean): boolean => page.n
 export const pagesHolding = (book: Book, keep: (n: Note) => boolean): ReadonlyArray<number> => book.pages.flatMap((p, i) => (holds(p, keep) ? [i] : []))
 /** The page as read: only the notes the reading keeps, its ink kept. The notes are still on the page, where they were. */
 export const only = (page: Page, keep: (n: Note) => boolean): Page => ({ ...page, notes: page.notes.filter(keep) })
-/** The slot in a view (indices into the whole book) nearest a page of the whole book; between two, the one after. */
-export const nearestSlot = (view: ReadonlyArray<number>, i: number): number =>
-  view.reduce((best, v, s) => (best < 0 || Math.abs(v - i) <= Math.abs(view[best]! - i) ? s : best), -1)
+/** The slot in a view (indices into the whole book) nearest a page of the whole book; between two, the one after; none in an empty view. */
+export const nearestSlot = (view: ReadonlyArray<number>, i: number): Option.Option<number> =>
+  Option.map(
+    Arr.reduce(view, Option.none<{ slot: number; at: number }>(), (best, v, s) =>
+      Option.match(best, {
+        onNone: () => Option.some({ slot: s, at: v }),
+        onSome: (b) => (Math.abs(v - i) <= Math.abs(b.at - i) ? Option.some({ slot: s, at: v }) : best),
+      }),
+    ),
+    (b) => b.slot,
+  )
+
+/** What the server hands back to the hand: the written pages with their indices, and the ribbon's page. */
+export const NotebookRead = Schema.Struct({ pages: Schema.Array(StoredPage), mark: Schema.Number })
+export type NotebookRead = typeof NotebookRead.Type
 
 // --- The history: undo and redo, in the hand, never on the server ---
 
@@ -331,7 +347,7 @@ export const moveMany = (page: Page, moves: ReadonlyArray<Move>, shifts: Readonl
   ink: page.ink.map((s) =>
     Option.match(Arr.findFirst(shifts, (m) => m.id === s.id), {
       onNone: () => s,
-      onSome: (m) => ({ ...s, points: s.points.map((v, i) => (i % 3 === 0 ? v + m.dx : i % 3 === 1 ? v + m.dy : v)) }),
+      onSome: (m) => ({ ...s, points: mapPoints(s.points, (x, y, p) => [x + m.dx, y + m.dy, p]) }),
     }),
   ),
   shapes: page.shapes.map((s) =>
@@ -398,7 +414,7 @@ export const putDown = (page: Page, clip: Page, stamp: string, by: number): { re
   const ink = clip.ink.map((s, i) => ({
     ...s,
     id: `i${stamp}p${i}`,
-    points: by === 0 ? s.points : s.points.map((v, k) => (k % 3 === 2 ? v : v + by)),
+    points: by === 0 ? s.points : mapPoints(s.points, (x, y, p) => [x + by, y + by, p]),
     group: regroup(s.group),
   }))
   const shapes = clip.shapes.map((s, i) => ({ ...s, id: `h${stamp}p${i}`, x0: s.x0 + by, y0: s.y0 + by, x1: s.x1 + by, y1: s.y1 + by, group: regroup(s.group) }))
@@ -456,12 +472,11 @@ const overlaps = (a: Box, b: Box): boolean => {
 }
 /** A stroke's extent, from its points. */
 export const inkBox = (s: Ink): Box => {
-  const ext = s.points.reduce(
-    (b, v, i) =>
-      i % 3 === 0 ? { ...b, x0: Math.min(b.x0, v), x1: Math.max(b.x1, v) } : i % 3 === 1 ? { ...b, y0: Math.min(b.y0, v), y1: Math.max(b.y1, v) } : b,
-    { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity },
-  )
-  return { x: ext.x0, y: ext.y0, w: ext.x1 - ext.x0, h: ext.y1 - ext.y0 }
+  const xs = mapPoints(s.points, (x) => [x, 0, 0]).filter((_, i) => i % 3 === 0)
+  const ys = mapPoints(s.points, (_, y) => [y, 0, 0]).filter((_, i) => i % 3 === 0)
+  const x = Math.min(...xs)
+  const y = Math.min(...ys)
+  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y }
 }
 /** What a sweep of the select tool takes: any note, stroke or shape whose box the sweep touches, with their groups. */
 export const swept = (page: Page, box: Box, heightOf: (n: Note) => number): ReadonlyArray<string> =>

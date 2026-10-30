@@ -22,7 +22,7 @@ import { Input } from "#/components/ui/input"
 import { clearPage, commit, editOpen, FILLS, isBlankPage, isOneGroup, openPage, redo, SHAPES, toggleGroup, undo, type Fill, type History, type ShapeKind } from "#/domain/notebook"
 import { useNotebook } from "#/hooks/use-notebook"
 import { Fold } from "./Fold"
-import { FOOTER_H, HAND_FONT, HAND_FONT_HREF, INKS, PAGE_H, PAGE_W, type Tool } from "./notebook-look"
+import { FOOTER_H, freshStamp, HAND_FONT, HAND_FONT_HREF, INKS, PAGE_H, PAGE_W, type Tool } from "./notebook-look"
 
 const Pad = lazy(() => import("./NotebookPad").then((m) => ({ default: m.NotebookPad })))
 
@@ -89,10 +89,7 @@ export function Notebook({ history, onHistory, editable }: { history: History | 
   const set = (f: (h: History) => History) => {
     if (history !== undefined) onHistory(f(history))
   }
-  const stamp = (): string => {
-    stamped.current += 1
-    return `${Date.now().toString(36)}${stamped.current}`
-  }
+  const stamp = () => freshStamp(stamped)
   const clear = () => set((h) => commit(h, editOpen(h.present, clearPage)))
   const group = () => set((h) => commit(h, editOpen(h.present, (p) => toggleGroup(p, picked, stamp()))))
   const written = history === undefined ? 0 : history.present.pages.filter((p) => !isBlankPage(p)).length

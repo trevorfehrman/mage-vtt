@@ -15,10 +15,12 @@ one fact decides its persistence shape.
    no rule to enforce, no authority to fudge and no Chronicle line to earn,
    so the notebook writes through **plain mutations behind `requireMember`**
    (the membership gate of issue #37) — like reads do, and as ADR-0004 left
-   room for ("reads stay plain"). The owner of the character writes; the
-   gate is membership, not ownership, because the Storyteller correcting a
-   player's page is not an Override of anything. Every member reads (owner,
-   2026-10-29: "everyone should be able to read them").
+   room for ("reads stay plain"). Every member reads (owner, 2026-10-29:
+   "everyone should be able to read them"); **the hand that drives the sheet
+   writes** — the character's own member, the Storyteller, or a Dev — the
+   same gate the sheet's marks walk (`mayDrivePool`), held on the server too
+   so the API is no wider than the sheet. The Storyteller correcting a
+   player's page is not an Override of anything, so no ladder and no record.
 2. **The shape is still Schema-first.** The table's validators derive from
    the domain `Page` and `Book` Schemas through `schema-bridge.ts`
    (ADR-0005). Skipping the seam is a decision about authority, not about
@@ -36,9 +38,13 @@ one fact decides its persistence shape.
    lives in the client. The pad hydrates once from the query and from then
    on local history is the truth: a commit point diffs the new book against
    the old page by page and writes the pages whose reference changed, which
-   covers an undo, a redo and a clear in the same breath. Incoming server
-   changes while the pad is open are not merged into a live history; a
-   notebook is one hand's.
+   covers an undo, a redo and a clear in the same breath. Two hands may
+   write one notebook (the player and the Storyteller driving their sheet):
+   a reading that differs from what this hand last wrote is the other's,
+   and its pages are taken into the present — only the pages this hand has
+   not touched since, so nothing in flight is lost. An undo past that point
+   restores this hand's older page and writes it; the notebook is still
+   mostly one hand's, and that edge is accepted.
 
 ## Considered
 
@@ -58,6 +64,6 @@ one fact decides its persistence shape.
 ## Consequences
 
 - No Activity line is written for a note; the Chronicle is for the game.
-- `convex/notebook.ts` holds `getForCharacter` (plain query, `requireMember`)
+- `convex/notebook.ts` holds `get` (plain query, `requireMember`)
   and `writePage` / `setMark` (plain mutations, `requireMember`). Nothing
   in `src/domain/flows/` knows the notebook exists.

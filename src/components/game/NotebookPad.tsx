@@ -66,11 +66,11 @@
 // the numbers to mark another page; tap it to turn there. The book is nine
 // pages, always.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent as RFocusEvent, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react"
-import { Match, Option } from "effect"
+import { Match, Option, Schema } from "effect"
 import { Ellipse, Group, Layer, Line, Path, Rect, Stage, Text, Transformer } from "react-konva"
 import Konva from "konva"
 import { getStroke } from "perfect-freehand"
-import { animate, motion, useMotionValue, useMotionValueEvent, useTransform, type MotionValue } from "motion/react"
+import { animate, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useTransform, type MotionValue } from "motion/react"
 import {
   addInk,
   addShape,
@@ -140,6 +140,7 @@ import {
   FADE,
   FEEL,
   FOOTER_H,
+  freshStamp,
   GAP,
   GIVE,
   GIVE_DEG,
@@ -179,11 +180,14 @@ import {
 } from "./notebook-look"
 
 /** The note being written, and the words as they stand mid-edit, so the row grows while the hand is still moving. */
-type Editing = { readonly id: string; readonly focus: "title" | "number"; readonly draft: string }
+const Editing = Schema.Struct({ id: Schema.String, focus: Schema.Literals(["title", "number"]), draft: Schema.String })
+type Editing = typeof Editing.Type
 /** A drag in flight: everything moving, and where each node began. */
-type Drag = { readonly ids: ReadonlyArray<string>; readonly origin: Record<string, { x: number; y: number }> }
+const Drag = Schema.Struct({ ids: Schema.Array(Schema.String), origin: Schema.Record(Schema.String, Schema.Struct({ x: Schema.Number, y: Schema.Number })) })
+type Drag = typeof Drag.Type
 /** A resize in flight: the row and the size under the hand, before it snaps. */
-type Resizing = { readonly id: string; readonly w: number; readonly h: number }
+const Resizing = Schema.Struct({ id: Schema.String, w: Schema.Number, h: Schema.Number })
+type Resizing = typeof Resizing.Type
 
 /** Wheel events a row has already spent on its own words. */
 const spentByRow = new WeakSet<Event>()
@@ -384,10 +388,9 @@ export function NotebookPad({
   const [fontsReady, setFontsReady] = useState(0)
   const stamped = useRef(0)
   /** A fresh name for a thing the hand makes: the clock and a count, so two made in one tick differ (the domain is clockless, ADR-0014). */
-  const stamp = (): string => {
-    stamped.current += 1
-    return `${Date.now().toString(36)}${stamped.current}`
-  }
+  const stamp = () => freshStamp(stamped)
+  /** The hand's own preference (docs/component-standards.md, axis 5): the wheel lands and the page turns without travel. */
+  const reduced = useReducedMotion() ?? false
   /** What the hand holds between pages: a page fragment, the page it came from, and whether it was cut (a copy put down on its own page lands a cell over). */
   const clip = useRef<Option.Option<{ readonly page: Page; readonly from: number; readonly cut: boolean }>>(Option.none())
   const stageRef = useRef<Konva.Stage>(null)
@@ -657,13 +660,13 @@ export function NotebookPad({
       Match.when("pen", () => {
         Option.map(pointer(), (p) => {
           const pr = pressureOf(e.evt)
-          setStroke(Option.some({ id: `i${Date.now().toString(36)}`, points: [p.x, p.y, pr.p], color: inkColor, pressured: pr.real, group: "" }))
+          setStroke(Option.some({ id: `i${stamp()}`, points: [p.x, p.y, pr.p], color: inkColor, pressured: pr.real, group: "" }))
         })
       }),
       Match.when("shape", () => {
         Option.map(pointer(), (p) => {
           const at = { x: Math.round(p.x), y: Math.round(p.y) }
-          setShaping(Option.some({ id: `h${Date.now().toString(36)}`, shape: shapeKind, x0: at.x, y0: at.y, x1: at.x, y1: at.y, color: inkColor, fill, group: "" }))
+          setShaping(Option.some({ id: `h${stamp()}`, shape: shapeKind, x0: at.x, y0: at.y, x1: at.x, y1: at.y, color: inkColor, fill, group: "" }))
         })
       }),
       Match.exhaustive,
@@ -880,7 +883,7 @@ export function NotebookPad({
     if (seenView.current === viewKey) return
     seenView.current = viewKey
     const slot = view.indexOf(near)
-    const to = slot >= 0 ? slot : nearestSlot(view, near)
+    const to = slot >= 0 ? slot : Option.getOrElse(nearestSlot(view, near), () => 0)
     const from = pos.get()
     pos.jump(to)
     target.current = to
@@ -908,6 +911,7 @@ export function NotebookPad({
       mounted.current = true
       return
     }
+    if (reduced) return
     // the swing is whole at a thumbing pace and a flutter at a riffle, never absent, so every turn is the same gesture
     const k = clamp(1 - Math.abs(pos.getVelocity()) / RIFFLE, 0.3, 1)
     const swing = { duration: SWING * k, ease: "easeOut" as const }
@@ -929,7 +933,11 @@ export function NotebookPad({
   /** A position pulled past a cover gives a little and resists, like a band; within the covers it is itself. */
   const band = (v: number): number => (v < 0 ? -rubber(-v) : v > last ? last + rubber(v - last) : v)
   /** Coast from a velocity (pages per second) and land exactly on a page; past a cover it springs back. The nominal target is a page away, since animate() skips an inertia whose target is the current value. */
-  const coast = (v: number) =>
+  const coast = (v: number) => {
+    if (reduced) {
+      pos.jump(clamp(Math.round(pos.get()), 0, last))
+      return
+    }
     animate(pos, pos.get() + (v >= 0 ? 1 : -1), {
       type: "inertia",
       velocity: v,
@@ -942,10 +950,15 @@ export function NotebookPad({
       bounceDamping: 30,
       restDelta: 0.002,
     })
+  }
 
   /** Chase a page on a spring: it stops dead on the page. */
   const chasing = useRef(false)
   const chase = (target: number) => {
+    if (reduced) {
+      pos.jump(clamp(target, 0, last))
+      return
+    }
     chasing.current = true
     animate(pos, clamp(target, 0, last), {
       type: "spring",
@@ -966,7 +979,7 @@ export function NotebookPad({
     target.current = clamp(want, 0, last)
     // a push against a cover gives a little and comes back: the book has an end, not a wall
     if (want !== target.current && resting) {
-      animate(pos, [target.current, target.current + by * GIVE * 0.6, target.current], { duration: 0.3, ease: "easeInOut" })
+      if (!reduced) animate(pos, [target.current, target.current + by * GIVE * 0.6, target.current], { duration: 0.3, ease: "easeInOut" })
       return
     }
     chase(target.current)
@@ -1153,7 +1166,7 @@ export function NotebookPad({
       if (page !== undefined && page !== book.mark) onHistory({ ...history, present: setMark(book, page) })
       // the ribbon is where the hand left it; from there it settles onto the number
       hold.jump((markSlot - to) * PITCH + dx)
-      animate(hold, 0, { type: "spring", stiffness: 420, damping: 32 })
+      animate(hold, 0, reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 32 })
     }
     window.addEventListener("pointermove", move)
     window.addEventListener("pointerup", up)
@@ -1499,7 +1512,7 @@ export function NotebookPad({
       >
         {book.pages.map((p, k) => {
           const slot = view.indexOf(k)
-          return <WheelNumber key={k} k={k} slot={slot >= 0 ? slot : undefined} shift={shift} pos={pos} blank={isBlankPage(p)} marked={k === book.mark} font={font} middle={width / 2} />
+          return <WheelNumber key={k} k={k} slot={slot >= 0 ? slot : undefined} shift={shift} pos={pos} blank={isBlankPage(p)} marked={k === book.mark} font={font} middle={width / 2} reduced={reduced} />
         })}
         {/* the reading mark: the number in hand stands over it */}
         <span aria-hidden className="absolute" style={{ left: width / 2 - 0.5, bottom: 3, width: 1, height: 5, background: ACCENT, opacity: 0.8 }} />
@@ -1653,6 +1666,20 @@ export function NotebookPad({
         },
       })}
 
+      {/* the mirror (ADR-0021's a11y floor; the ticket's "a canvas is invisible to screen readers"): the page's notes as a list, each its kind, its words and its value, read in the draw order */}
+      <ul className="sr-only" aria-label={`page ${liveIndex + 1}: ${shown.notes.length} notes`}>
+        {drawOrder(shown).flatMap((d) =>
+          "note" in d
+            ? [
+                <li key={d.note.id}>
+                  {kindLook(d.note.kind).word}: {d.note.title === "" ? "(blank)" : d.note.title}
+                  {d.note.number === "" ? "" : ` — ${d.note.number}`}
+                </li>,
+              ]
+            : [],
+        )}
+      </ul>
+
       {/* the kinds: a list beneath the note whose symbol was clicked */}
       {Option.match(menuNote, {
         onNone: () => null,
@@ -1681,7 +1708,7 @@ export function NotebookPad({
  * changes it jumps with the page in hand and slides to its new slot from
  * there — or, out of the view, keeps the slot it had and falls away.
  */
-function WheelNumber({ k, slot, shift, pos, blank, marked, font, middle }: { k: number; slot: number | undefined; shift: { by: number }; pos: MotionValue<number>; blank: boolean; marked: boolean; font: string; middle: number }) {
+function WheelNumber({ k, slot, shift, pos, blank, marked, font, middle, reduced }: { k: number; slot: number | undefined; shift: { by: number }; pos: MotionValue<number>; blank: boolean; marked: boolean; font: string; middle: number; reduced: boolean }) {
   const place = useMotionValue(slot ?? k)
   const held = useMotionValue(slot === undefined ? 0 : 1)
   const first = useRef(true)
@@ -1691,8 +1718,8 @@ function WheelNumber({ k, slot, shift, pos, blank, marked, font, middle }: { k: 
       return
     }
     if (shift.by !== 0) place.jump(place.get() + shift.by)
-    if (slot !== undefined) animate(place, slot, SLIDE)
-    animate(held, slot === undefined ? 0 : 1, { duration: DROP, ease: "easeOut" })
+    if (slot !== undefined) animate(place, slot, reduced ? { duration: 0 } : SLIDE)
+    animate(held, slot === undefined ? 0 : 1, reduced ? { duration: 0 } : { duration: DROP, ease: "easeOut" })
   }, [slot, shift])
   const dist = useTransform([place, pos], ([s, p]: number[]) => (s ?? 0) - (p ?? 0))
   const x = useTransform(dist, (d) => d * PITCH)
