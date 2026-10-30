@@ -1518,8 +1518,8 @@ export function NotebookPad({
         <span aria-hidden className="absolute" style={{ left: width / 2 - 0.5, bottom: 3, width: 1, height: 5, background: ACCENT, opacity: 0.8 }} />
       </div>
 
-      {/* the tabs: one per kind down the page's right edge, standing past the panel's border like a notebook's index tabs; the one held out is lit and comes further; a kind the book has none of stays in */}
-      <div className="absolute" style={{ left: width, top: 0, width: TAB_W + TAB_OUT + 1, height }}>
+      {/* the tabs: one per kind down the page's right edge, standing past the panel's border like a notebook's index tabs — each sits a pixel over the border and breaks it for its height (owner, 2026-10-29: the border "should be like interrupted by the height of the tab"); the one held out is lit and comes further; a kind the book has none of stays in */}
+      <div className="absolute" style={{ left: width - 1, top: 0, width: TAB_W + TAB_OUT + 1, height }}>
         {KINDS.map((kind, i) => {
           const look = kindLook(kind)
           const out = Option.contains(filter, kind)

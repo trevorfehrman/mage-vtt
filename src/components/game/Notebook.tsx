@@ -8,10 +8,14 @@
 //
 // The cover (owner, 2026-10-29: "style the collapsed notebook to something
 // that _gestures_ to a closed notebook"): the panel's bare face with the
-// ribbon's tail hanging out of its foot where the bookmark sits in the
-// book — "the ribbon is a nice detail"; the name written on the cover and
-// the kind tabs peeking past its edge were tried the same evening and taken
-// off at his word. A tap anywhere on the cover opens it; the cover folds
+// ribbon's tail hanging out of its RIGHT edge, to the sheet's edge where
+// the open book's tabs end, its height along the cover standing for the
+// marked page — "put the ribbon on the right side of the collapsed book to
+// make up for the length we don't have there, that will make the experience
+// feel more like we're opening the book and turning it 90 degrees". The
+// name written on the cover and the kind tabs peeking past its edge were
+// tried the same evening and taken off at his word ("the ribbon is a nice
+// detail"). A tap anywhere on the cover opens it; the cover folds
 // away as the page folds open. Open, a click on the toolbar's bare space
 // shuts it again — no word for it (owner: "take away 'shut' and let any
 // click on the header that isn't a button close the book").
@@ -33,14 +37,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { clearPage, commit, editOpen, FILLS, isBlankPage, isOneGroup, openPage, PAGES, redo, SHAPES, toggleGroup, undo, type Fill, type History, type ShapeKind } from "#/domain/notebook"
 import { useNotebook } from "#/hooks/use-notebook"
 import { Fold } from "./Fold"
-import { FOOTER_H, freshStamp, HAND_FONT, HAND_FONT_HREF, INKS, PAGE_H, PAGE_W, RIBBON, type Tool } from "./notebook-look"
+import { FOOTER_H, freshStamp, HAND_FONT, HAND_FONT_HREF, INKS, PAGE_H, PAGE_W, RIBBON, TAB_W, type Tool } from "./notebook-look"
 
 const Pad = lazy(() => import("./NotebookPad").then((m) => ({ default: m.NotebookPad })))
 
-/** The cover's height, and the ribbon's tail hanging from its foot: narrower than the open book's, as a shut book shows less of it. */
+/** The cover's height; the ribbon's tail out of its right edge — as thick as a shut book shows of it, laid over the border and reaching the sheet's edge where the open book's tabs end, its swallowtail cut. */
 const COVER_H = 44
 const COVER_RIBBON_W = 14
-const COVER_TAIL = 16
+const COVER_TAIL = TAB_W - 1
 const COVER_NOTCH = 6
 
 /** The notebook with its store: the sheet's composition (every member reads; the hand that drives the sheet writes). */
@@ -153,19 +157,19 @@ export function Notebook({ history, onHistory, editable, cover }: { history: His
           className="mv-key mv-notebook-cover relative block w-full"
           style={{ height: COVER_H, padding: 0, background: "transparent", border: 0, cursor: history === undefined ? "default" : "pointer" }}
         >
-          {/* the ribbon's tail, out of the cover's foot where the bookmark sits in the book */}
+          {/* the ribbon's tail, out of the cover's right edge: the book shut and turned, the bookmark where it sits — nearer the top for an early page, the foot for a late one */}
           <span
             aria-hidden
             className="absolute"
             style={{
-              top: "100%",
-              left: ((mark + 0.5) / PAGES) * PAGE_W - COVER_RIBBON_W / 2,
-              width: COVER_RIBBON_W,
-              height: COVER_TAIL,
+              left: "100%",
+              top: (mark / (PAGES - 1)) * (COVER_H - COVER_RIBBON_W),
+              width: COVER_TAIL,
+              height: COVER_RIBBON_W,
               background: RIBBON,
-              clipPath: `polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - ${COVER_NOTCH}px), 0 100%)`,
-              filter: "drop-shadow(0 2px 3px rgba(0,0,0,.5))",
-              transition: "left 220ms ease-out",
+              clipPath: `polygon(0 0, 100% 0, calc(100% - ${COVER_NOTCH}px) 50%, 100% 100%, 0 100%)`,
+              filter: "drop-shadow(2px 0 3px rgba(0,0,0,.5))",
+              transition: "top 220ms ease-out",
             }}
           />
         </button>
