@@ -2,7 +2,6 @@ import { describe, expect, it } from "@effect/vitest"
 import {
   magicResistance,
   combinedSpellRequirements,
-  spellTolerance,
   extendedCastingTargets,
   transitorDurationPenalty,
   advancedProlongedDurationPenalty,
@@ -53,13 +52,6 @@ describe("Spellcasting Advanced", () => {
 
     const four = combinedSpellRequirements(4)
     expect(four.minGnosis).toBe(9)
-  })
-
-  it("spell tolerance: spells on target beyond Stamina levy -1 each", () => {
-    expect(spellTolerance({ stamina: 3, activeSpellsOnTarget: 2 })).toBe(0)
-    expect(spellTolerance({ stamina: 3, activeSpellsOnTarget: 3 })).toBe(0)
-    expect(spellTolerance({ stamina: 3, activeSpellsOnTarget: 4 })).toBe(-1)
-    expect(spellTolerance({ stamina: 3, activeSpellsOnTarget: 6 })).toBe(-3)
   })
 
   it("extended casting target successes table", () => {

@@ -10,7 +10,6 @@ import {
   validateRoteSpecialties,
   validateSkillSpecialties,
   applyWisdomTradeoff,
-  activeSpellPenalty,
 } from "../character"
 import { healthBox } from "../damage"
 import { arctusData } from "../fixtures/arctus"
@@ -465,20 +464,6 @@ describe("Character Sheet", () => {
         { occult: 3, science: 0, firearms: 0 },
       ).pipe(Effect.flip)
       expect(noDots._tag).toBe("CreationRuleViolation")
-    }),
-  )
-
-  it.effect("active spell penalty: -2 per spell beyond gnosis", () =>
-    Effect.gen(function* () {
-      // Gnosis 1: 1 free spell, penalty starts at 2nd
-      expect(yield* activeSpellPenalty(1, 0)).toBe(0)
-      expect(yield* activeSpellPenalty(1, 1)).toBe(0)
-      expect(yield* activeSpellPenalty(1, 2)).toBe(-2)
-      expect(yield* activeSpellPenalty(1, 3)).toBe(-4)
-
-      // Gnosis 3: 3 free spells
-      expect(yield* activeSpellPenalty(3, 3)).toBe(0)
-      expect(yield* activeSpellPenalty(3, 5)).toBe(-4)
     }),
   )
 })

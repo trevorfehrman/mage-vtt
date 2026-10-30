@@ -58,14 +58,6 @@ export const combinedSpellRequirements = (spellCount: number): CombinedSpellReqs
   return new CombinedSpellReqs({ minGnosis, dicePenalty, extraArcanumDots })
 }
 
-export const spellTolerance = (input: {
-  stamina: number
-  activeSpellsOnTarget: number
-}): number => {
-  const excess = Math.max(0, input.activeSpellsOnTarget - input.stamina)
-  return excess === 0 ? 0 : -excess
-}
-
 export const extendedCastingTargets = (input: {
   potency: number
   targets: number

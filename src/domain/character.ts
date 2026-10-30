@@ -791,11 +791,3 @@ export const applyWisdomTradeoff = Effect.fn("Character.applyWisdomTradeoff")(fu
   return { wisdom: newWisdom, bonusXP: dotsToSacrifice * XP_PER_DOT }
 })
 
-export const activeSpellPenalty = Effect.fn("Character.activeSpellPenalty")(function* (
-  gnosis: number,
-  activeSpells: number,
-) {
-  const freeSpells = gnosis
-  const excess = Math.max(0, activeSpells - freeSpells)
-  return excess === 0 ? 0 : excess * -2
-})
