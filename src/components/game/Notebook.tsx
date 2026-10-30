@@ -8,11 +8,13 @@
 //
 // The cover (owner, 2026-10-29: "style the collapsed notebook to something
 // that _gestures_ to a closed notebook"): the panel's bare face with the
-// ribbon's tail hanging out of its RIGHT edge, to the sheet's edge where
-// the open book's tabs end, its height along the cover standing for the
-// marked page — "put the ribbon on the right side of the collapsed book to
-// make up for the length we don't have there, that will make the experience
-// feel more like we're opening the book and turning it 90 degrees". The
+// ribbon's tail hanging out of its RIGHT edge, centered, to the sheet's
+// edge where the open book's tabs end — "put the ribbon on the right side
+// of the collapsed book to make up for the length we don't have there, that
+// will make the experience feel more like we're opening the book and
+// turning it 90 degrees"; "keep the ribbon always centered on the collapsed
+// view on the y-axis" (a tail that slid with the marked page was tried and
+// taken out). The
 // name written on the cover and the kind tabs peeking past its edge were
 // tried the same evening and taken off at his word ("the ribbon is a nice
 // detail"). A tap anywhere on the cover opens it; the cover folds
@@ -34,7 +36,7 @@ import { Circle, Eraser, Feather, Group, MousePointer2, Redo2, Search, Square, U
 import type { Id } from "../../../convex/_generated/dataModel"
 import { Input } from "#/components/ui/input"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "#/components/ui/alert-dialog"
-import { clearPage, commit, editOpen, FILLS, isBlankPage, isOneGroup, openPage, PAGES, redo, SHAPES, toggleGroup, undo, type Fill, type History, type ShapeKind } from "#/domain/notebook"
+import { clearPage, commit, editOpen, FILLS, isBlankPage, isOneGroup, openPage, redo, SHAPES, toggleGroup, undo, type Fill, type History, type ShapeKind } from "#/domain/notebook"
 import { useNotebook } from "#/hooks/use-notebook"
 import { Fold } from "./Fold"
 import { FOOTER_H, freshStamp, HAND_FONT, HAND_FONT_HREF, INKS, PAGE_H, PAGE_W, RIBBON, TAB_W, type Tool } from "./notebook-look"
@@ -119,7 +121,6 @@ export function Notebook({ history, onHistory, editable, cover }: { history: His
   const clear = () => set((h) => commit(h, editOpen(h.present, clearPage)))
   const group = () => set((h) => commit(h, editOpen(h.present, (p) => toggleGroup(p, picked, stamp()))))
   const openPageNumber = history === undefined ? 1 : history.present.open + 1
-  const mark = history === undefined ? 0 : history.present.mark
 
   return (
     <div className="mv-panel relative" style={{ padding: 0, width: PAGE_W + 2 /* the page's width inside the panel's two borders: the tabs stand past the right one and end at the sheet's edge (owner, 2026-10-29: "you need to also shrink the container by the same width so that the tabs stick out") */ }}>
@@ -157,19 +158,18 @@ export function Notebook({ history, onHistory, editable, cover }: { history: His
           className="mv-key mv-notebook-cover relative block w-full"
           style={{ height: COVER_H, padding: 0, background: "transparent", border: 0, cursor: history === undefined ? "default" : "pointer" }}
         >
-          {/* the ribbon's tail, out of the cover's right edge: the book shut and turned, the bookmark where it sits — nearer the top for an early page, the foot for a late one */}
+          {/* the ribbon's tail, out of the cover's right edge, centered: the book shut and turned */}
           <span
             aria-hidden
             className="absolute"
             style={{
               left: "100%",
-              top: (mark / (PAGES - 1)) * (COVER_H - COVER_RIBBON_W),
+              top: (COVER_H - COVER_RIBBON_W) / 2,
               width: COVER_TAIL,
               height: COVER_RIBBON_W,
               background: RIBBON,
               clipPath: `polygon(0 0, 100% 0, calc(100% - ${COVER_NOTCH}px) 50%, 100% 100%, 0 100%)`,
               filter: "drop-shadow(2px 0 3px rgba(0,0,0,.5))",
-              transition: "top 220ms ease-out",
             }}
           />
         </button>
