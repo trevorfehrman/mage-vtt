@@ -34,7 +34,13 @@ function Gallery() {
           <h2 className="mv-h text-[30px] leading-none">The Little Bear</h2>
           <span className="mv-eyebrow">Gnosis 5 · Stamina 2 · title card stands here</span>
         </div>
-        <Notebook history={history} onHistory={setHistory} editable={!read} />
+        <section>
+          <div className="mb-2 flex items-center gap-2">
+            <h3 className="mv-eyebrow">Notebook</h3>
+            <span className="mv-rule flex-1" />
+          </div>
+          <Notebook history={history} onHistory={setHistory} editable={!read} cover="The Little Bear" />
+        </section>
         <div className="mv-panel mv-cornered p-4">
           <span className="mv-eyebrow">Attributes & Skills stand here</span>
         </div>

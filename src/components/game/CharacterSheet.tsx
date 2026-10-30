@@ -324,8 +324,9 @@ export function CharacterSheet({
 
       {/* The notebook (MAG-75): the mage's own pages, shut by default, under
           the title card and above the traits (owner, triage 2026-10-28:
-          "right under the title card, above attributes"). */}
-      {notebook}
+          "right under the title card, above attributes"), a section with
+          its own heading and rule like the rest (owner, 2026-10-29). */}
+      {notebook !== undefined && <Section title="Notebook">{notebook}</Section>}
 
       {/* The trait matrix — directly beneath the title card: the mundane
           traits paint the person before the magic does (owner call

@@ -25,15 +25,15 @@ export const HAND_FONT = "Kalam"
 export const HAND_FONT_HREF = "https://fonts.googleapis.com/css2?family=Kalam:wght@300;400&display=swap"
 
 /**
- * The page's measure: 31 by 18 cells. The rig's page was 32 cells — the
- * title card's full width — with the tabs standing a tab's width past the
- * panel's border; on the sheet the center column has no such room (at a
- * laptop's width the sheet already fills it to the edge), and a horizontal
- * scroll swallowed the tabs (found 2026-10-29). So the page gives up one
- * cell at its right, and the tabs stand in it: their bodies in the panel's
- * gutter, their faces on the panel's border, the one held out just past it.
+ * The page's measure: 32 by 18 cells, the panel's full width, with the tabs
+ * standing a tab's width past the panel's border — the rig's look, kept
+ * (owner, 2026-10-29: "the tabs have to stick out from the frame"; a
+ * 31-cell page with the tabs in its last cell read as "kinda still inside").
+ * The sheet's center column has to leave that width to the right of the
+ * panel; on a column too narrow for it the column's scroll clips them, and
+ * that is accepted over shifting the whole sheet for the notebook's sake.
  */
-export const PAGE_W = GRID * 31
+export const PAGE_W = GRID * 32
 export const PAGE_H = GRID * 18
 /** The gutter: px the plate is drawn inside its lattice box, on every side (owner: "snapping just a few pixels inside the dots? this way every note next to each other have margin"). */
 export const GAP = 3
