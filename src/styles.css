@@ -534,11 +534,6 @@ pre code {
 .mv-sheet-section {
   will-change: transform;
 }
-/* The notebook's cover (MAG-75): pointing at it brightens the name written
- * on it, as the Derangements strip brightens. */
-.mv-notebook-cover:hover .mv-notebook-cover-name {
-  color: var(--ink);
-}
 /* The Derangements accordion's collapsed strip (MAG-60; owner 2026-10-28:
  * "we need hover over behavior on the collapsed state"): pointing anywhere
  * at the strip brightens the heading and the sentence to ink; open, they

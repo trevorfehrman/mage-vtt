@@ -7,13 +7,14 @@
 // so a second opening is instant and the page in hand is kept.
 //
 // The cover (owner, 2026-10-29: "style the collapsed notebook to something
-// that _gestures_ to a closed notebook"): the panel's face with the mage's
-// name written on it in the hand, the seven kind tabs peeking past its
-// right edge as the index tabs of a shut notebook do (lit where the book
-// holds that kind), and the ribbon's tail hanging out of its foot where the
-// bookmark sits in the book. A tap anywhere on the cover opens it; the
-// cover folds away as the page folds open. "Used, not worn": nothing on it
-// is wear — the name, the tabs and the ribbon are the mage's own doing.
+// that _gestures_ to a closed notebook"): the panel's bare face with the
+// ribbon's tail hanging out of its foot where the bookmark sits in the
+// book — "the ribbon is a nice detail"; the name written on the cover and
+// the kind tabs peeking past its edge were tried the same evening and taken
+// off at his word. A tap anywhere on the cover opens it; the cover folds
+// away as the page folds open. Open, a click on the toolbar's bare space
+// shuts it again — no word for it (owner: "take away 'shut' and let any
+// click on the header that isn't a button close the book").
 //
 // The look-and-feel rounds, in the owner's words (2026-10-28/29): "a mage's
 // note book is relatively neat. the handwriting is neat, a little scholarly
@@ -29,23 +30,18 @@ import { Circle, Eraser, Feather, Group, MousePointer2, Redo2, Search, Square, U
 import type { Id } from "../../../convex/_generated/dataModel"
 import { Input } from "#/components/ui/input"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "#/components/ui/alert-dialog"
-import { clearPage, commit, editOpen, FILLS, isBlankPage, isOneGroup, KINDS, ofKind, openPage, pagesHolding, PAGES, redo, SHAPES, toggleGroup, undo, type Fill, type History, type ShapeKind } from "#/domain/notebook"
+import { clearPage, commit, editOpen, FILLS, isBlankPage, isOneGroup, openPage, PAGES, redo, SHAPES, toggleGroup, undo, type Fill, type History, type ShapeKind } from "#/domain/notebook"
 import { useNotebook } from "#/hooks/use-notebook"
 import { Fold } from "./Fold"
-import { FOOTER_H, freshStamp, HAND_FONT, HAND_FONT_HREF, INKS, kindLook, PAGE_H, PAGE_W, RIBBON, type Tool } from "./notebook-look"
+import { FOOTER_H, freshStamp, HAND_FONT, HAND_FONT_HREF, INKS, PAGE_H, PAGE_W, RIBBON, type Tool } from "./notebook-look"
 
 const Pad = lazy(() => import("./NotebookPad").then((m) => ({ default: m.NotebookPad })))
 
 /** The cover's height, and the ribbon's tail hanging from its foot: narrower than the open book's, as a shut book shows less of it. */
-const COVER_H = 52
+const COVER_H = 44
 const COVER_RIBBON_W = 14
 const COVER_TAIL = 16
 const COVER_NOTCH = 6
-/** The cover's tabs: ticks past the right edge, one per kind, standing a little further where the book holds that kind. */
-const TICK_H = 4
-const TICK_GAP = 2
-const TICK_OUT = 8
-const TICK_OUT_HELD = 11
 
 /** The notebook with its store: the sheet's composition (every member reads; the hand that drives the sheet writes). */
 export function SheetNotebook({ sessionId, characterId, editable, cover }: { sessionId: Id<"sessions">; characterId: Id<"characters">; editable: boolean; cover: string }) {
@@ -120,8 +116,6 @@ export function Notebook({ history, onHistory, editable, cover }: { history: His
   const group = () => set((h) => commit(h, editOpen(h.present, (p) => toggleGroup(p, picked, stamp()))))
   const openPageNumber = history === undefined ? 1 : history.present.open + 1
   const mark = history === undefined ? 0 : history.present.mark
-  /** Which kinds the book holds anywhere: those tabs stand further out on the cover. */
-  const held = KINDS.map((k) => history !== undefined && pagesHolding(history.present, ofKind(k)).length > 0)
 
   return (
     <div className="mv-panel relative" style={{ padding: 0 }}>
@@ -156,39 +150,16 @@ export function Notebook({ history, onHistory, editable, cover }: { history: His
           aria-expanded={open}
           aria-label={`open ${cover}'s notebook`}
           disabled={history === undefined}
-          className="mv-key mv-notebook-cover relative block w-full text-left"
-          style={{ height: COVER_H, padding: "0 16px", background: "transparent", border: 0, cursor: history === undefined ? "default" : "pointer" }}
+          className="mv-key mv-notebook-cover relative block w-full"
+          style={{ height: COVER_H, padding: 0, background: "transparent", border: 0, cursor: history === undefined ? "default" : "pointer" }}
         >
-          {/* the name on the cover, in the hand */}
-          <span className="mv-notebook-cover-name" style={{ fontFamily: HAND_FONT, fontSize: 17, lineHeight: 1, color: "var(--dim)", transition: "color 160ms" }}>
-            {cover}
-          </span>
-          {/* the tabs' edges, past the right edge of the cover */}
-          <span aria-hidden className="absolute" style={{ left: "100%", top: (COVER_H - (KINDS.length * (TICK_H + TICK_GAP) - TICK_GAP)) / 2, width: TICK_OUT_HELD + 1 }}>
-            {KINDS.map((k, i) => (
-              <span
-                key={k}
-                className="absolute"
-                style={{
-                  left: 0,
-                  top: i * (TICK_H + TICK_GAP),
-                  width: held[i] ? TICK_OUT_HELD : TICK_OUT,
-                  height: TICK_H,
-                  background: kindLook(k).tint,
-                  opacity: held[i] ? 0.85 : 0.22,
-                  borderRadius: "0 2px 2px 0",
-                  transition: "width 160ms, opacity 160ms",
-                }}
-              />
-            ))}
-          </span>
           {/* the ribbon's tail, out of the cover's foot where the bookmark sits in the book */}
           <span
             aria-hidden
             className="absolute"
             style={{
               top: "100%",
-              left: `calc(${((mark + 0.5) / PAGES) * 100}% - ${COVER_RIBBON_W / 2}px)`,
+              left: ((mark + 0.5) / PAGES) * PAGE_W - COVER_RIBBON_W / 2,
               width: COVER_RIBBON_W,
               height: COVER_TAIL,
               background: RIBBON,
@@ -203,12 +174,15 @@ export function Notebook({ history, onHistory, editable, cover }: { history: His
       {/* the body: the page is the panel's width, the tabs stand past its right edge, the ribbon's tail past its foot */}
       <Fold open={open} bleed>
         <div className="grid gap-3" style={{ paddingTop: 12 }}>
-          {/* the toolbar, in the panel's gutter; the book shuts from its left */}
-          <div className="flex items-center justify-between gap-3 px-4">
+          {/* the toolbar, in the panel's gutter; a click on its bare space shuts the book */}
+          <div
+            className="flex items-center justify-between gap-3 px-4"
+            style={{ cursor: "pointer" }}
+            onClick={(e) => {
+              if (e.target instanceof Element && e.target.closest("button, input") === null) shut()
+            }}
+          >
             <div className="flex items-center gap-1">
-              <button type="button" onClick={shut} aria-label="shut the notebook" className="mv-key mv-eyebrow mr-2 flex items-center gap-1.5" style={{ color: "var(--dim)" }}>
-                shut
-              </button>
               {editable ? (
                 <>
                   <ToolButton label="select" on={tool === "select"} onClick={() => setTool("select")}>
