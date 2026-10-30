@@ -1519,7 +1519,7 @@ export function NotebookPad({
       </div>
 
       {/* the tabs: one per kind down the page's right edge, standing past the panel's border like a notebook's index tabs — each sits a pixel over the border and breaks it for its height (owner, 2026-10-29: the border "should be like interrupted by the height of the tab"); the one held out is lit and comes further; a kind the book has none of stays in */}
-      <div className="absolute" style={{ left: width - 1, top: 0, width: TAB_W + TAB_OUT + 1, height }}>
+      <div className="absolute" style={{ left: width, top: 0, width: TAB_W + TAB_OUT, height }}>
         {KINDS.map((kind, i) => {
           const look = kindLook(kind)
           const out = Option.contains(filter, kind)
@@ -1537,13 +1537,14 @@ export function NotebookPad({
                 if (!out && some) e.currentTarget.style.borderColor = `color-mix(in srgb, ${look.tint} 80%, transparent)`
               }}
               onMouseLeave={(e) => {
-                if (!out) e.currentTarget.style.borderColor = `color-mix(in srgb, ${look.tint} 40%, transparent)`
+                if (!out) e.currentTarget.style.borderColor = `color-mix(in srgb, ${look.tint} ${some ? 40 : 14}%, transparent)`
               }}
               className="absolute grid place-items-center"
               style={{
                 left: 0,
                 top: ORIGIN + i * pitch + (pitch - TAB_H) / 2,
-                width: TAB_W + (out ? TAB_OUT : 0),
+                // from the panel's border column (the pad ends where the border begins) to the sheet's edge
+                width: TAB_W - 1 + (out ? TAB_OUT : 0),
                 height: TAB_H,
                 padding: 0,
                 background: out ? `color-mix(in srgb, ${look.tint} 14%, ${PLATE})` : PLATE,
@@ -1551,10 +1552,12 @@ export function NotebookPad({
                 // `border` shorthand would bring the left side back (owner: "the left border ... appears and remains")
                 borderStyle: "solid",
                 borderWidth: "1px 1px 1px 0",
-                borderColor: out ? look.tint : `color-mix(in srgb, ${look.tint} 40%, transparent)`,
+                // a kind the book has none of is dim in its outline and its glyph, never in its body: the body stays
+                // opaque so every tab breaks the panel's border for its height (owner, 2026-10-29: "the tabs don't
+                // break the border only when they're inactive")
+                borderColor: out ? look.tint : `color-mix(in srgb, ${look.tint} ${some ? 40 : 14}%, transparent)`,
                 borderRadius: "0 4px 4px 0",
-                color: out ? look.tint : `color-mix(in srgb, ${look.tint} 72%, transparent)`,
-                opacity: some || out ? 1 : 0.3,
+                color: out ? look.tint : `color-mix(in srgb, ${look.tint} ${some ? 72 : 24}%, transparent)`,
                 boxShadow: "2px 2px 6px rgba(0,0,0,.4)",
                 cursor: some || out ? "pointer" : "default",
                 transition: "width 120ms ease-out, background-color 120ms, border-color 120ms, color 120ms",
