@@ -29,10 +29,10 @@ export const HAND_FONT_HREF = "https://fonts.googleapis.com/css2?family=Kalam:wg
  * full width, with the tabs a tab's width past the panel's border; on the
  * sheet the center column has no room past the panel (owner, 2026-10-29:
  * "that's how tight the tolerance is for the sidebar, we need that space"),
- * so the page gives up a tab's width at its right and the tabs stand in it,
- * their right edges flush with the panel's — "the tab right borders are
- * aligned with the normal center screen max width" — the one held out a
- * hair past it.
+ * so the page AND its panel give up a tab's width at the right: the tabs
+ * stand past the panel's border and end flush with the sheet's edge — "the
+ * tab right borders are aligned with the normal center screen max width" —
+ * the one held out a hair past it.
  */
 export const PAGE_W = GRID * 31
 export const PAGE_H = GRID * 18

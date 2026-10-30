@@ -118,7 +118,7 @@ export function Notebook({ history, onHistory, editable, cover }: { history: His
   const mark = history === undefined ? 0 : history.present.mark
 
   return (
-    <div className="mv-panel relative" style={{ padding: 0 }}>
+    <div className="mv-panel relative" style={{ padding: 0, width: PAGE_W + 2 /* the page's width inside the panel's two borders: the tabs stand past the right one and end at the sheet's edge (owner, 2026-10-29: "you need to also shrink the container by the same width so that the tabs stick out") */ }}>
       {/* the eraser's question: the page goes whole — its notes, its ink, its shapes; the other eight stay; ⌘Z brings it back until the sheet is left */}
       <AlertDialog open={clearing} onOpenChange={setClearing}>
         <AlertDialogContent>
@@ -300,7 +300,8 @@ export function Notebook({ history, onHistory, editable, cover }: { history: His
               )}
             </div>
           </div>
-          <div style={{ borderTop: "1px solid var(--line)", width: PAGE_W, height: PAGE_H + FOOTER_H }}>
+          {/* the page's box: its own top line, and the page and the wheel beneath it — a height the pad fills exactly, so it never paints over the panel's bottom border */}
+          <div style={{ borderTop: "1px solid var(--line)", width: PAGE_W, height: PAGE_H + FOOTER_H + 1 }}>
             {everOpen && history !== undefined && (
               <ClientOnly fallback={null}>
                 <Suspense fallback={null}>
