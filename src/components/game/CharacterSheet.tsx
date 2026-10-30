@@ -74,6 +74,10 @@ interface CharacterSheetProps {
   /** The Scene open now (MAG-60): a Bedlam derangement bound to it stands
    * in the Derangements accordion while it is the open one. Absent in downtime. */
   activeSceneId?: SceneId | undefined
+  /** The mage's notebook (MAG-75, ADR-0027), mounted under the title card
+   * and above the traits — the route composes it with its store, since the
+   * sheet itself knows no Convex ids. Absent on a sheet with none. */
+  notebook?: ReactNode | undefined
 }
 
 
@@ -90,6 +94,7 @@ export function CharacterSheet({
   onSetMagicalTool,
   onMarkSheet,
   activeSceneId,
+  notebook,
 }: CharacterSheetProps) {
   const penalty = character.woundPenalty
   const canToggle =
@@ -316,6 +321,11 @@ export function CharacterSheet({
           <LegacyPlate legacy={character.legacy} gnosis={character.gnosis} />
         )}
       </div>
+
+      {/* The notebook (MAG-75): the mage's own pages, shut by default, under
+          the title card and above the traits (owner, triage 2026-10-28:
+          "right under the title card, above attributes"). */}
+      {notebook}
 
       {/* The trait matrix — directly beneath the title card: the mundane
           traits paint the person before the magic does (owner call

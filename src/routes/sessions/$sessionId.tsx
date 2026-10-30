@@ -23,6 +23,7 @@ import { CastMount } from "#/components/game/CastMount"
 import { MessageBox } from "#/components/game/MessageBox"
 import { ChronicleSwitch, WorkingSlot } from "#/components/game/WorkingSlot"
 import { CharacterSheet } from "#/components/game/CharacterSheet"
+import { SheetNotebook } from "#/components/game/Notebook"
 import { SheetSky } from "#/components/game/TraitSky"
 import { Roster } from "#/components/game/Roster"
 import { HandEditForm } from "#/components/game/HandEditForm"
@@ -389,6 +390,10 @@ function SessionPage() {
           }
           // the Scene open now (MAG-60): what a scene-bound derangement hangs from
           activeSceneId={scene?.id}
+          // the notebook (MAG-75, ADR-0027): every member reads it; the hand
+          // that drives the sheet writes it. Keyed by the character so a
+          // sheet swap hydrates afresh.
+          notebook={<SheetNotebook key={viewed._id} sessionId={sessionId} characterId={viewed._id} editable={mayDrivePool} />}
         />
         {/* The hand-edit panel (issue #19): ST-only, on any sheet — the
             repair door (Mana, Will, XP, the track, Wisdom); players mark

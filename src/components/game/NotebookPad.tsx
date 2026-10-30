@@ -1,9 +1,11 @@
-// PROTOTYPE — throwaway (MAG-75 audition, 2026-10-28/29). The mage's
-// notebook drawn with react-konva: the page is a plain array of notes and ink
-// (Schema, in -notebook-page.ts), Konva only renders it; every edit is a pure
-// function over the page, and undo / redo is a history of pages. Client-only
-// (Konva needs a window), so the route lazy-loads this file inside ClientOnly.
-// No app imports; mock only.
+// The mage's notebook, the pad (MAG-75, ADR-0027; auditioned on the rig
+// 2026-10-28/29). The page is data (src/domain/notebook.ts): Konva only
+// renders it, every edit is a pure function over the page, and undo / redo
+// is a history of books held in the hand. Client-only (Konva needs a
+// window), so Notebook.tsx lazy-loads this file inside ClientOnly. The pure
+// look — the kinds' inks and sigils, the wheel's and the row's measures —
+// is in notebook-look.ts. What follows is the design history in the owner's
+// words, kept because every number below answers to one of these lines.
 //
 // Round three (owner, 2026-10-29): "each note just needs three active areas,
 // text value and symbol ... don't be afraid to redesign the note frame
@@ -82,7 +84,6 @@ import {
   holds,
   isBlankPage,
   KINDS,
-  kindLook,
   MAX_LINES,
   mentions,
   MIN_SHAPE,
@@ -118,7 +119,6 @@ import {
   undo,
   withGroups,
   within,
-  type Book,
   type Box,
   type Fill,
   type History,
@@ -130,8 +130,53 @@ import {
   type Shape,
   type ShapeKind,
   type Shift,
+} from "#/domain/notebook"
+import {
+  ACCENT,
+  CELL_TOP,
+  clamp,
+  DIM,
+  DROP,
+  FADE,
+  FEEL,
+  FOOTER_H,
+  GAP,
+  GIVE,
+  GIVE_DEG,
+  GIVE_PX,
+  GRIP,
+  HAND,
+  HINGE,
+  INK,
+  kindLook,
+  LEAD,
+  LINE_MID,
+  NOTCH,
+  NUM,
+  NUM_IN_HAND,
+  PAD,
+  PEN,
+  PITCH,
+  PLATE,
+  RIBBON,
+  RIBBON_W,
+  RIFFLE,
+  rowHeight,
+  rubber,
+  SELECTION,
+  SHAPE_STROKE,
+  SLIDE,
+  SWING,
+  TAB_H,
+  TAB_OUT,
+  TAB_W,
+  TAIL,
+  titleWidth,
+  washOf,
+  WHEEL_PAGE,
+  WORDS_TOP,
   type Tool,
-} from "./-notebook-page"
+} from "./notebook-look"
 
 /** The note being written, and the words as they stand mid-edit, so the row grows while the hand is still moving. */
 type Editing = { readonly id: string; readonly focus: "title" | "number"; readonly draft: string }
@@ -140,108 +185,9 @@ type Drag = { readonly ids: ReadonlyArray<string>; readonly origin: Record<strin
 /** A resize in flight: the row and the size under the hand, before it snaps. */
 type Resizing = { readonly id: string; readonly w: number; readonly h: number }
 
-/** The ruling knob the route hands down. */
-export type Rule = "dots" | "lines" | "none"
 /** Wheel events a row has already spent on its own words. */
 const spentByRow = new WeakSet<Event>()
 
-/** The pen's character (perfect-freehand): a nib that thins with speed or pressure, smoothed, tapered at both ends. */
-const PEN = { size: 5, thinning: 0.65, smoothing: 0.55, streamline: 0.5, start: { taper: 24 }, end: { taper: 32 } }
-
-const INK = "#d7d2e0"
-const DIM = "#807b8f"
-const ACCENT = "#6fae97"
-// ── The wheel: the book's pages in a row under the page ─────────────────────
-// Every number is positioned purely from the wheel's position (a motion
-// value, in pages), so nothing is ever a frame out of step. Landing is
-// Motion's inertia with the target snapped to a page; a wheel notch moves a
-// target the wheel chases on a spring. Every constant here is a knob to turn
-// with the owner's hand on the rig.
-/** the footer's height, and one page's width on the wheel */
-const FOOTER_H = 36
-const PITCH = 40
-/** the number in hand grows from NUM to NUM_IN_HAND */
-const NUM = 12
-const NUM_IN_HAND = 17
-/** the hinge: degrees a page swings in from, about its spine, and how long; both shrink with the wheel's speed, to a flutter at RIFFLE pages per second */
-const HINGE = 14
-const SWING = 0.22
-const RIFFLE = 12
-/** The momentum knob: how far a flick carries, how quick a notch's chase is (owner: "smoother momentum and a little bit faster ... a touch more inertia"). */
-export type Feel = "soft" | "mid" | "far"
-const FEEL: Record<Feel, { power: number; timeConstant: number; stiffness: number; damping: number }> = {
-  soft: { power: 0.4, timeConstant: 200, stiffness: 240, damping: 29 },
-  mid: { power: 0.6, timeConstant: 280, stiffness: 320, damping: 33 },
-  far: { power: 0.8, timeConstant: 360, stiffness: 400, damping: 37 },
-}
-/** The ribbon: a calming red; its width; how far its tail hangs past the frame (the tail is the handle); the cut of its swallowtail. */
-const RIBBON = "#a65852"
-const RIBBON_W = 24
-const TAIL = 26
-const NOTCH = 10
-/** A trackpad stream's travel, in px, for one page. */
-const WHEEL_PAGE = 420
-/** How far past a cover the wheel can be pulled, in pages, and how it resists: a rubber band, not a wall. */
-const GIVE = 0.3
-/** How the page strains with it: degrees about its spine and px aside, per page of give. */
-const GIVE_DEG = 30
-const GIVE_PX = 36
-const rubber = (d: number): number => GIVE * (1 - 1 / (1 + 2.5 * d))
-/** A number's slide to its new place when the book thins or fills, and how long a page that fell out takes to fall. */
-const SLIDE = { type: "spring" as const, stiffness: 300, damping: 30 }
-const DROP = 0.25
-/** The tabs: how far each stands past the page's edge, how tall, and how much further the one held out comes. */
-const TAB_W = 24
-const TAB_H = 40
-const TAB_OUT = 3
-/** The plate: a hair above the panel. */
-const PLATE = "#121118"
-/** The accent at 30% over the plate, as one opaque color: what a selection in the editor wears. */
-const SELECTION = "#2e403e"
-const HAND = 18
-const LEAD = 1.1
-const PAD = 10
-/**
- * Where the words hang from; the symbol and the value's cell center on the
- * first line of them. The whole header line lives in the row's first
- * lattice cell, so a row laid one cell over another leaves the symbol,
- * the first words and the value of the one beneath in view (owner,
- * 2026-10-29: "the icons and values should be aligned and sized such that
- * when notes overlay each other both are visible").
- */
-const WORDS_TOP = 6
-/**
- * The first line's visual middle. Kalam's ink rides high in its line box
- * (ascent 19 / descent 10 at 18px, measured): the ink of a typical line
- * centers about a pixel above the box's middle, so the symbol and the value
- * center there, and a one-line row's words sit centered in its plate.
- */
-const LINE_MID = WORDS_TOP + (HAND * LEAD) / 2 - 1
-const CELL_TOP = LINE_MID - CELL / 2
-/**
- * A row's height for its lines: what the words need plus the gutter, rounded
- * up to HALF cells, never under a cell and a half. Half cells, because the
- * header must sit in the first cell (so stacked rows stay readable) and a
- * one-line row two whole cells tall then floats its line high (owner,
- * 2026-10-29: "for a single line default sized note the text is no longer
- * centered in the y-axis. is this a pick your poison situation?"). A row a
- * hand has sized still snaps to whole cells.
- */
-const HALF = GRID / 2
-const rowHeight = (lines: number, gap: number): number => Math.max(GRID * 1.5, Math.ceil((WORDS_TOP + lines * HAND * LEAD + 6 + gap * 2) / HALF) * HALF)
-/** The grip's reach from the row's corner, and the fade's depth at a scrolling row's foot. */
-const GRIP = 10
-const FADE = 28
-
-const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v))
-
-/** A shape's line. */
-const SHAPE_STROKE = 1.5
-/** A hex ink at an alpha, for a wash. */
-const washOf = (hex: string, alpha: number): string => {
-  const n = Number.parseInt(hex.slice(1), 16)
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
-}
 /** Hatch: a tile of one diagonal hairline in the ink, drawn once per ink; at 2× and scaled down, as the ruling is. */
 const hatchTiles = new Map<string, HTMLCanvasElement>()
 const hatchTile = (color: string): HTMLCanvasElement => {
@@ -279,11 +225,11 @@ const outlineOf = (ink: Ink, live: boolean): number[] => {
 
 /**
  * The ruling as a repeating tile drawn once: a dot at every lattice point,
- * a hairline cross at every fourth — the lattice's own sigil. Drawn at 2×
- * and scaled down so the dots stay crisp on a dense display.
+ * a hairline cross at every fourth — the lattice's own sigil (owner's pick
+ * over lines and bare page). Drawn at 2× and scaled down so the dots stay
+ * crisp on a dense display.
  */
-const rulingTile = (rule: Rule): HTMLCanvasElement | null => {
-  if (rule === "none") return null
+const rulingTile = (): HTMLCanvasElement | null => {
   const span = GRID * GRID_TICK_EVERY
   const c = document.createElement("canvas")
   c.width = span * 2
@@ -293,17 +239,6 @@ const rulingTile = (rule: Rule): HTMLCanvasElement | null => {
   g.scale(2, 2)
   g.fillStyle = INK
   g.strokeStyle = INK
-  if (rule === "lines") {
-    g.globalAlpha = 0.045
-    g.lineWidth = 1
-    for (let j = 0; j < GRID_TICK_EVERY; j++) {
-      g.beginPath()
-      g.moveTo(0, j * GRID + 0.5)
-      g.lineTo(span, j * GRID + 0.5)
-      g.stroke()
-    }
-    return c
-  }
   for (let i = 0; i < GRID_TICK_EVERY; i++) {
     for (let j = 0; j < GRID_TICK_EVERY; j++) {
       const x = i * GRID
@@ -330,15 +265,6 @@ const rulingTile = (rule: Rule): HTMLCanvasElement | null => {
 
 // --- The row's measure ---
 
-/**
- * The words' column: inside the gutter, after the spine, before the value's
- * cell when there is one. `w` is the row's width on the lattice; the plate
- * is drawn `gap` px inside it on every side, so rows on neighboring cells
- * keep a margin between them (owner, 2026-10-29: "snapping just a few
- * pixels inside the dots? this way every note next to each other have
- * margin").
- */
-const titleWidth = (kind: NoteKind, w: number, gap: number): number => w - gap * 2 - SPINE_W - PAD * 2 - (takesValue(kind) ? CELL + PAD : 0)
 /** Konva measures text as it draws, so one offstage Text measures how many lines a title takes at a width. */
 const measurer = new Konva.Text({ fontSize: HAND, lineHeight: LEAD, wrap: "word" })
 /** Set the measurer to a row's words at a width — cut at a height with an ellipsis, as the drawn row is when it sizes itself, or not at all. (Konva's height is "auto" by default, which its types do not say; setAttr takes it.) */
@@ -374,9 +300,6 @@ export function NotebookPad({
   inkColor,
   shapeKind,
   fill,
-  rule,
-  gap,
-  feel,
   search,
   picked,
   onPicked,
@@ -384,6 +307,7 @@ export function NotebookPad({
   onHistory,
   width,
   height,
+  readOnly,
 }: {
   font: string
   tool: Tool
@@ -391,20 +315,19 @@ export function NotebookPad({
   /** The shape tool's kind and fill; its ink is the quill's. */
   shapeKind: ShapeKind
   fill: Fill
-  rule: Rule
-  /** The gutter: px the plate is drawn inside its lattice box, on every side. */
-  gap: number
-  feel: Feel
   /** The word in the header's field: the book is read by it. */
   search: string
   picked: ReadonlyArray<string>
   onPicked: (ids: ReadonlyArray<string>) => void
-  history: History<Book>
-  onHistory: (h: History<Book>) => void
+  history: History
+  onHistory: (h: History) => void
   width: number
   height: number
+  /** Another member's notebook (ADR-0027: every member reads): the pages turn, the tabs and the word read it, nothing on it is touched. */
+  readOnly: boolean
 }) {
   const book = history.present
+  const gap = GAP
   /** The tab held out: the book is read by this kind alone. */
   const [filter, setFilter] = useState<Option.Option<NoteKind>>(Option.none())
   /** The page in hand stays in the thin book while the hand is on it, even once its last note of the kind is gone; −1 after a tab click, so the click may turn to the nearest page that holds the kind. */
@@ -460,6 +383,11 @@ export function NotebookPad({
   const [scroll, setScroll] = useState<Record<string, number>>({})
   const [fontsReady, setFontsReady] = useState(0)
   const stamped = useRef(0)
+  /** A fresh name for a thing the hand makes: the clock and a count, so two made in one tick differ (the domain is clockless, ADR-0014). */
+  const stamp = (): string => {
+    stamped.current += 1
+    return `${Date.now().toString(36)}${stamped.current}`
+  }
   /** What the hand holds between pages: a page fragment, the page it came from, and whether it was cut (a copy put down on its own page lands a cell over). */
   const clip = useRef<Option.Option<{ readonly page: Page; readonly from: number; readonly cut: boolean }>>(Option.none())
   const stageRef = useRef<Konva.Stage>(null)
@@ -491,7 +419,7 @@ export function NotebookPad({
     skipArrive.current = false
   })
 
-  const tile = useMemo(() => rulingTile(rule), [rule])
+  const tile = useMemo(() => rulingTile(), [])
 
   // Konva measures text at draw time, so the layer redraws once the hand is loaded.
   useEffect(() => {
@@ -546,6 +474,8 @@ export function NotebookPad({
 
   const onKey = (e: RKeyboardEvent<HTMLDivElement>) => {
     if (Option.isSome(editing)) return
+    // a reader turns the pages and nothing else
+    if (readOnly && !["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return
     const meta = e.metaKey || e.ctrlKey
     const key = e.key.toLowerCase()
     if (meta && key === "z") {
@@ -555,7 +485,7 @@ export function NotebookPad({
     }
     if (meta && key === "d" && pickedNotes.length > 0) {
       e.preventDefault()
-      set(duplicateNotes(page, picked))
+      set(duplicateNotes(page, picked, stamp()))
       return
     }
     // ⌘X / ⌘C take what is picked; ⌘V puts it down on the page in hand, picked, so a drag can settle it
@@ -572,8 +502,7 @@ export function NotebookPad({
     if (meta && key === "v" && Option.isSome(clip.current)) {
       e.preventDefault()
       const c = clip.current.value
-      stamped.current += 1
-      const laid = putDown(page, c.page, stamped.current, c.from === liveIndex && !c.cut ? GRID : 0)
+      const laid = putDown(page, c.page, stamp(), c.from === liveIndex && !c.cut ? GRID : 0)
       set(laid.page)
       onPicked(laid.ids)
       setMenu(Option.none())
@@ -588,7 +517,7 @@ export function NotebookPad({
     }
     if (meta && key === "g" && picked.length > 1) {
       e.preventDefault()
-      set(toggleGroup(page, picked))
+      set(toggleGroup(page, picked, stamp()))
       return
     }
     if (e.key === "Backspace" || e.key === "Delete") {
@@ -623,6 +552,7 @@ export function NotebookPad({
   // --- picking: a click takes one (and its group) and raises it, shift-click adds or removes, a sweep takes a region ---
 
   const pick = (id: string, shift: boolean) => {
+    if (readOnly) return
     const ids = withGroups(page, [id])
     const allIn = ids.every((x) => picked.includes(x))
     if (shift) onPicked(allIn ? picked.filter((p) => !ids.includes(p)) : [...picked, ...ids.filter((x) => !picked.includes(x))])
@@ -634,6 +564,7 @@ export function NotebookPad({
   // --- the editor: the note's words and, when its kind takes one, its value ---
 
   const openEditor = (n: Note, focus: "title" | "number") => {
+    if (readOnly) return
     onPicked([n.id])
     setMenu(Option.none())
     setEditing(Option.some({ id: n.id, focus, draft: n.title }))
@@ -717,6 +648,7 @@ export function NotebookPad({
   // the pointer on the bare page, by tool: the pen begins a stroke, select
   // begins a sweep
   const onStageDown = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    if (readOnly) return
     const onPage = e.target === e.target.getStage()
     Match.value(tool).pipe(
       Match.when("select", () => {
@@ -748,10 +680,9 @@ export function NotebookPad({
     onPicked([])
   }
   const onStageDblClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (e.target !== e.target.getStage() || tool !== "select") return
+    if (e.target !== e.target.getStage() || tool !== "select" || readOnly) return
     Option.map(pointer(), (p) => {
-      stamped.current += 1
-      const placed = placeAt(page, p.x - 12, p.y - 12, stamped.current)
+      const placed = placeAt(page, p.x - 12, p.y - 12, stamp())
       const n = placed.notes[placed.notes.length - 1]
       // with a tab out a new note is of its kind: a note the thin book would hide at once is no note to write
       set(Option.match(filter, { onNone: () => placed, onSome: (kind) => (n ? rekind(placed, [n.id], kind) : placed) }))
@@ -1002,8 +933,8 @@ export function NotebookPad({
     animate(pos, pos.get() + (v >= 0 ? 1 : -1), {
       type: "inertia",
       velocity: v,
-      power: FEEL[feel].power,
-      timeConstant: FEEL[feel].timeConstant,
+      power: FEEL.power,
+      timeConstant: FEEL.timeConstant,
       modifyTarget: (t) => clamp(Math.round(t), 0, last),
       min: 0,
       max: last,
@@ -1018,8 +949,8 @@ export function NotebookPad({
     chasing.current = true
     animate(pos, clamp(target, 0, last), {
       type: "spring",
-      stiffness: FEEL[feel].stiffness,
-      damping: FEEL[feel].damping,
+      stiffness: FEEL.stiffness,
+      damping: FEEL.damping,
       mass: 0.9,
       onComplete: () => {
         chasing.current = false
@@ -1171,7 +1102,7 @@ export function NotebookPad({
       <Group
         key={h.id}
         id={h.id}
-        draggable={!drawing}
+        draggable={!drawing && !readOnly}
         onMouseDown={(e) => pick(h.id, e.evt.shiftKey)}
         onDragStart={() => onDragStart(h.id)}
         onDragMove={(e) => onDragMove(h.id, e.target)}
@@ -1202,7 +1133,8 @@ export function NotebookPad({
     let moved = false
     const move = (ev: PointerEvent) => {
       const dx = ev.clientX - x0
-      if (!moved && Math.abs(dx) <= 4) return
+      // a reader may tap the ribbon to go where it is, not move it
+      if (readOnly || (!moved && Math.abs(dx) <= 4)) return
       moved = true
       hold.set(dx)
     }
@@ -1315,7 +1247,7 @@ export function NotebookPad({
                 ref={arrive}
                 x={seat.x}
                 y={seat.y}
-                draggable={!drawing}
+                draggable={!drawing && !readOnly}
                 onMouseDown={(e) => pick(n.id, e.evt.shiftKey)}
                 onDragStart={() => onDragStart(n.id)}
                 onDragMove={(e) => onDragMove(n.id, e.target)}
@@ -1340,7 +1272,9 @@ export function NotebookPad({
                   onMouseDown={(e) => {
                     if (isEditing) e.evt.preventDefault()
                   }}
-                  onClick={() => setMenu(Option.contains(menu, n.id) ? Option.none() : Option.some(n.id))}
+                  onClick={() => {
+                    if (!readOnly) setMenu(Option.contains(menu, n.id) ? Option.none() : Option.some(n.id))
+                  }}
                 >
                   <Rect x={0.5} y={0.5} width={SPINE_W} height={h - 1} fill={look.tint} opacity={blank ? 0.04 : 0.1} cornerRadius={[3, 0, 0, 3]} />
                   <Line points={[SPINE_W + 0.5, 1, SPINE_W + 0.5, h - 1]} stroke={look.tint} strokeWidth={1} opacity={blank ? 0.2 : 0.4} />
@@ -1498,7 +1432,7 @@ export function NotebookPad({
                 stroke={isSel ? ACCENT : s.color}
                 strokeWidth={isSel ? 1 : 0.5}
                 {...(isSel ? { shadowColor: ACCENT, shadowBlur: 6 } : {})}
-                draggable={!drawing}
+                draggable={!drawing && !readOnly}
                 onMouseDown={(e) => pick(s.id, e.evt.shiftKey)}
                 onDragStart={() => onDragStart(s.id)}
                 onDragMove={(e) => onDragMove(s.id, e.target)}

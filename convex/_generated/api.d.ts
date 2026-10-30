@@ -22,6 +22,7 @@ import type * as lib_effect from "../lib/effect.js";
 import type * as lib_enforce from "../lib/enforce.js";
 import type * as lib_tableNames from "../lib/tableNames.js";
 import type * as messages from "../messages.js";
+import type * as notebook from "../notebook.js";
 import type * as presence from "../presence.js";
 import type * as rolls from "../rolls.js";
 import type * as scenes from "../scenes.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   "lib/enforce": typeof lib_enforce;
   "lib/tableNames": typeof lib_tableNames;
   messages: typeof messages;
+  notebook: typeof notebook;
   presence: typeof presence;
   rolls: typeof rolls;
   scenes: typeof scenes;
